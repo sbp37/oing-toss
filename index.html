@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<!-- 앱인토스: 풀스크린 + safe-area 대응 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F6F0E3">
+<title>오잉 스테이지 — 고양이와 합10 퍼즐</title>
+<style>
+/* ══════════════════════════════════════════════════════════
+   오잉 스테이지 (토스/앱인토스 버전) — 시니어 배려 고대비 아이보리 테마
+   ══════════════════════════════════════════════════════════ */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root{
+  --bg:#F6F0E3; --surface:#FFF9ED; --surface2:#F1E6D2;
+  --border:#D8C7A8; --border-strong:#B98F4A;
+  --text:#2A2018; --muted:#7A6A55;
+  --tile:#FFFFFF; --tile-border:#D8C7A8; --tile-text:#2A2018;
+  --sel:#FFE08A; --sel-border:#E4AA3A;
+  --ok:#3FA855; --ok-dim:#DFF3E5;
+  --err:#E05A45; --err-dim:#FBE0DB;
+  --accent:#E58A3A; --accent-2:#F2B84B;
+  --cat-bg:#FFF3C9; --cat-border:#E4AA3A;
+  --star:#F2B01E; --star-off:#D8C7A8;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+html,body{
+  height:100%; width:100%;
+  font-family:'Pretendard','Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg); color:var(--text);
+  overflow:hidden; overscroll-behavior:none;
+  user-select:none; -webkit-user-select:none;
+}
+#app{
+  position:fixed; inset:0;
+  padding:var(--safe-t) 0 var(--safe-b) 0;
+  display:flex; flex-direction:column;
+}
+button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+/* 큰 버튼 (터치 타깃 ≥ 48px) */
+.btn{
+  min-height:56px; padding:14px 22px; border-radius:18px;
+  font-size:19px; font-weight:800; letter-spacing:-.3px;
+  background:var(--surface); color:var(--text);
+  border:2px solid var(--border); transition:transform .08s;
+}
+.btn:active{ transform:scale(.96); }
+.btn.primary{ background:linear-gradient(135deg,var(--accent-2),var(--accent)); color:#fff; border-color:var(--accent); box-shadow:0 6px 16px rgba(229,138,58,.35); }
+.btn.ghost{ background:transparent; }
+.btn.block{ width:100%; }
+
+/* ── 화면(스크린) 공통 ── */
+.screen{ position:absolute; inset:0; display:none; flex-direction:column; }
+.screen.on{ display:flex; }
+
+/* ── 홈 ── */
+#home{ align-items:center; justify-content:center; text-align:center; gap:8px; padding:24px; }
+.logo-cat{ font-size:84px; line-height:1; filter:drop-shadow(0 6px 10px rgba(180,140,60,.3)); animation:bob 2.4s ease-in-out infinite; }
+@keyframes bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+#home h1{ font-size:34px; font-weight:900; letter-spacing:-1px; margin-top:6px; }
+#home .sub{ font-size:16px; color:var(--muted); margin-bottom:20px; }
+#home .home-btns{ display:flex; flex-direction:column; gap:12px; width:min(340px,86vw); }
+.home-stat{ display:flex; gap:18px; justify-content:center; margin-top:14px; color:var(--muted); font-size:15px; font-weight:700; }
+.home-stat b{ color:var(--text); }
+
+/* ── 스테이지 선택 ── */
+#select{ padding:16px; }
+.sel-head{ display:flex; align-items:center; gap:10px; padding:6px 4px 14px; }
+.sel-head h2{ font-size:22px; font-weight:900; }
+.stage-grid{ flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:4px 4px 24px; align-content:start; }
+.stage-cell{ aspect-ratio:1; border-radius:18px; background:var(--surface); border:2px solid var(--border);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-weight:900; font-size:22px; }
+.stage-cell.locked{ opacity:.42; }
+.stage-cell.cleared{ background:var(--ok-dim); border-color:var(--ok); }
+.stage-cell .stars{ font-size:11px; letter-spacing:1px; }
+.stage-cell .lock{ font-size:20px; }
+
+/* ── 게임 화면 ── */
+#play{ display:none; flex-direction:column; }
+#play.on{ display:flex; }
+.game-top{ display:flex; align-items:center; gap:10px; padding:10px 14px; }
+.game-top .back{ font-size:26px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:12px; }
+.stage-badge{ font-size:20px; font-weight:900; }
+.game-top .spacer{ flex:1; }
+.timer{ font-size:20px; font-weight:900; padding:6px 14px; border-radius:14px; background:var(--surface); border:2px solid var(--border); }
+.timer.hidden{ display:none; }
+.timer.low{ color:var(--err); border-color:var(--err); }
+
+.goalbar{ display:flex; align-items:center; gap:10px; padding:2px 16px 8px; }
+.goalbar .label{ font-size:14px; font-weight:800; color:var(--muted); white-space:nowrap; }
+.bar{ flex:1; height:16px; border-radius:10px; background:var(--surface2); overflow:hidden; border:1px solid var(--border); }
+.bar > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--ok),#7fe895); transition:width .3s; }
+.goalbar .count{ font-size:15px; font-weight:900; min-width:64px; text-align:right; }
+
+.board-wrap{ flex:1; display:flex; align-items:center; justify-content:center; padding:6px 14px; min-height:0; }
+#board{
+  display:grid; gap:6px; touch-action:none;
+  width:min(94vw, 60vh); aspect-ratio:1;
+  background:var(--surface2); padding:8px; border-radius:20px; border:2px solid var(--border);
+}
+.cell{
+  border-radius:12px; background:var(--tile); border:2px solid var(--tile-border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:clamp(20px,5.4vw,34px); font-weight:900; color:var(--tile-text);
+  transition:transform .1s, background .1s, opacity .18s;
+}
+.cell.cat{ background:var(--cat-bg); border-color:var(--cat-border); }
+.cell.item{ background:#EAF3FF; border-color:#8FB8E0; }
+.cell.empty{ background:transparent; border-color:transparent; }
+.cell.in-range{ background:var(--sel); border-color:var(--sel-border); transform:scale(1.04); }
+.cell.range-ok{ background:var(--ok-dim); border-color:var(--ok); }
+.cell.range-err{ background:var(--err-dim); border-color:var(--err); }
+.cell.hint{ animation:hintpulse 1s ease-in-out infinite; }
+.cell.pop{ animation:pop .28s ease forwards; }
+@keyframes hintpulse{ 0%,100%{box-shadow:0 0 0 0 rgba(228,170,58,0)} 50%{box-shadow:0 0 0 5px rgba(228,170,58,.55)} }
+@keyframes pop{ 0%{transform:scale(1)} 40%{transform:scale(1.25)} 100%{transform:scale(0);opacity:0} }
+
+/* 드래그 합계 미리보기 */
+#sumPreview{ position:fixed; z-index:60; pointer-events:none; font-size:16px; font-weight:900;
+  padding:5px 12px; border-radius:14px; background:var(--text); color:#fff; transform:translate(-50%,-140%); opacity:0; transition:opacity .1s; }
+#sumPreview.show{ opacity:1; }
+#sumPreview.ok{ background:var(--ok); }
+
+.game-bottom{ display:flex; gap:10px; padding:10px 14px calc(10px + var(--safe-b)); }
+.game-bottom .btn{ flex:1; min-height:52px; font-size:17px; }
+.combo-chip{ position:fixed; left:50%; top:30%; transform:translate(-50%,-50%) scale(0); z-index:70;
+  font-size:30px; font-weight:900; color:#fff; padding:10px 22px; border-radius:20px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)); box-shadow:0 8px 24px rgba(229,138,58,.5); pointer-events:none; }
+.combo-chip.show{ animation:comboPop .9s ease forwards; }
+@keyframes comboPop{ 0%{transform:translate(-50%,-50%) scale(.3);opacity:0} 25%{transform:translate(-50%,-50%) scale(1.15);opacity:1} 75%{transform:translate(-50%,-50%) scale(1);opacity:1} 100%{transform:translate(-50%,-80%) scale(.9);opacity:0} }
+.score-pop{ position:fixed; z-index:65; pointer-events:none; font-weight:900; font-size:18px; color:var(--accent);
+  text-shadow:0 1px 2px #fff; animation:floatup 1s ease forwards; }
+@keyframes floatup{ 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-40px);opacity:0} }
+
+/* ── 결과 오버레이(클리어/실패) ── */
+.overlay{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:100;
+  background:rgba(30,22,12,.55); padding:24px; }
+.overlay.on{ display:flex; }
+.card{ width:min(360px,90vw); background:var(--surface); border-radius:28px; border:2px solid var(--border);
+  padding:26px 22px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3); }
+.card .big{ font-size:26px; font-weight:900; margin-bottom:4px; }
+.card .cat{ font-size:64px; }
+.stars-big{ font-size:44px; letter-spacing:4px; margin:10px 0; }
+.card .msg{ font-size:16px; color:var(--muted); margin-bottom:18px; line-height:1.5; }
+.card .card-btns{ display:flex; flex-direction:column; gap:10px; }
+.ad-btn{ background:linear-gradient(135deg,#7cc0ff,#4a90d9); color:#fff; border-color:#4a90d9; }
+
+/* ── 튜토리얼 ── */
+#tut{ position:absolute; inset:0; display:none; z-index:200; }
+#tut.on{ display:block; }
+#tutMask{ position:absolute; inset:0; background:rgba(20,14,6,.6); }
+#tutBubble{ position:absolute; left:50%; bottom:calc(90px + var(--safe-b)); transform:translateX(-50%);
+  width:min(340px,88vw); background:var(--surface); border-radius:22px; padding:18px 20px; border:2px solid var(--accent);
+  text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+#tutBubble .t{ font-size:18px; font-weight:900; margin-bottom:6px; }
+#tutBubble .d{ font-size:15px; color:var(--muted); line-height:1.5; margin-bottom:14px; }
+.tut-hi{ position:absolute; z-index:201; border:4px solid var(--accent); border-radius:14px; pointer-events:none;
+  box-shadow:0 0 0 4000px rgba(20,14,6,.55); animation:hintpulse 1.1s ease-in-out infinite; }
+.toast{ position:fixed; left:50%; bottom:calc(80px + var(--safe-b)); transform:translateX(-50%) translateY(20px);
+  background:var(--text); color:#fff; padding:12px 20px; border-radius:16px; font-weight:800; font-size:15px;
+  z-index:300; opacity:0; transition:all .25s; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════ 홈 ═══════════ -->
+  <section id="home" class="screen on">
+    <div class="logo-cat">🐱</div>
+    <h1>오잉 스테이지</h1>
+    <div class="sub">고양이와 차근차근 올라가는 합10 퍼즐이다냥</div>
+    <div class="home-btns">
+      <button class="btn primary block" id="btnPlay">시작하기</button>
+      <button class="btn block" id="btnSelect">스테이지 선택</button>
+      <button class="btn ghost block" id="btnBoard">🏆 랭킹 보기</button>
+    </div>
+    <div class="home-stat">
+      <span>최고 <b id="homeMaxStage">1</b> 스테이지</span>
+      <span>⭐ 별 <b id="homeStars">0</b>개</span>
+    </div>
+  </section>
+
+  <!-- ═══════════ 스테이지 선택 ═══════════ -->
+  <section id="select" class="screen">
+    <div class="sel-head">
+      <button class="btn ghost" data-home style="min-height:44px;padding:8px 12px;font-size:16px">‹ 홈</button>
+      <h2>스테이지 선택</h2>
+    </div>
+    <div class="stage-grid" id="stageGrid"></div>
+  </section>
+
+  <!-- ═══════════ 게임 플레이 ═══════════ -->
+  <section id="play" class="screen">
+    <div class="game-top">
+      <button class="back" id="playBack">‹</button>
+      <span class="stage-badge" id="stageBadge">1 스테이지</span>
+      <span class="spacer"></span>
+      <span class="timer hidden" id="timer">1:00</span>
+    </div>
+    <div class="goalbar">
+      <span class="label">목표</span>
+      <div class="bar"><i id="goalFill"></i></div>
+      <span class="count" id="goalCount">0 / 0</span>
+    </div>
+    <div class="board-wrap"><div id="board"></div></div>
+    <div class="game-bottom">
+      <button class="btn" id="hintBtn">💡 힌트</button>
+      <button class="btn" id="shuffleBtn">🔄 섞기</button>
+    </div>
+  </section>
+
+  <!-- 오버레이: 클리어 -->
+  <div class="overlay" id="clearOverlay">
+    <div class="card">
+      <div class="cat">😻</div>
+      <div class="big" id="clearTitle">클리어 성공!</div>
+      <div class="stars-big" id="clearStars">⭐⭐⭐</div>
+      <div class="msg" id="clearMsg">멋지게 해냈다냥!</div>
+      <div class="card-btns">
+        <button class="btn primary block" id="nextBtn">다음 스테이지 ›</button>
+        <button class="btn ad-btn block" id="adHintBtn">🎬 광고 보고 다음 판 힌트 +2</button>
+        <button class="btn ghost block" data-home>홈으로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오버레이: 실패(시간초과) -->
+  <div class="overlay" id="failOverlay">
+    <div class="card">
+      <div class="cat">🙀</div>
+      <div class="big">시간이 다 됐다냥</div>
+      <div class="msg" id="failMsg">괜찮다냥, 다시 해보자!</div>
+      <div class="card-btns">
+        <button class="btn primary block" id="retryBtn">다시 도전</button>
+        <button class="btn ghost block" data-home>홈으로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 튜토리얼 -->
+  <div id="tut">
+    <div id="tutMask"></div>
+    <div id="tutBubble">
+      <div class="t" id="tutTitle">합이 10이 되게 묶어보자냥</div>
+      <div class="d" id="tutDesc">빛나는 두 칸을 손가락으로 이어서 쓸어보세요.</div>
+      <button class="btn primary block" id="tutBtn">알겠어요</button>
+    </div>
+  </div>
+
+  <div id="sumPreview"></div>
+  <div class="combo-chip" id="comboChip"></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   오잉 스테이지 — 토스/앱인토스 버전 (서버리스, 스테이지형)
+   원본(sbp37/oing)의 합10 코어를 이식 · Firebase 전부 제거.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   [1] 앱인토스 SDK 스텁 (TossSDK)
+   ⚠ 실제 함수명은 developers-apps-in-toss.toss.im 문서 확인 전.
+      전부 명확한 이름의 스텁으로만 감쌌다. 실제 SDK 나오면 이 블록만 교체.
+   ───────────────────────────────────────────────────────────── */
+const TossSDK = {
+  // 리더보드 점수 제출 — ⚠ 반드시 "플레이 완료 후에만" 호출 (진입 직후 호출 금지 규칙).
+  submitScore(score) {
+    console.log('[TossSDK.stub] submitScore →', score);
+    // 실제 예시: window.AppsInToss?.leaderboard?.submit({ score });
+    return Promise.resolve({ ok: true, stub: true });
+  },
+  // 리더보드 화면 열기
+  openLeaderboard() {
+    console.log('[TossSDK.stub] openLeaderboard()');
+    toast('🏆 랭킹은 토스 SDK 연결 후 열린다냥 (스텁)');
+    // 실제 예시: window.AppsInToss?.leaderboard?.open();
+    return Promise.resolve();
+  },
+  // 보상형 광고 — 선택형만. 강제 광고 없음.
+  showRewardedAd() {
+    console.log('[TossSDK.stub] showRewardedAd()');
+    // 실제 SDK 연결 전엔 즉시 보상 지급으로 시뮬레이트.
+    // 실제 예시: return window.AppsInToss?.ads?.showRewarded().then(r => r.completed);
+    return Promise.resolve(true); // true = 시청 완료(보상 지급)
+  },
+  // 햅틱 — 'success' | 'warning' | 'light'
+  haptic(type = 'light') {
+    console.log('[TossSDK.stub] haptic:', type);
+    // 실제 예시: window.AppsInToss?.haptic?.(type);
+    try {
+      const map = { success:[12,40,12], warning:[30], light:[10] };
+      navigator.vibrate?.(map[type] || 10);
+    } catch {}
+  },
+};
+
+/* ─────────────────────────────────────────────────────────────
+   [2] 스테이지 설계 — getStageConfig(stage)
+   난이도 사다리: 1~5 입문(무타이머·5×5·완전클리어) → 6~15 → 16~30 → 31+
+   ───────────────────────────────────────────────────────────── */
+function getStageConfig(stage) {
+  let size, timeLimit, hints, clearRatio, pairWeights, items, guaranteedFull;
+
+  if (stage <= 5) {                 // 입문
+    size = 5; timeLimit = 0; hints = Infinity; clearRatio = 1.0;
+    guaranteedFull = true;
+    // 쉬운 짝(5+5, 4+6) 위주. 뒤로 갈수록 3+7 조금씩.
+    pairWeights = { '5+5':6, '4+6':5, '3+7': stage>=3?3:1, '2+8': stage>=4?2:0, '1+9': stage>=5?1:0 };
+    items = [];
+  } else if (stage <= 15) {         // 적응
+    size = 6; timeLimit = 180; hints = 3; clearRatio = 0.70;
+    guaranteedFull = false;
+    pairWeights = { '5+5':4, '4+6':4, '3+7':3, '2+8':2, '1+9':1 };
+    items = stage >= 10 ? ['bomb'] : [];        // 10부터 폭탄 소개
+  } else if (stage <= 30) {         // 표준
+    size = 7; timeLimit = 120; hints = 2; clearRatio = 0.80;
+    guaranteedFull = false;
+    pairWeights = { '5+5':3, '4+6':3, '3+7':3, '2+8':3, '1+9':2 };
+    items = stage >= 20 ? ['bomb','clock'] : ['bomb'];   // 20부터 시계 추가
+  } else {                          // 도전
+    size = 8; timeLimit = Math.max(90 - (stage - 31) * 2, 60);
+    hints = 1; clearRatio = 0.90; guaranteedFull = false;
+    pairWeights = { '5+5':2, '4+6':2, '3+7':3, '2+8':3, '1+9':3 };
+    items = ['bomb','clock','freeze'];
+  }
+  return { stage, size, timeLimit, hints, clearRatio, pairWeights, items, guaranteedFull };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   [3] 진행 상태 저장 (localStorage — 서버 없음)
+   ───────────────────────────────────────────────────────────── */
+const SAVE_KEY = 'oingStage.v1';
+const MAX_STAGE_DEFINED = 40; // 스테이지 선택 화면에 노출할 스테이지 수 (무한 진행 가능)
+let progress = loadProgress();
+
+function loadProgress() {
+  try {
+    const p = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (p && typeof p === 'object') return { maxStage: p.maxStage||1, stars: p.stars||{}, tutorialDone: !!p.tutorialDone };
+  } catch {}
+  return { maxStage: 1, stars: {}, tutorialDone: false };
+}
+function saveProgress() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(progress)); } catch {} }
+function totalStars() { return Object.values(progress.stars).reduce((a,b)=>a+b, 0); }
+
+// 리더보드 점수 = 최고 도달 스테이지 × 1000 + 누적 별  (진행도 기반 단일 숫자)
+function progressScore() { return progress.maxStage * 1000 + totalStars(); }
+
+/* ─────────────────────────────────────────────────────────────
+   [4] 보드 생성 — 짝(합10) 기반. 입문은 완전클리어 보장(도미노 타일링).
+       원본 makeBoard()/seedAdjacentPairs()/countValidMoves() 개념 계승.
+   ───────────────────────────────────────────────────────────── */
+const PAIR_LIST = { '1+9':[1,9], '2+8':[2,8], '3+7':[3,7], '4+6':[4,6], '5+5':[5,5] };
+
+function weightedPair(weights) {
+  const entries = Object.entries(weights).filter(([,w]) => w > 0);
+  const total = entries.reduce((a,[,w]) => a+w, 0);
+  let x = Math.random() * total;
+  for (const [k,w] of entries) { if ((x -= w) <= 0) return PAIR_LIST[k]; }
+  return PAIR_LIST['5+5'];
+}
+function num(n){ return { num:n, cat:false, item:null, empty:false }; }
+function catCell(){ return { num:0, cat:true, item:null, empty:false }; }
+function itemCell(kind){ return { num:0, cat:false, item:kind, empty:false }; }
+function emptyCell(){ return { num:0, cat:false, item:null, empty:true }; }
+
+// 입문/적응용: 도미노 타일링으로 합10 짝을 인접 배치 → 100% 클리어 가능한 판.
+// 모든 숫자칸이 "온전한 합10 도미노"에 속하므로 구성상 항상 완전 클리어 가능.
+function buildTiledBoard(cfg) {
+  const N = cfg.size;
+  const g = Array.from({length:N}, () => Array.from({length:N}, () => null));
+  const dominoes = []; // 각 원소: [[r,c],[r2,c2]] — 온전한 합10 짝
+  const shuf = p => Math.random()<.5 ? p : [p[1],p[0]];
+  const evenW = N % 2 === 0;
+  // 가로 도미노: 행마다 (0,1)(2,3)... 짝. 홀수 폭이면 마지막 열은 제외하고 세로로 처리.
+  for (let r = 0; r < N; r++) {
+    const cEnd = evenW ? N : N - 1;
+    for (let c = 0; c < cEnd; c += 2) {
+      const [a,b] = shuf(weightedPair(cfg.pairWeights));
+      g[r][c] = num(a); g[r][c+1] = num(b);
+      dominoes.push([[r,c],[r,c+1]]);
+    }
+  }
+  if (!evenW) { // 마지막 열: 세로 도미노, 홀수 행이면 맨끝 1칸은 고양이(단독 제거 가능)
+    for (let r = 0; r + 1 < N; r += 2) {
+      const [a,b] = shuf(weightedPair(cfg.pairWeights));
+      g[r][N-1] = num(a); g[r+1][N-1] = num(b);
+      dominoes.push([[r,N-1],[r+1,N-1]]);
+    }
+    if (N % 2 === 1) g[N-1][N-1] = catCell();
+  }
+  // 고양이는 반드시 "온전한 도미노 하나"를 통째로 고양이 두 마리로 교체
+  // (도미노 경계를 넘어 교체하면 짝꿍이 고아가 되어 클리어 불가 → 반드시 도미노 단위)
+  const catPairs = Math.max(1, Math.floor(N / 3));
+  const shuffled = dominoes.slice().sort(() => Math.random() - .5);
+  for (let i = 0; i < catPairs && i < shuffled.length; i++) {
+    const [[r1,c1],[r2,c2]] = shuffled[i];
+    g[r1][c1] = catCell(); g[r2][c2] = catCell();
+  }
+  return g;
+}
+
+// 표준/도전용: 분포로 랜덤 채우고 솔버로 clearRatio 달성 가능한지 검증.
+function buildRandomBoard(cfg) {
+  const N = cfg.size;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const g = Array.from({length:N}, () => Array.from({length:N}, () => null));
+    // 짝을 잔뜩 뽑아 평평하게 깔고 섞음 → 총합이 10의 배수라 소진 가능성↑
+    const flat = [];
+    const need = N*N;
+    while (flat.length < need + 2) { const [a,b] = weightedPair(cfg.pairWeights); flat.push(a,b); }
+    for (let i = flat.length-1; i>0; i--){ const j=Math.floor(Math.random()*(i+1)); [flat[i],flat[j]]=[flat[j],flat[i]]; }
+    let k = 0;
+    const catCount = Math.max(2, Math.floor(N/2));
+    const catPos = new Set();
+    while (catPos.size < catCount) catPos.add(Math.floor(Math.random()*need));
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+      const pos = r*N+c;
+      g[r][c] = catPos.has(pos) ? catCell() : num(flat[k++] || 5);
+    }
+    // 인접 짝 조금 심어주기(원본 seedAdjacentPairs 축소판)
+    seedPairs(g, N, Math.max(2, Math.floor(N/2)));
+    if (clearableRatio(g, N) >= cfg.clearRatio) return g;
+  }
+  return null; // 실패 시 호출부가 타일링으로 폴백
+}
+
+function seedPairs(g, N, count) {
+  const isNum = d => d && !d.empty && !d.cat && !d.item;
+  let seeded=0, guard=0;
+  while (seeded<count && guard++<300){
+    const r=Math.floor(Math.random()*N), c=Math.floor(Math.random()*N);
+    if (!isNum(g[r][c])) continue;
+    const dirs=[[0,1],[1,0],[0,-1],[-1,0]].sort(()=>Math.random()-.5);
+    let nb=null;
+    for (const [dr,dc] of dirs){ const nr=r+dr,nc=c+dc; if(nr>=0&&nr<N&&nc>=0&&nc<N&&isNum(g[nr][nc])){nb={r:nr,c:nc};break;} }
+    if(!nb) continue;
+    const need=10-g[r][c].num;
+    if(need<1||need>9){ continue; }
+    if(g[nb.r][nb.c].num===need){ seeded++; continue; }
+    for(let t=0;t<60;t++){
+      const rr=Math.floor(Math.random()*N), cc=Math.floor(Math.random()*N);
+      if((rr===r&&cc===c)||(rr===nb.r&&cc===nb.c)) continue;
+      if(isNum(g[rr][cc])&&g[rr][cc].num===need){ const tmp=g[nb.r][nb.c].num; g[nb.r][nb.c].num=need; g[rr][cc].num=tmp; seeded++; break; }
+    }
+  }
+}
+
+// 그리디 솔버: 합10 사각형을 반복 제거 → 제거 가능한 숫자칸 비율 반환.
+function clearableRatio(grid, N) {
+  const g = grid.map(row => row.map(d => ({...d})));
+  const totalNums = () => { let n=0; for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(!g[r][c].empty && !g[r][c].cat && !g[r][c].item) n++; return n; };
+  const start = totalNums();
+  if (start === 0) return 1;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const mv = findMove(g, N);
+    if (mv) { for(let r=mv.rMin;r<=mv.rMax;r++)for(let c=mv.cMin;c<=mv.cMax;c++) if(!g[r][c].empty) g[r][c]=emptyCell(); changed=true; }
+  }
+  const left = totalNums();
+  return (start - left) / start;
+}
+// 첫 유효 사각형 찾기(작은 것 우선). null이면 없음.
+function findMove(g, N) {
+  for (let r1=0;r1<N;r1++)for(let c1=0;c1<N;c1++)for(let r2=r1;r2<N;r2++)for(let c2=c1;c2<N;c2++){
+    let sum=0, hasNum=false, over=false;
+    for(let r=r1;r<=r2&&!over;r++)for(let c=c1;c<=c2;c++){
+      const d=g[r][c]; if(d.empty||d.cat||d.item) continue;
+      sum+=d.num; hasNum=true; if(sum>10){over=true;break;}
+    }
+    if(!over && hasNum && sum===10) return {rMin:r1,rMax:r2,cMin:c1,cMax:c2};
+  }
+  return null;
+}
+
+function generateStageBoard(cfg) {
+  let g = cfg.guaranteedFull ? buildTiledBoard(cfg) : buildRandomBoard(cfg);
+  if (!g) g = buildTiledBoard(cfg); // 랜덤 실패 시 항상 클리어 가능한 판으로 폴백
+  // 아이템 스폰(스테이지 조건부) — 숫자칸 몇 개를 아이템으로 교체
+  if (cfg.items.length) spawnItems(g, cfg);
+  return g;
+}
+function spawnItems(g, cfg) {
+  const N = cfg.size;
+  const spots = [];
+  for (let r=0;r<N;r++)for(let c=0;c<N;c++) if(!g[r][c].empty && !g[r][c].cat && !g[r][c].item) spots.push([r,c]);
+  const count = Math.min(cfg.items.length, Math.max(1, Math.floor(N/4)));
+  for (let i=0;i<count && spots.length;i++){
+    const idx = Math.floor(Math.random()*spots.length);
+    const [r,c] = spots.splice(idx,1)[0];
+    const kind = cfg.items[i % cfg.items.length];
+    g[r][c] = itemCell(kind);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   [5] 게임 상태 & 렌더
+   ───────────────────────────────────────────────────────────── */
+const ITEM_DEFS = {
+  bomb:   { emoji:'💣', effect:'주변 3×3 제거' },
+  clock:  { emoji:'⏰', effect:'+10초' },
+  freeze: { emoji:'❄️', effect:'5초 시간정지' },
+};
+const boardEl = document.getElementById('board');
+
+let cfg = null;          // 현재 스테이지 설정
+let board = [];          // 셀 2차원 배열
+let N = 5;               // 현재 보드 크기
+let running = false;
+let combo = 0, wrongMoves = 0, clearedNums = 0, targetNums = 0;
+let hintsLeft = 0, bonusHints = 0;
+let timeLeft = 0, timerId = null, frozenUntil = 0;
+
+function cellAt(r,c){ return boardEl.children[r*N + c]; }
+
+function renderBoard() {
+  boardEl.style.gridTemplateColumns = `repeat(${N},1fr)`;
+  boardEl.innerHTML = '';
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++) {
+    const d = board[r][c];
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.dataset.r = r; el.dataset.c = c;
+    if (d.empty) el.classList.add('empty');
+    else if (d.cat) { el.classList.add('cat'); el.textContent = '🐱'; }
+    else if (d.item) { el.classList.add('item'); el.textContent = ITEM_DEFS[d.item]?.emoji || '❓'; }
+    else el.textContent = d.num;
+    boardEl.appendChild(el);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   [6] 드래그 사각형 선택 (포인터 통합: 터치+마우스)
+       원본 mousedown/move/up + tryRemove 이식.
+   ───────────────────────────────────────────────────────────── */
+let dragStart = null, lastRange = null;
+const sumPreview = document.getElementById('sumPreview');
+
+function cellFromPoint(x,y){
+  const el = document.elementFromPoint(x,y);
+  const cell = el && el.closest('.cell');
+  if (!cell || cell.parentElement !== boardEl) return null;
+  return { r:+cell.dataset.r, c:+cell.dataset.c };
+}
+
+boardEl.addEventListener('pointerdown', e => {
+  if (!running) return;
+  const p = cellFromPoint(e.clientX, e.clientY);
+  if (!p) return;
+  dragStart = p;
+  boardEl.setPointerCapture?.(e.pointerId);
+  paintRange(p, p, e);
+});
+boardEl.addEventListener('pointermove', e => {
+  if (!running || !dragStart) return;
+  const p = cellFromPoint(e.clientX, e.clientY);
+  if (!p) return;
+  paintRange(dragStart, p, e);
+});
+boardEl.addEventListener('pointerup', e => {
+  if (!running || !dragStart) { dragStart = null; return; }
+  const p = cellFromPoint(e.clientX, e.clientY) || dragStart;
+  const rMin=Math.min(dragStart.r,p.r), rMax=Math.max(dragStart.r,p.r);
+  const cMin=Math.min(dragStart.c,p.c), cMax=Math.max(dragStart.c,p.c);
+  dragStart = null;
+  clearHighlights();
+  sumPreview.classList.remove('show');
+  tryClear(rMin,rMax,cMin,cMax);
+});
+boardEl.addEventListener('pointercancel', () => { dragStart=null; clearHighlights(); sumPreview.classList.remove('show'); });
+
+function rangeStats(rMin,rMax,cMin,cMax){
+  let sum=0, nums=0, cats=0, items=0;
+  for(let r=rMin;r<=rMax;r++)for(let c=cMin;c<=cMax;c++){
+    const d=board[r][c]; if(!d||d.empty) continue;
+    if(d.cat){cats++;continue;} if(d.item){items++;continue;}
+    sum+=d.num; nums++;
+  }
+  return {sum,nums,cats,items};
+}
+function paintRange(a,b,ev){
+  const rMin=Math.min(a.r,b.r), rMax=Math.max(a.r,b.r), cMin=Math.min(a.c,b.c), cMax=Math.max(a.c,b.c);
+  const st = rangeStats(rMin,rMax,cMin,cMax);
+  const willClear = st.sum===10 || (st.nums===0 && (st.cats>0||st.items>0));
+  clearHighlights();
+  for(let r=rMin;r<=rMax;r++)for(let c=cMin;c<=cMax;c++){
+    const el=cellAt(r,c); if(!el||board[r][c].empty) continue;
+    el.classList.add(willClear ? 'range-ok' : 'in-range');
+  }
+  // 합계 미리보기 (시니어 실수 방지)
+  if (st.nums>0){
+    sumPreview.textContent = st.sum===10 ? `합 10 ✓` : `합 ${st.sum}`;
+    sumPreview.classList.toggle('ok', st.sum===10);
+    sumPreview.classList.add('show');
+    if (ev){ sumPreview.style.left = ev.clientX+'px'; sumPreview.style.top = ev.clientY+'px'; }
+  } else sumPreview.classList.remove('show');
+  lastRange = {rMin,rMax,cMin,cMax};
+}
+function clearHighlights(){
+  boardEl.querySelectorAll('.in-range,.range-ok,.range-err').forEach(el=>el.classList.remove('in-range','range-ok','range-err'));
+}
+
+// 원본 tryRemove(sel2) 이식 — 합10 판정 + 콤보 + 아이템 + 이펙트
+function tryClear(rMin,rMax,cMin,cMax){
+  const st = rangeStats(rMin,rMax,cMin,cMax);
+  const onlyCat = st.nums===0 && st.cats>0 && st.items===0;
+  const onlyItem = st.nums===0 && st.items>0 && st.cats===0;
+  const valid = st.sum===10 || onlyCat || onlyItem;
+
+  if (!valid) {
+    wrongMoves++;
+    combo = Math.floor(combo * 0.7);
+    TossSDK.haptic('warning');
+    for(let r=rMin;r<=rMax;r++)for(let c=cMin;c<=cMax;c++){ const el=cellAt(r,c); if(el&&!board[r][c].empty) el.classList.add('range-err'); }
+    setTimeout(clearHighlights, 260);
+    return;
+  }
+
+  // 아이템 발동 수집
+  const triggered = [];
+  const removed = [];
+  for(let r=rMin;r<=rMax;r++)for(let c=cMin;c<=cMax;c++){
+    const d=board[r][c]; if(!d||d.empty) continue;
+    if(d.item) triggered.push({r,c,kind:d.item});
+    removed.push({r,c});
+  }
+
+  combo++;
+  const cellsN = removed.length;
+  const gained = cellsN * Math.max(1, combo);
+  clearedNums += st.nums;
+
+  TossSDK.haptic('success');
+  animateRemove(removed);
+  popScore(rMin,cMin, `+${gained}${combo>1?' ×'+combo:''}`);
+  if (combo>=3 && combo%3===0) showCombo(combo);
+  if (cellsN>=5) burstConfetti();
+
+  triggered.forEach(t => applyItemEffect(t));
+
+  setTimeout(() => {
+    removed.forEach(({r,c}) => board[r][c] = emptyCell());
+    triggeredExtraClears.forEach(({r,c}) => { if(board[r][c] && !board[r][c].empty){ if(!board[r][c].cat && !board[r][c].item) clearedNums++; board[r][c]=emptyCell(); }});
+    triggeredExtraClears = [];
+    renderBoard();
+    updateGoal();
+    checkClearCondition();
+  }, 200);
+}
+
+let triggeredExtraClears = [];
+function applyItemEffect(t){
+  const def = ITEM_DEFS[t.kind];
+  if (t.kind==='bomb') {                 // 주변 3×3 제거
+    for(let r=t.r-1;r<=t.r+1;r++)for(let c=t.c-1;c<=t.c+1;c++){
+      if(r>=0&&r<N&&c>=0&&c<N && !(r===t.r&&c===t.c)) triggeredExtraClears.push({r,c});
+    }
+  } else if (t.kind==='clock') {         // +10초
+    if (cfg.timeLimit) { timeLeft += 10; updateTimer(); toast('⏰ +10초!'); }
+  } else if (t.kind==='freeze') {        // 5초 정지
+    if (cfg.timeLimit) { frozenUntil = now() + 5000; toast('❄️ 5초 시간정지!'); }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   [7] 스테이지 흐름: 시작 → 플레이 → 클리어/실패 → 다음
+   ───────────────────────────────────────────────────────────── */
+function startStage(stage){
+  cfg = getStageConfig(stage);
+  N = cfg.size;
+  board = generateStageBoard(cfg);
+  combo = 0; wrongMoves = 0; clearedNums = 0;
+  hintsLeft = cfg.hints; bonusHints = window._pendingBonusHints||0; window._pendingBonusHints=0;
+  if (bonusHints) hintsLeft += bonusHints;
+
+  // 목표 개수 = 전체 숫자칸 × clearRatio (입문은 전부)
+  let totalN=0; for(let r=0;r<N;r++)for(let c=0;c<N;c++){ const d=board[r][c]; if(!d.empty&&!d.cat&&!d.item) totalN++; }
+  targetNums = cfg.clearRatio>=1 ? totalN : Math.ceil(totalN * cfg.clearRatio);
+
+  document.getElementById('stageBadge').textContent = `${stage} 스테이지`;
+  renderBoard();
+  updateGoal();
+  updateHintBtn();
+  setupTimer();
+  showScreen('play');
+  running = true;
+
+  // 첫 실행 튜토리얼 (스테이지 1 최초 진입)
+  if (!progress.tutorialDone && stage===1) setTimeout(runTutorial, 400);
+}
+
+function updateGoal(){
+  const shown = Math.min(clearedNums, targetNums);
+  document.getElementById('goalFill').style.width = Math.min(100, clearedNums/targetNums*100) + '%';
+  document.getElementById('goalCount').textContent = `${shown} / ${targetNums}`;
+}
+function checkClearCondition(){
+  if (!running) return;
+  if (clearedNums >= targetNums) return winStage();
+  // 더 지울 수 있는 조합이 없으면(막힘) → 섞기 안내(입문은 자동 섞기)
+  if (!findMove(board, N)) {
+    if (cfg.guaranteedFull || cfg.timeLimit===0) { toast('막혔다냥, 판을 섞어줄게!'); setTimeout(doShuffle, 700); }
+    else toast('막혔다냥! 🔄 섞기를 눌러보세요');
+  }
+}
+
+function winStage(){
+  running = false;
+  stopTimer();
+  const stars = computeStars();
+  const stage = cfg.stage;
+  // 진행도 갱신
+  progress.stars[stage] = Math.max(progress.stars[stage]||0, stars);
+  progress.maxStage = Math.max(progress.maxStage, stage+1);
+  saveProgress();
+  // ⚠ 리더보드 제출은 "플레이 완료 후에만" — 진입 직후 호출 금지 규칙 준수
+  TossSDK.submitScore(progressScore());
+  TossSDK.haptic('success');
+  // 결과 화면
+  document.getElementById('clearStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3-stars);
+  document.getElementById('clearTitle').textContent = `${stage} 스테이지 클리어!`;
+  document.getElementById('clearMsg').textContent =
+    stars===3 ? '완벽하다냥! 실수 없이 해냈어!' : stars===2 ? '잘했다냥!' : '해냈다냥! 다음도 화이팅!';
+  document.getElementById('homeMaxStage').textContent = progress.maxStage;
+  document.getElementById('homeStars').textContent = totalStars();
+  document.getElementById('clearOverlay').classList.add('on');
+  burstConfetti();
+}
+function loseStage(){
+  running = false; stopTimer();
+  document.getElementById('failOverlay').classList.add('on');
+  TossSDK.haptic('warning');
+}
+function computeStars(){
+  // 시간 없는 판: 실수(오답) 기준. 시간 판: 남은 시간도 가산.
+  let stars = 3;
+  if (wrongMoves > 4) stars = 1; else if (wrongMoves > 1) stars = 2;
+  if (cfg.timeLimit) { const frac = timeLeft / cfg.timeLimit; if (frac < 0.15 && stars>1) stars--; }
+  return Math.max(1, stars);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   [8] 타이머 (입문 1~5는 숨김 — 초조함 방지)
+   ───────────────────────────────────────────────────────────── */
+function now(){ return Date.now(); }
+function setupTimer(){
+  const el = document.getElementById('timer');
+  stopTimer();
+  if (!cfg.timeLimit) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  timeLeft = cfg.timeLimit; frozenUntil = 0;
+  updateTimer();
+  timerId = setInterval(() => {
+    if (!running) return;
+    if (now() < frozenUntil) return; // 프리즈
+    timeLeft--; updateTimer();
+    if (timeLeft <= 0) { stopTimer(); loseStage(); }
+  }, 1000);
+}
+function stopTimer(){ if (timerId){ clearInterval(timerId); timerId=null; } }
+function updateTimer(){
+  const el = document.getElementById('timer');
+  const m = Math.floor(timeLeft/60), s = timeLeft%60;
+  el.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  el.classList.toggle('low', timeLeft<=10);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   [9] 힌트 / 섞기
+   ───────────────────────────────────────────────────────────── */
+document.getElementById('hintBtn').addEventListener('click', useHint);
+document.getElementById('shuffleBtn').addEventListener('click', doShuffle);
+
+function updateHintBtn(){
+  const b = document.getElementById('hintBtn');
+  b.textContent = hintsLeft===Infinity ? '💡 힌트' : `💡 힌트 (${Math.max(0,hintsLeft)})`;
+  b.style.opacity = (hintsLeft!==Infinity && hintsLeft<=0) ? .4 : 1;
+}
+function useHint(){
+  if (!running) return;
+  if (hintsLeft!==Infinity && hintsLeft<=0) { toast('힌트를 다 썼다냥'); return; }
+  const mv = findMove(board, N);
+  if (!mv) { toast('지울 조합이 없다냥, 섞어보자!'); return; }
+  if (hintsLeft!==Infinity) { hintsLeft--; updateHintBtn(); }
+  for(let r=mv.rMin;r<=mv.rMax;r++)for(let c=mv.cMin;c<=mv.cMax;c++){ const el=cellAt(r,c); if(el&&!board[r][c].empty) el.classList.add('hint'); }
+  setTimeout(()=>boardEl.querySelectorAll('.hint').forEach(el=>el.classList.remove('hint')), 1600);
+}
+function doShuffle(){
+  if (!running) return;
+  // 남은 숫자칸 값만 재배치 (개수/총합 불변) → 새 조합
+  const nums=[], spots=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){ const d=board[r][c]; if(!d.empty&&!d.cat&&!d.item){ nums.push(d.num); spots.push([r,c]); } }
+  for(let i=nums.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [nums[i],nums[j]]=[nums[j],nums[i]]; }
+  spots.forEach(([r,c],i)=> board[r][c]=num(nums[i]));
+  if (spots.length) seedPairs(board, N, 2);
+  renderBoard();
+  TossSDK.haptic('light');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   [10] 튜토리얼 (첫 실행 3단계 인터랙티브)
+   ───────────────────────────────────────────────────────────── */
+function runTutorial(){
+  // 인접한 합10 짝을 찾아 하이라이트
+  let target = null;
+  for(let r=0;r<N && !target;r++)for(let c=0;c<N-1;c++){
+    const a=board[r][c], b=board[r][c+1];
+    if(!a.empty&&!b.empty&&!a.cat&&!b.cat&&!a.item&&!b.item&&a.num+b.num===10){ target={r,c,r2:r,c2:c+1}; break; }
+  }
+  const tut = document.getElementById('tut');
+  tut.classList.add('on');
+  document.getElementById('tutTitle').textContent = '합이 10이 되게 묶어보자냥';
+  document.getElementById('tutDesc').textContent = target
+    ? '빛나는 두 칸을 손가락으로 쓸어서 이어보세요. 합이 10이면 사라진다냥!'
+    : '숫자 칸을 드래그해서 합이 10이 되게 묶으면 사라진다냥!';
+  if (target){
+    const a=cellAt(target.r,target.c).getBoundingClientRect();
+    const b=cellAt(target.r2,target.c2).getBoundingClientRect();
+    const hi=document.createElement('div'); hi.className='tut-hi'; hi.id='tutHi';
+    const pad=6;
+    hi.style.left=(Math.min(a.left,b.left)-pad)+'px';
+    hi.style.top=(a.top-pad)+'px';
+    hi.style.width=(Math.max(a.right,b.right)-Math.min(a.left,b.left)+pad*2)+'px';
+    hi.style.height=(a.height+pad*2)+'px';
+    tut.appendChild(hi);
+  }
+}
+document.getElementById('tutBtn').addEventListener('click', () => {
+  document.getElementById('tut').classList.remove('on');
+  document.getElementById('tutHi')?.remove();
+  progress.tutorialDone = true; saveProgress();
+});
+
+/* ─────────────────────────────────────────────────────────────
+   [11] 이펙트 (사운드는 WebAudio 합성 — 외부 CDN 없음)
+   ───────────────────────────────────────────────────────────── */
+function animateRemove(cells){ cells.forEach(({r,c})=>{ const el=cellAt(r,c); if(el) el.classList.add('pop'); }); sfx('ok'); }
+function popScore(r,c,text){
+  const el=cellAt(r,c); if(!el) return;
+  const rect=el.getBoundingClientRect();
+  const sp=document.createElement('div'); sp.className='score-pop'; sp.textContent=text;
+  sp.style.left=(rect.left+rect.width/2)+'px'; sp.style.top=rect.top+'px';
+  document.body.appendChild(sp); setTimeout(()=>sp.remove(),1000);
+}
+function showCombo(n){ const chip=document.getElementById('comboChip'); chip.textContent=`콤보 ×${n}!`; chip.classList.remove('show'); void chip.offsetWidth; chip.classList.add('show'); sfx('combo'); }
+function burstConfetti(){
+  const emojis=['🐱','⭐','✨','🎉','😻'];
+  for(let i=0;i<14;i++){
+    const s=document.createElement('div');
+    s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    s.style.cssText=`position:fixed;left:${40+Math.random()*20}vw;top:40vh;font-size:${16+Math.random()*16}px;z-index:80;pointer-events:none;transition:all 1.1s ease-out;`;
+    document.body.appendChild(s);
+    requestAnimationFrame(()=>{ s.style.left=(Math.random()*100)+'vw'; s.style.top=(90+Math.random()*10)+'vh'; s.style.opacity='0'; s.style.transform=`rotate(${Math.random()*720-360}deg)`; });
+    setTimeout(()=>s.remove(),1150);
+  }
+}
+let _ac=null;
+function sfx(kind){
+  try{
+    _ac = _ac || new (window.AudioContext||window.webkitAudioContext)();
+    if(_ac.state==='suspended') _ac.resume();
+    const o=_ac.createOscillator(), g=_ac.createGain();
+    o.connect(g); g.connect(_ac.destination);
+    const t=_ac.currentTime;
+    if(kind==='ok'){ o.frequency.setValueAtTime(660,t); o.frequency.exponentialRampToValueAtTime(990,t+.1); }
+    else if(kind==='combo'){ o.frequency.setValueAtTime(880,t); o.frequency.exponentialRampToValueAtTime(1320,t+.15); }
+    else { o.frequency.setValueAtTime(220,t); }
+    g.gain.setValueAtTime(.12,t); g.gain.exponentialRampToValueAtTime(.001,t+.2);
+    o.start(t); o.stop(t+.22);
+  }catch{}
+}
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
+
+/* ─────────────────────────────────────────────────────────────
+   [12] 화면 전환 / 네비게이션
+   ───────────────────────────────────────────────────────────── */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+function goHome(){
+  running=false; stopTimer();
+  document.getElementById('clearOverlay').classList.remove('on');
+  document.getElementById('failOverlay').classList.remove('on');
+  document.getElementById('homeMaxStage').textContent = progress.maxStage;
+  document.getElementById('homeStars').textContent = totalStars();
+  showScreen('home');
+}
+document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click', goHome));
+document.getElementById('playBack').addEventListener('click', goHome);
+document.getElementById('btnPlay').addEventListener('click', () => startStage(progress.maxStage));
+document.getElementById('btnSelect').addEventListener('click', () => { buildStageGrid(); showScreen('select'); });
+document.getElementById('btnBoard').addEventListener('click', () => TossSDK.openLeaderboard());
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  document.getElementById('clearOverlay').classList.remove('on');
+  startStage(cfg.stage + 1);
+});
+document.getElementById('retryBtn').addEventListener('click', () => {
+  document.getElementById('failOverlay').classList.remove('on');
+  startStage(cfg.stage);
+});
+// 선택형 보상광고: 시청 완료 시 다음 판 힌트 +2 (강제 아님)
+document.getElementById('adHintBtn').addEventListener('click', async () => {
+  const done = await TossSDK.showRewardedAd();
+  if (done){ window._pendingBonusHints = 2; toast('💡 다음 판 힌트 +2 획득!'); document.getElementById('adHintBtn').style.display='none'; }
+});
+
+function buildStageGrid(){
+  const grid = document.getElementById('stageGrid');
+  grid.innerHTML='';
+  for (let s=1; s<=MAX_STAGE_DEFINED; s++){
+    const unlocked = s <= progress.maxStage;
+    const stars = progress.stars[s]||0;
+    const cleared = stars>0;
+    const cell = document.createElement('button');
+    cell.className = 'stage-cell' + (!unlocked?' locked':'') + (cleared?' cleared':'');
+    cell.innerHTML = unlocked
+      ? `<div>${s}</div><div class="stars">${'⭐'.repeat(stars)||'· · ·'}</div>`
+      : `<div class="lock">🔒</div>`;
+    if (unlocked) cell.addEventListener('click', () => startStage(s));
+    grid.appendChild(cell);
+  }
+}
+
+/* 초기화 */
+document.getElementById('homeMaxStage').textContent = progress.maxStage;
+document.getElementById('homeStars').textContent = totalStars();
+window.addEventListener('resize', () => { if (running) renderBoard(); });
+</script>
+</body>
+</html>
