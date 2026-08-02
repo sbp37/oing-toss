@@ -28,7 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure Pages
-        uses: actions/configure-pages@v5   # Pages 미설정 시 자동 활성화
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true   # Pages 미설정 시 워크플로에서 자동 활성화
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
