@@ -4,10 +4,11 @@ name: Deploy to GitHub Pages
 # 저장소 루트(index.html)가 https://<owner>.github.io/oing-toss/ 로 배포된다.
 # 별도 브랜치(main) 머지 없이 이 브랜치에서 바로 배포한다.
 
+# 수동 실행 전용(workflow_dispatch). 자동 배포는 Settings → Pages 의
+# "Deploy from a branch"(권장, 이 워크플로 불필요) 또는 Source를 "GitHub Actions"로
+# 바꾼 뒤 이 워크플로를 돌리면 된다. (기본 토큰이 read-only면 Actions 방식은
+# Settings → Actions → General → Workflow permissions → "Read and write" 필요)
 on:
-  push:
-    branches:
-      - claude/oing-toss-stage-puzzle-c8no35
   workflow_dispatch:
 
 permissions:
