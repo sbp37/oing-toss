@@ -11,8 +11,13 @@
 
 | 파일 | 내용 |
 |---|---|
-| `index.html` | **단일 HTML 게임 전체**(바닐라 JS, 외부 CDN 0). 아래 [12]구획으로 구성. |
+| `index.html` | **단일 HTML 게임 전체**(바닐라 JS, 외부 CDN 0). 아래 [12]구획으로 구성. 고양이 캐릭터 이미지는 인라인 data URI. |
+| `bgm.mp3` | 원본 오잉게임 배경음악(선택, 기본 OFF). Pages/로컬에서만 로드. |
+| `assets/cat-mascot.png` | 고양이 마스코트 이미지. |
+| `.github/workflows/deploy-pages.yml` | 저장소 Public 전환 시 GitHub Pages 자동 배포. |
 | `CONVERSION_PLAN.md` | 원본 함수명 기준 삭제/유지/수정 변환 계획서. |
+
+**사운드**: 원본 오잉게임의 WebAudio 합성 효과음(정답/콤보/고양이/폭탄/시계/프리즈/힌트/섞기/클리어/실패)을 그대로 이식 — 외부 파일 없이 어디서나 재생. 게임 화면 우상단 🔊/🎵 버튼으로 효과음·배경음악 각각 on/off.
 
 ## 실행
 

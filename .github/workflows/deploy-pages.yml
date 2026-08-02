@@ -1,0 +1,38 @@
+name: Deploy to GitHub Pages
+
+# 저장소를 Public으로 바꾼 뒤 이 워크플로를 실행하면 Pages가 자동으로 켜지고
+# 저장소 루트(index.html)가 https://<owner>.github.io/oing-toss/ 로 배포된다.
+# 별도 브랜치(main) 머지 없이 이 브랜치에서 바로 배포한다.
+
+on:
+  push:
+    branches:
+      - claude/oing-toss-stage-puzzle-c8no35
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5   # Pages 미설정 시 자동 활성화
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
