@@ -4,7 +4,7 @@
 
 플레이 타일은 콘셉트 보드를 자르지 않고, 이미지 생성으로 만든 독립 `tile-master-v3`를 크로마키 제거한 뒤 512×512에서 색상·상태별 lossless WebP로 파생했다. 숫자는 계속 HTML 텍스트로 렌더링한다.
 
-하단 아이템은 긴 가로 버튼 대신 4개의 작은 정사각 슬롯으로 통일했다. 숫자 타일과 같은 독립 시럽 에셋 `assets/ui/tiles-syrup-v4/`을 슬롯 배경으로 재사용하고, 아이콘·이름·남은 횟수는 계속 독립 이미지와 HTML 텍스트로 렌더링한다.
+하단 아이템은 숫자 타일 에셋과 분리한 4개의 작은 토이 버튼으로 통일했다. 버튼 셸은 CSS로 크림·민트·코랄·하늘색의 도톰한 표면과 눌림 깊이를 만들고, 아이콘·이름·남은 횟수는 독립 이미지와 HTML 텍스트로 렌더링한다.
 
 `assets/fonts/Jua-Latin.woff2`는 숫자·영문용 Jua 서브셋이다. 한글 버튼·말풍선·큰 제목에는 Google Fonts의 Jua 원본에서 현재 게임에 필요한 한글 179자만 추린 `assets/fonts/Jua-Korean-Game.woff2`를 사용한다. 두 파일을 합쳐도 약 58KB이며 `assets/fonts/OFL-Jua.txt`에 SIL Open Font License 1.1을 함께 보관한다. 작은 HUD와 보드 숫자는 기존 가독성 높은 글꼴을 유지한다.
 
@@ -15,7 +15,8 @@
 | `assets/fonts/Jua-Korean-Game.woff2` | Google Fonts `ofl/jua/Jua-Regular.ttf`에서 사용 한글만 서브셋 | 홈·버튼·말풍선·결과·오버레이의 강조 문구 | 12–20px |
 | `assets/backgrounds/home-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/home-bg@2x.webp` | 홈·결과 배경 | 최대 430×932 |
 | `assets/backgrounds/play-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/play-bg@2x.webp` | 플레이 배경 | 최대 430×932 |
-| `assets/characters/cat-wave.webp` | `oing-toss-assets-v1/assets/cat/cat-wave.webp` | 홈·힌트 반응 | 홈 150–236px, 플레이 stage 62–80px |
+| `assets/characters/cat-idle.webp` | `oing-toss-assets-v1/assets/cat/cat-idle.webp` | 홈 중심 캐릭터 | 홈 약 188–270px |
+| `assets/characters/cat-wave.webp` | `oing-toss-assets-v1/assets/cat/cat-wave.webp` | 힌트 반응 | 플레이 stage 62–96px |
 | `assets/characters/cat-cheer.webp` | `oing-toss-assets-v1/assets/cat/cat-cheer.webp` | 콤보 3·라운드·10초 경고·일반 결과 | 플레이 stage 62–80px, 결과 102–142px |
 | `assets/characters/cat-success.webp` | `oing-toss-assets-v1/assets/cat/cat-success.webp` | 첫 성공·콤보 5+·신기록 결과 | 플레이 stage 62–80px, 결과 102–142px |
 | `assets/characters/cat-peek.webp` | `oing-toss-assets-v1/assets/cat/cat-peek.webp` | 플레이 기본 | stage 62–80px |
@@ -24,11 +25,11 @@
 | `assets/ui/button-settings.webp` | `oing-toss-assets-v1/assets/ui/button-settings.webp` | 홈 설정 | 39–44px |
 | `assets/ui/button-pause.webp` | `oing-toss-assets-v1/assets/ui/button-pause.webp` | 플레이 일시정지 | 43–48px |
 | `assets/ui/tiles-syrup-v4/tile-peach.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 주황 숫자용 피치 시럽 타일 | 512×512 원본, 셀 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 초록 숫자·섞기 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 초록 숫자용 민트 시럽 타일 | 512×512 원본, 셀 약 39–96px |
 | `assets/ui/tiles-syrup-v4/tile-lilac.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 보라 숫자용 라일락 시럽 타일 | 512×512 원본, 셀 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-blush.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 분홍 숫자·폭탄 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-aqua.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 청록 숫자·시계 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-lemon.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 노랑 숫자·힌트 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-blush.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 분홍 숫자용 블러시 시럽 타일 | 512×512 원본, 셀 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-aqua.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 청록 숫자용 아쿠아 시럽 타일 | 512×512 원본, 셀 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-lemon.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 노랑 숫자용 레몬 시럽 타일 | 512×512 원본, 셀 약 39–96px |
 | `assets/icons/navigation/trophy.webp` | `oing-toss-assets-v1/assets/icons/trophy.webp` | 홈·결과 랭킹 | 27px |
 | `assets/icons/navigation/home.webp` | `oing-toss-assets-v1/assets/icons/home.webp` | 결과 홈으로 | 24px |
 | `assets/icons/hud/score.webp` | `oing-toss-assets-v1/assets/icons/coin.webp` | 점수 HUD | 22px |
@@ -57,7 +58,6 @@
 
 | 파일 | 이유 |
 |---|---|
-| `assets/characters/cat-idle.webp` | 홈은 손 흔들기 포즈가 더 명확해 `cat-wave`를 선택했다. 향후 대기 변형용으로 보존했다. |
 | `assets/icons/hud/goal.webp` | 목표 HUD를 얇게 유지하기 위해 아이콘을 생략했다. |
 | `assets/ui/button-back.webp` | 현재 3화면 흐름에는 뒤로가기 버튼이 없다. |
 | `assets/ui/tile-disabled.webp` | 보드에 disabled 타일 상태가 아직 없다. |

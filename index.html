@@ -9,10 +9,12 @@
   <link rel="preload" href="assets/backgrounds/home-bg@2x.webp" as="image" type="image/webp" fetchpriority="high">
   <link rel="preload" href="assets/backgrounds/play-bg@2x.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/ui/logo.webp" as="image" type="image/webp" fetchpriority="high">
-  <link rel="preload" href="assets/characters/cat-wave.webp" as="image" type="image/webp" fetchpriority="high">
+  <link rel="preload" href="assets/characters/cat-idle.webp" as="image" type="image/webp" fetchpriority="high">
   <link rel="preload" href="assets/characters/cat-peek.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/icons/items/hint.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/icons/items/shuffle.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/icons/items/bomb.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/icons/hud/time.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-blush.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-peach.webp" as="image" type="image/webp">
@@ -29,17 +31,21 @@
         <img class="home-decor-star" src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
         <img class="home-decor-heart" src="assets/decor/heart.webp" width="283" height="254" loading="lazy" decoding="async" alt="">
         <img class="home-decor-sparkle" src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+        <img class="home-decor-flower home-decor-flower-left" src="assets/decor/flower.webp" width="279" height="303" loading="lazy" decoding="async" alt="">
+        <img class="home-decor-flower home-decor-flower-right" src="assets/decor/flower.webp" width="279" height="303" loading="lazy" decoding="async" alt="">
       </div>
       <button class="asset-icon-button home-settings" id="home-settings-button" type="button" aria-label="설정">
         <img src="assets/ui/button-settings.webp" width="260" height="259" decoding="async" alt="">
+        <span>설정</span>
       </button>
       <header class="home-brand">
         <img class="oing-logo" src="assets/ui/logo.webp" width="446" height="223" loading="eager" decoding="async" fetchpriority="high" alt="OING">
       </header>
       <div class="character-stage home-character-stage">
-        <img class="home-cat" src="assets/characters/cat-wave.webp" width="412" height="479" loading="eager" decoding="async" fetchpriority="high" alt="손을 흔드는 블루 고양이">
+        <img class="home-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="eager" decoding="async" fetchpriority="high" alt="앉아 있는 블루 고양이">
       </div>
       <p class="home-tagline">합이 10이면, <strong>뿅!</strong></p>
+      <p class="home-instruction"><img src="assets/decor/sparkle.webp" width="278" height="296" alt="">숫자 칸을 슥 밀어서 합 10을 만들어봐!<img src="assets/decor/heart.webp" width="283" height="254" alt=""></p>
       <div class="home-actions">
         <button class="btn btn-primary btn-start" id="start-button" type="button"><span>시작하기</span></button>
         <button class="btn btn-cream home-ranking-button" id="home-ranking-button" type="button">
@@ -126,7 +132,7 @@
             <img class="item-icon" src="assets/icons/items/shuffle.webp" width="286" height="256" loading="eager" decoding="async" alt=""><span>섞기</span><b id="shuffle-count">2</b>
           </button>
           <button class="item-button bomb-button" id="bomb-button" type="button">
-            <img class="item-icon" src="assets/icons/items/bomb.webp" width="315" height="315" loading="eager" decoding="async" alt=""><span>폭탄</span><b id="bomb-count">1</b>
+            <img class="item-icon" src="assets/icons/items/bomb.webp" width="286" height="312" loading="eager" decoding="async" alt=""><span>폭탄</span><b id="bomb-count">1</b>
           </button>
           <button class="item-button clock-button" id="clock-button" type="button">
             <img class="item-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="eager" decoding="async" alt=""><span>시계</span><b id="clock-count">1</b>
