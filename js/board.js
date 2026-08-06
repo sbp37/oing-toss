@@ -74,6 +74,23 @@ export function bombRect(size, row, col) {
   };
 }
 
+export function findBestBombTarget(grid) {
+  const size = grid.length;
+  let best = null;
+  for (let row = 0; row < size; row += 1) {
+    for (let col = 0; col < size; col += 1) {
+      const rect = bombRect(size, row, col);
+      const stats = rectStats(grid, rect);
+      if (stats.count === 0) continue;
+      const value = stats.count * 100 + stats.sum;
+      if (!best || value > best.value) best = { row, col, rect, stats, value };
+    }
+  }
+  if (!best) return null;
+  const { value: _value, ...target } = best;
+  return target;
+}
+
 export function rectKey(rect) {
   return `${rect.r1}:${rect.c1}:${rect.r2}:${rect.c2}`;
 }
@@ -170,6 +187,10 @@ export class BoardModel {
     const richer = answers.filter((answer) => answer.count >= 3);
     const pool = richer.length ? richer : answers;
     return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  bestBombTarget() {
+    return findBestBombTarget(this.grid);
   }
 
   shuffleRemaining() {

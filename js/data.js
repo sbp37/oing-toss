@@ -41,7 +41,6 @@ export const MESSAGES = Object.freeze({
   fail: Object.freeze(['앗, 이건 10이 아니네', '조금 아까웠어', '다시 골라보자!']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?']),
   shuffle: Object.freeze(['한번 섞어볼까?', '새 보드에서 찾아보자!']),
-  bombPrompt: Object.freeze(['터뜨릴 칸을 골라봐!', '어디를 펑 해볼까?']),
   bomb: Object.freeze(['펑! 시원하게 뚫렸어!', '좋아, 길이 열렸어!']),
   clock: Object.freeze(['시간을 조금 더 챙겼어!', '8초 더 달려보자!']),
   round: Object.freeze(['다음 판도 바로 가자!', '좋아, 한 판 더!']),

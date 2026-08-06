@@ -250,7 +250,7 @@ node serve.mjs
 # Bomb and clock prototype items (2026-08-06)
 
 - Every run now includes one free bomb and one free clock alongside the existing hint and shuffle counts.
-- Bomb selection locks drag input, lets the player choose one tile, clears the clamped 3×3 neighborhood, awards the original OING-style `removed value sum + 20`, and carries the active combo without advancing the round goal.
+- Bomb locks drag input, automatically picks the densest/highest-value 3×3 neighborhood, and explodes immediately on the same tap. It awards the original OING-style `removed value sum + 20` and carries the active combo without advancing the round goal.
 - Clock adds eight seconds to both the visible state and the running timer deadline.
 - Reused the original OING `playBomb()` impact/shard idea and `playClock()` 880/1320/1760 bell sequence from the read-only source. No Base64 audio was copied.
 - Empty cells keep the same tile-sized board grid, and a bomb that leaves no sum-10 rectangle triggers the existing guaranteed-answer board recovery.

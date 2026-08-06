@@ -1,5 +1,5 @@
 import { GAME_DURATION_SECONDS, COMBO_WINDOW_MS, getRoundConfig, pickMessage, scoreForBomb, scoreForClear } from './data.js';
-import { BoardModel, bombRect } from './board.js';
+import { BoardModel } from './board.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
@@ -82,7 +82,6 @@ class OingGame {
       running: false,
       paused: false,
       inputLocked: false,
-      activeItem: null,
       score: 0,
       combo: 0,
       maxCombo: 0,
@@ -105,14 +104,8 @@ class OingGame {
     document.querySelector('#pause-home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#hint-button').addEventListener('click', () => this.useHint());
     document.querySelector('#shuffle-button').addEventListener('click', () => this.useShuffle());
-    document.querySelector('#bomb-button').addEventListener('click', () => this.toggleBombTargeting());
+    document.querySelector('#bomb-button').addEventListener('click', () => this.useBomb());
     document.querySelector('#clock-button').addEventListener('click', () => this.useClock());
-    this.ui.board.addEventListener('click', (event) => {
-      if (this.state.activeItem !== 'bomb') return;
-      const tile = event.target.closest('.tile');
-      if (!tile || !this.ui.board.contains(tile)) return;
-      this.useBombAt(Number(tile.dataset.row), Number(tile.dataset.col));
-    });
     document.querySelector('#home-settings-button').addEventListener('click', () => this.ui.setOverlay('settings-overlay', true));
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
@@ -150,7 +143,6 @@ class OingGame {
     this.lastCountdownSecond = null;
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
     this.ui.setOverlay('pause-overlay', false);
-    this.ui.setBombTargeting(false);
     this.buildRound();
     this.ui.updateItems(this.state.items);
     this.ui.showScreen('play');
@@ -284,7 +276,6 @@ class OingGame {
   }
 
   async clearRound() {
-    this.cancelActiveItem();
     roundHaptic();
     playRoundClearSound();
     this.ui.showRoundClear();
@@ -338,45 +329,23 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
-  toggleBombTargeting() {
-    if (this.state.activeItem === 'bomb') {
-      this.cancelActiveItem();
-      this.showCatMessage('start');
-      return;
-    }
+  async useBomb() {
     if (!this.canUseItem() || !this.inventory.canConsume('bomb')) return;
     this.beginFirstInteraction();
     this.input.cancel();
-    this.state.activeItem = 'bomb';
     this.state.inputLocked = true;
-    this.ui.setBombTargeting(true);
-    this.showCatMessage('bombPrompt');
-    this.ui.setPlayCharacter('wave', 1000);
-    itemHaptic();
-  }
-
-  cancelActiveItem() {
-    if (this.state.activeItem !== 'bomb') return;
-    this.state.activeItem = null;
-    this.state.inputLocked = false;
-    this.ui.setBombTargeting(false);
-  }
-
-  async useBombAt(row, col) {
-    if (this.state.activeItem !== 'bomb' || !this.state.running || this.state.paused) return;
-    const rect = bombRect(this.model.size, row, col);
-    const stats = this.model.stats(rect);
-    if (stats.count === 0) {
-      this.ui.toast('숫자가 있는 칸을 골라줘!');
+    const target = this.model.bestBombTarget();
+    if (!target) {
+      this.ui.toast('터뜨릴 숫자가 없어!');
+      this.state.inputLocked = false;
       return;
     }
     if (!this.inventory.consume('bomb').ok) {
-      this.cancelActiveItem();
+      this.state.inputLocked = false;
       return;
     }
 
-    this.state.activeItem = null;
-    this.ui.setBombTargeting(false);
+    const { rect, stats } = target;
     this.syncInventory();
     const previousCombo = this.state.combo;
     const now = performance.now();
@@ -471,7 +440,6 @@ class OingGame {
 
   pause() {
     if (!this.state.running || this.state.paused) return;
-    this.cancelActiveItem();
     this.state.paused = true;
     this.pauseStartedAt = performance.now();
     this.input.cancel();
@@ -487,7 +455,6 @@ class OingGame {
 
   async finish() {
     if (!this.state.running) return;
-    this.cancelActiveItem();
     this.state.running = false;
     this.state.inputLocked = true;
     this.state.timeLeft = 0;
@@ -516,7 +483,6 @@ class OingGame {
 
   goHome() {
     this.stopTimer();
-    this.cancelActiveItem();
     this.state.running = false;
     this.state.paused = false;
     this.input.cancel();

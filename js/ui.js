@@ -461,13 +461,6 @@ export class GameUI {
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
   }
 
-  setBombTargeting(active) {
-    this.clearSelection();
-    this.board.classList.toggle('is-bomb-targeting', active);
-    this.elements.bombButton.classList.toggle('is-armed', active);
-    this.elements.bombButton.setAttribute('aria-pressed', String(active));
-  }
-
   async animateBomb(rect) {
     const bounds = this.selectionBounds(rect);
     const tiles = cellsInRect(rect).map(({ r, c }) => this.tileAt(r, c)).filter(Boolean);

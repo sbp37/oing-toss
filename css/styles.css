@@ -1192,24 +1192,6 @@ img {
   animation: shuffle-scatter-in 370ms var(--shuffle-delay, 0ms) cubic-bezier(.16,.82,.26,1.18) both;
 }
 
-.board.is-bomb-targeting {
-  cursor: crosshair;
-}
-
-.board.is-bomb-targeting .tile:not(.is-empty) {
-  animation: bomb-target-breathe 680ms ease-in-out infinite alternate;
-}
-
-.board.is-bomb-targeting .tile:not(.is-empty):active {
-  transform: scale(0.94);
-  filter: brightness(1.12) saturate(1.18);
-}
-
-@keyframes bomb-target-breathe {
-  from { filter: brightness(1) saturate(1); }
-  to { filter: brightness(1.08) saturate(1.1) drop-shadow(0 0 5px rgba(255, 125, 103, 0.28)); }
-}
-
 @keyframes shuffle-scatter-out {
   0% { opacity: 1; transform: translate(0,0) rotate(0) scale(1); filter: brightness(1); }
   54% { opacity: 0.9; transform: translate(var(--shuffle-mid-x), var(--shuffle-mid-y)) rotate(var(--shuffle-mid-rotate)) scale(0.9); filter: brightness(1.12) saturate(1.15); }
@@ -2010,17 +1992,6 @@ img {
 .clock-button {
   background-image: url("../assets/ui/item-buttons-v1/button-hint.webp");
   color: #4d7890;
-}
-
-.bomb-button.is-armed {
-  z-index: 4;
-  filter: drop-shadow(0 0 9px rgba(255, 105, 102, 0.52)) brightness(1.04);
-  animation: bomb-button-armed 560ms ease-in-out infinite alternate;
-}
-
-@keyframes bomb-button-armed {
-  from { transform: translateY(0) scale(1); }
-  to { transform: translateY(-1px) scale(1.025); }
 }
 
 .item-button:active { transform: translateY(2px) scale(0.982); filter: drop-shadow(0 2px 2px rgba(86, 73, 58, 0.13)) brightness(0.985); }
