@@ -133,6 +133,13 @@ test('bomb sound keeps the original OING impact shards', () => {
   assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
 });
 
+test('mega bomb sound keeps the original OING five-layer impact', () => {
+  const before = AudioContextMock.latest.bufferSources.length;
+  const oscillators = newOscillators(() => audio.playMegaBombSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600, 400, 1600]);
+  assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
+});
+
 test('clock sound keeps the original OING three-note bell', () => {
   const oscillators = newOscillators(() => audio.playClockSound());
   assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [880, 1320, 1760]);

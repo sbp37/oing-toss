@@ -74,6 +74,39 @@ export function bombRect(size, row, col) {
   };
 }
 
+export function megaBombRect(size, row, col) {
+  const last = Math.max(0, size - 1);
+  return {
+    r1: Math.max(0, row - 2),
+    r2: Math.min(last, row + 2),
+    c1: Math.max(0, col - 2),
+    c2: Math.min(last, col + 2),
+  };
+}
+
+export function megaBombCells(grid, row, col, limit = 12) {
+  const rect = megaBombRect(grid.length, row, col);
+  return cellsInRect(rect)
+    .filter(({ r, c }) => (grid[r]?.[c] ?? 0) > 0)
+    .sort((a, b) => {
+      const distanceA = Math.abs(a.r - row) + Math.abs(a.c - col);
+      const distanceB = Math.abs(b.r - row) + Math.abs(b.c - col);
+      return distanceA - distanceB || a.r - b.r || a.c - b.c;
+    })
+    .slice(0, Math.max(0, limit));
+}
+
+export function cellListStats(grid, cells) {
+  return cells.reduce((stats, { r, c }) => {
+    const value = grid[r]?.[c] ?? 0;
+    if (value > 0) {
+      stats.sum += value;
+      stats.count += 1;
+    }
+    return stats;
+  }, { sum: 0, count: 0 });
+}
+
 export function findBestBombTarget(grid) {
   const size = grid.length;
   let best = null;
@@ -175,6 +208,26 @@ export class BoardModel {
       this.grid[r][c] = null;
     }
     return removed;
+  }
+
+  removeCells(cells) {
+    let removed = 0;
+    cells.forEach(({ r, c }) => {
+      if ((this.grid[r]?.[c] ?? 0) > 0) removed += 1;
+      if (this.grid[r]) this.grid[r][c] = null;
+    });
+    return removed;
+  }
+
+  megaBombTarget(row, col) {
+    const cells = megaBombCells(this.grid, row, col);
+    return {
+      row,
+      col,
+      rect: megaBombRect(this.size, row, col),
+      cells,
+      stats: cellListStats(this.grid, cells),
+    };
   }
 
   findAnswers() {

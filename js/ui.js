@@ -513,6 +513,34 @@ export class GameUI {
     this.boardFrame.classList.remove('bomb-kick');
   }
 
+  async animateMegaBomb(cells, origin) {
+    const tiles = cells
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter((tile) => tile && !tile.dataset.item);
+    tiles.forEach((tile, index) => {
+      tile.style.setProperty('--mega-delay', `${Math.min(index * 18, 126)}ms`);
+      tile.classList.add('is-megabombed');
+    });
+    const source = this.tileAt(origin.row, origin.col)?.getBoundingClientRect();
+    const frame = this.boardFrame.getBoundingClientRect();
+    if (source) {
+      const effect = document.createElement('div');
+      effect.className = 'megabomb-fx';
+      effect.style.left = `${source.left + source.width / 2 - frame.left}px`;
+      effect.style.top = `${source.top + source.height / 2 - frame.top}px`;
+      const icon = document.createElement('img');
+      icon.src = 'assets/icons/items/megabomb.webp';
+      icon.alt = '';
+      effect.append(icon);
+      for (let index = 0; index < 5; index += 1) effect.appendChild(document.createElement('i'));
+      this.boardFrame.appendChild(effect);
+      setTimeout(() => effect.remove(), 900);
+    }
+    this.boardFrame.classList.add('megabomb-kick');
+    await delay(610);
+    this.boardFrame.classList.remove('megabomb-kick');
+  }
+
   showBoardItemDrops(items) {
     items.forEach(({ row, col, type }, index) => {
       const tile = this.tileAt(row, col);
@@ -574,7 +602,9 @@ export class GameUI {
     const primary = document.createElement('strong');
     primary.textContent = `+${points}`;
     const detail = document.createElement('span');
-    detail.textContent = kind === 'bomb' ? '폭탄 보너스' : '아이템 보너스';
+    detail.textContent = kind === 'megabomb'
+      ? '메가폭탄 보너스'
+      : kind === 'bomb' ? '폭탄 보너스' : '아이템 보너스';
     burst.replaceChildren(primary, detail);
     burst.dataset.level = '1';
     burst.dataset.item = kind;

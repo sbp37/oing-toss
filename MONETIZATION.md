@@ -12,7 +12,7 @@ contains the inventory boundary needed to add those systems later.
 - Bundle grants validate every item before changing any balance.
 - Bomb clears a 3x3 area and carries the current combo; clock adds eight seconds.
 - Bomb and clock are free prototype trials. No paid grant is connected yet.
-- Combo-earned bomb/clock drops live inside empty board cells and are separate
+- Combo-earned bomb/clock/mega-bomb drops live inside empty board cells and are separate
   from the bottom free-run inventory. They are gameplay rewards, not paid stock.
 - Unused earned drops carry to the next board through an in-memory pending queue;
   they are intentionally not persisted as purchasable inventory.

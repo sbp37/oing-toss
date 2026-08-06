@@ -151,6 +151,31 @@ export function playBombSound() {
   });
 }
 
+// Original OING playMegaBomb(): a longer impact with five layered shards.
+export function playMegaBombSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.4), ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.07));
+  }
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  source.buffer = buffer;
+  filter.type = 'lowpass';
+  filter.frequency.value = 420;
+  gain.gain.setValueAtTime(0.62, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+  source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  source.start(now);
+  [800, 1200, 600, 400, 1600].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.035, 0.16, 0.12, 'sine', 0.005);
+  });
+}
+
 // Original OING playClock(): a clear three-note bell.
 export function playClockSound() {
   const ctx = getContext();

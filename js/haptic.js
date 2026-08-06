@@ -40,6 +40,10 @@ export function bombHaptic() {
   vibrate([18, 22, 28]);
 }
 
+export function megaBombHaptic() {
+  vibrate([24, 18, 34, 22, 20]);
+}
+
 export function clockHaptic() {
   vibrate([8, 24, 12]);
 }

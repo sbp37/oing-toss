@@ -21,7 +21,7 @@ export const ITEM_DEFINITIONS = Object.freeze({
 export const BOARD_DROP_ITEMS = Object.freeze({
   bomb: Object.freeze({ id: 'bomb', label: '폭탄', implemented: true, asset: 'assets/icons/items/bomb.webp' }),
   clock: Object.freeze({ id: 'clock', label: '시계', implemented: true, asset: 'assets/icons/hud/time.webp' }),
-  megabomb: Object.freeze({ id: 'megabomb', label: '메가폭탄', implemented: false, asset: null }),
+  megabomb: Object.freeze({ id: 'megabomb', label: '메가폭탄', implemented: true, asset: 'assets/icons/items/megabomb.webp' }),
   freeze: Object.freeze({ id: 'freeze', label: '타임프리즈', implemented: false, asset: 'assets/icons/items/freeze.webp' }),
   clover: Object.freeze({ id: 'clover', label: '클로버', implemented: false, asset: 'assets/icons/items/clover.webp' }),
   candy: Object.freeze({ id: 'candy', label: '콤보사탕', implemented: false, asset: null }),
@@ -67,6 +67,7 @@ export const MESSAGES = Object.freeze({
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?']),
   shuffle: Object.freeze(['한번 섞어볼까?', '새 보드에서 찾아보자!']),
   bomb: Object.freeze(['펑! 시원하게 뚫렸어!', '좋아, 길이 열렸어!']),
+  megabomb: Object.freeze(['오잉! 이건 크게 터진다!', '메가폭탄, 시원하게 간다!']),
   clock: Object.freeze(['시간을 조금 더 챙겼어!', '8초 더 달려보자!']),
   itemDrop: Object.freeze(['아이템이 나왔어! 톡 눌러봐!', '오잉, 선물이 떨어졌어!']),
   round: Object.freeze(['다음 판도 바로 가자!', '좋아, 한 판 더!']),
@@ -97,6 +98,10 @@ export function scoreForClear(cellCount, combo) {
 
 export function scoreForBomb(valueSum) {
   return Math.max(0, Math.round(Number(valueSum) || 0)) + 20;
+}
+
+export function scoreForMegaBomb(valueSum) {
+  return Math.max(0, Math.round(Number(valueSum) || 0)) + 40;
 }
 
 export function getRoundConfig(round) {

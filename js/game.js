@@ -7,6 +7,7 @@ import {
   pickMessage,
   scoreForBomb,
   scoreForClear,
+  scoreForMegaBomb,
 } from './data.js';
 import { BoardModel, bombRect } from './board.js';
 import { BoardItemField } from './board-items.js';
@@ -28,6 +29,7 @@ import {
   playSelectionSound,
   playShuffleSound,
   playSuccessSound,
+  playMegaBombSound,
   setSoundEnabled,
   unlockAudio,
 } from './audio.js';
@@ -38,6 +40,7 @@ import {
   countdownHaptic,
   isHapticEnabled,
   itemHaptic,
+  megaBombHaptic,
   roundHaptic,
   selectionTick,
   setHapticEnabled,
@@ -486,6 +489,30 @@ class OingGame {
 
     await this.ui.animateBomb(rect);
     this.model.remove(rect);
+    this.finishBlast(boardItemKey);
+  }
+
+  async resolveMegaBomb({ row, col, rect, cells, stats }, boardItemKey) {
+    const previousCombo = this.advanceCombo();
+    const points = scoreForMegaBomb(stats.sum);
+    this.state.score += points;
+    this.updateHUD();
+    this.ui.showItemScoreBurst(points, rect, 'megabomb');
+    this.showCatMessage('megabomb');
+    this.ui.setPlayCharacter('success', 1100);
+    playMegaBombSound();
+    megaBombHaptic();
+    if ([3, 5, 8].includes(this.state.combo) && this.state.combo !== previousCombo) {
+      this.ui.showComboMoment(this.state.combo);
+      playComboSound(this.state.combo);
+    }
+
+    await this.ui.animateMegaBomb(cells, { row, col });
+    this.model.removeCells(cells);
+    this.finishBlast(boardItemKey);
+  }
+
+  finishBlast(boardItemKey = null) {
     if (boardItemKey) this.boardItems.delete(boardItemKey);
     const config = getRoundConfig(this.state.round);
     if (!this.model.findAnswer()) {
@@ -544,6 +571,10 @@ class OingGame {
     if (item.type === 'bomb') {
       const rect = bombRect(this.model.size, item.row, item.col);
       await this.resolveBomb({ rect, stats: this.model.stats(rect) }, key);
+      return;
+    }
+    if (item.type === 'megabomb') {
+      await this.resolveMegaBomb(this.model.megaBombTarget(item.row, item.col), key);
       return;
     }
     if (item.type === 'clock') {

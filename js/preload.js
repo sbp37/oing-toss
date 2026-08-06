@@ -11,6 +11,7 @@ const PLAY_ASSETS = Object.freeze([
   'assets/icons/items/hint.webp',
   'assets/icons/items/shuffle.webp',
   'assets/icons/items/bomb.webp',
+  'assets/icons/items/megabomb.webp',
   'assets/ui/button-pause.webp',
   'assets/ui/tiles-syrup-v4/tile-blush.webp',
   'assets/ui/tiles-syrup-v4/tile-peach.webp',
