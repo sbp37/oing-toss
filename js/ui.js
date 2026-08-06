@@ -51,6 +51,7 @@ export class GameUI {
     this.selectionSnapAnimation = null;
     this.comboCelebrationTimer = null;
     this.countdownPulseTimer = null;
+    this.goalPulseTimer = null;
     this.lastCountdownSecond = null;
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
@@ -61,6 +62,7 @@ export class GameUI {
     this.elements = {
       round: document.querySelector('#round-value'),
       score: document.querySelector('#score-value'),
+      scoreReadout: document.querySelector('.score-readout'),
       time: document.querySelector('#time-value'),
       timePill: document.querySelector('#time-pill'),
       playScreen: document.querySelector('#play-screen'),
@@ -69,6 +71,8 @@ export class GameUI {
       comboTimerFill: document.querySelector('#combo-timer-fill'),
       goal: document.querySelector('#goal-value'),
       goalFill: document.querySelector('#goal-fill'),
+      goalTrack: document.querySelector('#goal-track'),
+      roundMini: document.querySelector('.round-mini'),
       sumBubble: document.querySelector('#sum-bubble'),
       sum: document.querySelector('#sum-value'),
       marquee: document.querySelector('#selection-marquee'),
@@ -347,6 +351,47 @@ export class GameUI {
     }
   }
 
+  showScoreFlight(rect, combo = 1) {
+    const bounds = this.selectionBounds(rect);
+    const target = this.elements.scoreReadout?.getBoundingClientRect();
+    const screen = this.elements.playScreen?.getBoundingClientRect();
+    if (!bounds || !target || !screen?.width) return;
+
+    const sourceX = bounds.frame.left + (bounds.left + bounds.right) / 2 - screen.left;
+    const sourceY = bounds.frame.top + (bounds.top + bounds.bottom) / 2 - screen.top;
+    const targetX = target.left + Math.min(28, target.width * 0.16) - screen.left;
+    const targetY = target.top + target.height / 2 - screen.top;
+    const offsetX = targetX - sourceX;
+    const offsetY = targetY - sourceY;
+    const flight = document.createElement('div');
+    flight.className = 'score-flight';
+    flight.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
+    flight.style.left = `${sourceX}px`;
+    flight.style.top = `${sourceY}px`;
+    flight.style.setProperty('--score-flight-x', `${offsetX}px`);
+    flight.style.setProperty('--score-flight-y', `${offsetY}px`);
+    flight.style.setProperty('--score-flight-mid-x', `${offsetX * 0.48}px`);
+    flight.style.setProperty('--score-flight-mid-y', `${offsetY * 0.42 - 24}px`);
+    const icon = document.createElement('img');
+    icon.src = 'assets/icons/hud/score.webp';
+    icon.alt = '';
+    flight.append(icon, document.createElement('i'), document.createElement('i'));
+    this.elements.playScreen.appendChild(flight);
+    setTimeout(() => flight.remove(), 590);
+  }
+
+  pulseGoal(combo = 1) {
+    const track = this.elements.goalTrack;
+    clearTimeout(this.goalPulseTimer);
+    track.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
+    track.classList.remove('is-rewarded');
+    void track.offsetWidth;
+    track.classList.add('is-rewarded');
+    this.goalPulseTimer = window.setTimeout(() => {
+      track.classList.remove('is-rewarded');
+    }, 520);
+  }
+
   async animateSuccess(rect, combo = 1) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
@@ -359,6 +404,7 @@ export class GameUI {
     this.elements.marquee.classList.add('is-bursting');
     this.boardFrame.dataset.comboImpact = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     this.spawnParticles(rect, combo);
+    this.showScoreFlight(rect, combo);
     await delay(225);
     this.elements.marquee.classList.remove('is-bursting', 'is-visible');
     delete this.boardFrame.dataset.comboImpact;
@@ -726,16 +772,21 @@ export class GameUI {
   async animateRoundTransition(nextRound, swapBoard) {
     const shift = this.elements.roundShift;
     this.elements.roundShiftValue.textContent = String(nextRound);
+    shift.dataset.round = String(nextRound);
     this.boardFrame.classList.add('is-round-leaving');
-    await delay(190);
+    await delay(205);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
+    this.elements.roundMini.classList.remove('is-advancing');
+    void this.elements.roundMini.offsetWidth;
+    this.elements.roundMini.classList.add('is-advancing');
     shift.classList.remove('is-visible');
     void shift.offsetWidth;
     shift.classList.add('is-visible');
     this.boardFrame.classList.add('is-round-arriving');
-    await delay(540);
+    await delay(590);
     this.boardFrame.classList.remove('is-round-arriving');
+    this.elements.roundMini.classList.remove('is-advancing');
     shift.classList.remove('is-visible');
   }
 

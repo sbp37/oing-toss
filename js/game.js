@@ -355,6 +355,7 @@ class OingGame {
     }
     this.ui.showScoreBurst(points, rect, this.model.size, this.state.combo, stats.count);
     this.updateHUD();
+    this.ui.pulseGoal(this.state.combo);
     this.speakForSuccess();
 
     await this.ui.animateSuccess(rect, this.state.combo);

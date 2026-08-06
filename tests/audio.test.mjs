@@ -110,7 +110,7 @@ test('combo sound rises with the chain and uses the high milestone arpeggio', ()
   const combo5 = newOscillators(() => audio.playComboSound(5));
   const combo8 = newOscillators(() => audio.playComboSound(8));
   assert.deepEqual(combo2.map((item) => item.frequency.events[0].value), [600, 750]);
-  assert.deepEqual(combo5.map((item) => item.frequency.events[0].value), [840, 1050]);
+  assert.deepEqual(combo5.map((item) => item.frequency.events[0].value), [840, 1050, 1260, 1680]);
   assert.deepEqual(combo8.map((item) => item.frequency.events[0].value), [1046, 1318, 1568, 2093]);
 });
 

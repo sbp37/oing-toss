@@ -111,9 +111,11 @@ export function playComboSound(combo) {
     return;
   }
   const base = 440 + Math.min(Math.max(combo, 2), 6) * 80;
-  [base, base * 1.25].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, 0.12, 'sine', 0.008);
+  const notes = combo >= 3 ? [base, base * 1.25, base * 1.5] : [base, base * 1.25];
+  notes.forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, 0.11 - index * 0.012, 'sine', 0.008);
   });
+  if (combo >= 5) scheduleTone(ctx, base * 2, now + 0.16, 0.16, 0.045, 'triangle', 0.006);
 }
 
 export function playFailSound() {

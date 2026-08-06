@@ -487,6 +487,16 @@ img {
   line-height: 1;
 }
 
+.round-mini.is-advancing {
+  animation: round-hud-advance 570ms cubic-bezier(.16,.82,.24,1.15) both;
+}
+
+@keyframes round-hud-advance {
+  0% { transform: scale(0.94); filter: brightness(1); }
+  38% { transform: scale(1.07); filter: brightness(1.1) saturate(1.08); box-shadow: 0 0 14px rgba(105, 211, 192, 0.3), inset 0 1.5px 0 white; }
+  100% { transform: scale(1); filter: none; }
+}
+
 .time-readout {
   margin-left: 0;
   display: flex;
@@ -682,6 +692,29 @@ img {
   transition: width 240ms cubic-bezier(.2,.8,.25,1);
 }
 
+.goal-track.is-rewarded {
+  animation: goal-reward-track 500ms cubic-bezier(.16,.82,.24,1.15) both;
+}
+
+.goal-track.is-rewarded i {
+  animation: goal-reward-fill 500ms cubic-bezier(.16,.82,.24,1.15) both;
+}
+
+.goal-track.is-rewarded[data-level="5"] { --goal-reward: rgba(80, 200, 176, 0.46); }
+.goal-track.is-rewarded[data-level="8"] { --goal-reward: rgba(255, 103, 140, 0.52); }
+
+@keyframes goal-reward-track {
+  0% { transform: scaleY(1); box-shadow: inset 0 1px 2px rgba(129,99,47,0.09); }
+  38% { transform: scaleY(1.35); box-shadow: inset 0 1px 2px rgba(129,99,47,0.06), 0 0 12px var(--goal-reward, rgba(255, 190, 77, 0.44)); }
+  100% { transform: scaleY(1); box-shadow: inset 0 1px 2px rgba(129,99,47,0.09); }
+}
+
+@keyframes goal-reward-fill {
+  0% { filter: brightness(1); }
+  42% { filter: brightness(1.25) saturate(1.14); }
+  100% { filter: none; }
+}
+
 .screen-play[data-round="2"] .round-mini strong { color: #38a894; }
 .screen-play[data-round="2"] .goal-track i { background: linear-gradient(90deg, #7fd6c2, #58c5ad); }
 .screen-play[data-round="3"] .round-mini strong { color: #7a64b9; }
@@ -721,6 +754,61 @@ img {
 
 .board-frame.is-fever {
   animation: board-fever-glow 760ms ease-in-out infinite alternate;
+}
+
+.score-flight {
+  position: absolute;
+  z-index: 28;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  animation: score-flight-arc 560ms cubic-bezier(.18,.72,.2,1) both;
+}
+
+.score-flight img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(189, 125, 35, 0.24));
+  transform: translate(-50%, -50%);
+}
+
+.score-flight[data-level="5"] img,
+.score-flight[data-level="8"] img { width: 28px; height: 28px; }
+
+.score-flight i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px 50% 2px 50%;
+  background: #fff4a4;
+  box-shadow: 0 0 7px rgba(255, 196, 67, 0.62);
+  opacity: 0;
+  animation: score-flight-spark 430ms 45ms ease-out both;
+}
+
+.score-flight i:last-child {
+  background: #ff9bb1;
+  animation-delay: 105ms;
+}
+
+@keyframes score-flight-arc {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.52) rotate(-16deg); }
+  18% { opacity: 1; }
+  48% { opacity: 1; transform: translate(var(--score-flight-mid-x), var(--score-flight-mid-y)) scale(1.08) rotate(7deg); }
+  84% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--score-flight-x), var(--score-flight-y)) scale(0.42) rotate(0); }
+}
+
+@keyframes score-flight-spark {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  38% { opacity: 1; transform: translate(-13px, 8px) scale(1); }
+  100% { opacity: 0; transform: translate(-27px, 19px) scale(0.35) rotate(90deg); }
 }
 
 @keyframes board-countdown-breath {
@@ -2059,7 +2147,7 @@ img {
 }
 
 .board-frame.is-round-arriving .board {
-  animation: round-board-in 500ms cubic-bezier(.16,.78,.24,1.16) both;
+  animation: round-board-in 560ms cubic-bezier(.16,.78,.24,1.16) both;
 }
 
 @keyframes round-board-out {
@@ -2123,7 +2211,15 @@ img {
 
 .round-shift b { color: var(--coral-deep); font-weight: 400; }
 
-.round-shift.is-visible { animation: round-shift-pop 540ms cubic-bezier(.16,.82,.24,1.15) both; }
+.round-shift[data-round="3"] {
+  background: linear-gradient(150deg, rgba(255,253,238,0.98), rgba(239,229,255,0.97));
+  box-shadow: 0 0 0 7px rgba(177, 145, 230, 0.12), 0 8px 20px rgba(119, 86, 174, 0.2), inset 0 2px 0 white;
+}
+
+.round-shift[data-round="3"] small { color: #9576bd; }
+.round-shift[data-round="3"] b { color: #7a64b9; }
+
+.round-shift.is-visible { animation: round-shift-pop 590ms cubic-bezier(.16,.82,.24,1.15) both; }
 .round-shift.is-visible > img { animation: round-shift-star 420ms ease-out both; }
 .round-shift.is-visible > img:last-child { animation-delay: 70ms; }
 
