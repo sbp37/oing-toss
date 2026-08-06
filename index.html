@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#8edcf1">
+  <meta name="description" content="합이 10이면, 뿅! OING 세로 슬라이스">
+  <title>OING — 합이 10이면, 뿅!</title>
+  <link rel="preload" href="assets/backgrounds/home-bg@2x.webp" as="image" type="image/webp" fetchpriority="high">
+  <link rel="preload" href="assets/backgrounds/play-bg@2x.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/logo.webp" as="image" type="image/webp" fetchpriority="high">
+  <link rel="preload" href="assets/characters/cat-wave.webp" as="image" type="image/webp" fetchpriority="high">
+  <link rel="preload" href="assets/characters/cat-peek.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/icons/items/hint.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/icons/items/shuffle.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/item-buttons-v1/button-hint.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/item-buttons-v1/button-shuffle.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-blush.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-peach.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-lemon.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-mint.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-aqua.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-lilac.webp" as="image" type="image/webp">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="app-shell" id="app" aria-live="polite">
+    <section class="screen screen-home is-active" id="home-screen" data-screen="home" aria-label="홈">
+      <div class="home-decor" aria-hidden="true">
+        <img class="home-decor-star" src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+        <img class="home-decor-heart" src="assets/decor/heart.webp" width="283" height="254" loading="lazy" decoding="async" alt="">
+        <img class="home-decor-sparkle" src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+      </div>
+      <button class="asset-icon-button home-settings" id="home-settings-button" type="button" aria-label="설정">
+        <img src="assets/ui/button-settings.webp" width="260" height="259" decoding="async" alt="">
+      </button>
+      <header class="home-brand">
+        <img class="oing-logo" src="assets/ui/logo.webp" width="446" height="223" loading="eager" decoding="async" fetchpriority="high" alt="OING">
+      </header>
+      <div class="character-stage home-character-stage">
+        <img class="home-cat" src="assets/characters/cat-wave.webp" width="412" height="479" loading="eager" decoding="async" fetchpriority="high" alt="손을 흔드는 블루 고양이">
+      </div>
+      <p class="home-tagline">합이 10이면, <strong>뿅!</strong></p>
+      <div class="home-actions">
+        <button class="btn btn-primary btn-start" id="start-button" type="button"><span>시작하기</span></button>
+        <button class="btn btn-cream home-ranking-button" id="home-ranking-button" type="button">
+          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>랭킹 보기</span>
+        </button>
+        <div class="best-record-card" aria-label="내 최고기록">
+          <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
+          <span>최고기록</span>
+          <strong id="home-best-score">0</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen screen-play" id="play-screen" data-screen="play" aria-label="게임 플레이" aria-hidden="true">
+      <header class="play-hud">
+        <div class="hud-topline">
+          <button class="asset-icon-button pause-button" id="pause-button" type="button" aria-label="일시정지">
+            <img src="assets/ui/button-pause.webp" width="421" height="235" loading="lazy" decoding="async" alt="">
+          </button>
+          <div class="round-mini"><span>ROUND</span><strong id="round-value">1</strong></div>
+          <div class="time-readout" id="time-pill">
+            <img src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt=""><strong id="time-value">01:30</strong>
+          </div>
+        </div>
+        <div class="hud-secondline">
+          <div class="score-readout">
+            <img src="assets/icons/hud/score.webp" width="277" height="279" loading="lazy" decoding="async" alt=""><span>점수</span><strong id="score-value">0</strong>
+          </div>
+          <div class="combo-readout" id="combo-chip">
+            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><span>COMBO</span><strong id="combo-value">0</strong>
+            <div class="combo-timer" aria-hidden="true"><i id="combo-timer-fill"></i></div>
+          </div>
+        </div>
+        <div class="goal-status">
+          <span>목표 <b id="goal-value">0/3</b></span>
+          <div class="goal-track" aria-hidden="true"><i id="goal-fill"></i></div>
+        </div>
+      </header>
+
+      <section class="board-zone" aria-label="숫자 보드">
+        <div class="board-frame" id="board-frame">
+          <div class="sum-bubble" id="sum-bubble" aria-live="off"><span>합</span><strong id="sum-value">0</strong></div>
+          <div class="board" id="board" data-size="4" role="grid" aria-label="합이 10이 되는 직사각형을 드래그하세요"></div>
+          <div class="selection-marquee" id="selection-marquee" aria-hidden="true"></div>
+          <div class="tutorial-guide" id="tutorial-guide" aria-hidden="true">
+            <div class="tutorial-sparkle-trail"><i></i><i></i><i></i></div>
+            <span>슥 밀어서 10!</span>
+          </div>
+          <div class="round-clear" id="round-clear" aria-hidden="true">
+            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><strong>ROUND CLEAR!</strong><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+          </div>
+          <div class="round-shift" id="round-shift" aria-hidden="true">
+            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+            <div><small>NEXT</small><strong>ROUND <b id="round-shift-value">2</b></strong></div>
+            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+          </div>
+          <div class="combo-celebration" id="combo-celebration" aria-hidden="true">
+            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+            <div><small id="combo-celebration-kicker">NICE!</small><strong>COMBO <b id="combo-celebration-value">3</b></strong></div>
+            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+          </div>
+          <div class="score-burst" id="score-burst" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <footer class="play-footer">
+        <div class="cat-coach">
+          <div class="character-stage play-character-stage">
+            <img id="play-cat" src="assets/characters/cat-peek.webp" width="359" height="306" loading="eager" decoding="async" alt="보드 아래에서 빼꼼 보는 블루 고양이">
+          </div>
+          <div class="cat-message" id="cat-message">10을 찾아볼까냥?</div>
+        </div>
+        <div class="item-actions">
+          <button class="item-button hint-button" id="hint-button" type="button">
+            <img class="item-icon" src="assets/icons/items/hint.webp" width="243" height="314" loading="eager" decoding="async" alt=""><span>힌트</span><b id="hint-count">3</b>
+          </button>
+          <button class="item-button shuffle-button" id="shuffle-button" type="button">
+            <img class="item-icon" src="assets/icons/items/shuffle.webp" width="286" height="256" loading="eager" decoding="async" alt=""><span>섞기</span><b id="shuffle-count">2</b>
+          </button>
+        </div>
+      </footer>
+    </section>
+
+    <section class="screen screen-result" id="result-screen" data-screen="result" aria-label="게임 결과" aria-hidden="true">
+      <div class="result-decor" id="result-decor" aria-hidden="true">
+        <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+      </div>
+      <p class="result-kicker">GAME RESULT</p>
+      <article class="result-card">
+        <p>최종 점수</p>
+        <strong class="final-score" id="final-score">0</strong>
+        <div class="new-record" id="new-record" hidden>NEW RECORD</div>
+        <div class="result-grid">
+          <div><span>최고 콤보</span><b id="final-combo">0</b></div>
+          <div><span>도달 라운드</span><b id="final-round">1</b></div>
+          <div><span>최대 클리어</span><b><i id="final-largest-clear">0</i>칸</b></div>
+        </div>
+      </article>
+      <div class="result-cat-row">
+        <div class="character-stage result-character-stage">
+          <img id="result-cat" src="assets/characters/cat-cheer.webp" width="431" height="481" loading="lazy" decoding="async" alt="결과에 반응하는 블루 고양이">
+        </div>
+        <div class="result-message" id="result-message">이번 판 좋았어!</div>
+      </div>
+      <div class="result-actions">
+        <button class="btn btn-primary" id="retry-button" type="button">다시 하기</button>
+        <button class="btn btn-cream result-ranking-button" id="result-ranking-button" type="button">
+          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>랭킹 보기</span>
+        </button>
+        <button class="result-home-button" id="home-button" type="button">
+          <img src="assets/icons/navigation/home.webp" width="310" height="290" loading="lazy" decoding="async" alt=""><span>홈으로</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="overlay" id="pause-overlay" hidden>
+      <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <h2 id="pause-title">잠깐 쉬어가자</h2>
+        <p>시간도 같이 멈췄어</p>
+        <button class="btn btn-primary" id="resume-button" type="button">계속하기</button>
+        <button class="text-button" id="pause-home-button" type="button">홈으로 나가기</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="settings-overlay" hidden>
+      <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <button class="overlay-close" id="settings-close" type="button" aria-label="닫기"><i></i></button>
+        <h2 id="settings-title">설정</h2>
+        <div class="setting-row"><span>효과음</span><button class="toggle is-on" id="sound-toggle" type="button" aria-pressed="true">ON</button></div>
+        <div class="setting-row"><span>진동</span><button class="toggle is-on" id="haptic-toggle" type="button" aria-pressed="true">ON</button></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="ranking-overlay" hidden>
+      <div class="mini-panel ranking-panel" role="dialog" aria-modal="true" aria-labelledby="ranking-title">
+        <button class="overlay-close" id="ranking-close" type="button" aria-label="닫기"><i></i></button>
+        <img class="mock-trophy" src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt="">
+        <h2 id="ranking-title">랭킹은 준비 중이야</h2>
+        <p>지금은 최고기록만 저장하고 있어</p>
+        <div class="mock-best">내 최고기록 <strong id="ranking-best-score">0</strong></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </main>
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>
