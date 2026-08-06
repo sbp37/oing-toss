@@ -208,9 +208,9 @@ class OingGame {
     this.state.score += points;
     this.state.progress += 1;
     successHaptic(this.state.combo);
-    playSuccessSound(this.state.combo);
+    if (this.state.combo >= 2) playComboSound(this.state.combo);
+    else playSuccessSound();
     if ([3, 5, 8].includes(this.state.combo)) {
-      playComboSound(this.state.combo);
       this.ui.showComboMoment(this.state.combo);
     }
     this.ui.showScoreBurst(points, rect, this.model.size, this.state.combo, stats.count);
@@ -352,7 +352,7 @@ class OingGame {
     this.ui.setOverlay('pause-overlay', false);
   }
 
-  finish() {
+  async finish() {
     if (!this.state.running) return;
     this.state.running = false;
     this.state.inputLocked = true;
@@ -362,6 +362,10 @@ class OingGame {
     this.tutorialActive = false;
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
+    this.ui.showMessage('시간 끝! 잘했어!');
+    this.ui.setPlayCharacter(this.state.score >= 1200 ? 'success' : 'cheer');
+    playGameOverSound();
+    await this.ui.animateGameEnd();
     const oldBest = storageAdapter.getBestScore();
     const newRecord = this.state.score > oldBest;
     if (newRecord) storageAdapter.saveBestScore(this.state.score);
@@ -374,7 +378,6 @@ class OingGame {
       newRecord,
       previousBest: oldBest,
     });
-    playGameOverSound();
   }
 
   goHome() {

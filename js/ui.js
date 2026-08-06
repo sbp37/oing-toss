@@ -71,6 +71,7 @@ export class GameUI {
       roundClear: document.querySelector('#round-clear'),
       roundShift: document.querySelector('#round-shift'),
       roundShiftValue: document.querySelector('#round-shift-value'),
+      timeUp: document.querySelector('#time-up'),
       comboCelebration: document.querySelector('#combo-celebration'),
       comboCelebrationKicker: document.querySelector('#combo-celebration-kicker'),
       comboCelebrationValue: document.querySelector('#combo-celebration-value'),
@@ -115,6 +116,8 @@ export class GameUI {
         tile.dataset.row = String(r);
         tile.dataset.col = String(c);
         tile.dataset.value = String(value || 0);
+        tile.style.setProperty('--row', String(r));
+        tile.style.setProperty('--col', String(c));
         tile.setAttribute('role', 'gridcell');
         tile.setAttribute('aria-label', value ? `${value}` : '빈칸');
         tile.innerHTML = value ? `<span>${value}</span>` : '';
@@ -539,6 +542,21 @@ export class GameUI {
     shift.classList.remove('is-visible');
   }
 
+  async animateGameEnd() {
+    this.dismissComboCelebration();
+    this.clearSelection();
+    this.elements.scoreBurst.classList.remove('is-visible');
+    const timeUp = this.elements.timeUp;
+    this.boardFrame.classList.remove('is-game-ending');
+    timeUp.classList.remove('is-visible');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-game-ending');
+    timeUp.classList.add('is-visible');
+    await delay(1050);
+    timeUp.classList.remove('is-visible');
+    this.boardFrame.classList.remove('is-game-ending');
+  }
+
   setPlayCharacter(pose, duration = 0) {
     const next = CHARACTER_ASSETS[pose] ? pose : 'peek';
     const token = ++this.characterToken;
@@ -673,6 +691,11 @@ export class GameUI {
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
     this.showScreen('result');
+    const screen = document.querySelector('#result-screen');
+    screen.classList.remove('is-entering');
+    void screen.offsetWidth;
+    screen.classList.add('is-entering');
+    setTimeout(() => screen.classList.remove('is-entering'), 680);
   }
 
   setOverlay(id, visible) {

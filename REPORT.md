@@ -217,3 +217,9 @@ node serve.mjs
 ```
 
 브라우저에서 `http://127.0.0.1:8766/`을 연다.
+# Original OING audio integration (2026-08-06)
+
+- Read-only source: `https://github.com/sbp37/oing/blob/main/index.html`
+- Reused WebAudio behavior: `playSuccess`, `playComboUp`, `playCombo7`, `playWrongSoft`, `playHint`, `playShuffleSoft`, `playStagePass`, and `playGameOver`.
+- The original success/combo/game-over effects are synthesized in code rather than stored sound files. The item-only Base64 MP3 data was not copied.
+- The v2 result screen now waits for a 1.05 second board-level `TIME UP!` transition before showing results, mirroring the original game's short result delay without copying its screen structure.
