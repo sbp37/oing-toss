@@ -38,8 +38,8 @@
 | `assets/decor/star.webp` | `oing-toss-assets-v1/assets/decor/star.webp` | 콤보 HUD·최고기록 카드·성공 장식 | 15–28px |
 | `assets/icons/items/hint.webp` | `oing-toss-assets-v1/assets/icons/hint.webp` | 힌트 버튼 | 25–31px |
 | `assets/icons/items/shuffle.webp` | `oing-toss-assets-v1/assets/icons/shuffle.webp` | 섞기 버튼 | 35px |
-| `assets/icons/items/bomb.webp` | `oing-toss-assets-v1/assets/icons/bomb.webp` | 미래 아이템 레지스트리 | 현재 미노출 |
-| `assets/icons/hud/time.webp` | `oing-toss-assets-v1/assets/icons/clock.webp` | 시간 HUD·미래 시계 아이템 레지스트리 | HUD 21–24px, 미래 아이템 미노출 |
+| `assets/icons/items/bomb.webp` | `oing-toss-assets-v1/assets/icons/bomb.webp` | 하단 폭탄·콤보 보상 보드 드롭 | 버튼 27–34px, 보드 27–49px |
+| `assets/icons/hud/time.webp` | `oing-toss-assets-v1/assets/icons/clock.webp` | 시간 HUD·하단 시계·콤보 보상 보드 드롭 | HUD 21–24px, 보드 25–51px |
 | `assets/icons/items/freeze.webp` | `oing-toss-assets-v1/assets/icons/freeze.webp` | 미래 아이템 레지스트리 | 현재 미노출 |
 | `assets/icons/items/clover.webp` | `oing-toss-assets-v1/assets/icons/clover.webp` | 미래 아이템 레지스트리 | 현재 미노출 |
 | `assets/decor/star.webp` | `oing-toss-assets-v1/assets/decor/star.webp` | 홈·성공 파편·라운드·결과 | 15–24px |

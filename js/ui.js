@@ -1,5 +1,5 @@
 import { cellsInRect } from './board.js';
-import { comboMultiplier, pickMessage } from './data.js';
+import { BOARD_DROP_ITEMS, comboMultiplier, pickMessage } from './data.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -107,7 +107,7 @@ export class GameUI {
     });
   }
 
-  renderBoard(model) {
+  renderBoard(model, boardItems = new Map()) {
     this.board.dataset.size = String(model.size);
     this.boardFrame.dataset.size = String(model.size);
     this.board.style.setProperty('--board-size', model.size);
@@ -115,19 +115,36 @@ export class GameUI {
     for (let r = 0; r < model.size; r += 1) {
       for (let c = 0; c < model.size; c += 1) {
         const value = model.valueAt(r, c);
+        const boardItem = boardItems.get(`${r}:${c}`);
         const tone = value ? TILE_TONE_BY_VALUE[value] : 0;
         const tile = document.createElement('button');
         tile.type = 'button';
         tile.tabIndex = -1;
-        tile.className = `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}`;
+        tile.className = boardItem
+          ? `tile is-empty is-board-item board-item-${boardItem.type}`
+          : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}`;
         tile.dataset.row = String(r);
         tile.dataset.col = String(c);
         tile.dataset.value = String(value || 0);
         tile.style.setProperty('--row', String(r));
         tile.style.setProperty('--col', String(c));
         tile.setAttribute('role', 'gridcell');
-        tile.setAttribute('aria-label', value ? `${value}` : '빈칸');
-        tile.innerHTML = value ? `<span>${value}</span>` : '';
+        if (boardItem) {
+          const itemDefinition = BOARD_DROP_ITEMS[boardItem.type];
+          tile.dataset.item = boardItem.type;
+          tile.tabIndex = 0;
+          tile.setAttribute('aria-label', `${itemDefinition?.label || '아이템'} 사용`);
+          const icon = document.createElement('img');
+          icon.className = 'board-item-icon';
+          icon.src = itemDefinition?.asset || '';
+          icon.alt = '';
+          const sparkle = document.createElement('i');
+          sparkle.className = 'board-item-sparkle';
+          tile.append(icon, sparkle);
+        } else {
+          tile.setAttribute('aria-label', value ? `${value}` : '빈칸');
+          tile.innerHTML = value ? `<span>${value}</span>` : '';
+        }
         fragment.appendChild(tile);
       }
     }
@@ -163,7 +180,10 @@ export class GameUI {
     if (selectionChanged) {
       const selected = new Set(cellsInRect(rect).map(({ r, c }) => `${r}:${c}`));
       this.board.querySelectorAll('.tile').forEach((tile) => {
-        tile.classList.toggle('is-selected', selected.has(`${tile.dataset.row}:${tile.dataset.col}`));
+        tile.classList.toggle(
+          'is-selected',
+          !tile.dataset.item && selected.has(`${tile.dataset.row}:${tile.dataset.col}`),
+        );
       });
       bounds = this.selectionBounds(rect);
       this.lastSelectionKey = selectionKey;
@@ -309,7 +329,9 @@ export class GameUI {
   }
 
   async animateSuccess(rect, combo = 1) {
-    const tiles = cellsInRect(rect).map(({ r, c }) => this.tileAt(r, c)).filter(Boolean);
+    const tiles = cellsInRect(rect)
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--pop-delay', `${Math.min(index * 7, 42)}ms`);
       tile.classList.add('is-success');
@@ -326,7 +348,9 @@ export class GameUI {
   }
 
   async animateFailure(rect) {
-    const tiles = cellsInRect(rect).map(({ r, c }) => this.tileAt(r, c)).filter(Boolean);
+    const tiles = cellsInRect(rect)
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile) => tile.classList.add('is-fail'));
     this.elements.marquee.classList.add('is-fail');
     this.boardFrame.classList.add('fail-kick');
@@ -338,7 +362,9 @@ export class GameUI {
   }
 
   showHint(rect) {
-    const tiles = cellsInRect(rect).map(({ r, c }) => this.tileAt(r, c)).filter(Boolean);
+    const tiles = cellsInRect(rect)
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile) => tile.classList.add('is-hint'));
     const bounds = this.selectionBounds(rect);
     if (bounds) {
@@ -463,7 +489,9 @@ export class GameUI {
 
   async animateBomb(rect) {
     const bounds = this.selectionBounds(rect);
-    const tiles = cellsInRect(rect).map(({ r, c }) => this.tileAt(r, c)).filter(Boolean);
+    const tiles = cellsInRect(rect)
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--blast-delay', `${Math.min(index * 22, 120)}ms`);
       tile.classList.add('is-bombed');
@@ -485,9 +513,38 @@ export class GameUI {
     this.boardFrame.classList.remove('bomb-kick');
   }
 
-  async animateClock(seconds = 8) {
+  showBoardItemDrops(items) {
+    items.forEach(({ row, col, type }, index) => {
+      const tile = this.tileAt(row, col);
+      if (!tile) return;
+      tile.style.setProperty('--item-drop-delay', `${index * 70}ms`);
+      tile.classList.add('is-item-spawning');
+      const tileRect = tile.getBoundingClientRect();
+      const frameRect = this.boardFrame.getBoundingClientRect();
+      const effect = document.createElement('div');
+      effect.className = `item-drop-fx item-drop-${type}`;
+      effect.style.left = `${tileRect.left + tileRect.width / 2 - frameRect.left}px`;
+      effect.style.top = `${tileRect.top + tileRect.height / 2 - frameRect.top}px`;
+      const definition = BOARD_DROP_ITEMS[type];
+      const icon = document.createElement('img');
+      icon.src = definition?.asset || '';
+      icon.alt = '';
+      effect.append(icon, document.createElement('i'), document.createElement('i'));
+      this.boardFrame.appendChild(effect);
+      setTimeout(() => {
+        tile.classList.remove('is-item-spawning');
+        effect.remove();
+      }, 900 + index * 70);
+    });
+  }
+
+  pressBoardItem(row, col, pressed) {
+    this.tileAt(row, col)?.classList.toggle('is-item-pressed', pressed);
+  }
+
+  async animateClock(seconds = 8, sourceElement = this.elements.clockButton) {
     const screen = this.elements.playScreen;
-    const start = this.elements.clockButton.getBoundingClientRect();
+    const start = sourceElement.getBoundingClientRect();
     const target = this.elements.timePill.getBoundingClientRect();
     const frame = screen.getBoundingClientRect();
     const flight = document.createElement('div');

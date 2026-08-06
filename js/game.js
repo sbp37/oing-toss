@@ -1,5 +1,15 @@
-import { GAME_DURATION_SECONDS, COMBO_WINDOW_MS, getRoundConfig, pickMessage, scoreForBomb, scoreForClear } from './data.js';
-import { BoardModel } from './board.js';
+import {
+  BOARD_DROP_ITEMS,
+  GAME_DURATION_SECONDS,
+  COMBO_WINDOW_MS,
+  chooseBoardDrop,
+  getRoundConfig,
+  pickMessage,
+  scoreForBomb,
+  scoreForClear,
+} from './data.js';
+import { BoardModel, bombRect } from './board.js';
+import { BoardItemField } from './board-items.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
@@ -43,6 +53,8 @@ class OingGame {
     this.runtime = runtimeConfig();
     this.settings = storageAdapter.getSettings();
     this.inventory = createRunInventory();
+    this.boardItems = new BoardItemField();
+    this.itemTapCandidate = null;
     this.timer = null;
     this.endAt = 0;
     this.pauseStartedAt = 0;
@@ -71,7 +83,7 @@ class OingGame {
     });
     this.bindEvents();
     this.applySettings();
-    this.ui.renderBoard(this.model);
+    this.renderBoard();
     this.ui.updateBestScore(storageAdapter.getBestScore());
     this.ui.showScreen('home');
     schedulePlayAssetsPreload();
@@ -106,6 +118,12 @@ class OingGame {
     document.querySelector('#shuffle-button').addEventListener('click', () => this.useShuffle());
     document.querySelector('#bomb-button').addEventListener('click', () => this.useBomb());
     document.querySelector('#clock-button').addEventListener('click', () => this.useClock());
+    this.ui.board.addEventListener('pointerdown', (event) => this.beginBoardItemTap(event), { capture: true, passive: false });
+    this.ui.board.addEventListener('pointermove', (event) => this.moveBoardItemTap(event), { capture: true, passive: false });
+    this.ui.board.addEventListener('pointerup', (event) => this.endBoardItemTap(event), { capture: true, passive: false });
+    this.ui.board.addEventListener('pointercancel', (event) => this.cancelBoardItemTap(event), { capture: true, passive: false });
+    this.ui.board.addEventListener('lostpointercapture', (event) => this.cancelBoardItemTap(event), { capture: true });
+    this.ui.board.addEventListener('keydown', (event) => this.handleBoardItemKey(event), { capture: true });
     document.querySelector('#home-settings-button').addEventListener('click', () => this.ui.setOverlay('settings-overlay', true));
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
@@ -137,6 +155,8 @@ class OingGame {
     unlockAudio();
     this.inventory = createRunInventory();
     this.state = this.freshState();
+    this.boardItems.reset();
+    this.itemTapCandidate = null;
     this.inputGuardUntil = 0;
     this.state.running = true;
     this.lowTimeSpoken = false;
@@ -170,10 +190,110 @@ class OingGame {
   }
 
   buildRound() {
+    this.boardItems.carry();
+    this.itemTapCandidate = null;
     const config = getRoundConfig(this.state.round);
     this.model.generate(config.size);
-    this.ui.renderBoard(this.model);
+    this.renderBoard();
     this.updateHUD();
+  }
+
+  renderBoard() {
+    this.ui.renderBoard(this.model, this.boardItems.items);
+  }
+
+  beginBoardItemTap(event) {
+    const tile = event.target.closest?.('.tile[data-item]');
+    if (this.itemTapCandidate || !tile || !this.canUseItem() || event.isPrimary === false || event.button !== 0) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const row = Number(tile.dataset.row);
+    const col = Number(tile.dataset.col);
+    this.itemTapCandidate = {
+      pointerId: event.pointerId,
+      key: `${row}:${col}`,
+      row,
+      col,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+    };
+    this.ui.pressBoardItem(row, col, true);
+    try { this.ui.board.setPointerCapture(event.pointerId); } catch {}
+  }
+
+  moveBoardItemTap(event) {
+    const candidate = this.itemTapCandidate;
+    if (!candidate || event.pointerId !== candidate.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const distance = Math.hypot(event.clientX - candidate.startX, event.clientY - candidate.startY);
+    if (distance > 10) {
+      candidate.moved = true;
+      this.ui.pressBoardItem(candidate.row, candidate.col, false);
+    }
+  }
+
+  endBoardItemTap(event) {
+    const candidate = this.itemTapCandidate;
+    if (!candidate || event.pointerId !== candidate.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const tile = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.tile[data-item]');
+    const endedOnSameItem = tile
+      && `${tile.dataset.row}:${tile.dataset.col}` === candidate.key;
+    this.clearBoardItemTap(candidate);
+    if (!candidate.moved && endedOnSameItem) this.useBoardItem(candidate.key);
+  }
+
+  cancelBoardItemTap(event) {
+    const candidate = this.itemTapCandidate;
+    if (!candidate || (event.pointerId != null && event.pointerId !== candidate.pointerId)) return;
+    event.preventDefault?.();
+    event.stopImmediatePropagation?.();
+    this.clearBoardItemTap(candidate);
+  }
+
+  clearBoardItemTap(candidate = this.itemTapCandidate) {
+    if (!candidate) return;
+    this.ui.pressBoardItem(candidate.row, candidate.col, false);
+    this.itemTapCandidate = null;
+    if (this.ui.board.hasPointerCapture?.(candidate.pointerId)) {
+      try { this.ui.board.releasePointerCapture(candidate.pointerId); } catch {}
+    }
+  }
+
+  handleBoardItemKey(event) {
+    if (!['Enter', ' '].includes(event.key)) return;
+    const tile = event.target.closest?.('.tile[data-item]');
+    if (!tile || !this.canUseItem()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.useBoardItem(`${tile.dataset.row}:${tile.dataset.col}`);
+  }
+
+  advanceCombo() {
+    const now = performance.now();
+    const previousCombo = this.state.combo > 0 && this.state.comboExpiresAt >= now
+      ? this.state.combo
+      : 0;
+    this.state.combo = previousCombo + 1;
+    this.state.comboExpiresAt = now + COMBO_WINDOW_MS;
+    this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
+    const previousMilestone = Math.floor(previousCombo / 7);
+    const nextMilestone = Math.floor(this.state.combo / 7);
+    if (nextMilestone > previousMilestone) {
+      const drop = chooseBoardDrop(this.state.combo);
+      if (drop) this.boardItems.queue(drop.id, { earnedAtCombo: this.state.combo });
+    }
+    return previousCombo;
+  }
+
+  announceBoardItems(items) {
+    this.ui.showBoardItemDrops(items);
+    this.showCatMessage('itemDrop');
+    this.ui.setPlayCharacter('wave', 1000);
+    itemHaptic();
   }
 
   preview(rect, pointer) {
@@ -206,12 +326,7 @@ class OingGame {
 
   async handleSuccess(rect, stats) {
     this.state.inputLocked = true;
-    const now = performance.now();
-    this.state.combo = this.state.combo > 0 && this.state.comboExpiresAt >= now
-      ? this.state.combo + 1
-      : 1;
-    this.state.comboExpiresAt = now + COMBO_WINDOW_MS;
-    this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
+    this.advanceCombo();
     this.state.successCount += 1;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, stats.count);
     const points = scoreForClear(stats.count, this.state.combo);
@@ -229,16 +344,21 @@ class OingGame {
 
     await this.ui.animateSuccess(rect, this.state.combo);
     this.model.remove(rect);
-    this.ui.renderBoard(this.model);
 
     const config = getRoundConfig(this.state.round);
     if (this.state.progress >= config.target) {
+      this.renderBoard();
       if ([3, 5, 8].includes(this.state.combo)) await delay(220);
       await this.clearRound();
     } else if (!this.model.findAnswer()) {
+      this.boardItems.carry();
       this.model.generate(config.size);
-      this.ui.renderBoard(this.model);
+      this.renderBoard();
       this.ui.toast('새 보드로 바로 이어갈게!');
+    } else {
+      const placed = this.boardItems.place(this.model.grid);
+      this.renderBoard();
+      if (placed.length) this.announceBoardItems(placed);
     }
     this.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
     this.state.inputLocked = false;
@@ -324,7 +444,7 @@ class OingGame {
     playShuffleSound();
     itemHaptic();
     await this.ui.animateShuffleOut();
-    this.ui.renderBoard(this.model);
+    this.renderBoard();
     await this.ui.animateShuffleIn();
     this.state.inputLocked = false;
   }
@@ -345,15 +465,12 @@ class OingGame {
       return;
     }
 
-    const { rect, stats } = target;
     this.syncInventory();
-    const previousCombo = this.state.combo;
-    const now = performance.now();
-    this.state.combo = this.state.combo > 0 && this.state.comboExpiresAt >= now
-      ? this.state.combo + 1
-      : 1;
-    this.state.comboExpiresAt = now + COMBO_WINDOW_MS;
-    this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
+    await this.resolveBomb(target);
+  }
+
+  async resolveBomb({ rect, stats }, boardItemKey = null) {
+    const previousCombo = this.advanceCombo();
     const points = scoreForBomb(stats.sum);
     this.state.score += points;
     this.updateHUD();
@@ -369,35 +486,73 @@ class OingGame {
 
     await this.ui.animateBomb(rect);
     this.model.remove(rect);
-    this.ui.renderBoard(this.model);
+    if (boardItemKey) this.boardItems.delete(boardItemKey);
     const config = getRoundConfig(this.state.round);
     if (!this.model.findAnswer()) {
+      this.boardItems.carry();
       this.model.generate(config.size);
-      this.ui.renderBoard(this.model);
+      this.renderBoard();
       this.ui.toast('새 보드로 바로 이어갈게!');
+    } else {
+      const placed = this.boardItems.place(this.model.grid);
+      this.renderBoard();
+      if (placed.length) this.announceBoardItems(placed);
     }
     this.inputGuardUntil = performance.now() + 180;
     this.state.inputLocked = false;
     this.updateHUD();
   }
 
-  useClock() {
+  async useClock() {
     if (!this.canUseItem() || !this.inventory.canConsume('clock')) return;
     this.beginFirstInteraction();
     if (!this.inventory.consume('clock').ok) return;
+    this.syncInventory();
+    await this.resolveClock();
+  }
+
+  async resolveClock(boardItemKey = null, sourceElement = this.ui.elements.clockButton) {
+    this.state.inputLocked = true;
     this.state.timeLeft = Math.min(999, this.state.timeLeft + 8);
     if (this.timer) this.endAt += 8000;
     if (this.state.timeLeft > 10) {
       this.lowTimeSpoken = false;
       this.lastCountdownSecond = null;
     }
-    this.syncInventory();
     this.updateHUD();
     this.showCatMessage('clock');
     this.ui.setPlayCharacter('cheer', 900);
     playClockSound();
     clockHaptic();
-    this.ui.animateClock(8);
+    const animation = this.ui.animateClock(8, sourceElement);
+    if (boardItemKey) {
+      this.boardItems.delete(boardItemKey);
+      this.renderBoard();
+    }
+    await animation;
+    this.inputGuardUntil = performance.now() + 100;
+    this.state.inputLocked = false;
+  }
+
+  async useBoardItem(key) {
+    if (!this.canUseItem()) return;
+    const item = this.boardItems.get(key);
+    if (!item || !BOARD_DROP_ITEMS[item.type]?.implemented) return;
+    this.beginFirstInteraction();
+    this.input.cancel();
+    this.state.inputLocked = true;
+    if (item.type === 'bomb') {
+      const rect = bombRect(this.model.size, item.row, item.col);
+      await this.resolveBomb({ rect, stats: this.model.stats(rect) }, key);
+      return;
+    }
+    if (item.type === 'clock') {
+      const sourceElement = this.ui.tileAt(item.row, item.col);
+      await this.resolveClock(key, sourceElement);
+      return;
+    }
+    this.state.inputLocked = false;
+    this.ui.toast('이 아이템은 다음 업데이트에서 열려!');
   }
 
   canUseItem() {
@@ -530,6 +685,20 @@ if (game.runtime.testMode) {
   window.__OING_TEST__ = {
     getState: () => structuredClone(game.state),
     getBoard: () => game.model.grid.map((row) => row.slice()),
+    getBoardItems: () => game.boardItems.snapshot(),
     findAnswer: () => game.model.findAnswer(),
+    setCombo: (combo) => {
+      game.state.combo = Math.max(0, Math.floor(Number(combo) || 0));
+      game.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
+      game.updateHUD();
+      return game.state.combo;
+    },
+    forceBoardItem: (type = 'bomb', row = 0, col = 0) => {
+      if (!BOARD_DROP_ITEMS[type]?.implemented || !game.model.grid[row]?.[col]) return null;
+      game.model.grid[row][col] = null;
+      const item = game.boardItems.set(type, row, col, { earnedAtCombo: game.state.combo });
+      game.renderBoard();
+      return { ...item };
+    },
   };
 }

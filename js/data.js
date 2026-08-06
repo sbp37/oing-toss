@@ -16,6 +16,31 @@ export const ITEM_DEFINITIONS = Object.freeze({
   clover: { id: 'clover', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/clover.webp' },
 });
 
+// Original OING board drops. Only implemented entries enter the live pool;
+// the remaining definitions reserve stable IDs for the next visual passes.
+export const BOARD_DROP_ITEMS = Object.freeze({
+  bomb: Object.freeze({ id: 'bomb', label: '폭탄', implemented: true, asset: 'assets/icons/items/bomb.webp' }),
+  clock: Object.freeze({ id: 'clock', label: '시계', implemented: true, asset: 'assets/icons/hud/time.webp' }),
+  megabomb: Object.freeze({ id: 'megabomb', label: '메가폭탄', implemented: false, asset: null }),
+  freeze: Object.freeze({ id: 'freeze', label: '타임프리즈', implemented: false, asset: 'assets/icons/items/freeze.webp' }),
+  clover: Object.freeze({ id: 'clover', label: '클로버', implemented: false, asset: 'assets/icons/items/clover.webp' }),
+  candy: Object.freeze({ id: 'candy', label: '콤보사탕', implemented: false, asset: null }),
+});
+
+const BOARD_DROP_POOLS = Object.freeze({
+  1: Object.freeze(['bomb', 'bomb', 'bomb', 'clock', 'clock']),
+  2: Object.freeze(['bomb', 'bomb', 'clock', 'clock', 'megabomb']),
+  3: Object.freeze(['clock', 'clock', 'megabomb', 'megabomb', 'freeze', 'bomb', 'clover']),
+});
+
+export function chooseBoardDrop(combo, random = Math.random) {
+  const tier = combo >= 21 ? 3 : combo >= 14 ? 2 : 1;
+  const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
+  if (!pool.length) return null;
+  const index = Math.min(pool.length - 1, Math.floor(Math.max(0, random()) * pool.length));
+  return BOARD_DROP_ITEMS[pool[index]];
+}
+
 // Prices and display names must come from the Apps in Toss IAP product list.
 // These local records only define what a verified order will grant later.
 export const PRODUCT_CATALOG = Object.freeze({
@@ -43,6 +68,7 @@ export const MESSAGES = Object.freeze({
   shuffle: Object.freeze(['한번 섞어볼까?', '새 보드에서 찾아보자!']),
   bomb: Object.freeze(['펑! 시원하게 뚫렸어!', '좋아, 길이 열렸어!']),
   clock: Object.freeze(['시간을 조금 더 챙겼어!', '8초 더 달려보자!']),
+  itemDrop: Object.freeze(['아이템이 나왔어! 톡 눌러봐!', '오잉, 선물이 떨어졌어!']),
   round: Object.freeze(['다음 판도 바로 가자!', '좋아, 한 판 더!']),
   lowTime: Object.freeze(['조금만 더!', '시간이 얼마 없어!']),
   resultHigh: Object.freeze(['이번 판 정말 좋았어!', '아주 잘 풀었어!']),
