@@ -4,7 +4,7 @@
 
 플레이 타일은 콘셉트 보드를 자르지 않고, 이미지 생성으로 만든 독립 `tile-master-v3`를 크로마키 제거한 뒤 512×512에서 색상·상태별 lossless WebP로 파생했다. 숫자는 계속 HTML 텍스트로 렌더링한다.
 
-힌트·섞기 버튼은 콘셉트 보드를 자르지 않고 별도로 생성한 빈 시럽 셸 `assets/ui/item-buttons-v1/`을 배경으로 사용한다. 아이콘·이름·남은 횟수는 계속 독립 이미지와 HTML 텍스트로 렌더링한다.
+하단 아이템은 긴 가로 버튼 대신 4개의 작은 정사각 슬롯으로 통일했다. 숫자 타일과 같은 독립 시럽 에셋 `assets/ui/tiles-syrup-v4/`을 슬롯 배경으로 재사용하고, 아이콘·이름·남은 횟수는 계속 독립 이미지와 HTML 텍스트로 렌더링한다.
 
 `assets/fonts/Jua-Latin.woff2`는 숫자·영문용 Jua 서브셋이다. 한글 버튼·말풍선·큰 제목에는 Google Fonts의 Jua 원본에서 현재 게임에 필요한 한글 179자만 추린 `assets/fonts/Jua-Korean-Game.woff2`를 사용한다. 두 파일을 합쳐도 약 58KB이며 `assets/fonts/OFL-Jua.txt`에 SIL Open Font License 1.1을 함께 보관한다. 작은 HUD와 보드 숫자는 기존 가독성 높은 글꼴을 유지한다.
 
@@ -23,14 +23,12 @@
 | `assets/ui/logo.webp` | `oing-toss-assets-v1/assets/ui/logo.webp` | 홈 로고 | 142–212px |
 | `assets/ui/button-settings.webp` | `oing-toss-assets-v1/assets/ui/button-settings.webp` | 홈 설정 | 39–44px |
 | `assets/ui/button-pause.webp` | `oing-toss-assets-v1/assets/ui/button-pause.webp` | 플레이 일시정지 | 43–48px |
-| `assets/ui/item-buttons-v1/button-hint.webp` | `assets/source/button-hint-syrup-v1-alpha.png`을 정규화한 독립 빈 셸 | 플레이 힌트 버튼 배경 | 약 161–196×50–62px |
-| `assets/ui/item-buttons-v1/button-shuffle.webp` | `assets/source/button-shuffle-syrup-v1-alpha.png`을 정규화한 독립 빈 셸 | 플레이 섞기 버튼 배경 | 약 161–196×50–62px |
 | `assets/ui/tiles-syrup-v4/tile-peach.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 주황 숫자용 피치 시럽 타일 | 512×512 원본, 셀 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 초록 숫자용 민트 시럽 타일 | 512×512 원본, 셀 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 초록 숫자·섞기 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
 | `assets/ui/tiles-syrup-v4/tile-lilac.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 보라 숫자용 라일락 시럽 타일 | 512×512 원본, 셀 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-blush.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 분홍 숫자용 블러시 시럽 타일 | 512×512 원본, 셀 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-aqua.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 청록 숫자용 아쿠아 시럽 타일 | 512×512 원본, 셀 약 39–96px |
-| `assets/ui/tiles-syrup-v4/tile-lemon.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 노랑 숫자용 레몬 시럽 타일 | 512×512 원본, 셀 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-blush.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 분홍 숫자·폭탄 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-aqua.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 청록 숫자·시계 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
+| `assets/ui/tiles-syrup-v4/tile-lemon.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 노랑 숫자·힌트 슬롯 | 512×512 원본, 셀/슬롯 약 39–96px |
 | `assets/icons/navigation/trophy.webp` | `oing-toss-assets-v1/assets/icons/trophy.webp` | 홈·결과 랭킹 | 27px |
 | `assets/icons/navigation/home.webp` | `oing-toss-assets-v1/assets/icons/home.webp` | 결과 홈으로 | 24px |
 | `assets/icons/hud/score.webp` | `oing-toss-assets-v1/assets/icons/coin.webp` | 점수 HUD | 22px |
@@ -65,6 +63,7 @@
 | `assets/ui/tile-disabled.webp` | 보드에 disabled 타일 상태가 아직 없다. |
 | `assets/ui/tile-{normal,selected,success,hint,empty}.webp` | 독립 시럽 타일 v4 세트로 교체해 보존만 한다. |
 | `assets/ui/tiles-v3/` 전체 | 이전 밀키 글라스 후보 세트다. 현재 게임은 더 맑고 밝은 `tiles-syrup-v4` 6종을 사용한다. |
+| `assets/ui/item-buttons-v1/` 전체 | 긴 가로형 셸이라 4개 아이템을 한 줄에 배치하면 보드 공간을 압박한다. 정사각 시럽 슬롯으로 교체해 원본만 보존한다. |
 | `assets/decor/cloud.webp` | 배경 자체에 구름이 있어 중복 장식을 피했다. |
 | `assets/decor/flower.webp` | 배경 하단 꽃밭과 중복되어 사용하지 않았다. |
 

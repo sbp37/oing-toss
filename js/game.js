@@ -48,6 +48,7 @@ import {
 } from './haptic.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const EARLY_ASSIST_SUCCESSES = 5;
 
 class OingGame {
   constructor() {
@@ -196,9 +197,13 @@ class OingGame {
     this.boardItems.carry();
     this.itemTapCandidate = null;
     const config = getRoundConfig(this.state.round);
-    this.model.generate(config.size);
+    this.generateBoard(config.size);
     this.renderBoard();
     this.updateHUD();
+  }
+
+  generateBoard(size) {
+    return this.model.generate(size, { easy: this.state.successCount < EARLY_ASSIST_SUCCESSES });
   }
 
   renderBoard() {
@@ -307,7 +312,7 @@ class OingGame {
 
   maybeShowTutorial() {
     if (!this.state.running || (!this.runtime.forceTutorial && storageAdapter.hasSeenDragTutorial())) return;
-    const answer = this.model.findAnswer();
+    const answer = this.model.findEasyAnswer();
     if (!answer) {
       this.beginFirstInteraction();
       return;
@@ -355,7 +360,7 @@ class OingGame {
       await this.clearRound();
     } else if (!this.model.findAnswer()) {
       this.boardItems.carry();
-      this.model.generate(config.size);
+      this.generateBoard(config.size);
       this.renderBoard();
       this.ui.toast('새 보드로 바로 이어갈게!');
     } else {
@@ -415,7 +420,7 @@ class OingGame {
   useHint() {
     if (!this.canUseItem() || !this.inventory.canConsume('hint')) return;
     this.beginFirstInteraction();
-    const answer = this.model.findAnswer();
+    const answer = this.model.findEasyAnswer();
     if (!answer) {
       this.buildRound();
       this.ui.toast('가능한 보드를 준비했어!');
@@ -517,7 +522,7 @@ class OingGame {
     const config = getRoundConfig(this.state.round);
     if (!this.model.findAnswer()) {
       this.boardItems.carry();
-      this.model.generate(config.size);
+      this.generateBoard(config.size);
       this.renderBoard();
       this.ui.toast('새 보드로 바로 이어갈게!');
     } else {

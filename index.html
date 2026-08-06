@@ -13,8 +13,6 @@
   <link rel="preload" href="assets/characters/cat-peek.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/icons/items/hint.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/icons/items/shuffle.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/ui/item-buttons-v1/button-hint.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/ui/item-buttons-v1/button-shuffle.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-blush.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-peach.webp" as="image" type="image/webp">
@@ -87,8 +85,9 @@
           <div class="board" id="board" data-size="4" role="grid" aria-label="합이 10이 되는 직사각형을 드래그하세요"></div>
           <div class="selection-marquee" id="selection-marquee" aria-hidden="true"></div>
           <div class="tutorial-guide" id="tutorial-guide" aria-hidden="true">
+            <div class="tutorial-focus"><i></i><i></i></div>
             <div class="tutorial-sparkle-trail"><i></i><i></i><i></i></div>
-            <span>슥 밀어서 10!</span>
+            <span>두 칸을 슥 밀어서 10!</span>
           </div>
           <div class="round-clear" id="round-clear" aria-hidden="true">
             <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><strong>ROUND CLEAR!</strong><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">

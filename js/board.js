@@ -1,6 +1,7 @@
 const MIN_VALUE = 1;
 const MAX_VALUE = 9;
 const GENERATION_ATTEMPTS = 72;
+export const EASY_BOARD_BONUS = Object.freeze({ minimumAnswers: 3, minimumSimpleAnswers: 2 });
 
 // The board gets denser every round, but the kind of answer changes too:
 // round 1 teaches with obvious pairs, round 2 mixes shapes, and round 3
@@ -11,7 +12,15 @@ export const BOARD_DIFFICULTY = Object.freeze({
   6: Object.freeze({ minimumAnswers: 9, minimumSimpleAnswers: 1, minimumRichAnswers: 4 }),
 });
 
-const qualityTarget = (size) => BOARD_DIFFICULTY[size] || BOARD_DIFFICULTY[6];
+const qualityTarget = (size, easy = false) => {
+  const base = BOARD_DIFFICULTY[size] || BOARD_DIFFICULTY[6];
+  if (!easy) return base;
+  return {
+    ...base,
+    minimumAnswers: base.minimumAnswers + EASY_BOARD_BONUS.minimumAnswers,
+    minimumSimpleAnswers: base.minimumSimpleAnswers + EASY_BOARD_BONUS.minimumSimpleAnswers,
+  };
+};
 
 const randomValue = () => Math.floor(Math.random() * MAX_VALUE) + MIN_VALUE;
 
@@ -23,33 +32,34 @@ function makeRandomGrid(size) {
   return Array.from({ length: size }, () => Array.from({ length: size }, randomValue));
 }
 
-function hasGoodAnswerMix(grid) {
-  const { minimumAnswers, minimumSimpleAnswers, minimumRichAnswers } = qualityTarget(grid.length);
+function hasGoodAnswerMix(grid, easy = false) {
+  const { minimumAnswers, minimumSimpleAnswers, minimumRichAnswers } = qualityTarget(grid.length, easy);
   const answers = findAllSumTenRects(grid);
   return answers.length >= minimumAnswers
     && answers.filter((answer) => answer.count === 2).length >= minimumSimpleAnswers
     && answers.filter((answer) => answer.count >= 3).length >= minimumRichAnswers;
 }
 
-function seedProfileAnswers(grid) {
+function seedProfileAnswers(grid, easy = false) {
   const size = grid.length;
-  const { minimumSimpleAnswers, minimumRichAnswers } = qualityTarget(size);
+  const { minimumSimpleAnswers, minimumRichAnswers } = qualityTarget(size, easy);
   const pairPatterns = [[1, 9], [2, 8], [3, 7], [4, 6]];
   const richPatterns = [[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]];
   const rows = shuffled(Array.from({ length: size }, (_, index) => index));
-
-  for (let index = 0; index < minimumSimpleAnswers; index += 1) {
-    const row = rows[index % rows.length];
-    const start = index % 2 === 0 ? 0 : size - 2;
-    shuffled(pairPatterns[index % pairPatterns.length]).forEach((value, offset) => {
-      grid[row][start + offset] = value;
-    });
-  }
 
   for (let index = 0; index < minimumRichAnswers; index += 1) {
     const row = rows[(minimumSimpleAnswers + index) % rows.length];
     const start = Math.min(size - 3, index % Math.max(1, size - 2));
     shuffled(richPatterns[index % richPatterns.length]).forEach((value, offset) => {
+      grid[row][start + offset] = value;
+    });
+  }
+
+  const starts = size >= 6 ? [0, 2, size - 2] : [0, size - 2];
+  const pairSlots = shuffled(rows.flatMap((row) => starts.map((start) => ({ row, start }))));
+  for (let index = 0; index < minimumSimpleAnswers; index += 1) {
+    const { row, start } = pairSlots[index % pairSlots.length];
+    shuffled(pairPatterns[index % pairPatterns.length]).forEach((value, offset) => {
       grid[row][start + offset] = value;
     });
   }
@@ -181,15 +191,18 @@ export class BoardModel {
     this.generate(size);
   }
 
-  generate(size = this.size) {
+  generate(size = this.size, options = {}) {
     this.size = size;
-    for (let attempt = 0; attempt < GENERATION_ATTEMPTS; attempt += 1) {
+    const easy = Boolean(options.easy);
+    const attempts = easy ? GENERATION_ATTEMPTS * 3 : GENERATION_ATTEMPTS;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
       this.grid = makeRandomGrid(size);
-      if (hasGoodAnswerMix(this.grid)) return this.grid;
+      if (easy) seedProfileAnswers(this.grid, true);
+      if (hasGoodAnswerMix(this.grid, easy)) return this.grid;
     }
 
     this.grid = makeRandomGrid(size);
-    seedProfileAnswers(this.grid);
+    seedProfileAnswers(this.grid, easy);
     return this.grid;
   }
 
@@ -240,6 +253,21 @@ export class BoardModel {
     const richer = answers.filter((answer) => answer.count >= 3);
     const pool = richer.length ? richer : answers;
     return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  findEasyAnswer() {
+    const answers = this.findAnswers();
+    if (!answers.length) return null;
+    const simple = answers.filter((answer) => answer.count === 2);
+    const pool = simple.length ? simple : answers;
+    const center = (this.size - 1) / 2;
+    return pool.slice().sort((a, b) => {
+      const areaA = (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1);
+      const areaB = (b.r2 - b.r1 + 1) * (b.c2 - b.c1 + 1);
+      const centerA = Math.abs((a.r1 + a.r2) / 2 - center) + Math.abs((a.c1 + a.c2) / 2 - center);
+      const centerB = Math.abs((b.r1 + b.r2) / 2 - center) + Math.abs((b.c1 + b.c2) / 2 - center);
+      return areaA - areaB || centerA - centerB;
+    })[0];
   }
 
   bestBombTarget() {

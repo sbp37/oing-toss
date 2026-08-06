@@ -189,11 +189,17 @@ export class GameUI {
       this.lastSelectionKey = selectionKey;
       this.lastSelectionBounds = bounds;
       if (bounds) {
+        const openingSelection = !marquee.classList.contains('is-visible');
+        if (openingSelection) marquee.classList.add('is-repositioning');
         const pad = 3;
         marquee.style.left = `${bounds.left - pad}px`;
         marquee.style.top = `${bounds.top - pad}px`;
         marquee.style.width = `${bounds.right - bounds.left + pad * 2}px`;
         marquee.style.height = `${bounds.bottom - bounds.top + pad * 2}px`;
+        if (openingSelection) {
+          void marquee.offsetWidth;
+          marquee.classList.remove('is-repositioning');
+        }
         marquee.classList.add('is-visible');
       }
       marquee.classList.toggle('is-ten', stats.sum === 10);
@@ -236,6 +242,10 @@ export class GameUI {
 
   selectionSnap(isPerfect = false) {
     const marquee = this.elements.marquee;
+    // onSelectionStep fires immediately before previewSelection. On a fresh
+    // gesture the marquee still carries its previous geometry, so animating it
+    // here can expose a one-frame outline at the old position.
+    if (!this.lastSelectionBounds || !marquee.classList.contains('is-visible')) return;
     this.selectionSnapAnimation?.cancel();
     clearTimeout(this.selectionSnapTimer);
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && typeof marquee.animate === 'function') {
@@ -273,6 +283,7 @@ export class GameUI {
     this.lastSelectionBounds = null;
     this.board.querySelectorAll('.tile.is-selected').forEach((tile) => tile.classList.remove('is-selected'));
     this.elements.marquee.classList.remove('is-visible', 'is-ten', 'is-snapping', 'is-perfect-snap');
+    this.elements.marquee.classList.remove('is-repositioning');
     this.elements.marquee.style.setProperty('--syrup-pull-x', '0px');
     this.elements.marquee.style.setProperty('--syrup-pull-y', '0px');
     this.elements.sumBubble.classList.remove('is-visible', 'is-ten');
@@ -340,9 +351,7 @@ export class GameUI {
     this.elements.marquee.classList.add('is-bursting');
     this.boardFrame.dataset.comboImpact = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     this.spawnParticles(rect, combo);
-    this.boardFrame.classList.add('success-kick');
     await delay(225);
-    this.boardFrame.classList.remove('success-kick');
     this.elements.marquee.classList.remove('is-bursting', 'is-visible');
     delete this.boardFrame.dataset.comboImpact;
   }
@@ -377,33 +386,11 @@ export class GameUI {
       region.style.width = `${bounds.right - bounds.left + pad * 2}px`;
       region.style.height = `${bounds.bottom - bounds.top + pad * 2}px`;
       const label = document.createElement('span');
-      label.textContent = '여기!';
+      label.textContent = '합10 여기!';
       region.append(label);
       for (let index = 0; index < 4; index += 1) region.appendChild(document.createElement('i'));
       this.boardFrame.appendChild(region);
       window.setTimeout(() => region.remove(), 1450);
-    }
-    const screen = this.board.closest('.screen-play');
-    const first = this.tileAt(rect.r1, rect.c1)?.getBoundingClientRect();
-    const last = this.tileAt(rect.r2, rect.c2)?.getBoundingClientRect();
-    const button = this.elements.hintButton?.getBoundingClientRect();
-    const screenBounds = screen?.getBoundingClientRect();
-    if (screen && first && last && button && screenBounds) {
-      const startX = button.left + button.width / 2 - screenBounds.left;
-      const startY = button.top + button.height / 2 - screenBounds.top;
-      const targetX = (first.left + last.right) / 2 - screenBounds.left;
-      const targetY = (first.top + last.bottom) / 2 - screenBounds.top;
-      const deltaX = targetX - startX;
-      const deltaY = targetY - startY;
-      const flight = document.createElement('div');
-      flight.className = 'hint-flight';
-      flight.style.left = `${startX}px`;
-      flight.style.top = `${startY}px`;
-      flight.style.width = `${Math.hypot(deltaX, deltaY)}px`;
-      flight.style.transform = `rotate(${Math.atan2(deltaY, deltaX) * 180 / Math.PI}deg)`;
-      for (let index = 0; index < 3; index += 1) flight.appendChild(document.createElement('i'));
-      screen.appendChild(flight);
-      setTimeout(() => flight.remove(), 1120);
     }
     setTimeout(() => tiles.forEach((tile) => tile.classList.remove('is-hint')), 1380);
   }
@@ -420,11 +407,16 @@ export class GameUI {
     const distance = Math.max(34, Math.hypot(endX - startX, endY - startY));
     const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
     const sparkleTrail = this.elements.tutorial.querySelector('.tutorial-sparkle-trail');
+    const focus = this.elements.tutorial.querySelector('.tutorial-focus');
     const label = this.elements.tutorial.querySelector('span');
     sparkleTrail.style.left = `${startX}px`;
     sparkleTrail.style.top = `${startY}px`;
     sparkleTrail.style.width = `${distance}px`;
     sparkleTrail.style.transform = `rotate(${angle}deg)`;
+    focus.style.left = `${bounds.left - 5}px`;
+    focus.style.top = `${bounds.top - 5}px`;
+    focus.style.width = `${bounds.right - bounds.left + 10}px`;
+    focus.style.height = `${bounds.bottom - bounds.top + 10}px`;
     label.style.left = `${clamp((bounds.left + bounds.right) / 2, 74, bounds.frameWidth - 74)}px`;
     label.style.top = `${clamp(bounds.top - 39, 7, bounds.frameHeight - 34)}px`;
     cellsInRect(rect).forEach(({ r, c }) => this.tileAt(r, c)?.classList.add('is-tutorial'));
@@ -464,6 +456,7 @@ export class GameUI {
     icon.src = 'assets/icons/items/shuffle.webp';
     icon.alt = '';
     effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    for (let index = 0; index < 4; index += 1) effect.appendChild(document.createElement('b'));
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
     await delay(420);

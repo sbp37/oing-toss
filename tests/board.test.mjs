@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   BOARD_DIFFICULTY,
   BoardModel,
+  EASY_BOARD_BONUS,
   bombRect,
   cellListStats,
   findBestBombTarget,
@@ -28,6 +29,31 @@ for (const size of [4, 5, 6]) {
     );
     assert.equal(board.shuffleRemaining(), true, `${size}x${size} shuffle must succeed`);
     assert.ok(board.findAnswer(), `${size}x${size} shuffled board must keep an answer`);
+  }
+}
+
+for (const size of [4, 5, 6]) {
+  for (let run = 0; run < 100; run += 1) {
+    const board = new BoardModel(size);
+    board.generate(size, { easy: true });
+    const answers = board.findAnswers();
+    const profile = BOARD_DIFFICULTY[size];
+    assert.ok(
+      answers.length >= profile.minimumAnswers + EASY_BOARD_BONUS.minimumAnswers,
+      `${size}x${size} early board must expose extra answers`,
+    );
+    assert.ok(
+      answers.filter((answer) => answer.count === 2).length
+        >= profile.minimumSimpleAnswers + EASY_BOARD_BONUS.minimumSimpleAnswers,
+      `${size}x${size} early board must expose extra simple pairs`,
+    );
+    const easyAnswer = board.findEasyAnswer();
+    assert.equal(easyAnswer.count, 2, `${size}x${size} onboarding answer should prefer a pair`);
+    assert.equal(
+      (easyAnswer.r2 - easyAnswer.r1 + 1) * (easyAnswer.c2 - easyAnswer.c1 + 1),
+      2,
+      `${size}x${size} onboarding pair should be adjacent`,
+    );
   }
 }
 
@@ -66,4 +92,4 @@ assert.ok(scoreForClear(4, 1) > scoreForClear(2, 1) * 2, 'large rectangles must 
 assert.equal(scoreForBomb(37), 57, 'bomb score keeps the original sum plus 20 idea');
 assert.equal(scoreForMegaBomb(37), 77, 'mega bomb score keeps the original sum plus 40 idea');
 
-console.log('board.test.mjs: 750 generated/shuffled boards and scoring assertions passed');
+console.log('board.test.mjs: 750 regular and 300 early-assist boards plus scoring assertions passed');
