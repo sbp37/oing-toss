@@ -120,9 +120,9 @@
       <footer class="play-footer">
         <div class="cat-coach">
           <div class="character-stage play-character-stage">
-            <img id="play-cat" src="assets/characters/cat-peek.webp" width="359" height="306" loading="eager" decoding="async" alt="보드 아래에서 빼꼼 보는 블루 고양이">
+            <img id="play-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="eager" decoding="async" alt="앉아 있는 블루 고양이">
           </div>
-          <div class="cat-message" id="cat-message">10을 찾아볼까냥?</div>
+          <div class="cat-message" id="cat-message">10을 찾아보자냥!</div>
         </div>
         <div class="item-actions">
           <button class="item-button hint-button" id="hint-button" type="button">
@@ -150,6 +150,10 @@
         <p>최종 점수</p>
         <strong class="final-score" id="final-score">0</strong>
         <div class="new-record" id="new-record" hidden>NEW RECORD</div>
+        <div class="score-comparisons" aria-live="polite">
+          <p id="result-best-compare">첫 기록을 만들었다냥!</p>
+          <p id="result-previous-compare">첫 완주 기록을 차곡차곡 남겼다냥</p>
+        </div>
         <div class="result-grid">
           <div><span>최고 콤보</span><b id="final-combo">0</b></div>
           <div><span>도달 라운드</span><b id="final-round">1</b></div>
@@ -164,6 +168,9 @@
       </div>
       <div class="result-actions">
         <button class="btn btn-primary" id="retry-button" type="button">다시 하기</button>
+        <button class="btn btn-mint result-share-button" id="share-button" type="button">
+          <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>카톡으로 자랑하기</span>
+        </button>
         <button class="btn btn-cream result-ranking-button" id="result-ranking-button" type="button">
           <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>랭킹 보기</span>
         </button>

@@ -1,5 +1,10 @@
 import { cellsInRect } from './board.js';
-import { BOARD_DROP_ITEMS, comboMultiplier, pickMessage } from './data.js';
+import {
+  BOARD_DROP_ITEMS,
+  buildScoreComparisons,
+  comboMultiplier,
+  pickResultMessage,
+} from './data.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -94,6 +99,8 @@ export class GameUI {
       finalRound: document.querySelector('#final-round'),
       finalLargestClear: document.querySelector('#final-largest-clear'),
       newRecord: document.querySelector('#new-record'),
+      resultBestCompare: document.querySelector('#result-best-compare'),
+      resultPreviousCompare: document.querySelector('#result-previous-compare'),
       resultMessage: document.querySelector('#result-message'),
       toast: document.querySelector('#toast'),
     };
@@ -747,7 +754,7 @@ export class GameUI {
   }
 
   setPlayCharacter(pose, duration = 0) {
-    const next = CHARACTER_ASSETS[pose] ? pose : 'peek';
+    const next = CHARACTER_ASSETS[pose] ? pose : 'idle';
     const token = ++this.characterToken;
     clearTimeout(this.characterTimer);
     const image = this.elements.playCat;
@@ -762,9 +769,9 @@ export class GameUI {
       image.dataset.pose = next;
       void image.offsetWidth;
       image.classList.add('is-switching');
-      if (duration > 0 && next !== 'peek') {
+      if (duration > 0 && next !== 'idle') {
         this.characterTimer = setTimeout(() => {
-          if (token === this.characterToken) this.setPlayCharacter('peek');
+          if (token === this.characterToken) this.setPlayCharacter('idle');
         }, duration);
       }
     };
@@ -882,7 +889,7 @@ export class GameUI {
     this.elements.rankingBest.textContent = text;
   }
 
-  showResult({ score, maxCombo, round, maxClearCells, newRecord, previousBest }) {
+  showResult({ score, maxCombo, round, maxClearCells, newRecord, previousBest, previousScore }) {
     this.elements.finalScore.textContent = score.toLocaleString('ko-KR');
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
@@ -890,25 +897,23 @@ export class GameUI {
     this.elements.newRecord.hidden = !newRecord;
     this.elements.resultDecor.classList.toggle('is-record', newRecord);
 
-    let resultMessageType = 'resultNormal';
     if (newRecord) {
       this.setResultCharacter('success');
-      resultMessageType = 'record';
     } else if (score < 900) {
       this.setResultCharacter('fail');
-      resultMessageType = 'resultLow';
     } else if (score >= 2500) {
       this.setResultCharacter('success');
-      resultMessageType = 'resultHigh';
     } else {
       this.setResultCharacter('cheer');
-      resultMessageType = 'resultNormal';
     }
 
-    const gap = Math.max(0, previousBest - score);
-    const message = !newRecord && gap > 0
-      ? `최고기록까지 ${gap.toLocaleString('ko-KR')}점 남았어`
-      : pickMessage(resultMessageType, this.lastResultMessage);
+    const comparison = buildScoreComparisons(score, previousScore, previousBest);
+    this.elements.resultBestCompare.textContent = comparison.bestText;
+    this.elements.resultBestCompare.dataset.tone = comparison.bestTone;
+    this.elements.resultPreviousCompare.textContent = comparison.previousText;
+    this.elements.resultPreviousCompare.dataset.tone = comparison.previousTone;
+
+    const message = pickResultMessage(score, { newRecord, previous: this.lastResultMessage });
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
     this.showScreen('result');

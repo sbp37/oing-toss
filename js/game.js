@@ -14,7 +14,7 @@ import { BoardItemField } from './board-items.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
-import { storageAdapter, rankingAdapter, runtimeConfig, useFutureItem } from './adapters.js';
+import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
 import { preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import {
   isSoundEnabled,
@@ -28,6 +28,7 @@ import {
   playRoundClearSound,
   playSelectionSound,
   playShuffleSound,
+  playStartSound,
   playSuccessSound,
   playMegaBombSound,
   setSoundEnabled,
@@ -68,6 +69,7 @@ class OingGame {
     this.tutorialActive = false;
     this.waitingForFirstDrag = false;
     this.lastCatMessage = '';
+    this.lastResultSummary = null;
     this.state = this.freshState();
     this.input = attachStickyRectangleInput({
       boardEl: this.ui.board,
@@ -132,6 +134,7 @@ class OingGame {
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
+    document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
     document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
     document.querySelector('#sound-toggle').addEventListener('click', () => {
       this.settings.sound = !this.settings.sound;
@@ -156,7 +159,12 @@ class OingGame {
 
   start() {
     this.stopTimer();
-    unlockAudio();
+    if (this.settings.sound) {
+      unlockAudio().then((ready) => {
+        if (ready && this.state.running) playStartSound();
+        else if (!ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
+      });
+    }
     this.inventory = createRunInventory();
     this.state = this.freshState();
     this.boardItems.reset();
@@ -170,8 +178,9 @@ class OingGame {
     this.buildRound();
     this.ui.updateItems(this.state.items);
     this.ui.showScreen('play');
-    this.ui.setPlayCharacter('peek');
+    this.ui.setPlayCharacter('idle');
     this.showCatMessage('start');
+    if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();
     window.setTimeout(() => this.maybeShowTutorial(), 180);
     if (!this.waitingForFirstDrag) this.beginCountdown();
@@ -654,22 +663,26 @@ class OingGame {
     this.tutorialActive = false;
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
-    this.ui.showMessage('시간 끝! 잘했어!');
+    this.ui.showMessage('시간 끝! 끝까지 멋졌다냥!');
     this.ui.setPlayCharacter(this.state.score >= 1200 ? 'success' : 'cheer');
     playGameOverSound();
     await this.ui.animateGameEnd();
     const oldBest = storageAdapter.getBestScore();
+    const previousScore = storageAdapter.getLastScore();
     const newRecord = this.state.score > oldBest;
     if (newRecord) storageAdapter.saveBestScore(this.state.score);
     this.ui.updateBestScore(Math.max(oldBest, this.state.score));
-    this.ui.showResult({
+    this.lastResultSummary = {
       score: this.state.score,
       maxCombo: this.state.maxCombo,
       round: this.state.round,
       maxClearCells: this.state.maxClearCells,
       newRecord,
       previousBest: oldBest,
-    });
+      previousScore,
+    };
+    this.ui.showResult(this.lastResultSummary);
+    storageAdapter.saveRunScore(this.state.score);
   }
 
   goHome() {
@@ -689,6 +702,18 @@ class OingGame {
     await rankingAdapter.open();
     this.ui.updateBestScore(storageAdapter.getBestScore());
     this.ui.setOverlay('ranking-overlay', true);
+  }
+
+  async shareResult() {
+    if (!this.lastResultSummary) return;
+    const button = document.querySelector('#share-button');
+    if (button?.disabled) return;
+    if (button) button.disabled = true;
+    const result = await shareAdapter.shareResult(this.lastResultSummary);
+    if (button) button.disabled = false;
+    if (result.ok && result.method === 'clipboard') this.ui.toast('점수와 링크를 복사했다냥!');
+    else if (result.ok) this.ui.toast('공유창을 열었다냥!');
+    else if (result.reason !== 'cancelled') this.ui.toast('이 브라우저에선 공유가 어렵다냥');
   }
 
   updateHUD() {

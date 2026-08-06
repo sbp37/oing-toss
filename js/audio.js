@@ -1,5 +1,6 @@
 let enabled = true;
 let context = null;
+let primed = false;
 
 function getContext() {
   if (!enabled) return null;
@@ -37,14 +38,37 @@ function tone(frequency, startOffset, duration, volume = 0.1, type = 'sine') {
 export function setSoundEnabled(value) {
   enabled = Boolean(value);
   if (!enabled && context?.state === 'running') context.suspend().catch(() => {});
+  if (enabled && context?.state === 'suspended') context.resume().catch(() => {});
 }
 
 export function isSoundEnabled() {
   return enabled;
 }
 
-export function unlockAudio() {
-  getContext();
+export async function unlockAudio() {
+  const ctx = getContext();
+  if (!ctx) return false;
+  try {
+    if (ctx.state === 'suspended') await ctx.resume();
+    if (!primed && ctx.state === 'running') {
+      const source = ctx.createBufferSource();
+      source.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      source.connect(ctx.destination);
+      source.start(ctx.currentTime);
+      primed = true;
+    }
+    return ctx.state === 'running';
+  } catch {
+    return false;
+  }
+}
+
+export function playStartSound() {
+  const ctx = getContext();
+  if (!ctx || ctx.state !== 'running') return;
+  const now = ctx.currentTime;
+  scheduleTone(ctx, 659.25, now, 0.11, 0.075, 'sine', 0.008);
+  scheduleTone(ctx, 880, now + 0.08, 0.16, 0.09, 'sine', 0.008);
 }
 
 export function playSelectionSound(sum = 0) {

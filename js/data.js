@@ -57,32 +57,104 @@ export const PRODUCT_CATALOG = Object.freeze({
 });
 
 export const MESSAGES = Object.freeze({
-  start: Object.freeze(['10을 찾아볼까냥?', '합10, 준비됐지?']),
-  firstSuccess: Object.freeze(['오잉! 바로 찾았네!', '딱 10이야!']),
-  success: Object.freeze(['좋아!', '깔끔했어!', '바로 그거야!']),
-  combo3: Object.freeze(['손이 좀 빠른데?', '콤보가 붙었어!']),
-  combo5: Object.freeze(['지금 완전 감 잡았어!', '좋아, 계속 이어가자!']),
-  combo8: Object.freeze(['오잉, 멈출 수가 없는데?', '완전 신났다냥!']),
-  fail: Object.freeze(['앗, 이건 10이 아니네', '조금 아까웠어', '다시 골라보자!']),
-  hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?']),
-  shuffle: Object.freeze(['한번 섞어볼까?', '새 보드에서 찾아보자!']),
-  bomb: Object.freeze(['펑! 시원하게 뚫렸어!', '좋아, 길이 열렸어!']),
-  megabomb: Object.freeze(['오잉! 이건 크게 터진다!', '메가폭탄, 시원하게 간다!']),
-  clock: Object.freeze(['시간을 조금 더 챙겼어!', '8초 더 달려보자!']),
-  itemDrop: Object.freeze(['아이템이 나왔어! 톡 눌러봐!', '오잉, 선물이 떨어졌어!']),
-  round: Object.freeze(['다음 판도 바로 가자!', '좋아, 한 판 더!']),
-  lowTime: Object.freeze(['조금만 더!', '시간이 얼마 없어!']),
-  resultHigh: Object.freeze(['이번 판 정말 좋았어!', '아주 잘 풀었어!']),
-  resultNormal: Object.freeze(['제법 잘했어!', '이번 판 좋았어!']),
-  resultLow: Object.freeze(['아깝다, 한 번 더!', '다음 판엔 된다냥!']),
-  record: Object.freeze(['새 최고기록이야!', '최고점수 갱신!']),
+  start: Object.freeze(['10을 찾아보자냥!', '슥 밀어서 10이다냥!', '준비됐으면 바로 가자냥!']),
+  firstSuccess: Object.freeze(['오잉, 바로 찾았다냥!', '딱 10이다냥!', '첫 조합부터 좋다냥!']),
+  success: Object.freeze(['좋다냥!', '깔끔하다냥!', '바로 그거다냥!', '눈에 쏙 들어왔다냥!']),
+  combo3: Object.freeze(['손이 빠르다냥!', '콤보가 착착 붙는다냥!', '감이 올라온다냥!']),
+  combo5: Object.freeze(['지금 완전 감 잡았다냥!', '계속 이어가자냥!', '숫자가 다 보이나 보다냥!']),
+  combo8: Object.freeze(['완전 신났다냥!', '손가락에 날개 달렸냥?', '집중력이 폭발했다냥!']),
+  fail: Object.freeze(['앗, 10이 아니다냥', '조금 아깝다냥', '다시 골라보자냥']),
+  hint: Object.freeze(['여기 한번 보라냥!', '이쪽이 수상하다냥!', '반짝이는 칸을 이어보라냥!']),
+  shuffle: Object.freeze(['한번 섞어보자냥!', '새 판에서 다시 찾아보자냥!', '숫자들 자리 바꾼다냥!']),
+  bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
+  megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
+  clock: Object.freeze(['시간을 더 챙겼다냥!', '8초 더 달려보자냥!']),
+  itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
+  round: Object.freeze(['다음 판도 바로 가자냥!', '더 찾아보자냥!', '새 판도 끊지 말고 가자냥!']),
+  lowTime: Object.freeze(['조금만 더다냥!', '시간이 얼마 없다냥!', '마지막까지 눈 크게 뜨라냥!']),
+  resultLow: Object.freeze([
+    '워밍업 한 판이었다고 생각하면 딱이다냥',
+    '처음엔 다 이렇다냥, 몇 판 더 하면 확 달라진다냥',
+    '몸 풀렸으니 이제 진짜 시작이다냥',
+    '합10 조합이 눈에 익으면 확 빨라진다냥',
+  ]),
+  resultNormal: Object.freeze([
+    '숫자 조합이 눈에 들어오기 시작했다냥',
+    '한 판 한 판 늘고 있다냥, 이 감각 기억해두라냥',
+    '감은 잡았다냥, 이제 속도만 올리면 된다냥',
+    '오, 이번 판 흐름 괜찮았다냥?',
+  ]),
+  resultHigh: Object.freeze([
+    '속도가 장난 아니다냥',
+    '숫자가 다 보이나 보다냥',
+    '콤보 타이밍이 예술이다냥',
+    '완전 고수의 향기다냥...!',
+  ]),
+  resultLegend: Object.freeze([
+    '오잉게임 마스터 인정이다냥',
+    '오늘의 오잉왕 후보 확정이다냥',
+    '이런 점수는 자랑부터 해야 한다냥',
+  ]),
+  record: Object.freeze(['새 최고기록이다냥!', '최고점수를 갈아치웠다냥!', '오늘 기록은 오래 남겠다냥!']),
 });
 
-export function pickMessage(type, previous = '') {
+export function pickMessage(type, previous = '', random = Math.random) {
   const pool = MESSAGES[type] || MESSAGES.success;
   const candidates = pool.filter((message) => message !== previous);
   const options = candidates.length ? candidates : pool;
-  return options[Math.floor(Math.random() * options.length)];
+  const index = Math.min(options.length - 1, Math.floor(Math.max(0, random()) * options.length));
+  return options[index];
+}
+
+export function resultMessageType(score, newRecord = false) {
+  if (newRecord) return 'record';
+  if (score < 900) return 'resultLow';
+  if (score < 2800) return 'resultNormal';
+  if (score < 6000) return 'resultHigh';
+  return 'resultLegend';
+}
+
+export function pickResultMessage(score, { newRecord = false, previous = '', random = Math.random } = {}) {
+  return pickMessage(resultMessageType(score, newRecord), previous, random);
+}
+
+export function buildScoreComparisons(score, previousScore, previousBest) {
+  const current = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  const last = previousScore === null || previousScore === undefined
+    ? null
+    : Math.max(0, Math.round(Number(previousScore) || 0));
+
+  let bestText = '첫 기록을 만들었다냥!';
+  let bestTone = 'first';
+  if (best > 0 && current > best) {
+    bestText = `최고기록보다 +${(current - best).toLocaleString('ko-KR')}점이다냥!`;
+    bestTone = 'up';
+  } else if (best > 0 && current < best) {
+    const gap = best - current;
+    if (current === 0) bestText = `최고기록까지 ${gap.toLocaleString('ko-KR')}점 남았다냥`;
+    else if (gap <= 150) bestText = `최고기록까지 딱 ${gap.toLocaleString('ko-KR')}점 차이다냥!`;
+    else bestText = `최고 기록의 ${Math.round((current / best) * 100)}%까지 왔다냥`;
+    bestTone = 'down';
+  } else if (best > 0) {
+    bestText = '최고기록과 똑같이 해냈다냥!';
+    bestTone = 'same';
+  }
+
+  let previousText = '첫 완주 기록을 차곡차곡 남겼다냥';
+  let previousTone = 'first';
+  if (last !== null && current > last) {
+    previousText = `지난 판보다 +${(current - last).toLocaleString('ko-KR')}점 올랐다냥!`;
+    previousTone = 'up';
+  } else if (last !== null && current < last) {
+    previousText = `지난 판보다 ${(last - current).toLocaleString('ko-KR')}점 낮지만 감은 살아 있다냥`;
+    previousTone = 'down';
+  } else if (last !== null) {
+    previousText = '지난 판과 똑같은 점수다냥!';
+    previousTone = 'same';
+  }
+
+  return { bestText, bestTone, previousText, previousTone };
 }
 
 export function comboMultiplier(combo) {

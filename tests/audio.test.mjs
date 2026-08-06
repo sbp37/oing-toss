@@ -99,6 +99,12 @@ test('success sound keeps the original OING note sequence', () => {
   assert.equal(oscillators[3].frequency.events[0].value, 1800);
 });
 
+test('start sound confirms mobile audio unlock with a short two-note cue', async () => {
+  assert.equal(await audio.unlockAudio(), true);
+  const oscillators = newOscillators(() => audio.playStartSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [659.25, 880]);
+});
+
 test('combo sound rises with the chain and uses the high milestone arpeggio', () => {
   const combo2 = newOscillators(() => audio.playComboSound(2));
   const combo5 = newOscillators(() => audio.playComboSound(5));
