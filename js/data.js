@@ -16,6 +16,21 @@ export const ITEM_DEFINITIONS = Object.freeze({
   clover: { id: 'clover', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/clover.webp' },
 });
 
+// Prices and display names must come from the Apps in Toss IAP product list.
+// These local records only define what a verified order will grant later.
+export const PRODUCT_CATALOG = Object.freeze({
+  hint5: Object.freeze({ sku: 'oing.hint.5', type: 'consumable', status: 'iap-not-connected', grants: Object.freeze({ hint: 5 }) }),
+  shuffle5: Object.freeze({ sku: 'oing.shuffle.5', type: 'consumable', status: 'iap-not-connected', grants: Object.freeze({ shuffle: 5 }) }),
+  bomb3: Object.freeze({ sku: 'oing.bomb.3', type: 'consumable', status: 'item-not-implemented', grants: Object.freeze({ bomb: 3 }) }),
+  clock3: Object.freeze({ sku: 'oing.clock.3', type: 'consumable', status: 'item-not-implemented', grants: Object.freeze({ clock: 3 }) }),
+  starter: Object.freeze({
+    sku: 'oing.starter.1',
+    type: 'consumable',
+    status: 'item-not-implemented',
+    grants: Object.freeze({ hint: 5, shuffle: 5, bomb: 2, clock: 2 }),
+  }),
+});
+
 export const MESSAGES = Object.freeze({
   start: Object.freeze(['10을 찾아볼까냥?', '합10, 준비됐지?']),
   firstSuccess: Object.freeze(['오잉! 바로 찾았네!', '딱 10이야!']),

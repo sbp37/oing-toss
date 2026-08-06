@@ -1,5 +1,6 @@
-import { GAME_DURATION_SECONDS, ITEM_DEFINITIONS, COMBO_WINDOW_MS, getRoundConfig, pickMessage, scoreForClear } from './data.js';
+import { GAME_DURATION_SECONDS, COMBO_WINDOW_MS, getRoundConfig, pickMessage, scoreForClear } from './data.js';
 import { BoardModel } from './board.js';
+import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, runtimeConfig, useFutureItem } from './adapters.js';
@@ -37,6 +38,7 @@ class OingGame {
     this.model = new BoardModel(4);
     this.runtime = runtimeConfig();
     this.settings = storageAdapter.getSettings();
+    this.inventory = createRunInventory();
     this.timer = null;
     this.endAt = 0;
     this.pauseStartedAt = 0;
@@ -85,10 +87,7 @@ class OingGame {
       comboExpiresAt: 0,
       successCount: 0,
       maxClearCells: 0,
-      items: {
-        hint: ITEM_DEFINITIONS.hint.initial,
-        shuffle: ITEM_DEFINITIONS.shuffle.initial,
-      },
+      items: this.inventory.snapshot(),
     };
   }
 
@@ -130,6 +129,7 @@ class OingGame {
   start() {
     this.stopTimer();
     unlockAudio();
+    this.inventory = createRunInventory();
     this.state = this.freshState();
     this.inputGuardUntil = 0;
     this.state.running = true;
@@ -284,7 +284,7 @@ class OingGame {
   }
 
   useHint() {
-    if (!this.canUseItem() || this.state.items.hint <= 0) return;
+    if (!this.canUseItem() || !this.inventory.canConsume('hint')) return;
     this.beginFirstInteraction();
     const answer = this.model.findAnswer();
     if (!answer) {
@@ -292,8 +292,8 @@ class OingGame {
       this.ui.toast('가능한 보드를 준비했어!');
       return;
     }
-    this.state.items.hint -= 1;
-    this.ui.updateItems(this.state.items);
+    if (!this.inventory.consume('hint').ok) return;
+    this.syncInventory();
     this.ui.showHint(answer);
     this.showCatMessage('hint');
     this.ui.setPlayCharacter('wave', 900);
@@ -302,15 +302,18 @@ class OingGame {
   }
 
   async useShuffle() {
-    if (!this.canUseItem() || this.state.items.shuffle <= 0) return;
+    if (!this.canUseItem() || !this.inventory.canConsume('shuffle')) return;
     this.beginFirstInteraction();
     this.state.inputLocked = true;
     const success = this.model.shuffleRemaining();
     if (!success) {
       this.buildRound();
     }
-    this.state.items.shuffle -= 1;
-    this.ui.updateItems(this.state.items);
+    if (!this.inventory.consume('shuffle').ok) {
+      this.state.inputLocked = false;
+      return;
+    }
+    this.syncInventory();
     this.showCatMessage('shuffle');
     playShuffleSound();
     itemHaptic();
@@ -322,6 +325,17 @@ class OingGame {
 
   canUseItem() {
     return this.state.running && !this.state.paused && !this.state.inputLocked;
+  }
+
+  syncInventory() {
+    this.state.items = this.inventory.snapshot();
+    this.ui.updateItems(this.state.items);
+  }
+
+  grantItems(grants, metadata = {}) {
+    const result = this.inventory.grantBundle(grants, metadata);
+    if (result.ok) this.syncInventory();
+    return result;
   }
 
   tick() {

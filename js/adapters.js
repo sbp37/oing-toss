@@ -44,6 +44,23 @@ export const rankingAdapter = {
   },
 };
 
+// Boundary for the future Apps in Toss IAP SDK. The web prototype intentionally
+// stays disabled; paid grants must be verified by a server before reaching the
+// inventory ledger with source="iap" and a stable order/grant ID.
+export const purchaseAdapter = Object.freeze({
+  mode: 'disabled',
+  supportsPurchases: false,
+  async listProducts() {
+    return [];
+  },
+  async purchase() {
+    return { ok: false, reason: 'iap-not-connected' };
+  },
+  async restorePendingOrders() {
+    return [];
+  },
+});
+
 export function runtimeConfig() {
   const params = new URLSearchParams(location.search);
   const testMode = params.get('test') === '1';

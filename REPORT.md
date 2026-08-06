@@ -217,6 +217,16 @@ node serve.mjs
 ```
 
 브라우저에서 `http://127.0.0.1:8766/`을 연다.
+# Monetization-ready inventory boundary (2026-08-06)
+
+- Replaced direct hint/shuffle counter mutation with `InventoryLedger` while preserving the visible starting counts and item behavior.
+- Added atomic bundle grants and source metadata for run, earned, rewarded-ad, IAP, and support grants.
+- IAP-source grants require a stable order/grant ID and repeated IDs are idempotent, preventing duplicate client-side grants.
+- Added a disabled purchase adapter plus planned SKU/grant records. No payment UI, price, Apps in Toss SDK, server, advertisement, or purchasable product is active in the public build.
+- Bomb, clock, freeze, and clover remain hidden and unimplemented; their planned products cannot be sold before their gameplay and restoration paths are ready.
+- Paid inventory is explicitly documented as server-authoritative; localStorage is not used for paid balances.
+- Added four inventory tests covering free counts, safe consumption, IAP idempotency, and atomic bundle validation. All nine project tests pass.
+
 # Combo, round, and final-countdown tuning (2026-08-06)
 
 - Preserved `attachStickyRectangleInput()`, `cellFromPoint()`, and the approved pointer event flow without edits.
