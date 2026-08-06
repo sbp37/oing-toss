@@ -207,7 +207,7 @@
 
 ## 11. 다음 아이템 구현 준비 상태
 
-`ITEM_DEFINITIONS`에 `bomb`, `clock`, `freeze`, `clover`의 에셋 경로, `implemented: false`, `useFutureItem` 훅이 등록되어 있다. 화면에는 노출하지 않았다. 향후 각 효과 로직만 훅에 연결하면 기존 아이템 버튼 구조와 같은 방식으로 추가할 수 있다.
+`bomb`과 `clock`은 현재 실제 플레이 아이템으로 연결했다. `freeze`와 `clover`는 에셋 경로와 `useFutureItem` 훅만 유지하며 화면에는 노출하지 않는다.
 
 ## 로컬 실행
 
@@ -223,9 +223,10 @@ node serve.mjs
 - Added atomic bundle grants and source metadata for run, earned, rewarded-ad, IAP, and support grants.
 - IAP-source grants require a stable order/grant ID and repeated IDs are idempotent, preventing duplicate client-side grants.
 - Added a disabled purchase adapter plus planned SKU/grant records. No payment UI, price, Apps in Toss SDK, server, advertisement, or purchasable product is active in the public build.
-- Bomb, clock, freeze, and clover remain hidden and unimplemented; their planned products cannot be sold before their gameplay and restoration paths are ready.
+- Bomb and clock have playable free-run implementations, but their planned products remain disabled until purchase verification and restoration are connected.
+- Freeze and clover remain hidden and unimplemented.
 - Paid inventory is explicitly documented as server-authoritative; localStorage is not used for paid balances.
-- Added four inventory tests covering free counts, safe consumption, IAP idempotency, and atomic bundle validation. All nine project tests pass.
+- Added four inventory tests covering free counts, safe consumption, IAP idempotency, and atomic bundle validation.
 
 # Combo, round, and final-countdown tuning (2026-08-06)
 
@@ -245,3 +246,15 @@ node serve.mjs
 - Reused WebAudio behavior: `playSuccess`, `playComboUp`, `playCombo7`, `playWrongSoft`, `playHint`, `playShuffleSoft`, `playStagePass`, and `playGameOver`.
 - The original success/combo/game-over effects are synthesized in code rather than stored sound files. The item-only Base64 MP3 data was not copied.
 - The v2 result screen now waits for a 1.05 second board-level `TIME UP!` transition before showing results, mirroring the original game's short result delay without copying its screen structure.
+
+# Bomb and clock prototype items (2026-08-06)
+
+- Every run now includes one free bomb and one free clock alongside the existing hint and shuffle counts.
+- Bomb selection locks drag input, lets the player choose one tile, clears the clamped 3×3 neighborhood, awards the original OING-style `removed value sum + 20`, and carries the active combo without advancing the round goal.
+- Clock adds eight seconds to both the visible state and the running timer deadline.
+- Reused the original OING `playBomb()` impact/shard idea and `playClock()` 880/1320/1760 bell sequence from the read-only source. No Base64 audio was copied.
+- Empty cells keep the same tile-sized board grid, and a bomb that leaves no sum-10 rectangle triggers the existing guaranteed-answer board recovery.
+- Verified the 2×2 item layout at 320×720, 360×780, 390×844, and 430×932 with no horizontal or vertical document overflow and no clipped buttons.
+- Actual browser interaction passed for bomb targeting/consumption, 3×3 removal, score/combo update, remaining-answer guarantee, clock consumption, and +8 seconds. Browser console errors: 0.
+- Automated suite: 11 tests passed, including bomb rectangle clamping, bomb scoring, audio note sequences, and item inventory consumption.
+- `js/input.js`, `attachStickyRectangleInput()`, `cellFromPoint()`, and the approved pointer flow were not changed.

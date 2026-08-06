@@ -1,5 +1,5 @@
-import { GAME_DURATION_SECONDS, COMBO_WINDOW_MS, getRoundConfig, pickMessage, scoreForClear } from './data.js';
-import { BoardModel } from './board.js';
+import { GAME_DURATION_SECONDS, COMBO_WINDOW_MS, getRoundConfig, pickMessage, scoreForBomb, scoreForClear } from './data.js';
+import { BoardModel, bombRect } from './board.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
@@ -8,6 +8,8 @@ import { preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import {
   isSoundEnabled,
   playComboSound,
+  playBombSound,
+  playClockSound,
   playCountdownTick,
   playFailSound,
   playGameOverSound,
@@ -21,6 +23,8 @@ import {
 } from './audio.js';
 import {
   failHaptic,
+  bombHaptic,
+  clockHaptic,
   countdownHaptic,
   isHapticEnabled,
   itemHaptic,
@@ -78,6 +82,7 @@ class OingGame {
       running: false,
       paused: false,
       inputLocked: false,
+      activeItem: null,
       score: 0,
       combo: 0,
       maxCombo: 0,
@@ -100,6 +105,14 @@ class OingGame {
     document.querySelector('#pause-home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#hint-button').addEventListener('click', () => this.useHint());
     document.querySelector('#shuffle-button').addEventListener('click', () => this.useShuffle());
+    document.querySelector('#bomb-button').addEventListener('click', () => this.toggleBombTargeting());
+    document.querySelector('#clock-button').addEventListener('click', () => this.useClock());
+    this.ui.board.addEventListener('click', (event) => {
+      if (this.state.activeItem !== 'bomb') return;
+      const tile = event.target.closest('.tile');
+      if (!tile || !this.ui.board.contains(tile)) return;
+      this.useBombAt(Number(tile.dataset.row), Number(tile.dataset.col));
+    });
     document.querySelector('#home-settings-button').addEventListener('click', () => this.ui.setOverlay('settings-overlay', true));
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
@@ -137,6 +150,7 @@ class OingGame {
     this.lastCountdownSecond = null;
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
     this.ui.setOverlay('pause-overlay', false);
+    this.ui.setBombTargeting(false);
     this.buildRound();
     this.ui.updateItems(this.state.items);
     this.ui.showScreen('play');
@@ -270,6 +284,7 @@ class OingGame {
   }
 
   async clearRound() {
+    this.cancelActiveItem();
     roundHaptic();
     playRoundClearSound();
     this.ui.showRoundClear();
@@ -323,6 +338,99 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
+  toggleBombTargeting() {
+    if (this.state.activeItem === 'bomb') {
+      this.cancelActiveItem();
+      this.showCatMessage('start');
+      return;
+    }
+    if (!this.canUseItem() || !this.inventory.canConsume('bomb')) return;
+    this.beginFirstInteraction();
+    this.input.cancel();
+    this.state.activeItem = 'bomb';
+    this.state.inputLocked = true;
+    this.ui.setBombTargeting(true);
+    this.showCatMessage('bombPrompt');
+    this.ui.setPlayCharacter('wave', 1000);
+    itemHaptic();
+  }
+
+  cancelActiveItem() {
+    if (this.state.activeItem !== 'bomb') return;
+    this.state.activeItem = null;
+    this.state.inputLocked = false;
+    this.ui.setBombTargeting(false);
+  }
+
+  async useBombAt(row, col) {
+    if (this.state.activeItem !== 'bomb' || !this.state.running || this.state.paused) return;
+    const rect = bombRect(this.model.size, row, col);
+    const stats = this.model.stats(rect);
+    if (stats.count === 0) {
+      this.ui.toast('숫자가 있는 칸을 골라줘!');
+      return;
+    }
+    if (!this.inventory.consume('bomb').ok) {
+      this.cancelActiveItem();
+      return;
+    }
+
+    this.state.activeItem = null;
+    this.ui.setBombTargeting(false);
+    this.syncInventory();
+    const previousCombo = this.state.combo;
+    const now = performance.now();
+    this.state.combo = this.state.combo > 0 && this.state.comboExpiresAt >= now
+      ? this.state.combo + 1
+      : 1;
+    this.state.comboExpiresAt = now + COMBO_WINDOW_MS;
+    this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
+    const points = scoreForBomb(stats.sum);
+    this.state.score += points;
+    this.updateHUD();
+    this.ui.showItemScoreBurst(points, rect, 'bomb');
+    this.showCatMessage('bomb');
+    this.ui.setPlayCharacter(this.state.combo >= 3 ? 'cheer' : 'success', 950);
+    playBombSound();
+    bombHaptic();
+    if ([3, 5, 8].includes(this.state.combo) && this.state.combo !== previousCombo) {
+      this.ui.showComboMoment(this.state.combo);
+      playComboSound(this.state.combo);
+    }
+
+    await this.ui.animateBomb(rect);
+    this.model.remove(rect);
+    this.ui.renderBoard(this.model);
+    const config = getRoundConfig(this.state.round);
+    if (!this.model.findAnswer()) {
+      this.model.generate(config.size);
+      this.ui.renderBoard(this.model);
+      this.ui.toast('새 보드로 바로 이어갈게!');
+    }
+    this.inputGuardUntil = performance.now() + 180;
+    this.state.inputLocked = false;
+    this.updateHUD();
+  }
+
+  useClock() {
+    if (!this.canUseItem() || !this.inventory.canConsume('clock')) return;
+    this.beginFirstInteraction();
+    if (!this.inventory.consume('clock').ok) return;
+    this.state.timeLeft = Math.min(999, this.state.timeLeft + 8);
+    if (this.timer) this.endAt += 8000;
+    if (this.state.timeLeft > 10) {
+      this.lowTimeSpoken = false;
+      this.lastCountdownSecond = null;
+    }
+    this.syncInventory();
+    this.updateHUD();
+    this.showCatMessage('clock');
+    this.ui.setPlayCharacter('cheer', 900);
+    playClockSound();
+    clockHaptic();
+    this.ui.animateClock(8);
+  }
+
   canUseItem() {
     return this.state.running && !this.state.paused && !this.state.inputLocked;
   }
@@ -363,6 +471,7 @@ class OingGame {
 
   pause() {
     if (!this.state.running || this.state.paused) return;
+    this.cancelActiveItem();
     this.state.paused = true;
     this.pauseStartedAt = performance.now();
     this.input.cancel();
@@ -378,6 +487,7 @@ class OingGame {
 
   async finish() {
     if (!this.state.running) return;
+    this.cancelActiveItem();
     this.state.running = false;
     this.state.inputLocked = true;
     this.state.timeLeft = 0;
@@ -406,6 +516,7 @@ class OingGame {
 
   goHome() {
     this.stopTimer();
+    this.cancelActiveItem();
     this.state.running = false;
     this.state.paused = false;
     this.input.cancel();

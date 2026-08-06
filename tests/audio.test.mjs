@@ -39,6 +39,18 @@ class GainMock extends NodeMock {
   }
 }
 
+class BufferSourceMock extends NodeMock {
+  start(time) { this.startTime = time; }
+}
+
+class BiquadFilterMock extends NodeMock {
+  constructor() {
+    super();
+    this.type = 'lowpass';
+    this.frequency = new AudioParamMock();
+  }
+}
+
 class AudioContextMock {
   constructor() {
     AudioContextMock.latest = this;
@@ -46,6 +58,8 @@ class AudioContextMock {
     this.state = 'running';
     this.destination = new NodeMock();
     this.oscillators = [];
+    this.sampleRate = 48000;
+    this.bufferSources = [];
   }
 
   createOscillator() {
@@ -55,6 +69,15 @@ class AudioContextMock {
   }
 
   createGain() { return new GainMock(); }
+  createBuffer(_channels, length) {
+    return { getChannelData: () => new Float32Array(length) };
+  }
+  createBufferSource() {
+    const source = new BufferSourceMock();
+    this.bufferSources.push(source);
+    return source;
+  }
+  createBiquadFilter() { return new BiquadFilterMock(); }
   resume() { this.state = 'running'; return Promise.resolve(); }
   suspend() { this.state = 'suspended'; return Promise.resolve(); }
 }
@@ -101,4 +124,16 @@ test('game over keeps the original layered six-note fanfare and sparkle', () => 
   assert.deepEqual(oscillators.slice(0, 12).map((item) => item.frequency.events[0].value), [392, 392, 523, 523, 659, 659, 784, 784, 659, 659, 784, 784]);
   assert.equal(oscillators.at(-1).type, 'triangle');
   assert.equal(oscillators.at(-1).frequency.events[0].value, 1200);
+});
+
+test('bomb sound keeps the original OING impact shards', () => {
+  const before = AudioContextMock.latest.bufferSources.length;
+  const oscillators = newOscillators(() => audio.playBombSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600]);
+  assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
+});
+
+test('clock sound keeps the original OING three-note bell', () => {
+  const oscillators = newOscillators(() => audio.playClockSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [880, 1320, 1760]);
 });

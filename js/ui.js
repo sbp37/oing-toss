@@ -81,8 +81,12 @@ export class GameUI {
       scoreBurst: document.querySelector('#score-burst'),
       hintCount: document.querySelector('#hint-count'),
       shuffleCount: document.querySelector('#shuffle-count'),
+      bombCount: document.querySelector('#bomb-count'),
+      clockCount: document.querySelector('#clock-count'),
       hintButton: document.querySelector('#hint-button'),
       shuffleButton: document.querySelector('#shuffle-button'),
+      bombButton: document.querySelector('#bomb-button'),
+      clockButton: document.querySelector('#clock-button'),
       homeBest: document.querySelector('#home-best-score'),
       rankingBest: document.querySelector('#ranking-best-score'),
       finalScore: document.querySelector('#final-score'),
@@ -457,6 +461,86 @@ export class GameUI {
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
   }
 
+  setBombTargeting(active) {
+    this.clearSelection();
+    this.board.classList.toggle('is-bomb-targeting', active);
+    this.elements.bombButton.classList.toggle('is-armed', active);
+    this.elements.bombButton.setAttribute('aria-pressed', String(active));
+  }
+
+  async animateBomb(rect) {
+    const bounds = this.selectionBounds(rect);
+    const tiles = cellsInRect(rect).map(({ r, c }) => this.tileAt(r, c)).filter(Boolean);
+    tiles.forEach((tile, index) => {
+      tile.style.setProperty('--blast-delay', `${Math.min(index * 22, 120)}ms`);
+      tile.classList.add('is-bombed');
+    });
+    if (bounds) {
+      const effect = document.createElement('div');
+      effect.className = 'bomb-fx';
+      effect.style.left = `${(bounds.left + bounds.right) / 2}px`;
+      effect.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
+      const icon = document.createElement('img');
+      icon.src = 'assets/icons/items/bomb.webp';
+      icon.alt = '';
+      effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      this.boardFrame.appendChild(effect);
+      setTimeout(() => effect.remove(), 720);
+    }
+    this.boardFrame.classList.add('bomb-kick');
+    await delay(470);
+    this.boardFrame.classList.remove('bomb-kick');
+  }
+
+  async animateClock(seconds = 8) {
+    const screen = this.elements.playScreen;
+    const start = this.elements.clockButton.getBoundingClientRect();
+    const target = this.elements.timePill.getBoundingClientRect();
+    const frame = screen.getBoundingClientRect();
+    const flight = document.createElement('div');
+    flight.className = 'clock-flight';
+    flight.style.left = `${start.left + start.width / 2 - frame.left}px`;
+    flight.style.top = `${start.top + start.height / 2 - frame.top}px`;
+    flight.style.setProperty('--clock-x', `${target.left + target.width / 2 - start.left - start.width / 2}px`);
+    flight.style.setProperty('--clock-y', `${target.top + target.height / 2 - start.top - start.height / 2}px`);
+    const icon = document.createElement('img');
+    icon.src = 'assets/icons/hud/time.webp';
+    icon.alt = '';
+    const label = document.createElement('strong');
+    label.textContent = `+${seconds}초`;
+    flight.append(icon, label);
+    screen.appendChild(flight);
+    this.elements.timePill.classList.remove('is-time-added');
+    void this.elements.timePill.offsetWidth;
+    this.elements.timePill.classList.add('is-time-added');
+    await delay(620);
+    flight.remove();
+    this.elements.timePill.classList.remove('is-time-added');
+  }
+
+  showItemScoreBurst(points, rect, kind) {
+    const bounds = this.selectionBounds(rect);
+    const burst = this.elements.scoreBurst;
+    const primary = document.createElement('strong');
+    primary.textContent = `+${points}`;
+    const detail = document.createElement('span');
+    detail.textContent = kind === 'bomb' ? '폭탄 보너스' : '아이템 보너스';
+    burst.replaceChildren(primary, detail);
+    burst.dataset.level = '1';
+    burst.dataset.item = kind;
+    if (bounds) {
+      burst.style.left = `${(bounds.left + bounds.right) / 2}px`;
+      burst.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
+    }
+    burst.classList.remove('is-visible');
+    void burst.offsetWidth;
+    burst.classList.add('is-visible');
+    setTimeout(() => {
+      burst.classList.remove('is-visible');
+      delete burst.dataset.item;
+    }, 760);
+  }
+
   showScoreBurst(points, rect, size, combo, cellCount) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
@@ -700,15 +784,23 @@ export class GameUI {
     this.elements.goalFill.style.width = `${Math.min(100, (progress / target) * 100)}%`;
   }
 
-  updateItems({ hint, shuffle }) {
+  updateItems({ hint, shuffle, bomb, clock }) {
     this.elements.hintCount.textContent = String(hint);
     this.elements.shuffleCount.textContent = String(shuffle);
+    this.elements.bombCount.textContent = String(bomb);
+    this.elements.clockCount.textContent = String(clock);
     this.elements.hintButton.disabled = hint <= 0;
     this.elements.shuffleButton.disabled = shuffle <= 0;
+    this.elements.bombButton.disabled = bomb <= 0;
+    this.elements.clockButton.disabled = clock <= 0;
     this.elements.hintButton.classList.toggle('is-depleted', hint <= 0);
     this.elements.shuffleButton.classList.toggle('is-depleted', shuffle <= 0);
+    this.elements.bombButton.classList.toggle('is-depleted', bomb <= 0);
+    this.elements.clockButton.classList.toggle('is-depleted', clock <= 0);
     this.elements.hintButton.setAttribute('aria-label', `힌트, ${hint}회 남음`);
     this.elements.shuffleButton.setAttribute('aria-label', `섞기, ${shuffle}회 남음`);
+    this.elements.bombButton.setAttribute('aria-label', `폭탄, ${bomb}회 남음`);
+    this.elements.clockButton.setAttribute('aria-label', `시계, ${clock}회 남음`);
   }
 
   updateBestScore(score) {

@@ -126,6 +126,41 @@ export function playShuffleSound() {
   }
 }
 
+// Original OING playBomb(): low filtered impact noise plus three bright shards.
+export function playBombSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.3), ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.05));
+  }
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  source.buffer = buffer;
+  filter.type = 'lowpass';
+  filter.frequency.value = 400;
+  gain.gain.setValueAtTime(0.42, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+  source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  source.start(now);
+  [800, 1200, 600].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.04, 0.12, 0.1, 'sine', 0.005);
+  });
+}
+
+// Original OING playClock(): a clear three-note bell.
+export function playClockSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [880, 1320, 1760].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.1, 0.5, 0.18, 'sine', 0.01);
+  });
+}
+
 export function playRoundClearSound() {
   const ctx = getContext();
   if (!ctx) return;

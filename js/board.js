@@ -64,6 +64,16 @@ export function normalizeRect(a, b) {
   };
 }
 
+export function bombRect(size, row, col) {
+  const last = Math.max(0, size - 1);
+  return {
+    r1: Math.max(0, row - 1),
+    r2: Math.min(last, row + 1),
+    c1: Math.max(0, col - 1),
+    c2: Math.min(last, col + 1),
+  };
+}
+
 export function rectKey(rect) {
   return `${rect.r1}:${rect.c1}:${rect.r2}:${rect.c2}`;
 }

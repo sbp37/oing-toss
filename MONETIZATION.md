@@ -5,12 +5,14 @@ contains the inventory boundary needed to add those systems later.
 
 ## Current behavior
 
-- Every run starts with three hints and two shuffles, exactly as before.
+- Every run starts with three hints, two shuffles, one bomb, and one clock.
 - `InventoryLedger` owns all item balances and consumption.
 - Grants identify their source as `earned`, `ad`, `iap`, or `support`.
 - IAP grants require a stable `grantId`; replaying the same ID is idempotent.
 - Bundle grants validate every item before changing any balance.
-- Bomb, clock, freeze, and clover remain hidden and unimplemented.
+- Bomb clears a 3x3 area and carries the current combo; clock adds eight seconds.
+- Bomb and clock are free prototype trials. No paid grant is connected yet.
+- Freeze and clover remain hidden and unimplemented.
 
 ## Future Apps in Toss flow
 

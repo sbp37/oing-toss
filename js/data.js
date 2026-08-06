@@ -10,8 +10,8 @@ export const ROUND_CONFIG = Object.freeze([
 export const ITEM_DEFINITIONS = Object.freeze({
   hint: { id: 'hint', initial: 3, implemented: true, asset: 'assets/icons/items/hint.webp' },
   shuffle: { id: 'shuffle', initial: 2, implemented: true, asset: 'assets/icons/items/shuffle.webp' },
-  bomb: { id: 'bomb', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/bomb.webp' },
-  clock: { id: 'clock', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/hud/time.webp' },
+  bomb: { id: 'bomb', initial: 1, implemented: true, asset: 'assets/icons/items/bomb.webp' },
+  clock: { id: 'clock', initial: 1, implemented: true, asset: 'assets/icons/hud/time.webp' },
   freeze: { id: 'freeze', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/freeze.webp' },
   clover: { id: 'clover', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/clover.webp' },
 });
@@ -21,12 +21,12 @@ export const ITEM_DEFINITIONS = Object.freeze({
 export const PRODUCT_CATALOG = Object.freeze({
   hint5: Object.freeze({ sku: 'oing.hint.5', type: 'consumable', status: 'iap-not-connected', grants: Object.freeze({ hint: 5 }) }),
   shuffle5: Object.freeze({ sku: 'oing.shuffle.5', type: 'consumable', status: 'iap-not-connected', grants: Object.freeze({ shuffle: 5 }) }),
-  bomb3: Object.freeze({ sku: 'oing.bomb.3', type: 'consumable', status: 'item-not-implemented', grants: Object.freeze({ bomb: 3 }) }),
-  clock3: Object.freeze({ sku: 'oing.clock.3', type: 'consumable', status: 'item-not-implemented', grants: Object.freeze({ clock: 3 }) }),
+  bomb3: Object.freeze({ sku: 'oing.bomb.3', type: 'consumable', status: 'iap-not-connected', grants: Object.freeze({ bomb: 3 }) }),
+  clock3: Object.freeze({ sku: 'oing.clock.3', type: 'consumable', status: 'iap-not-connected', grants: Object.freeze({ clock: 3 }) }),
   starter: Object.freeze({
     sku: 'oing.starter.1',
     type: 'consumable',
-    status: 'item-not-implemented',
+    status: 'iap-not-connected',
     grants: Object.freeze({ hint: 5, shuffle: 5, bomb: 2, clock: 2 }),
   }),
 });
@@ -41,6 +41,9 @@ export const MESSAGES = Object.freeze({
   fail: Object.freeze(['앗, 이건 10이 아니네', '조금 아까웠어', '다시 골라보자!']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?']),
   shuffle: Object.freeze(['한번 섞어볼까?', '새 보드에서 찾아보자!']),
+  bombPrompt: Object.freeze(['터뜨릴 칸을 골라봐!', '어디를 펑 해볼까?']),
+  bomb: Object.freeze(['펑! 시원하게 뚫렸어!', '좋아, 길이 열렸어!']),
+  clock: Object.freeze(['시간을 조금 더 챙겼어!', '8초 더 달려보자!']),
   round: Object.freeze(['다음 판도 바로 가자!', '좋아, 한 판 더!']),
   lowTime: Object.freeze(['조금만 더!', '시간이 얼마 없어!']),
   resultHigh: Object.freeze(['이번 판 정말 좋았어!', '아주 잘 풀었어!']),
@@ -65,6 +68,10 @@ export function scoreForClear(cellCount, combo) {
     ? 240
     : 240 + (cellCount - 2) * 180 + Math.max(0, cellCount - 3) * 35;
   return Math.round(base * comboMultiplier(combo));
+}
+
+export function scoreForBomb(valueSum) {
+  return Math.max(0, Math.round(Number(valueSum) || 0)) + 20;
 }
 
 export function getRoundConfig(round) {

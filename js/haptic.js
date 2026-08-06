@@ -36,6 +36,14 @@ export function itemHaptic() {
   vibrate([7, 20, 11]);
 }
 
+export function bombHaptic() {
+  vibrate([18, 22, 28]);
+}
+
+export function clockHaptic() {
+  vibrate([8, 24, 12]);
+}
+
 export function roundHaptic() {
   vibrate([10, 20, 14, 20, 22]);
 }

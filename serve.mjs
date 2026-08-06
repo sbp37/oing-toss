@@ -4,7 +4,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-const port = Number(process.env.PORT) || 8766;
+const port = Number(process.env.OING_PREVIEW_PORT || process.env.PORT) || 8766;
 const host = process.env.OING_PREVIEW_HOST || '127.0.0.1';
 const mime = {
   '.html': 'text/html; charset=utf-8',
