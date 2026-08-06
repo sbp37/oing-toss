@@ -141,8 +141,8 @@ export function buildScoreComparisons(score, previousScore, previousBest) {
     bestTone = 'same';
   }
 
-  let previousText = '첫 완주 기록을 차곡차곡 남겼다냥';
-  let previousTone = 'first';
+  let previousText = '';
+  let previousTone = '';
   if (last !== null && current > last) {
     previousText = `지난 판보다 +${(current - last).toLocaleString('ko-KR')}점 올랐다냥!`;
     previousTone = 'up';
@@ -154,7 +154,13 @@ export function buildScoreComparisons(score, previousScore, previousBest) {
     previousTone = 'same';
   }
 
-  return { bestText, bestTone, previousText, previousTone };
+  return {
+    bestText,
+    bestTone,
+    previousText,
+    previousTone,
+    hasPrevious: last !== null,
+  };
 }
 
 export function comboMultiplier(combo) {

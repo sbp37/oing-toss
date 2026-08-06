@@ -16,6 +16,8 @@
   <link rel="preload" href="assets/icons/items/bomb.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/icons/hud/time.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" crossorigin>
   <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-blush.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-peach.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-lemon.webp" as="image" type="image/webp">
@@ -151,8 +153,8 @@
         <strong class="final-score" id="final-score">0</strong>
         <div class="new-record" id="new-record" hidden>NEW RECORD</div>
         <div class="score-comparisons" aria-live="polite">
-          <p id="result-best-compare">첫 기록을 만들었다냥!</p>
-          <p id="result-previous-compare">첫 완주 기록을 차곡차곡 남겼다냥</p>
+          <p class="score-compare-primary" id="result-best-compare">첫 기록을 만들었다냥!</p>
+          <p class="score-compare-secondary" id="result-previous-compare" hidden></p>
         </div>
         <div class="result-grid">
           <div><span>최고 콤보</span><b id="final-combo">0</b></div>

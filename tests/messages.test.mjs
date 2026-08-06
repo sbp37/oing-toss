@@ -19,7 +19,11 @@ test('live cat messages keep the OING nyang voice across score tiers', () => {
 });
 
 test('score comparisons cover first run, previous run, record and near-record cases', () => {
-  assert.match(buildScoreComparisons(400, null, 0).bestText, /첫 기록/);
+  const firstRun = buildScoreComparisons(400, null, 0);
+  assert.match(firstRun.bestText, /첫 기록/);
+  assert.equal(firstRun.hasPrevious, false);
+  assert.equal(firstRun.previousText, '');
+  assert.equal(buildScoreComparisons(800, 500, 700).hasPrevious, true);
   assert.match(buildScoreComparisons(800, 500, 700).previousText, /\+300점/);
   assert.match(buildScoreComparisons(900, 1200, 1000).bestText, /100점 차이/);
   assert.match(buildScoreComparisons(1500, 1200, 1300).bestText, /\+200점/);

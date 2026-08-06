@@ -21,10 +21,11 @@
   --ink: #35445f;
   --muted: #7d8293;
   --gold: #f3b94f;
-  --font-display: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-display: "Oing Jua", "Pretendard Variable", Pretendard, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  font-family: "Arial Rounded MT Bold", "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 * {
@@ -480,7 +481,7 @@ img {
 
 .round-mini strong {
   color: var(--coral-deep);
-  font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  font-family: var(--font-display);
   font-size: 19px;
   font-weight: 400;
   line-height: 1;
@@ -508,7 +509,7 @@ img {
 }
 
 .time-readout strong {
-  font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  font-family: var(--font-display);
   font-size: 19px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
@@ -586,7 +587,7 @@ img {
   max-width: 122px;
   overflow: hidden;
   color: #3e536d;
-  font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  font-family: var(--font-display);
   font-size: 18px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
@@ -598,7 +599,7 @@ img {
 .combo-readout strong {
   min-width: 21px;
   color: var(--coral-deep);
-  font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  font-family: var(--font-display);
   font-size: 19px;
   font-weight: 400;
   text-align: right;
@@ -799,7 +800,7 @@ img {
   z-index: 2;
   font-size: clamp(18px, calc(62vw / var(--board-size)), 43px);
   line-height: 1;
-  font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  font-family: var(--font-display);
   font-weight: 400;
   color: #e58a25;
   text-shadow: 0 1.5px 0 rgba(255,255,255,0.82), 0 2.5px 2px rgba(73,61,48,0.06);
@@ -1222,7 +1223,7 @@ img {
 }
 
 .sum-bubble span { font-size: 14px; font-weight: 850; }
-.sum-bubble strong { min-width: 24px; color: var(--coral-deep); font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif; font-size: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.sum-bubble strong { min-width: 24px; color: var(--coral-deep); font-family: var(--font-display); font-size: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
 .sum-bubble.is-visible { opacity: 1; transform: translate(-50%, 0) scale(1); }
 .sum-bubble.is-ten { border-color: rgba(80,189,168,0.48); background: rgba(239,255,251,0.98); color: #3e897e; animation: sum-perfect 260ms cubic-bezier(.2,.9,.3,1.18) both; }
 .sum-bubble.is-ten strong { color: #259b89; }
@@ -1817,7 +1818,7 @@ img {
   position: absolute;
   z-index: 11;
   color: var(--coral-deep);
-  font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  font-family: var(--font-display);
   font-weight: 400;
   white-space: nowrap;
   text-shadow: 0 2px white, 0 4px 8px rgba(224,68,101,0.2);
@@ -1840,7 +1841,7 @@ img {
   border-radius: 999px;
   background: rgba(255, 251, 236, 0.92);
   color: #8b675f;
-  font-family: "Arial Rounded MT Bold", "Pretendard", system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 900;
   text-shadow: none;
@@ -2449,7 +2450,7 @@ img {
   background: var(--coral);
   box-shadow: 0 2px 0 #d95772;
   color: white;
-  font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(12px, 3.7vw, 15px);
   font-weight: 400;
 }
@@ -2515,14 +2516,14 @@ img {
 }
 
 .result-card > p { margin: 0 0 1px; color: #8b745d; font-size: 16px; font-weight: 800; }
-.final-score { display: block; color: #34445f; font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif; font-size: clamp(48px, 13vw, 56px); font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
+.final-score { display: block; color: #34445f; font-family: var(--font-display); font-size: clamp(48px, 13vw, 56px); font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
 .new-record { width: fit-content; margin: 5px auto 8px; padding: 3px 10px; border-radius: 99px; background: #fff0ae; color: #e56668; font-size: 11px; font-weight: 950; letter-spacing: 0.035em; }
 
 .score-comparisons {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   margin-top: 7px;
-  padding: 6px 9px;
+  padding: 7px 10px;
   border: 1px solid rgba(231, 203, 153, 0.54);
   border-radius: 13px;
   background: rgba(255, 247, 222, 0.62);
@@ -2531,9 +2532,20 @@ img {
 .score-comparisons p {
   margin: 0;
   color: #8a7866;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.3;
+}
+
+.score-compare-primary {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.score-compare-secondary {
+  padding-top: 4px;
+  border-top: 1px solid rgba(222, 198, 155, 0.46);
+  color: #9a8978;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 
 .score-comparisons p[data-tone="up"] { color: #32a48f; }
@@ -2549,7 +2561,7 @@ img {
 
 .result-grid > div { min-width: 0; padding: 6px 3px 3px; border-top: 1px solid rgba(222,198,155,0.64); }
 .result-grid span { display: block; margin-bottom: 1px; color: #917c69; font-size: 13px; font-weight: 800; white-space: nowrap; }
-.result-grid b { color: var(--coral-deep); font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif; font-size: 22px; font-weight: 400; }
+.result-grid b { color: var(--coral-deep); font-family: var(--font-display); font-size: 22px; font-weight: 400; }
 .result-grid b i { font: inherit; font-style: normal; }
 
 .result-cat-row {
@@ -2638,17 +2650,19 @@ img {
 .time-up img:last-child { width: 27px; height: 27px; }
 .time-up > div { display: grid; justify-items: center; line-height: 1; }
 .time-up small { margin-bottom: 4px; color: #9c806c; font-size: 12px; font-weight: 800; }
-.time-up strong { font-family: "Oing Jua", "Arial Rounded MT Bold", sans-serif; font-size: 27px; font-weight: 400; letter-spacing: 0.025em; }
+.time-up strong { font-family: var(--font-display); font-size: 27px; font-weight: 400; letter-spacing: 0.025em; }
 .time-up.is-visible { animation: time-up-pop 1050ms cubic-bezier(.18,.8,.24,1) both; }
 
 .board-frame.is-game-ending .board { animation: board-finish-settle 1050ms ease both; }
 .board-frame.is-game-ending .tile:not(.is-empty) { animation: tile-finish-settle 420ms ease both; animation-delay: calc((var(--row, 0) + var(--col, 0)) * 12ms); }
 
-.screen-result.is-entering > * { animation: result-soft-enter 620ms cubic-bezier(.2,.78,.25,1) both; }
-.screen-result.is-entering > :nth-child(2) { animation-delay: 45ms; }
-.screen-result.is-entering > :nth-child(3) { animation-delay: 90ms; }
-.screen-result.is-entering > :nth-child(4) { animation-delay: 135ms; }
-.screen-result.is-entering > :nth-child(5) { animation-delay: 180ms; }
+.screen-result.is-entering > * { animation: result-soft-enter 560ms cubic-bezier(.2,.78,.25,1) both; }
+.screen-result.is-entering > :nth-child(2) { animation-delay: 30ms; }
+.screen-result.is-entering > :nth-child(3) { animation-delay: 85ms; }
+.screen-result.is-entering > :nth-child(4) { animation-delay: 190ms; }
+.screen-result.is-entering > :nth-child(5) { animation-delay: 285ms; }
+.screen-result.is-entering .result-character-stage img { animation: result-cat-celebrate 560ms 230ms cubic-bezier(.18,.82,.2,1.16) both; }
+.final-score.is-counting { animation: result-score-count 680ms cubic-bezier(.2,.78,.25,1) both; }
 
 @keyframes time-up-pop {
   0% { opacity: 0; transform: translate(-50%, -38%) scale(0.82); }
@@ -2670,6 +2684,18 @@ img {
 @keyframes result-soft-enter {
   from { opacity: 0; transform: translateY(10px) scale(0.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes result-score-count {
+  0% { color: #71809b; transform: scale(0.94); }
+  70% { color: #34445f; transform: scale(1.035); }
+  100% { color: #34445f; transform: scale(1); }
+}
+
+@keyframes result-cat-celebrate {
+  0% { opacity: 0; transform: translateY(9px) scale(0.93) rotate(-2deg); }
+  62% { opacity: 1; transform: translateY(-3px) scale(1.035) rotate(1deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
 }
 
 /* Overlays */
@@ -2761,10 +2787,7 @@ img {
 .btn,
 .tutorial-guide > span,
 .round-clear strong,
-.cat-message,
 .item-button,
-.result-card > p,
-.result-message,
 .result-home-button,
 .mini-panel h2,
 .mini-panel p,
@@ -2824,6 +2847,15 @@ img {
 .result-message {
   display: grid;
   place-items: center;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.result-card > p,
+.score-comparisons,
+.result-grid span {
+  font-family: var(--font-sans);
 }
 
 @media (max-height: 815px) {

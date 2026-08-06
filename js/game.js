@@ -26,7 +26,6 @@ import {
   playGameOverSound,
   playHintSound,
   playRoundClearSound,
-  playSelectionSound,
   playShuffleSound,
   playStartSound,
   playSuccessSound,
@@ -84,7 +83,6 @@ class OingGame {
         const stats = this.model.stats(rect);
         this.ui.selectionSnap(stats.sum === 10);
         selectionTick(stats.sum === 10);
-        playSelectionSound(stats.sum);
       },
     });
     this.bindEvents();

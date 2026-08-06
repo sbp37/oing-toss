@@ -57,6 +57,7 @@ export class GameUI {
     this.characterToken = 0;
     this.resultCharacterToken = 0;
     this.lastResultMessage = '';
+    this.finalScoreAnimationFrame = 0;
     this.elements = {
       round: document.querySelector('#round-value'),
       score: document.querySelector('#score-value'),
@@ -889,8 +890,38 @@ export class GameUI {
     this.elements.rankingBest.textContent = text;
   }
 
+  animateFinalScore(score) {
+    cancelAnimationFrame(this.finalScoreAnimationFrame);
+    const target = Math.max(0, Math.round(Number(score) || 0));
+    const output = this.elements.finalScore;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    output.classList.remove('is-counting');
+    if (reducedMotion || target === 0) {
+      output.textContent = target.toLocaleString('ko-KR');
+      return;
+    }
+
+    output.textContent = '0';
+    void output.offsetWidth;
+    output.classList.add('is-counting');
+    const startedAt = performance.now();
+    const duration = 680;
+    const step = (now) => {
+      const progress = clamp((now - startedAt) / duration, 0, 1);
+      const eased = 1 - ((1 - progress) ** 4);
+      output.textContent = Math.round(target * eased).toLocaleString('ko-KR');
+      if (progress < 1) {
+        this.finalScoreAnimationFrame = requestAnimationFrame(step);
+      } else {
+        output.textContent = target.toLocaleString('ko-KR');
+        output.classList.remove('is-counting');
+        this.finalScoreAnimationFrame = 0;
+      }
+    };
+    this.finalScoreAnimationFrame = requestAnimationFrame(step);
+  }
+
   showResult({ score, maxCombo, round, maxClearCells, newRecord, previousBest, previousScore }) {
-    this.elements.finalScore.textContent = score.toLocaleString('ko-KR');
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
     this.elements.finalLargestClear.textContent = String(maxClearCells);
@@ -912,11 +943,13 @@ export class GameUI {
     this.elements.resultBestCompare.dataset.tone = comparison.bestTone;
     this.elements.resultPreviousCompare.textContent = comparison.previousText;
     this.elements.resultPreviousCompare.dataset.tone = comparison.previousTone;
+    this.elements.resultPreviousCompare.hidden = !comparison.hasPrevious;
 
     const message = pickResultMessage(score, { newRecord, previous: this.lastResultMessage });
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
     this.showScreen('result');
+    this.animateFinalScore(score);
     const screen = document.querySelector('#result-screen');
     screen.classList.remove('is-entering');
     void screen.offsetWidth;
