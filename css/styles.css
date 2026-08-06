@@ -356,6 +356,26 @@ img {
 
 .screen-play.is-active { display: grid; }
 
+.screen-play::before {
+  content: "";
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  box-shadow: inset 0 0 0 0 rgba(255, 103, 134, 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.screen-play.is-final-countdown::before {
+  opacity: 1;
+  animation: final-countdown-edge 940ms ease-in-out infinite alternate;
+}
+
+@keyframes final-countdown-edge {
+  from { box-shadow: inset 0 0 22px 0 rgba(255, 111, 139, 0.03); }
+  to { box-shadow: inset 0 0 28px 2px rgba(255, 111, 139, 0.12); }
+}
+
 .play-hud {
   position: relative;
   z-index: 12;
@@ -446,12 +466,19 @@ img {
 }
 
 .time-readout.is-warning {
-  animation: time-warning 760ms ease-in-out infinite alternate;
+  border-color: rgba(244, 128, 148, 0.68);
+  box-shadow: 0 3px 0 rgba(194, 85, 109, 0.11), inset 0 1.5px 0 white, 0 0 12px rgba(255, 115, 143, 0.1);
 }
 
 .time-readout.is-warning strong { color: var(--coral-deep); }
+.time-readout.is-warning[data-urgency="high"] { background: rgba(255, 243, 239, 0.97); }
+.time-readout.is-counting { animation: time-warning 330ms cubic-bezier(.16,.82,.24,1.18) both; }
 
-@keyframes time-warning { to { transform: scale(1.035); } }
+@keyframes time-warning {
+  0% { transform: scale(1); }
+  44% { transform: scale(1.075); filter: brightness(1.04); }
+  100% { transform: scale(1); filter: none; }
+}
 
 .hud-secondline {
   min-height: 31px;
@@ -592,6 +619,11 @@ img {
   transition: width 240ms cubic-bezier(.2,.8,.25,1);
 }
 
+.screen-play[data-round="2"] .round-mini strong { color: #38a894; }
+.screen-play[data-round="2"] .goal-track i { background: linear-gradient(90deg, #7fd6c2, #58c5ad); }
+.screen-play[data-round="3"] .round-mini strong { color: #7a64b9; }
+.screen-play[data-round="3"] .goal-track i { background: linear-gradient(90deg, #c9b0ff, #ff7ba8); }
+
 /* Board */
 .board-zone {
   min-height: 0;
@@ -615,6 +647,28 @@ img {
   transform: translate(var(--drag-pull-x), var(--drag-pull-y));
   transition: transform 20ms linear;
   will-change: transform;
+}
+
+.board-frame[data-round="2"] { border-color: rgba(91, 191, 169, 0.52); }
+.board-frame[data-round="3"] { border-color: rgba(153, 125, 203, 0.5); }
+
+.board-frame.is-counting {
+  animation: board-countdown-breath 340ms ease-out both;
+}
+
+.board-frame.is-fever {
+  animation: board-fever-glow 760ms ease-in-out infinite alternate;
+}
+
+@keyframes board-countdown-breath {
+  0% { filter: brightness(1); }
+  45% { filter: brightness(1.035) saturate(1.03); }
+  100% { filter: none; }
+}
+
+@keyframes board-fever-glow {
+  from { box-shadow: 0 5px 0 rgba(190,131,69,0.14), 0 11px 22px rgba(65,125,149,0.12), inset 0 2px 0 #fff, 0 0 0 rgba(255,113,136,0); }
+  to { box-shadow: 0 5px 0 rgba(190,131,69,0.14), 0 11px 22px rgba(65,125,149,0.12), inset 0 2px 0 #fff, 0 0 19px rgba(255,113,136,0.25); }
 }
 
 .board {
@@ -1307,6 +1361,14 @@ img {
 
 .score-burst.is-visible { animation: score-fly 730ms cubic-bezier(.18,.75,.3,1) both; }
 
+.score-burst[data-level="3"] strong { color: #df8a31; transform: scale(1.04); }
+.score-burst[data-level="5"] strong { color: #2fa38f; font-size: clamp(20px, 6.2vw, 26px); }
+.score-burst[data-level="8"] strong {
+  color: var(--coral-deep);
+  font-size: clamp(22px, 6.8vw, 29px);
+  text-shadow: 0 2px white, 0 0 12px rgba(255, 104, 140, 0.32);
+}
+
 @keyframes score-fly {
   0% { opacity: 0; transform: translate(-50%, 5%) scale(0.76); }
   18% { opacity: 1; transform: translate(-50%, -28%) scale(1.08); }
@@ -1397,6 +1459,27 @@ img {
 .combo-celebration[data-level="8"].is-visible { animation-duration: 820ms; }
 .combo-celebration.is-visible > img { animation: combo-celebration-star 480ms ease-out both; }
 .combo-celebration.is-visible > img:last-child { animation-delay: 55ms; }
+
+.combo-confetti {
+  position: absolute;
+  z-index: 13;
+  left: 50%;
+  top: 45%;
+  width: var(--combo-size, 17px);
+  height: var(--combo-size, 17px);
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(111, 82, 90, 0.12));
+  animation: combo-confetti-fly 760ms var(--combo-delay, 0ms) cubic-bezier(.16,.72,.28,1) both;
+}
+
+@keyframes combo-confetti-fly {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0); }
+  18% { opacity: 1; }
+  72% { opacity: 0.96; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--combo-x)), calc(-50% + var(--combo-y))) scale(1) rotate(var(--combo-rotate)); }
+}
 
 .board-frame.combo-celebrating::after {
   content: "";

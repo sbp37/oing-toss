@@ -136,6 +136,14 @@ export function playRoundClearSound() {
   scheduleTone(ctx, 2093, now + 0.3, 0.2, 0.06, 'sine', 0.008);
 }
 
+export function playCountdownTick(seconds) {
+  const remaining = Math.min(Math.max(Math.ceil(Number(seconds) || 0), 1), 10);
+  const urgent = remaining <= 3;
+  const frequency = urgent ? 1080 + (3 - remaining) * 110 : 760 + (10 - remaining) * 24;
+  tone(frequency, 0, urgent ? 0.085 : 0.055, urgent ? 0.055 : 0.026, 'triangle');
+  if (urgent) tone(frequency * 1.25, 0.055, 0.07, 0.032, 'sine');
+}
+
 export function playGameOverSound() {
   const ctx = getContext();
   if (!ctx) return;

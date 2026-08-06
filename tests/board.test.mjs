@@ -1,16 +1,20 @@
 import assert from 'node:assert/strict';
-import { BoardModel, normalizeRect, rectStats } from '../js/board.js';
+import { BOARD_DIFFICULTY, BoardModel, normalizeRect, rectStats } from '../js/board.js';
 import { scoreForClear } from '../js/data.js';
 
 for (const size of [4, 5, 6]) {
   for (let run = 0; run < 250; run += 1) {
     const board = new BoardModel(size);
     const answers = board.findAnswers();
-    const minimumRichAnswers = size === 6 ? 3 : 2;
-    assert.ok(answers.length > 0, `${size}x${size} board must start with an answer`);
+    const profile = BOARD_DIFFICULTY[size];
+    assert.ok(answers.length >= profile.minimumAnswers, `${size}x${size} board must start with enough choices`);
     assert.ok(
-      answers.filter((answer) => answer.count >= 3).length >= minimumRichAnswers,
-      `${size}x${size} board must include varied 3+ cell answers`,
+      answers.filter((answer) => answer.count === 2).length >= profile.minimumSimpleAnswers,
+      `${size}x${size} board must keep its round-specific simple-answer floor`,
+    );
+    assert.ok(
+      answers.filter((answer) => answer.count >= 3).length >= profile.minimumRichAnswers,
+      `${size}x${size} board must keep its round-specific rich-answer floor`,
     );
     assert.equal(board.shuffleRemaining(), true, `${size}x${size} shuffle must succeed`);
     assert.ok(board.findAnswer(), `${size}x${size} shuffled board must keep an answer`);

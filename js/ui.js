@@ -45,6 +45,8 @@ export class GameUI {
     this.selectionSnapTimer = null;
     this.selectionSnapAnimation = null;
     this.comboCelebrationTimer = null;
+    this.countdownPulseTimer = null;
+    this.lastCountdownSecond = null;
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
     this.characterToken = 0;
@@ -55,6 +57,7 @@ export class GameUI {
       score: document.querySelector('#score-value'),
       time: document.querySelector('#time-value'),
       timePill: document.querySelector('#time-pill'),
+      playScreen: document.querySelector('#play-screen'),
       combo: document.querySelector('#combo-value'),
       comboChip: document.querySelector('#combo-chip'),
       comboTimerFill: document.querySelector('#combo-timer-fill'),
@@ -466,6 +469,7 @@ export class GameUI {
     detail.textContent = labels.join(' · ');
     detail.hidden = labels.length === 0;
     burst.replaceChildren(primary, detail);
+    burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     if (bounds) {
       burst.style.left = `${(bounds.left + bounds.right) / 2}px`;
       burst.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
@@ -502,10 +506,38 @@ export class GameUI {
     celebration.classList.add('is-visible');
     this.boardFrame.dataset.comboCelebration = level;
     this.boardFrame.classList.add('combo-celebrating');
+    this.spawnComboConfetti(Number(level));
     const duration = level === '8' ? 820 : level === '5' ? 760 : 700;
     this.comboCelebrationTimer = window.setTimeout(() => {
       this.dismissComboCelebration();
     }, duration);
+  }
+
+  spawnComboConfetti(level) {
+    this.boardFrame.querySelectorAll('.combo-confetti').forEach((particle) => particle.remove());
+    const count = level >= 8 ? 14 : level >= 5 ? 9 : 6;
+    const sources = [
+      'assets/decor/star.webp',
+      'assets/decor/sparkle.webp',
+      'assets/decor/heart.webp',
+      'assets/decor/paw.webp',
+    ];
+    for (let index = 0; index < count; index += 1) {
+      const particle = document.createElement('img');
+      const angle = -156 + (312 / Math.max(1, count - 1)) * index;
+      const distance = 74 + (index % 3) * 18 + level * 2;
+      const radians = (angle * Math.PI) / 180;
+      particle.className = 'combo-confetti';
+      particle.src = sources[index % sources.length];
+      particle.alt = '';
+      particle.style.setProperty('--combo-x', `${Math.cos(radians) * distance}px`);
+      particle.style.setProperty('--combo-y', `${Math.sin(radians) * distance}px`);
+      particle.style.setProperty('--combo-rotate', `${(index % 2 ? 1 : -1) * (35 + index * 11)}deg`);
+      particle.style.setProperty('--combo-delay', `${(index % 5) * 18}ms`);
+      particle.style.setProperty('--combo-size', `${level >= 8 ? 18 + (index % 3) * 3 : 15 + (index % 3) * 2}px`);
+      this.boardFrame.appendChild(particle);
+      setTimeout(() => particle.remove(), level >= 8 ? 980 : 860);
+    }
   }
 
   dismissComboCelebration() {
@@ -636,10 +668,34 @@ export class GameUI {
     const time = Math.max(0, Math.ceil(timeLeft));
     this.elements.time.textContent = `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`;
     this.elements.timePill.classList.toggle('is-warning', time <= 10);
+    const isFinalCountdown = time > 0 && time <= 10;
+    this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
+    this.elements.playScreen.dataset.round = String(round);
+    this.boardFrame.dataset.round = String(round);
+    this.elements.timePill.dataset.urgency = time <= 3 ? 'high' : time <= 5 ? 'medium' : 'low';
+    if (isFinalCountdown && time !== this.lastCountdownSecond) {
+      this.lastCountdownSecond = time;
+      clearTimeout(this.countdownPulseTimer);
+      this.elements.timePill.classList.remove('is-counting');
+      this.boardFrame.classList.remove('is-counting');
+      void this.elements.timePill.offsetWidth;
+      this.elements.timePill.classList.add('is-counting');
+      this.boardFrame.classList.add('is-counting');
+      this.countdownPulseTimer = setTimeout(() => {
+        this.elements.timePill.classList.remove('is-counting');
+        this.boardFrame.classList.remove('is-counting');
+      }, time <= 3 ? 360 : 250);
+    } else if (!isFinalCountdown) {
+      this.lastCountdownSecond = null;
+      this.elements.timePill.classList.remove('is-counting');
+      this.boardFrame.classList.remove('is-counting');
+    }
     this.elements.combo.textContent = String(combo);
     this.elements.comboTimerFill.style.transform = `scaleX(${clamp(comboRemaining, 0, 1)})`;
     this.elements.comboChip.classList.toggle('is-active', combo > 0 && comboRemaining > 0);
-    if (combo === 0) this.elements.comboChip.dataset.level = '';
+    const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
+    this.elements.comboChip.dataset.level = comboLevel;
+    this.boardFrame.classList.toggle('is-fever', combo >= 8 && comboRemaining > 0);
     this.elements.goal.textContent = `${progress}/${target}`;
     this.elements.goalFill.style.width = `${Math.min(100, (progress / target) * 100)}%`;
   }

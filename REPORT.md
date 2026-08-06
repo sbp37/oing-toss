@@ -217,6 +217,18 @@ node serve.mjs
 ```
 
 브라우저에서 `http://127.0.0.1:8766/`을 연다.
+# Combo, round, and final-countdown tuning (2026-08-06)
+
+- Preserved `attachStickyRectangleInput()`, `cellFromPoint()`, and the approved pointer event flow without edits.
+- Combo 3/5/8 now scales the reward instead of only recoloring it: 6/9/14 decor particles, larger milestone score bursts, stronger board feedback, and a short combo-8 fever glow.
+- Board generation now has round-shaped answer floors while retaining the existing sum-10 guarantee after generation and shuffle:
+  - Round 1 / 4×4: at least 5 answers, including 3 simple pairs and 1 rich 3+ tile answer.
+  - Round 2 / 5×5: at least 7 answers, including 2 simple pairs and 2 rich answers.
+  - Round 3 / 6×6: at least 9 answers, including 1 simple pair and 4 rich answers.
+- The final ten seconds now have one light audio tick per second, stronger double-note ticks and small haptics at 3/2/1, a pulsing time HUD, and a restrained coral edge treatment. It does not block the board or use a full-screen flash.
+- Browser checks passed at 360×780, 390×844, and 430×932 with no document overflow. Real pointer drags confirmed sum-10 removal, the combo-3 banner plus six particles, and automatic Round 1 → 2 transition.
+- Automated checks: five audio/board tests passed; 750 generated/shuffled boards retained their round-specific answer floors and a valid answer after shuffle.
+
 # Original OING audio integration (2026-08-06)
 
 - Read-only source: `https://github.com/sbp37/oing/blob/main/index.html`

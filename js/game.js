@@ -7,6 +7,7 @@ import { preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import {
   isSoundEnabled,
   playComboSound,
+  playCountdownTick,
   playFailSound,
   playGameOverSound,
   playHintSound,
@@ -19,6 +20,7 @@ import {
 } from './audio.js';
 import {
   failHaptic,
+  countdownHaptic,
   isHapticEnabled,
   itemHaptic,
   roundHaptic,
@@ -39,6 +41,7 @@ class OingGame {
     this.endAt = 0;
     this.pauseStartedAt = 0;
     this.lowTimeSpoken = false;
+    this.lastCountdownSecond = null;
     this.inputGuardUntil = 0;
     this.tutorialActive = false;
     this.waitingForFirstDrag = false;
@@ -131,6 +134,7 @@ class OingGame {
     this.inputGuardUntil = 0;
     this.state.running = true;
     this.lowTimeSpoken = false;
+    this.lastCountdownSecond = null;
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
     this.ui.setOverlay('pause-overlay', false);
     this.buildRound();
@@ -332,6 +336,12 @@ class OingGame {
       this.lowTimeSpoken = true;
       this.showCatMessage('lowTime');
       this.ui.setPlayCharacter('cheer', 1800);
+    }
+    const countdownSecond = Math.ceil(this.state.timeLeft);
+    if (countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
+      this.lastCountdownSecond = countdownSecond;
+      playCountdownTick(countdownSecond);
+      countdownHaptic(countdownSecond);
     }
     this.updateHUD();
     if (this.state.timeLeft <= 0) this.finish();

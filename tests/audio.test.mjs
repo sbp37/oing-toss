@@ -85,6 +85,16 @@ test('combo sound rises with the chain and uses the high milestone arpeggio', ()
   assert.deepEqual(combo8.map((item) => item.frequency.events[0].value), [1046, 1318, 1568, 2093]);
 });
 
+test('final countdown grows brighter for the last three seconds', () => {
+  const second10 = newOscillators(() => audio.playCountdownTick(10));
+  const second3 = newOscillators(() => audio.playCountdownTick(3));
+  const second1 = newOscillators(() => audio.playCountdownTick(1));
+  assert.equal(second10.length, 1);
+  assert.equal(second3.length, 2);
+  assert.equal(second1.length, 2);
+  assert.ok(second1[0].frequency.events[0].value > second3[0].frequency.events[0].value);
+});
+
 test('game over keeps the original layered six-note fanfare and sparkle', () => {
   const oscillators = newOscillators(() => audio.playGameOverSound());
   assert.equal(oscillators.length, 13);

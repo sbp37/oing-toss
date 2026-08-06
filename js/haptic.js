@@ -39,3 +39,7 @@ export function itemHaptic() {
 export function roundHaptic() {
   vibrate([10, 20, 14, 20, 22]);
 }
+
+export function countdownHaptic(seconds) {
+  if (Number(seconds) <= 3) vibrate(Number(seconds) === 1 ? [7, 18, 11] : 6);
+}
