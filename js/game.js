@@ -13,6 +13,7 @@ import {
   scoreForCatBonus,
   scoreForClear,
   scoreForMegaBomb,
+  shouldAdvanceRound,
 } from './data.js';
 import { BoardModel, boardAssistForSuccessCount } from './board.js';
 import { BoardItemField } from './board-items.js';
@@ -113,6 +114,10 @@ class OingGame {
         this.ui.selectionSnap(stats.sum === 10);
         selectionTick(stats.sum === 10);
       },
+      onTapAnchor: () => {
+        this.beginFirstInteraction();
+        this.showCatMessage('tapEnd');
+      },
     });
     this.bindEvents();
     this.applySettings();
@@ -139,6 +144,7 @@ class OingGame {
       catsCollected: 0,
       catBonusScore: 0,
       boardDropsEarned: 0,
+      cloverDropped: false,
       items: this.inventory.snapshot(),
     };
   }
@@ -268,8 +274,10 @@ class OingGame {
     this.itemTapCandidate = null;
     const config = getRoundConfig(this.state.round);
     this.generateBoard(config.size, config.rows);
+    const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
     this.renderBoard();
     this.updateHUD();
+    return placed;
   }
 
   generateBoard(cols, rows = cols) {
@@ -378,10 +386,13 @@ class OingGame {
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
     const reward = boardDropReward(previousCombo, this.state.combo);
     if (reward) {
-      const drop = chooseBoardDrop(this.state.combo);
+      const drop = chooseBoardDrop(this.state.combo, Math.random, {
+        cloverGiven: this.state.cloverDropped,
+      });
       if (drop) {
         this.boardItems.queue(drop.id, { earnedAtCombo: this.state.combo, reward });
         this.state.boardDropsEarned += 1;
+        if (drop.id === 'clover') this.state.cloverDropped = true;
       }
     }
     return previousCombo;
@@ -454,14 +465,14 @@ class OingGame {
     this.model.remove(rect);
 
     const config = getRoundConfig(this.state.round);
-    if (this.state.progress >= config.target) {
+    const remainingAnswer = this.model.findAnswer();
+    if (shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
       this.renderBoard();
       if ([3, 5, 8].includes(this.state.combo)) await delay(220);
       await this.clearRound();
-    } else if (!this.model.findAnswer()) {
-      this.boardItems.carry();
-      this.generateBoard(config.size, config.rows);
-      this.renderBoard();
+    } else if (!remainingAnswer) {
+      const carried = this.buildRound();
+      if (carried.length) this.announceBoardItems(carried);
       this.showCatMessage('shuffle');
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
@@ -512,16 +523,34 @@ class OingGame {
     this.ui.showRoundClear();
     this.ui.setPlayCharacter('cheer', 1000);
     this.showCatMessage('round');
+    const storedItems = this.storeRoundItems();
     await delay(430);
     const nextRound = this.state.round + 1;
     this.state.round = nextRound;
     this.state.progress = 0;
-    await this.ui.animateRoundTransition(nextRound, () => this.buildRound());
+    let carriedItems = [];
+    await this.ui.animateRoundTransition(nextRound, () => {
+      carriedItems = this.buildRound();
+    });
+    if (storedItems.length) this.ui.toast('남은 아이템은 보관함에 챙겼다냥!');
+    if (carriedItems.length) this.announceBoardItems(carriedItems);
     this.inputGuardUntil = performance.now() + 320;
+  }
+
+  storeRoundItems() {
+    const stored = this.boardItems.extractTypes(new Set(['bomb', 'clock']));
+    if (!stored.length) return stored;
+    const grants = stored.reduce((result, item) => {
+      result[item.type] = (result[item.type] || 0) + 1;
+      return result;
+    }, {});
+    this.grantItems(grants);
+    return stored;
   }
 
   async useHint() {
     if (!this.canUseItem() || !this.inventory.canConsume('hint')) return;
+    this.input.cancel();
     this.beginFirstInteraction();
     const answer = this.model.findEasyAnswer();
     if (!answer) {
@@ -550,6 +579,7 @@ class OingGame {
 
   async useShuffle() {
     if (!this.canUseItem() || !this.inventory.canConsume('shuffle')) return;
+    this.input.cancel();
     this.beginFirstInteraction();
     this.state.inputLocked = true;
     const success = this.model.shuffleRemaining();
@@ -612,7 +642,7 @@ class OingGame {
     bombHaptic();
     await this.ui.animateBomb(rect);
     this.model.remove(rect);
-    this.finishBlast(boardItemKey);
+    await this.finishBlast(boardItemKey);
   }
 
   async resolveMegaBomb({ row, col, rect, cells, stats }, boardItemKey) {
@@ -627,16 +657,19 @@ class OingGame {
     megaBombHaptic();
     await this.ui.animateMegaBomb(cells, { row, col });
     this.model.removeCells(cells);
-    this.finishBlast(boardItemKey);
+    await this.finishBlast(boardItemKey);
   }
 
-  finishBlast(boardItemKey = null) {
+  async finishBlast(boardItemKey = null) {
     if (boardItemKey) this.boardItems.delete(boardItemKey);
     const config = getRoundConfig(this.state.round);
-    if (!this.model.findAnswer()) {
-      this.boardItems.carry();
-      this.generateBoard(config.size, config.rows);
+    const remainingAnswer = this.model.findAnswer();
+    if (shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
       this.renderBoard();
+      await this.clearRound();
+    } else if (!remainingAnswer) {
+      const carried = this.buildRound();
+      if (carried.length) this.announceBoardItems(carried);
       this.ui.toast('새 보드로 바로 이어갈게!');
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
@@ -650,6 +683,7 @@ class OingGame {
 
   async useClock() {
     if (!this.canUseItem() || !this.inventory.canConsume('clock')) return;
+    this.input.cancel();
     this.beginFirstInteraction();
     if (!this.inventory.consume('clock').ok) return;
     this.syncInventory();

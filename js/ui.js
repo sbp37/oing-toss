@@ -1157,7 +1157,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 90, freezeRemaining = 0, combo, comboRemaining = 0, progress, target }) {
+  updateHUD({ round, score, timeLeft, duration = 180, freezeRemaining = 0, combo, comboRemaining = 0, progress, target }) {
     this.elements.round.textContent = String(round);
     this.elements.score.textContent = score.toLocaleString('ko-KR');
     const time = Math.max(0, Math.ceil(timeLeft));
@@ -1194,7 +1194,7 @@ export class GameUI {
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
     this.boardFrame.classList.toggle('is-fever', combo >= 8 && comboRemaining > 0);
-    this.elements.goal.textContent = `${progress}/${target}`;
+    this.elements.goal.textContent = `${Math.min(progress, target)}/${target}`;
     this.elements.goalFill.style.width = `${Math.min(100, (progress / target) * 100)}%`;
   }
 

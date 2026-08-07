@@ -59,6 +59,22 @@ export class BoardItemField {
     return carried;
   }
 
+  extractTypes(acceptedTypes) {
+    const accepted = acceptedTypes instanceof Set ? acceptedTypes : new Set(acceptedTypes || []);
+    const extracted = [];
+    for (const [key, item] of this.items) {
+      if (!accepted.has(item.type)) continue;
+      extracted.push({ ...item });
+      this.items.delete(key);
+    }
+    this.pending = this.pending.filter((item) => {
+      if (!accepted.has(item.type)) return true;
+      extracted.push({ ...item });
+      return false;
+    });
+    return extracted;
+  }
+
   place(grid, reservedKeys = new Set()) {
     const placed = [];
     const occupiedKeys = new Set([...this.items.keys(), ...reservedKeys]);

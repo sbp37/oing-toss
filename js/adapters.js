@@ -120,7 +120,7 @@ export function runtimeConfig() {
   const requestedRound = Number(params.get('round'));
   return {
     testMode,
-    duration: testMode && requested > 0 ? Math.min(requested, 180) : 90,
+    duration: testMode && requested > 0 ? Math.min(requested, 360) : 180,
     forceTutorial: testMode && params.get('tutorial') === '1',
     forcedItem: testMode ? params.get('item') : null,
     forcedRound: testMode && requestedRound > 0 ? Math.min(30, Math.round(requestedRound)) : 1,

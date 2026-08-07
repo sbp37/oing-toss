@@ -1239,14 +1239,17 @@ img {
   z-index: 2;
   overflow: visible;
   border: 0;
-  background-color: transparent;
-  background-image: url("../assets/ui/tiles-syrup-v4/tile-lemon.webp");
+  background-color: #f48aa5;
+  background-image:
+    linear-gradient(145deg, rgba(255, 151, 177, 0.9), rgba(242, 118, 151, 0.78)),
+    url("../assets/ui/tiles-syrup-v4/tile-blush.webp");
+  background-blend-mode: multiply, normal;
   background-position: center;
   background-size: 100% 100%;
   background-repeat: no-repeat;
   filter:
-    drop-shadow(0 2px 2px rgba(171, 112, 72, 0.16))
-    drop-shadow(0 0 7px rgba(255, 203, 104, 0.18));
+    drop-shadow(0 2px 2px rgba(150, 69, 91, 0.2))
+    drop-shadow(0 0 7px rgba(255, 145, 174, 0.2));
 }
 
 .bonus-cat-art {
@@ -1254,13 +1257,13 @@ img {
   z-index: 3;
   left: 50%;
   bottom: 12%;
-  width: 70%;
-  height: 68%;
+  width: 62%;
+  height: 62%;
   object-fit: contain;
   object-position: center bottom;
   pointer-events: none;
   transform: translateX(-50%);
-  filter: drop-shadow(0 2px 2px rgba(70, 105, 135, 0.15));
+  filter: saturate(1.12) drop-shadow(0 2px 2px rgba(55, 78, 104, 0.28));
   animation: bonus-cat-peek 1.8s ease-in-out infinite alternate;
 }
 
@@ -3159,7 +3162,7 @@ img {
 .play-footer {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   align-content: stretch;
   align-self: stretch;
   gap: 5px;
@@ -3265,6 +3268,7 @@ img {
   width: min(100%, 360px);
   gap: clamp(6px, 1.8vw, 8px);
   margin: 0 auto;
+  align-self: start;
 }
 
 .item-button {
@@ -3863,7 +3867,7 @@ img {
   .screen-play { --board-edge: min(calc(100vw - 28px), 358px, calc(100dvh - 218px)); padding-top: calc(5px + var(--safe-top)); }
   .play-hud { min-height: 0; }
   .board-zone { padding: 0; }
-  .play-footer { grid-template-rows: minmax(0, 1fr) auto; min-height: 0; height: 100%; }
+  .play-footer { grid-template-rows: auto minmax(0, 1fr); min-height: 0; height: 100%; }
   .cat-coach { height: 96px; }
   .play-character-stage { width: 88px; height: 91px; }
   .item-button { height: clamp(56px, 18vw, 68px); grid-template-columns: 1fr; grid-template-rows: minmax(29px, 1fr) 17px; }
@@ -3937,7 +3941,7 @@ img {
   .screen-play { --board-edge: min(calc(100vw - 24px), calc(100dvh - 208px)); }
   .play-hud { min-height: 0; gap: 0; }
   .board-zone { padding: 0; }
-  .play-footer { grid-template-rows: minmax(0, 1fr) auto; height: 100%; min-height: 0; gap: 5px; padding-block: 0 3px; }
+  .play-footer { grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; gap: 5px; padding-block: 0 3px; }
   .cat-coach { height: 84px; grid-template-columns: 72px minmax(0, 1fr); }
   .play-character-stage { width: 70px; height: 77px; }
   .cat-message { min-height: 40px; padding-block: 4px; font-size: 14px; }
@@ -3960,7 +3964,7 @@ img {
 }
 
 @media (max-width: 340px) and (max-height: 690px) {
-  .play-footer { grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+  .play-footer { grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
   .cat-coach { height: 78px; }
   .play-character-stage { width: 62px; height: 68px; }
   .item-button { height: 53px; grid-template-columns: 1fr; grid-template-rows: minmax(26px, 1fr) 15px; }

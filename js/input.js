@@ -4,7 +4,7 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function cellFromPoint(boardEl, clientX, clientY, stickyCell = null) {
+export function cellFromPoint(boardEl, clientX, clientY, stickyCell = null) {
   const rect = boardEl.getBoundingClientRect();
   const cols = Number(boardEl.dataset.cols || boardEl.dataset.size) || 4;
   const rows = Number(boardEl.dataset.rows || boardEl.dataset.size) || 4;
@@ -42,10 +42,13 @@ export function attachStickyRectangleInput({
   onCommit,
   onCancel,
   onSelectionStep,
+  onTapAnchor,
 }) {
   let pointerId = null;
   let startCell = null;
   let lastCell = null;
+  let tapAnchor = null;
+  let usingTapAnchor = false;
   let lastKey = '';
   let committed = false;
   let queuedEvent = null;
@@ -77,7 +80,7 @@ export function attachStickyRectangleInput({
     if (!previewFrame) previewFrame = requestAnimationFrame(flushPreview);
   };
 
-  const reset = (cancelled = false) => {
+  const reset = (cancelled = false, clearTapAnchor = cancelled) => {
     const oldPointerId = pointerId;
     pointerId = null;
     startCell = null;
@@ -85,6 +88,8 @@ export function attachStickyRectangleInput({
     lastKey = '';
     committed = false;
     queuedEvent = null;
+    usingTapAnchor = false;
+    if (clearTapAnchor) tapAnchor = null;
     if (previewFrame) cancelAnimationFrame(previewFrame);
     previewFrame = 0;
     boardEl.classList.remove('is-dragging');
@@ -100,7 +105,8 @@ export function attachStickyRectangleInput({
     if (!cell) return;
     event.preventDefault();
     pointerId = event.pointerId;
-    startCell = cell;
+    usingTapAnchor = Boolean(tapAnchor);
+    startCell = tapAnchor || cell;
     lastCell = cell;
     committed = false;
     lastKey = '';
@@ -128,11 +134,19 @@ export function attachStickyRectangleInput({
       && lastCell.r === startCell.r
       && lastCell.c === startCell.c;
     if (returnedToOrigin) {
-      reset(true);
+      if (usingTapAnchor) {
+        reset(true);
+      } else {
+        tapAnchor = { ...startCell };
+        const anchor = { ...tapAnchor };
+        reset(false, false);
+        onTapAnchor?.(anchor);
+      }
       return;
     }
     committed = true;
     const rect = normalizeRect(startCell, lastCell || startCell);
+    tapAnchor = null;
     onCommit(rect, { x: event.clientX, y: event.clientY });
     reset(false);
   };

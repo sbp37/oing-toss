@@ -23,8 +23,8 @@ export const BOARD_DIFFICULTY = Object.freeze({
 
 export function boardAssistForSuccessCount(successCount) {
   const count = Math.max(0, Math.floor(Number(successCount) || 0));
-  if (count < 2) return 'starter';
-  if (count < 5) return 'guided';
+  if (count < 5) return 'starter';
+  if (count < 12) return 'guided';
   return 'standard';
 }
 

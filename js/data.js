@@ -1,4 +1,4 @@
-export const GAME_DURATION_SECONDS = 90;
+export const GAME_DURATION_SECONDS = 180;
 export const COMBO_WINDOW_MS = 3200;
 export const TIME_FREEZE_SECONDS = 15;
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
@@ -35,12 +35,13 @@ export const BOARD_DROP_ITEMS = Object.freeze({
 
 const BOARD_DROP_POOLS = Object.freeze({
   1: Object.freeze(['bomb', 'bomb', 'bomb', 'clock', 'clock']),
-  2: Object.freeze(['bomb', 'bomb', 'clock', 'clock', 'megabomb', 'freeze']),
-  3: Object.freeze(['clock', 'clock', 'megabomb', 'megabomb', 'freeze', 'bomb', 'clover']),
+  2: Object.freeze(['bomb', 'bomb', 'clock', 'clock', 'megabomb']),
+  3: Object.freeze(['clock', 'clock', 'megabomb', 'megabomb', 'freeze', 'freeze', 'bomb']),
 });
 
-export function chooseBoardDrop(combo, random = Math.random) {
+export function chooseBoardDrop(combo, random = Math.random, { cloverGiven = false } = {}) {
   const tier = combo >= 21 ? 3 : combo >= 14 ? 2 : 1;
+  if (!cloverGiven && Math.max(0, random()) < 0.15) return BOARD_DROP_ITEMS.clover;
   const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
   if (!pool.length) return null;
   const index = Math.min(pool.length - 1, Math.floor(Math.max(0, random()) * pool.length));
@@ -52,6 +53,12 @@ export function boardDropReward(previousCombo, nextCombo) {
   const next = Math.max(0, Math.round(Number(nextCombo) || 0));
   if (Math.floor(next / 7) > Math.floor(previous / 7)) return 'milestone';
   return null;
+}
+
+export function shouldAdvanceRound(progress, target, hasAnswer) {
+  const clears = Math.max(0, Math.round(Number(progress) || 0));
+  const required = Math.max(1, Math.round(Number(target) || 1));
+  return clears >= required && !hasAnswer;
 }
 
 export function boardDropInventoryGrant(type) {
@@ -98,6 +105,7 @@ export const PRODUCT_CATALOG = Object.freeze({
 
 export const MESSAGES = Object.freeze({
   start: Object.freeze(['10을 찾아보자냥!', '슥 밀어서 10이다냥!', '준비됐으면 바로 가자냥!']),
+  tapEnd: Object.freeze(['반대쪽 끝 칸도 톡 눌러보라냥!', '끝 칸을 한 번 더 눌러보라냥!']),
   firstSuccess: Object.freeze(['오잉, 바로 찾았다냥!', '딱 10이다냥!', '첫 조합부터 좋다냥!']),
   success: Object.freeze(['좋다냥!', '깔끔하다냥!', '바로 그거다냥!', '눈에 쏙 들어왔다냥!']),
   combo3: Object.freeze(['손이 빠르다냥!', '콤보가 착착 붙는다냥!', '감이 올라온다냥!']),
