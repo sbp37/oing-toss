@@ -113,6 +113,12 @@ test('item drop uses a bright compact reward flourish', () => {
   assert.equal(oscillators.at(-1).type, 'triangle');
 });
 
+test('item collection confirms the inventory arrival with a separate rising chime', () => {
+  const oscillators = newOscillators(() => audio.playItemCollectSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [880, 1174.66, 1567.98, 2349.32]);
+  assert.equal(oscillators.at(-1).type, 'triangle');
+});
+
 test('start sound confirms mobile audio unlock with a short two-note cue', async () => {
   assert.equal(await audio.unlockAudio(), true);
   const oscillators = newOscillators(() => audio.playStartSound());

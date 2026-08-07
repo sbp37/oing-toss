@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { boardDropReward, chooseBoardDrop } from '../js/data.js';
+import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop } from '../js/data.js';
+
+test('ordinary board drops enter the run inventory while megabombs stay instant', () => {
+  assert.deepEqual(boardDropInventoryGrant('bomb'), { itemId: 'bomb', quantity: 1 });
+  assert.deepEqual(boardDropInventoryGrant('clock'), { itemId: 'clock', quantity: 1 });
+  assert.equal(boardDropInventoryGrant('megabomb'), null);
+});
 
 test('the first short chain guarantees an early board item, then seven-combo milestones take over', () => {
   assert.equal(boardDropReward(0, 1, 0), null);

@@ -2,6 +2,7 @@ import {
   BOARD_DROP_ITEMS,
   GAME_DURATION_SECONDS,
   COMBO_WINDOW_MS,
+  boardDropInventoryGrant,
   boardDropReward,
   chooseBoardDrop,
   getRoundConfig,
@@ -11,7 +12,7 @@ import {
   scoreForClear,
   scoreForMegaBomb,
 } from './data.js';
-import { BoardModel, bombRect } from './board.js';
+import { BoardModel } from './board.js';
 import { BoardItemField } from './board-items.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
@@ -22,6 +23,7 @@ import {
   isSoundEnabled,
   playComboSound,
   playCatBonusSound,
+  playItemCollectSound,
   playItemDropSound,
   playBombSound,
   playClockSound,
@@ -457,7 +459,7 @@ class OingGame {
     this.inputGuardUntil = performance.now() + 320;
   }
 
-  useHint() {
+  async useHint() {
     if (!this.canUseItem() || !this.inventory.canConsume('hint')) return;
     this.beginFirstInteraction();
     const answer = this.model.findEasyAnswer();
@@ -468,11 +470,21 @@ class OingGame {
     }
     if (!this.inventory.consume('hint').ok) return;
     this.syncInventory();
+    this.state.inputLocked = true;
+    const center = this.ui.tileAt(
+      Math.floor((answer.r1 + answer.r2) / 2),
+      Math.floor((answer.c1 + answer.c2) / 2),
+    );
+    const cast = this.ui.animateItemCast('hint', center || this.ui.boardFrame);
+    await delay(135);
     this.ui.showHint(answer);
     this.showCatMessage('hint');
     this.ui.setPlayCharacter('wave', 900);
     playHintSound();
     itemHaptic();
+    await cast;
+    this.inputGuardUntil = performance.now() + 80;
+    this.state.inputLocked = false;
   }
 
   async useShuffle() {
@@ -491,9 +503,12 @@ class OingGame {
     this.showCatMessage('shuffle');
     playShuffleSound();
     itemHaptic();
+    const cast = this.ui.animateItemCast('shuffle');
+    await delay(135);
     await this.ui.animateShuffleOut();
     this.renderBoard();
     await this.ui.animateShuffleIn();
+    await cast;
     this.state.inputLocked = false;
   }
 
@@ -514,7 +529,14 @@ class OingGame {
     }
 
     this.syncInventory();
+    const center = this.ui.tileAt(
+      Math.floor((target.rect.r1 + target.rect.r2) / 2),
+      Math.floor((target.rect.c1 + target.rect.c2) / 2),
+    );
+    const cast = this.ui.animateItemCast('bomb', center || this.ui.boardFrame);
+    await delay(175);
     await this.resolveBomb(target);
+    await cast;
   }
 
   async resolveBomb({ rect, stats }, boardItemKey = null) {
@@ -613,9 +635,25 @@ class OingGame {
     this.beginFirstInteraction();
     this.input.cancel();
     this.state.inputLocked = true;
-    if (item.type === 'bomb') {
-      const rect = bombRect(this.model.size, item.row, item.col);
-      await this.resolveBomb({ rect, stats: this.model.stats(rect) }, key);
+    const grant = boardDropInventoryGrant(item.type);
+    if (grant) {
+      const sourceElement = this.ui.tileAt(item.row, item.col);
+      await this.ui.animateItemCollect(item, sourceElement);
+      const granted = this.inventory.grant(grant.itemId, grant.quantity, { source: 'earned' });
+      if (!granted.ok) {
+        this.state.inputLocked = false;
+        this.ui.toast('아이템을 담지 못했다냥');
+        return;
+      }
+      this.boardItems.delete(key);
+      this.renderBoard();
+      this.syncInventory();
+      this.showCatMessage(item.type === 'clock' ? 'clockCollected' : 'bombCollected');
+      this.ui.setPlayCharacter('wave', 900);
+      playItemCollectSound();
+      itemHaptic();
+      this.inputGuardUntil = performance.now() + 120;
+      this.state.inputLocked = false;
       return;
     }
     if (item.type === 'megabomb') {

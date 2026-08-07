@@ -148,7 +148,12 @@ export class GameUI {
           const itemDefinition = BOARD_DROP_ITEMS[boardItem.type];
           tile.dataset.item = boardItem.type;
           tile.tabIndex = 0;
-          tile.setAttribute('aria-label', `${itemDefinition?.label || '아이템'} 사용`);
+          tile.setAttribute(
+            'aria-label',
+            boardItem.type === 'megabomb'
+              ? `${itemDefinition?.label || '아이템'} 즉시 발동`
+              : `${itemDefinition?.label || '아이템'} 보관함에 담기`,
+          );
           const icon = document.createElement('img');
           icon.className = 'board-item-icon';
           icon.src = itemDefinition?.asset || '';
@@ -657,6 +662,82 @@ export class GameUI {
 
   pressBoardItem(row, col, pressed) {
     this.tileAt(row, col)?.classList.toggle('is-item-pressed', pressed);
+  }
+
+  itemButton(type) {
+    return ({
+      hint: this.elements.hintButton,
+      shuffle: this.elements.shuffleButton,
+      bomb: this.elements.bombButton,
+      clock: this.elements.clockButton,
+    })[type] || null;
+  }
+
+  async animateItemCollect(item, sourceElement, targetElement = this.itemButton(item.type)) {
+    if (!sourceElement || !targetElement) return;
+    const screen = this.elements.playScreen;
+    const screenRect = screen.getBoundingClientRect();
+    const start = sourceElement.getBoundingClientRect();
+    const target = targetElement.getBoundingClientRect();
+    const definition = BOARD_DROP_ITEMS[item.type];
+    const flight = document.createElement('div');
+    flight.className = `item-collect-flight item-collect-${item.type}`;
+    flight.style.left = `${start.left + start.width / 2 - screenRect.left}px`;
+    flight.style.top = `${start.top + start.height / 2 - screenRect.top}px`;
+    const collectX = target.left + target.width / 2 - start.left - start.width / 2;
+    const collectY = target.top + target.height / 2 - start.top - start.height / 2;
+    flight.style.setProperty('--collect-x', `${collectX}px`);
+    flight.style.setProperty('--collect-y', `${collectY}px`);
+    flight.style.setProperty('--collect-mid-x', `${collectX * 0.48}px`);
+    flight.style.setProperty('--collect-mid-y', `${collectY * 0.42 - 24}px`);
+    const icon = document.createElement('img');
+    icon.src = definition?.asset || '';
+    icon.alt = '';
+    const label = document.createElement('strong');
+    label.textContent = '+1';
+    flight.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    sourceElement.classList.add('is-collecting');
+    screen.appendChild(flight);
+    await delay(510);
+    sourceElement.classList.remove('is-collecting');
+    flight.remove();
+    targetElement.classList.remove('is-stocked');
+    void targetElement.offsetWidth;
+    targetElement.classList.add('is-stocked');
+    setTimeout(() => targetElement.classList.remove('is-stocked'), 520);
+  }
+
+  async animateItemCast(type, targetElement = this.boardFrame) {
+    const sourceElement = this.itemButton(type);
+    if (!sourceElement || !targetElement) return;
+    const screen = this.elements.playScreen;
+    const screenRect = screen.getBoundingClientRect();
+    const start = sourceElement.getBoundingClientRect();
+    const target = targetElement.getBoundingClientRect();
+    const asset = type === 'clock'
+      ? BOARD_DROP_ITEMS.clock.asset
+      : type === 'bomb'
+        ? BOARD_DROP_ITEMS.bomb.asset
+        : `assets/icons/items/${type}.webp`;
+    const flight = document.createElement('div');
+    flight.className = `item-cast-flight item-cast-${type}`;
+    flight.style.left = `${start.left + start.width / 2 - screenRect.left}px`;
+    flight.style.top = `${start.top + start.height / 2 - screenRect.top}px`;
+    const castX = target.left + target.width / 2 - start.left - start.width / 2;
+    const castY = target.top + target.height / 2 - start.top - start.height / 2;
+    flight.style.setProperty('--cast-x', `${castX}px`);
+    flight.style.setProperty('--cast-y', `${castY}px`);
+    flight.style.setProperty('--cast-mid-x', `${castX * 0.52}px`);
+    flight.style.setProperty('--cast-mid-y', `${castY * 0.44 - 22}px`);
+    const icon = document.createElement('img');
+    icon.src = asset;
+    icon.alt = '';
+    flight.append(icon, document.createElement('i'), document.createElement('i'));
+    sourceElement.classList.add('is-casting');
+    screen.appendChild(flight);
+    await delay(310);
+    flight.remove();
+    sourceElement.classList.remove('is-casting');
   }
 
   async animateClock(seconds = 8, sourceElement = this.elements.clockButton) {

@@ -1961,6 +1961,156 @@ img {
   animation: clock-flight 620ms cubic-bezier(.22,.72,.22,1) both;
 }
 
+.item-collect-flight,
+.item-cast-flight {
+  position: absolute;
+  z-index: 42;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.item-collect-flight {
+  animation: item-collect-path 510ms cubic-bezier(.2,.72,.22,1) both;
+}
+
+.item-cast-flight {
+  animation: item-cast-path 310ms cubic-bezier(.2,.72,.24,1) both;
+}
+
+.item-collect-flight img,
+.item-cast-flight img {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 4px 8px rgba(96,72,50,0.24));
+}
+
+.item-collect-flight img { animation: item-collect-icon 510ms ease-out both; }
+.item-cast-flight img { animation: item-cast-icon 310ms ease-out both; }
+.item-cast-hint img { width: 42px; height: 52px; }
+.item-cast-shuffle img { width: 49px; height: 43px; }
+
+.item-collect-flight strong {
+  position: absolute;
+  z-index: 4;
+  left: 18px;
+  top: -28px;
+  display: grid;
+  place-items: center;
+  min-width: 31px;
+  height: 25px;
+  padding: 0 7px;
+  border: 2px solid rgba(255,255,255,0.96);
+  border-radius: 999px;
+  background: #ff6f8e;
+  box-shadow: 0 3px 7px rgba(196,72,104,0.24);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  animation: item-collect-label 510ms ease-out both;
+}
+
+.item-collect-flight i,
+.item-cast-flight i {
+  --flight-star-x: 0px;
+  --flight-star-y: 0px;
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 13px;
+  height: 13px;
+  background: url("../assets/decor/sparkle.webp") center / contain no-repeat;
+  opacity: 0;
+  animation: item-flight-spark 430ms ease-out both;
+}
+
+.item-collect-flight i:nth-of-type(1), .item-cast-flight i:nth-of-type(1) { --flight-star-x: -25px; --flight-star-y: -21px; }
+.item-collect-flight i:nth-of-type(2), .item-cast-flight i:nth-of-type(2) { --flight-star-x: 24px; --flight-star-y: -14px; animation-delay: 55ms; }
+.item-collect-flight i:nth-of-type(3) { --flight-star-x: 17px; --flight-star-y: 18px; animation-delay: 105ms; }
+
+.tile.is-collecting {
+  animation: item-source-release 510ms cubic-bezier(.18,.76,.24,1) both !important;
+}
+
+.item-button.is-stocked {
+  animation: item-button-stocked 520ms cubic-bezier(.18,.82,.24,1.15) both;
+}
+
+.item-button.is-stocked b { animation: item-count-pop 480ms 45ms cubic-bezier(.18,.82,.24,1.2) both; }
+.item-button.is-casting { animation: item-button-cast 310ms cubic-bezier(.22,.72,.24,1) both; }
+
+@keyframes item-collect-path {
+  0% { opacity: 0; transform: translate(0,0) scale(0.7) rotate(-8deg); }
+  15% { opacity: 1; transform: translate(0,-7px) scale(1.08) rotate(5deg); }
+  58% { opacity: 1; transform: translate(var(--collect-mid-x),var(--collect-mid-y)) scale(0.94) rotate(-7deg); }
+  100% { opacity: 0; transform: translate(var(--collect-x),var(--collect-y)) scale(0.48) rotate(5deg); }
+}
+
+@keyframes item-cast-path {
+  0% { opacity: 0; transform: translate(0,0) scale(0.55) rotate(-10deg); }
+  20% { opacity: 1; transform: translate(0,-8px) scale(1.04) rotate(4deg); }
+  64% { opacity: 1; transform: translate(var(--cast-mid-x),var(--cast-mid-y)) scale(0.94) rotate(-4deg); }
+  100% { opacity: 0; transform: translate(var(--cast-x),var(--cast-y)) scale(0.58) rotate(8deg); }
+}
+
+@keyframes item-collect-icon {
+  0% { transform: translate(-50%,-50%) scale(0.72); }
+  30% { transform: translate(-50%,-50%) scale(1.14); }
+  100% { transform: translate(-50%,-50%) scale(0.86); }
+}
+
+@keyframes item-cast-icon {
+  0% { transform: translate(-50%,-50%) scale(0.68); }
+  36% { transform: translate(-50%,-50%) scale(1.13); }
+  100% { transform: translate(-50%,-50%) scale(0.92); }
+}
+
+@keyframes item-collect-label {
+  0%, 16% { opacity: 0; transform: translateY(6px) scale(0.7); }
+  36%, 72% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-9px) scale(0.88); }
+}
+
+@keyframes item-flight-spark {
+  0%, 20% { opacity: 0; transform: translate(-50%,-50%) scale(0.3) rotate(0); }
+  42% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--flight-star-x)),calc(-50% + var(--flight-star-y))) scale(0.9) rotate(100deg); }
+}
+
+@keyframes item-source-release {
+  0% { opacity: 1; transform: scale(1); }
+  24% { opacity: 1; transform: scale(0.88); filter: brightness(1.18); }
+  48% { opacity: 0.9; transform: scale(1.05); filter: brightness(1.28); }
+  100% { opacity: 0.38; transform: scale(0.72); filter: brightness(1.18); }
+}
+
+@keyframes item-button-stocked {
+  0%, 100% { transform: translateY(0) scale(1); filter: brightness(1); }
+  38% { transform: translateY(-4px) scale(1.055); filter: brightness(1.08) saturate(1.12); }
+  68% { transform: translateY(1px) scale(0.99); }
+}
+
+@keyframes item-count-pop {
+  0% { transform: scale(0.62) rotate(-10deg); }
+  48% { transform: scale(1.25) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+@keyframes item-button-cast {
+  0%, 100% { transform: translateY(0) scale(1); }
+  36% { transform: translateY(3px) scale(0.96); filter: brightness(1.04); }
+  72% { transform: translateY(-2px) scale(1.025); }
+}
+
 .clock-flight img {
   position: absolute;
   left: 0;

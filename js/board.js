@@ -64,7 +64,11 @@ function placeBonusCats(grid, easy = false) {
         grid[row][col] = null;
         const answers = findAllSumTenRects(grid);
         const catAnswers = answers.filter((answer) => rectContainsCell(answer, row, col));
-        if (hasGoodAnswerMix(grid, easy) && catAnswers.length) {
+        const everyCatStillCollectable = [...cats, cellKey(row, col)].every((key) => {
+          const [catRow, catCol] = key.split(':').map(Number);
+          return answers.some((answer) => rectContainsCell(answer, catRow, catCol));
+        });
+        if (hasGoodAnswerMix(grid, easy) && catAnswers.length && everyCatStillCollectable) {
           candidates.push({ row, col, coverage: catAnswers.length });
         }
         grid[row][col] = previous;
