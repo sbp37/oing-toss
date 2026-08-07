@@ -99,6 +99,14 @@ test('success sound keeps the original OING note sequence', () => {
   assert.equal(oscillators[3].frequency.events[0].value, 1800);
 });
 
+test('cat bonus keeps the original OING rising meow glide', () => {
+  const oscillators = newOscillators(() => audio.playCatBonusSound());
+  assert.equal(oscillators.length, 3);
+  assert.deepEqual(oscillators[0].frequency.events.map((event) => event.value), [900, 1400, 1100]);
+  assert.deepEqual(oscillators[1].frequency.events.map((event) => event.value), [1800, 2800, 2200]);
+  assert.equal(oscillators[2].frequency.events[0].value, 2900);
+});
+
 test('start sound confirms mobile audio unlock with a short two-note cue', async () => {
   assert.equal(await audio.unlockAudio(), true);
   const oscillators = newOscillators(() => audio.playStartSound());

@@ -58,9 +58,10 @@ export class BoardItemField {
     return carried;
   }
 
-  place(grid) {
+  place(grid, reservedKeys = new Set()) {
     const placed = [];
-    const openCells = rankBoardItemCells(grid, new Set(this.items.keys()));
+    const occupiedKeys = new Set([...this.items.keys(), ...reservedKeys]);
+    const openCells = rankBoardItemCells(grid, occupiedKeys);
     while (this.pending.length && openCells.length) {
       const item = this.pending.shift();
       const cell = openCells.shift();

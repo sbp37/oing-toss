@@ -128,13 +128,16 @@ export class GameUI {
       for (let c = 0; c < model.size; c += 1) {
         const value = model.valueAt(r, c);
         const boardItem = boardItems.get(`${r}:${c}`);
+        const bonusCat = model.hasBonusCat?.(r, c) || false;
         const tone = value ? TILE_TONE_BY_VALUE[value] : 0;
         const tile = document.createElement('button');
         tile.type = 'button';
         tile.tabIndex = -1;
         tile.className = boardItem
           ? `tile is-empty is-board-item board-item-${boardItem.type}`
-          : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}`;
+          : bonusCat
+            ? 'tile is-bonus-cat'
+            : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}`;
         tile.dataset.row = String(r);
         tile.dataset.col = String(c);
         tile.dataset.value = String(value || 0);
@@ -153,6 +156,21 @@ export class GameUI {
           const sparkle = document.createElement('i');
           sparkle.className = 'board-item-sparkle';
           tile.append(icon, sparkle);
+        } else if (bonusCat) {
+          tile.dataset.bonusCat = 'true';
+          tile.setAttribute('aria-label', '고양이 보너스 칸, 합계에는 0으로 계산');
+          const cat = document.createElement('img');
+          cat.className = 'bonus-cat-art';
+          cat.src = CHARACTER_ASSETS.peek;
+          cat.width = 359;
+          cat.height = 306;
+          cat.loading = 'eager';
+          cat.decoding = 'async';
+          cat.alt = '';
+          const badge = document.createElement('i');
+          badge.className = 'bonus-cat-mark';
+          badge.setAttribute('aria-hidden', 'true');
+          tile.append(cat, badge);
         } else {
           tile.setAttribute('aria-label', value ? `${value}` : '빈칸');
           tile.innerHTML = value ? `<span>${value}</span>` : '';
@@ -668,7 +686,7 @@ export class GameUI {
     }, 760);
   }
 
-  showScoreBurst(points, rect, size, combo, cellCount) {
+  showScoreBurst(points, rect, size, combo, cellCount, bonus = {}) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
@@ -676,6 +694,7 @@ export class GameUI {
     const detail = document.createElement('span');
     const labels = [];
     if (cellCount >= 3) labels.push(`${cellCount}칸 클리어`);
+    if (bonus.catBonusPoints > 0) labels.push(`고양이 +${bonus.catBonusPoints}`);
     if (combo > 1) labels.push(`배율 ×${comboMultiplier(combo).toFixed(2)}`);
     detail.textContent = labels.join(' · ');
     detail.hidden = labels.length === 0;
@@ -692,6 +711,40 @@ export class GameUI {
     void burst.offsetWidth;
     burst.classList.add('is-visible');
     setTimeout(() => burst.classList.remove('is-visible'), 760);
+  }
+
+  showCatBonus(points, rect, catCount = 1) {
+    this.boardFrame.querySelector('.cat-bonus-pop')?.remove();
+    const catTile = this.board.querySelector('.tile.is-bonus-cat.is-selected');
+    const tileRect = catTile?.getBoundingClientRect();
+    const frameRect = this.boardFrame.getBoundingClientRect();
+    const bounds = this.selectionBounds(rect);
+    const pop = document.createElement('div');
+    pop.className = 'cat-bonus-pop';
+    const cat = document.createElement('img');
+    cat.src = CHARACTER_ASSETS.peek;
+    cat.width = 359;
+    cat.height = 306;
+    cat.alt = '';
+    const copy = document.createElement('div');
+    const label = document.createElement('span');
+    label.textContent = catCount > 1 ? `고양이 보너스 ×${catCount}` : '고양이 보너스';
+    const score = document.createElement('strong');
+    score.textContent = `+${points}`;
+    copy.append(label, score);
+    pop.append(cat, copy);
+    for (let index = 0; index < 3; index += 1) pop.appendChild(document.createElement('i'));
+
+    if (tileRect) {
+      pop.style.left = `${tileRect.left + tileRect.width / 2 - frameRect.left}px`;
+      pop.style.top = `${tileRect.top + tileRect.height * 0.18 - frameRect.top}px`;
+    } else if (bounds) {
+      pop.style.left = `${(bounds.left + bounds.right) / 2}px`;
+      pop.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
+    }
+
+    this.boardFrame.appendChild(pop);
+    setTimeout(() => pop.remove(), 900);
   }
 
   showComboMoment(combo) {

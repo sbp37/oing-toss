@@ -3,6 +3,7 @@ import {
   BOARD_DIFFICULTY,
   BoardModel,
   EASY_BOARD_BONUS,
+  bonusCatTargetForSize,
   bombRect,
   cellListStats,
   findBestBombTarget,
@@ -11,13 +12,22 @@ import {
   normalizeRect,
   rectStats,
 } from '../js/board.js';
-import { scoreForBomb, scoreForClear, scoreForMegaBomb } from '../js/data.js';
+import { scoreForBomb, scoreForCatBonus, scoreForClear, scoreForMegaBomb } from '../js/data.js';
 
 for (const size of [4, 5, 6]) {
   for (let run = 0; run < 250; run += 1) {
     const board = new BoardModel(size);
     const answers = board.findAnswers();
     const profile = BOARD_DIFFICULTY[size];
+    assert.equal(board.bonusCats.size, bonusCatTargetForSize(size), `${size}x${size} board must show its promised cat bonuses`);
+    for (const key of board.bonusCats) {
+      const [row, col] = key.split(':').map(Number);
+      assert.equal(board.grid[row][col], null, 'a cat bonus replaces a number and contributes zero to the sum');
+      assert.ok(
+        answers.some((answer) => row >= answer.r1 && row <= answer.r2 && col >= answer.c1 && col <= answer.c2),
+        'every cat bonus must be collectable inside at least one sum-ten rectangle',
+      );
+    }
     assert.ok(answers.length >= profile.minimumAnswers, `${size}x${size} board must start with enough choices`);
     assert.ok(
       answers.filter((answer) => answer.count === 2).length >= profile.minimumSimpleAnswers,
@@ -75,6 +85,10 @@ assert.deepEqual(findBestBombTarget([
   stats: { sum: 19, count: 5 },
 });
 assert.deepEqual(rectStats([[4, 6], [null, 8]], { r1: 0, c1: 0, r2: 0, c2: 1 }), { sum: 10, count: 2 });
+const catStatsModel = new BoardModel(4);
+catStatsModel.grid = [[4, 6], [null, 8]];
+catStatsModel.bonusCats = new Set(['1:0']);
+assert.deepEqual(catStatsModel.stats({ r1: 0, c1: 0, r2: 1, c2: 0 }), { sum: 4, count: 1, catCount: 1 });
 const megaGrid = Array.from({ length: 6 }, () => Array(6).fill(2));
 megaGrid[3][3] = null;
 const megaCells = megaBombCells(megaGrid, 3, 3);
@@ -89,6 +103,8 @@ assert.equal(megaTarget.stats.count, 12);
 assert.equal(megaModel.grid.flat().filter((value) => value === null).length, 13);
 assert.ok(scoreForClear(3, 5) > scoreForClear(3, 1), 'combo multiplier must increase score');
 assert.ok(scoreForClear(4, 1) > scoreForClear(2, 1) * 2, 'large rectangles must earn a meaningful bonus');
+assert.equal(scoreForCatBonus(1, 1), 120, 'one cat grants a visible base bonus on the V2 score scale');
+assert.ok(scoreForCatBonus(1, 5) > scoreForCatBonus(1, 1), 'cat bonus follows the live combo multiplier');
 assert.equal(scoreForBomb(37), 57, 'bomb score keeps the original sum plus 20 idea');
 assert.equal(scoreForMegaBomb(37), 77, 'mega bomb score keeps the original sum plus 40 idea');
 

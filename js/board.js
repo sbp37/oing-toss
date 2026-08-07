@@ -1,6 +1,7 @@
 const MIN_VALUE = 1;
 const MAX_VALUE = 9;
 const GENERATION_ATTEMPTS = 72;
+export const BONUS_CAT_RATIO = 0.07;
 export const EASY_BOARD_BONUS = Object.freeze({ minimumAnswers: 3, minimumSimpleAnswers: 2 });
 
 // The board gets denser every round, but the kind of answer changes too:
@@ -38,6 +39,47 @@ function hasGoodAnswerMix(grid, easy = false) {
   return answers.length >= minimumAnswers
     && answers.filter((answer) => answer.count === 2).length >= minimumSimpleAnswers
     && answers.filter((answer) => answer.count >= 3).length >= minimumRichAnswers;
+}
+
+const cellKey = (row, col) => `${row}:${col}`;
+
+export function bonusCatTargetForSize(size) {
+  return Math.max(1, Math.round(size * size * BONUS_CAT_RATIO));
+}
+
+function rectContainsCell(rect, row, col) {
+  return row >= rect.r1 && row <= rect.r2 && col >= rect.c1 && col <= rect.c2;
+}
+
+function placeBonusCats(grid, easy = false) {
+  const cats = new Set();
+  const target = bonusCatTargetForSize(grid.length);
+
+  for (let index = 0; index < target; index += 1) {
+    const candidates = [];
+    for (let row = 0; row < grid.length; row += 1) {
+      for (let col = 0; col < grid.length; col += 1) {
+        if ((grid[row]?.[col] ?? 0) <= 0 || cats.has(cellKey(row, col))) continue;
+        const previous = grid[row][col];
+        grid[row][col] = null;
+        const answers = findAllSumTenRects(grid);
+        const catAnswers = answers.filter((answer) => rectContainsCell(answer, row, col));
+        if (hasGoodAnswerMix(grid, easy) && catAnswers.length) {
+          candidates.push({ row, col, coverage: catAnswers.length });
+        }
+        grid[row][col] = previous;
+      }
+    }
+
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => b.coverage - a.coverage);
+    const bestCoverage = candidates[0].coverage;
+    const best = shuffled(candidates.filter((candidate) => candidate.coverage === bestCoverage))[0];
+    grid[best.row][best.col] = null;
+    cats.add(cellKey(best.row, best.col));
+  }
+
+  return cats;
 }
 
 function seedProfileAnswers(grid, easy = false) {
@@ -188,36 +230,62 @@ export class BoardModel {
   constructor(size = 4) {
     this.size = size;
     this.grid = [];
+    this.bonusCats = new Set();
     this.generate(size);
   }
 
   generate(size = this.size, options = {}) {
     this.size = size;
     const easy = Boolean(options.easy);
-    const attempts = easy ? GENERATION_ATTEMPTS * 3 : GENERATION_ATTEMPTS;
+    const attempts = easy ? GENERATION_ATTEMPTS * 5 : GENERATION_ATTEMPTS * 3;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       this.grid = makeRandomGrid(size);
       if (easy) seedProfileAnswers(this.grid, true);
-      if (hasGoodAnswerMix(this.grid, easy)) return this.grid;
+      if (!hasGoodAnswerMix(this.grid, easy)) continue;
+      const bonusCats = placeBonusCats(this.grid, easy);
+      if (bonusCats?.size === bonusCatTargetForSize(size)) {
+        this.bonusCats = bonusCats;
+        return this.grid;
+      }
     }
 
-    this.grid = makeRandomGrid(size);
-    seedProfileAnswers(this.grid, easy);
-    return this.grid;
+    // Extremely rare fallback: keep generating until the promised cat count and
+    // answer profile both hold. This is intentionally deterministic in outcome,
+    // not in layout, so a round never silently loses its bonus cats.
+    while (true) {
+      this.grid = makeRandomGrid(size);
+      seedProfileAnswers(this.grid, easy);
+      if (!hasGoodAnswerMix(this.grid, easy)) continue;
+      const bonusCats = placeBonusCats(this.grid, easy);
+      if (bonusCats?.size !== bonusCatTargetForSize(size)) continue;
+      this.bonusCats = bonusCats;
+      return this.grid;
+    }
   }
 
   valueAt(r, c) {
     return this.grid[r]?.[c] ?? 0;
   }
 
+  hasBonusCat(r, c) {
+    return (this.grid[r]?.[c] ?? null) === null && this.bonusCats.has(cellKey(r, c));
+  }
+
   stats(rect) {
-    return rectStats(this.grid, rect);
+    const stats = rectStats(this.grid, rect);
+    const catCount = cellsInRect(rect).reduce(
+      (count, { r, c }) => count + (this.hasBonusCat(r, c) ? 1 : 0),
+      0,
+    );
+    return { ...stats, catCount };
   }
 
   remove(rect) {
     let removed = 0;
     for (const { r, c } of cellsInRect(rect)) {
-      if (this.grid[r][c] > 0) removed += 1;
+      const hadNumber = this.grid[r][c] > 0;
+      const hadCat = this.bonusCats.delete(cellKey(r, c));
+      if (hadNumber || hadCat) removed += 1;
       this.grid[r][c] = null;
     }
     return removed;
@@ -226,7 +294,9 @@ export class BoardModel {
   removeCells(cells) {
     let removed = 0;
     cells.forEach(({ r, c }) => {
-      if ((this.grid[r]?.[c] ?? 0) > 0) removed += 1;
+      const hadNumber = (this.grid[r]?.[c] ?? 0) > 0;
+      const hadCat = this.bonusCats.delete(cellKey(r, c));
+      if (hadNumber || hadCat) removed += 1;
       if (this.grid[r]) this.grid[r][c] = null;
     });
     return removed;

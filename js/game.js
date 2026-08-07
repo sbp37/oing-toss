@@ -6,6 +6,7 @@ import {
   getRoundConfig,
   pickMessage,
   scoreForBomb,
+  scoreForCatBonus,
   scoreForClear,
   scoreForMegaBomb,
 } from './data.js';
@@ -19,6 +20,7 @@ import { preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import {
   isSoundEnabled,
   playComboSound,
+  playCatBonusSound,
   playBombSound,
   playClockSound,
   playCountdownTick,
@@ -107,6 +109,8 @@ class OingGame {
       comboExpiresAt: 0,
       successCount: 0,
       maxClearCells: 0,
+      catsCollected: 0,
+      catBonusScore: 0,
       items: this.inventory.snapshot(),
     };
   }
@@ -344,19 +348,29 @@ class OingGame {
     this.advanceCombo();
     this.state.successCount += 1;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, stats.count);
-    const points = scoreForClear(stats.count, this.state.combo);
+    const clearPoints = scoreForClear(stats.count, this.state.combo);
+    const catCount = stats.catCount || 0;
+    const catBonusPoints = scoreForCatBonus(catCount, this.state.combo);
+    const points = clearPoints + catBonusPoints;
     this.state.score += points;
+    this.state.catsCollected += catCount;
+    this.state.catBonusScore += catBonusPoints;
     this.state.progress += 1;
     successHaptic(this.state.combo);
     if (this.state.combo >= 2) playComboSound(this.state.combo);
     else playSuccessSound();
+    if (catCount > 0) playCatBonusSound();
     if ([3, 5, 8].includes(this.state.combo)) {
       this.ui.showComboMoment(this.state.combo);
     }
-    this.ui.showScoreBurst(points, rect, this.model.size, this.state.combo, stats.count);
+    this.ui.showScoreBurst(points, rect, this.model.size, this.state.combo, stats.count, {
+      catCount,
+      catBonusPoints,
+    });
+    if (catCount > 0) this.ui.showCatBonus(catBonusPoints, rect, catCount);
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
-    this.speakForSuccess();
+    this.speakForSuccess(catCount);
 
     await this.ui.animateSuccess(rect, this.state.combo);
     this.model.remove(rect);
@@ -372,7 +386,7 @@ class OingGame {
       this.renderBoard();
       this.ui.toast('새 보드로 바로 이어갈게!');
     } else {
-      const placed = this.boardItems.place(this.model.grid);
+      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
       if (placed.length) this.announceBoardItems(placed);
     }
@@ -396,8 +410,11 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
-  speakForSuccess() {
-    if (this.state.successCount === 1) {
+  speakForSuccess(catCount = 0) {
+    if (catCount > 0) {
+      this.ui.setPlayCharacter('success', 950);
+      this.showCatMessage('catBonus');
+    } else if (this.state.successCount === 1) {
       this.ui.setPlayCharacter('success', 800);
       this.showCatMessage('firstSuccess');
     } else if (this.state.combo === 3) {
@@ -534,7 +551,7 @@ class OingGame {
       this.renderBoard();
       this.ui.toast('새 보드로 바로 이어갈게!');
     } else {
-      const placed = this.boardItems.place(this.model.grid);
+      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
       if (placed.length) this.announceBoardItems(placed);
     }

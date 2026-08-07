@@ -70,6 +70,7 @@ export const MESSAGES = Object.freeze({
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
   clock: Object.freeze(['시간을 더 챙겼다냥!', '8초 더 달려보자냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
+  catBonus: Object.freeze(['보너스 고양이까지 챙겼다냥!', '야옹! 점수 더 얹어준다냥!', '고양이 보너스도 놓치지 않았다냥!']),
   round: Object.freeze(['다음 판도 바로 가자냥!', '더 찾아보자냥!', '새 판도 끊지 말고 가자냥!']),
   lowTime: Object.freeze(['조금만 더다냥!', '시간이 얼마 없다냥!', '마지막까지 눈 크게 뜨라냥!']),
   resultLow: Object.freeze([
@@ -172,6 +173,14 @@ export function scoreForClear(cellCount, combo) {
     ? 240
     : 240 + (cellCount - 2) * 180 + Math.max(0, cellCount - 3) * 35;
   return Math.round(base * comboMultiplier(combo));
+}
+
+// The original OING cat cell adds five base points before its integer combo
+// multiplier. V2 scores use a larger scale, so 120 preserves the same
+// meaningful "lucky catch" feeling without overpowering the clear itself.
+export function scoreForCatBonus(catCount, combo) {
+  const cats = Math.max(0, Math.round(Number(catCount) || 0));
+  return Math.round(cats * 120 * comboMultiplier(combo));
 }
 
 export function scoreForBomb(valueSum) {

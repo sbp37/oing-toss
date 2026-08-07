@@ -98,6 +98,39 @@ export function playSuccessSound() {
   sparkle.stop(now + 0.18);
 }
 
+// Original OING playMeow(): a short rising "nyang" glide, mixed lower here
+// so it reads as a bonus accent instead of fighting the clear chime.
+export function playCatBonusSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime + 0.09;
+
+  const voice = ctx.createOscillator();
+  const voiceGain = ctx.createGain();
+  voice.type = 'sine';
+  voice.frequency.setValueAtTime(900, now);
+  voice.frequency.exponentialRampToValueAtTime(1400, now + 0.07);
+  voice.frequency.exponentialRampToValueAtTime(1100, now + 0.18);
+  voiceGain.gain.setValueAtTime(0.0001, now);
+  voiceGain.gain.linearRampToValueAtTime(0.13, now + 0.03);
+  voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  voice.connect(voiceGain); voiceGain.connect(ctx.destination);
+  voice.start(now); voice.stop(now + 0.24);
+
+  const harmonic = ctx.createOscillator();
+  const harmonicGain = ctx.createGain();
+  harmonic.type = 'triangle';
+  harmonic.frequency.setValueAtTime(1800, now);
+  harmonic.frequency.exponentialRampToValueAtTime(2800, now + 0.07);
+  harmonic.frequency.exponentialRampToValueAtTime(2200, now + 0.18);
+  harmonicGain.gain.setValueAtTime(0.038, now);
+  harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  harmonic.connect(harmonicGain); harmonicGain.connect(ctx.destination);
+  harmonic.start(now); harmonic.stop(now + 0.22);
+
+  scheduleTone(ctx, 2900, now + 0.15, 0.1, 0.025, 'sine', 0.006);
+}
+
 // Original OING index.html playComboUp()/playCombo7(), adapted to this game's
 // visible milestones (3, 5, 8). Every chained clear climbs in pitch.
 export function playComboSound(combo) {
