@@ -8,6 +8,7 @@ test('all live board drops activate immediately instead of requiring a second in
   assert.equal(boardDropInventoryGrant('clock'), null);
   assert.equal(boardDropInventoryGrant('megabomb'), null);
   assert.equal(boardDropInventoryGrant('freeze'), null);
+  assert.equal(boardDropInventoryGrant('clover'), null);
 });
 
 test('time freeze holds the displayed time and rebases the deadline after 15 seconds', () => {
@@ -44,7 +45,7 @@ test('combo-seven pool only returns currently implemented drops', () => {
   assert.equal(chooseBoardDrop(21, () => 0.5).id, 'megabomb');
   for (const combo of [14, 21, 35]) {
     for (const random of [0, 0.24, 0.49, 0.74, 0.999]) {
-      assert.ok(['bomb', 'clock', 'megabomb', 'freeze'].includes(chooseBoardDrop(combo, () => random).id));
+      assert.ok(['bomb', 'clock', 'megabomb', 'freeze', 'clover'].includes(chooseBoardDrop(combo, () => random).id));
     }
   }
 });

@@ -318,6 +318,16 @@ export function playFreezeSound() {
   scheduleTone(ctx, 2637, now + 0.21, 0.35, 0.2, 'sine', 0.008);
 }
 
+export function playCloverSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [659.25, 880, 1046.5, 1318.5].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.065, 0.25, index === 3 ? 0.16 : 0.11, 'sine', 0.008);
+  });
+  scheduleTone(ctx, 2637, now + 0.22, 0.28, 0.08, 'triangle', 0.006);
+}
+
 export function playRoundClearSound() {
   const ctx = getContext();
   if (!ctx) return;

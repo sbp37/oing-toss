@@ -41,7 +41,7 @@
 | `assets/icons/items/megabomb.webp` | 기존 `bomb.webp` 스타일 참조 후 imagegen 생성, `assets/source/megabomb-icon-chroma.png`에서 분리 | 콤보 14+ 메가폭탄 보드 드롭 | 512×512 원본, 보드 33–57px |
 | `assets/icons/hud/time.webp` | `oing-toss-assets-v1/assets/icons/clock.webp` | 시간 HUD·하단 시계·콤보 보상 보드 드롭 | HUD 21–24px, 보드 25–51px |
 | `assets/icons/items/freeze.webp` | `oing-toss-assets-v1/assets/icons/freeze.webp` | 플레이 보드 타임프리즈 드롭·시간 HUD | 보드 최대 54px, HUD 20px |
-| `assets/icons/items/clover.webp` | `oing-toss-assets-v1/assets/icons/clover.webp` | 미래 아이템 레지스트리 | 현재 미노출 |
+| `assets/icons/items/clover.webp` | `oing-toss-assets-v1/assets/icons/clover.webp` | 플레이 보드 클로버 드롭·행운 효과 | 보드 최대 56px |
 | `assets/decor/star.webp` | `oing-toss-assets-v1/assets/decor/star.webp` | 홈·성공 파편·라운드·결과 | 15–24px |
 | `assets/decor/sparkle.webp` | `oing-toss-assets-v1/assets/decor/sparkle.webp` | 홈·드래그·첫 조작 유도·성공 파편·라운드·결과 | 9–20px |
 | `assets/decor/heart.webp` | `oing-toss-assets-v1/assets/decor/heart.webp` | 홈 장식·성공 파편 | 17–22px |

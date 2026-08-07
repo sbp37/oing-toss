@@ -828,6 +828,45 @@ export class GameUI {
     this.elements.timePill.setAttribute('aria-label', enabled ? '남은 시간이 15초 동안 정지됨' : '남은 시간');
   }
 
+  async animateClover(seconds = 20, sourceElement) {
+    if (!sourceElement) return;
+    const screen = this.elements.playScreen;
+    const start = sourceElement.getBoundingClientRect();
+    const target = this.boardFrame.getBoundingClientRect();
+    const frame = screen.getBoundingClientRect();
+    const flight = document.createElement('div');
+    flight.className = 'clover-flight';
+    flight.style.left = `${start.left + start.width / 2 - frame.left}px`;
+    flight.style.top = `${start.top + start.height / 2 - frame.top}px`;
+    flight.style.setProperty('--clover-x', `${target.left + target.width / 2 - start.left - start.width / 2}px`);
+    flight.style.setProperty('--clover-y', `${target.top + target.height / 2 - start.top - start.height / 2}px`);
+    const icon = document.createElement('img');
+    icon.src = BOARD_DROP_ITEMS.clover.asset;
+    icon.alt = '';
+    const label = document.createElement('strong');
+    label.textContent = `${seconds}초 행운`;
+    flight.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    screen.appendChild(flight);
+    await delay(620);
+    flight.remove();
+  }
+
+  setLuckyActive(active) {
+    const enabled = Boolean(active);
+    this.elements.playScreen.classList.toggle('is-lucky-time', enabled);
+    this.boardFrame.classList.toggle('is-lucky', enabled);
+  }
+
+  showLuckyCats(cells = []) {
+    cells.forEach(({ row, col }, index) => {
+      const tile = this.tileAt(row, col);
+      if (!tile) return;
+      tile.style.setProperty('--lucky-delay', `${index * 80}ms`);
+      tile.classList.add('is-lucky-cat-arrival');
+      setTimeout(() => tile.classList.remove('is-lucky-cat-arrival'), 900 + index * 80);
+    });
+  }
+
   showItemScoreBurst(points, rect, kind) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;

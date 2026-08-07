@@ -13,6 +13,7 @@ const PLAY_ASSETS = Object.freeze([
   'assets/icons/items/bomb.webp',
   'assets/icons/items/megabomb.webp',
   'assets/icons/items/freeze.webp',
+  'assets/icons/items/clover.webp',
   'assets/ui/button-pause.webp',
   'assets/ui/tiles-syrup-v4/tile-blush.webp',
   'assets/ui/tiles-syrup-v4/tile-peach.webp',

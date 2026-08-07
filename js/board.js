@@ -70,6 +70,10 @@ export function bonusCatTargetForSize(size) {
   return Math.max(1, Math.round(size * size * BONUS_CAT_RATIO));
 }
 
+export function luckyCatBonusForSize(size) {
+  return Math.max(2, Math.floor(Number(size) / 2));
+}
+
 function rectContainsCell(rect, row, col) {
   return row >= rect.r1 && row <= rect.r2 && col >= rect.c1 && col <= rect.c2;
 }
@@ -298,6 +302,35 @@ export class BoardModel {
 
   hasBonusCat(r, c) {
     return (this.grid[r]?.[c] ?? null) === null && this.bonusCats.has(cellKey(r, c));
+  }
+
+  addLuckyCats(count = luckyCatBonusForSize(this.size)) {
+    const added = [];
+    for (let index = 0; index < count; index += 1) {
+      const candidates = [];
+      for (let row = 0; row < this.size; row += 1) {
+        for (let col = 0; col < this.size; col += 1) {
+          if ((this.grid[row]?.[col] ?? 0) <= 0) continue;
+          const previous = this.grid[row][col];
+          this.grid[row][col] = null;
+          const answers = findAllSumTenRects(this.grid);
+          const newCatIsCollectable = answers.some((answer) => rectContainsCell(answer, row, col));
+          const allCatsCollectable = [...this.bonusCats].every((key) => {
+            const [catRow, catCol] = key.split(':').map(Number);
+            return answers.some((answer) => rectContainsCell(answer, catRow, catCol));
+          });
+          if (newCatIsCollectable && allCatsCollectable) candidates.push({ row, col, coverage: answers.length });
+          this.grid[row][col] = previous;
+        }
+      }
+      candidates.sort((a, b) => b.coverage - a.coverage);
+      const pick = candidates[0];
+      if (!pick) break;
+      this.grid[pick.row][pick.col] = null;
+      this.bonusCats.add(cellKey(pick.row, pick.col));
+      added.push({ row: pick.row, col: pick.col });
+    }
+    return added;
   }
 
   stats(rect) {

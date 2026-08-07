@@ -1,5 +1,6 @@
 import {
   BOARD_DROP_ITEMS,
+  CLOVER_LUCKY_SECONDS,
   GAME_DURATION_SECONDS,
   START_COUNTDOWN_STEPS,
   TIME_FREEZE_SECONDS,
@@ -28,6 +29,7 @@ import {
   playItemDropSound,
   playBombSound,
   playClockSound,
+  playCloverSound,
   playFreezeSound,
   playCountdownTick,
   playFailSound,
@@ -46,6 +48,7 @@ import {
   failHaptic,
   bombHaptic,
   clockHaptic,
+  cloverHaptic,
   freezeHaptic,
   countdownHaptic,
   isHapticEnabled,
@@ -73,6 +76,7 @@ class OingGame {
     this.endAt = 0;
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
+    this.cloverEndsAt = 0;
     this.pauseStartedAt = 0;
     this.lowTimeSpoken = false;
     this.lastCountdownSecond = null;
@@ -183,7 +187,9 @@ class OingGame {
     this.inputGuardUntil = 0;
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
+    this.cloverEndsAt = 0;
     this.ui.setFreezeActive(false);
+    this.ui.setLuckyActive(false);
     this.state.running = true;
     this.state.inputLocked = true;
     this.lowTimeSpoken = false;
@@ -238,7 +244,9 @@ class OingGame {
   }
 
   generateBoard(size) {
-    return this.model.generate(size, { assist: boardAssistForSuccessCount(this.state.successCount) });
+    const grid = this.model.generate(size, { assist: boardAssistForSuccessCount(this.state.successCount) });
+    if (this.cloverEndsAt > performance.now()) this.model.addLuckyCats();
+    return grid;
   }
 
   renderBoard() {
@@ -670,6 +678,24 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
+  async resolveClover(boardItemKey, sourceElement) {
+    this.state.inputLocked = true;
+    this.cloverEndsAt = performance.now() + CLOVER_LUCKY_SECONDS * 1000;
+    const animation = this.ui.animateClover(CLOVER_LUCKY_SECONDS, sourceElement);
+    this.boardItems.delete(boardItemKey);
+    const added = this.model.addLuckyCats();
+    this.renderBoard();
+    this.ui.showLuckyCats(added);
+    this.ui.setLuckyActive(true);
+    this.showCatMessage('clover');
+    this.ui.setPlayCharacter('success', 1100);
+    playCloverSound();
+    cloverHaptic();
+    await animation;
+    this.inputGuardUntil = performance.now() + 80;
+    this.state.inputLocked = false;
+  }
+
   async useBoardItem(key) {
     if (!this.canUseItem()) return;
     const item = this.boardItems.get(key);
@@ -695,6 +721,11 @@ class OingGame {
       await this.resolveFreeze(key, sourceElement);
       return;
     }
+    if (item.type === 'clover') {
+      const sourceElement = this.ui.tileAt(item.row, item.col);
+      await this.resolveClover(key, sourceElement);
+      return;
+    }
     this.state.inputLocked = false;
     this.ui.toast('이 아이템은 다음 업데이트에서 열려!');
   }
@@ -718,6 +749,10 @@ class OingGame {
     if (!this.state.running || this.state.paused) return;
     const now = performance.now();
     const isFrozen = this.freezeEndsAt > now;
+    if (this.cloverEndsAt > 0 && this.cloverEndsAt <= now) {
+      this.cloverEndsAt = 0;
+      this.ui.setLuckyActive(false);
+    }
     if (isFrozen) {
       this.state.timeLeft = this.frozenTimeLeft;
     } else {
@@ -761,6 +796,7 @@ class OingGame {
     const pauseDuration = performance.now() - this.pauseStartedAt;
     this.endAt += pauseDuration;
     if (this.freezeEndsAt > this.pauseStartedAt) this.freezeEndsAt += pauseDuration;
+    if (this.cloverEndsAt > this.pauseStartedAt) this.cloverEndsAt += pauseDuration;
     this.state.paused = false;
     this.ui.setOverlay('pause-overlay', false);
   }
@@ -772,7 +808,9 @@ class OingGame {
     this.state.timeLeft = 0;
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
+    this.cloverEndsAt = 0;
     this.ui.setFreezeActive(false);
+    this.ui.setLuckyActive(false);
     this.stopTimer();
     this.input.cancel();
     this.tutorialActive = false;
@@ -807,7 +845,9 @@ class OingGame {
     this.state.running = false;
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
+    this.cloverEndsAt = 0;
     this.ui.setFreezeActive(false);
+    this.ui.setLuckyActive(false);
     this.state.paused = false;
     this.input.cancel();
     this.tutorialActive = false;

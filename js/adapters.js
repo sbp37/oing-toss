@@ -119,7 +119,7 @@ export function runtimeConfig() {
   const requested = Number(params.get('duration'));
   return {
     testMode,
-    duration: testMode && requested > 0 ? Math.min(requested, 90) : 90,
+    duration: testMode && requested > 0 ? Math.min(requested, 180) : 90,
     forceTutorial: testMode && params.get('tutorial') === '1',
     forcedItem: testMode ? params.get('item') : null,
   };

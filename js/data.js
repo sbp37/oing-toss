@@ -1,6 +1,7 @@
 export const GAME_DURATION_SECONDS = 90;
 export const COMBO_WINDOW_MS = 3200;
 export const TIME_FREEZE_SECONDS = 15;
+export const CLOVER_LUCKY_SECONDS = 20;
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 
 export const ROUND_CONFIG = Object.freeze([
@@ -15,7 +16,7 @@ export const ITEM_DEFINITIONS = Object.freeze({
   bomb: { id: 'bomb', initial: 1, implemented: true, asset: 'assets/icons/items/bomb.webp' },
   clock: { id: 'clock', initial: 1, implemented: true, asset: 'assets/icons/hud/time.webp' },
   freeze: { id: 'freeze', initial: 0, implemented: true, asset: 'assets/icons/items/freeze.webp' },
-  clover: { id: 'clover', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/clover.webp' },
+  clover: { id: 'clover', initial: 0, implemented: true, asset: 'assets/icons/items/clover.webp' },
 });
 
 // Original OING board drops. Only implemented entries enter the live pool;
@@ -25,7 +26,7 @@ export const BOARD_DROP_ITEMS = Object.freeze({
   clock: Object.freeze({ id: 'clock', label: '시계', implemented: true, asset: 'assets/icons/hud/time.webp' }),
   megabomb: Object.freeze({ id: 'megabomb', label: '메가폭탄', implemented: true, asset: 'assets/icons/items/megabomb.webp' }),
   freeze: Object.freeze({ id: 'freeze', label: '타임프리즈', implemented: true, asset: 'assets/icons/items/freeze.webp' }),
-  clover: Object.freeze({ id: 'clover', label: '클로버', implemented: false, asset: 'assets/icons/items/clover.webp' }),
+  clover: Object.freeze({ id: 'clover', label: '클로버', implemented: true, asset: 'assets/icons/items/clover.webp' }),
   candy: Object.freeze({ id: 'candy', label: '콤보사탕', implemented: false, asset: null }),
 });
 
@@ -108,6 +109,7 @@ export const MESSAGES = Object.freeze({
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
   clock: Object.freeze(['시간을 더 챙겼다냥!', '8초 더 달려보자냥!']),
   freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '15초 동안 마음껏 찾아보라냥!', '째깍째깍 잠깐 쉬어간다냥!']),
+  clover: Object.freeze(['행운 고양이가 몰려온다냥!', '20초 동안 고양이 운이 터진다냥!', '클로버 기운이 가득하다냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
   bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
   clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),

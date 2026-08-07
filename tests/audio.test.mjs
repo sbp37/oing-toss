@@ -198,3 +198,8 @@ test('time freeze keeps the original OING ice shards and closing bells', () => {
     Math.random = originalRandom;
   }
 });
+
+test('clover sound is a bright five-note lucky flourish', () => {
+  const oscillators = newOscillators(() => audio.playCloverSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [659.25, 880, 1046.5, 1318.5, 2637]);
+});

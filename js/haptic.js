@@ -52,6 +52,10 @@ export function freezeHaptic() {
   vibrate([5, 18, 5, 18, 10]);
 }
 
+export function cloverHaptic() {
+  vibrate([7, 16, 7, 16, 14]);
+}
+
 export function roundHaptic() {
   vibrate([10, 20, 14, 20, 22]);
 }
