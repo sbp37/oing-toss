@@ -2,9 +2,11 @@ import {
   BOARD_DROP_ITEMS,
   GAME_DURATION_SECONDS,
   START_COUNTDOWN_STEPS,
+  TIME_FREEZE_SECONDS,
   boardDropReward,
   chooseBoardDrop,
   comboWindowMsForProgress,
+  freezeTimeline,
   getRoundConfig,
   pickMessage,
   scoreForBomb,
@@ -26,6 +28,7 @@ import {
   playItemDropSound,
   playBombSound,
   playClockSound,
+  playFreezeSound,
   playCountdownTick,
   playFailSound,
   playGameOverSound,
@@ -43,6 +46,7 @@ import {
   failHaptic,
   bombHaptic,
   clockHaptic,
+  freezeHaptic,
   countdownHaptic,
   isHapticEnabled,
   itemHaptic,
@@ -67,6 +71,8 @@ class OingGame {
     this.itemTapCandidate = null;
     this.timer = null;
     this.endAt = 0;
+    this.freezeEndsAt = 0;
+    this.frozenTimeLeft = 0;
     this.pauseStartedAt = 0;
     this.lowTimeSpoken = false;
     this.lastCountdownSecond = null;
@@ -175,6 +181,9 @@ class OingGame {
     this.boardItems.reset();
     this.itemTapCandidate = null;
     this.inputGuardUntil = 0;
+    this.freezeEndsAt = 0;
+    this.frozenTimeLeft = 0;
+    this.ui.setFreezeActive(false);
     this.state.running = true;
     this.state.inputLocked = true;
     this.lowTimeSpoken = false;
@@ -182,6 +191,7 @@ class OingGame {
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
     this.ui.setOverlay('pause-overlay', false);
     this.buildRound();
+    this.forceTestBoardItem();
     this.ui.updateItems(this.state.items);
     this.ui.showScreen('play');
     this.ui.setPlayCharacter('idle');
@@ -233,6 +243,20 @@ class OingGame {
 
   renderBoard() {
     this.ui.renderBoard(this.model, this.boardItems.items);
+  }
+
+  forceTestBoardItem() {
+    const type = this.runtime.forcedItem;
+    if (!type || !BOARD_DROP_ITEMS[type]?.implemented) return;
+    for (let row = 0; row < this.model.size; row += 1) {
+      for (let col = 0; col < this.model.size; col += 1) {
+        if (this.model.grid[row][col] == null) continue;
+        this.model.grid[row][col] = null;
+        this.boardItems.set(type, row, col, { earnedAtCombo: 0 });
+        this.renderBoard();
+        return;
+      }
+    }
   }
 
   beginBoardItemTap(event) {
@@ -597,7 +621,9 @@ class OingGame {
 
   async resolveClock(boardItemKey = null, sourceElement = this.ui.elements.clockButton) {
     this.state.inputLocked = true;
+    const now = performance.now();
     this.state.timeLeft = Math.min(999, this.state.timeLeft + 8);
+    if (this.freezeEndsAt > now) this.frozenTimeLeft = this.state.timeLeft;
     if (this.timer) this.endAt += 8000;
     if (this.state.timeLeft > 10) {
       this.lowTimeSpoken = false;
@@ -615,6 +641,32 @@ class OingGame {
     }
     await animation;
     this.inputGuardUntil = performance.now() + 100;
+    this.state.inputLocked = false;
+  }
+
+  async resolveFreeze(boardItemKey, sourceElement) {
+    this.state.inputLocked = true;
+    const now = performance.now();
+    const currentTimeLeft = this.freezeEndsAt > now
+      ? this.frozenTimeLeft
+      : Math.max(0, this.timer ? (this.endAt - now) / 1000 : this.state.timeLeft);
+    const timeline = freezeTimeline(now, currentTimeLeft, TIME_FREEZE_SECONDS);
+    this.freezeEndsAt = timeline.freezeEndsAt;
+    this.frozenTimeLeft = timeline.frozenTimeLeft;
+    this.endAt = timeline.endAt;
+    this.state.timeLeft = this.frozenTimeLeft;
+    this.lastCountdownSecond = null;
+    this.ui.setFreezeActive(true);
+    this.updateHUD();
+    this.showCatMessage('freeze');
+    this.ui.setPlayCharacter('cheer', 1050);
+    playFreezeSound();
+    freezeHaptic();
+    const animation = this.ui.animateFreeze(TIME_FREEZE_SECONDS, sourceElement);
+    this.boardItems.delete(boardItemKey);
+    this.renderBoard();
+    await animation;
+    this.inputGuardUntil = performance.now() + 80;
     this.state.inputLocked = false;
   }
 
@@ -636,6 +688,11 @@ class OingGame {
     if (item.type === 'clock') {
       const sourceElement = this.ui.tileAt(item.row, item.col);
       await this.resolveClock(key, sourceElement);
+      return;
+    }
+    if (item.type === 'freeze') {
+      const sourceElement = this.ui.tileAt(item.row, item.col);
+      await this.resolveFreeze(key, sourceElement);
       return;
     }
     this.state.inputLocked = false;
@@ -660,18 +717,28 @@ class OingGame {
   tick() {
     if (!this.state.running || this.state.paused) return;
     const now = performance.now();
-    this.state.timeLeft = Math.max(0, (this.endAt - now) / 1000);
+    const isFrozen = this.freezeEndsAt > now;
+    if (isFrozen) {
+      this.state.timeLeft = this.frozenTimeLeft;
+    } else {
+      if (this.freezeEndsAt > 0) {
+        this.freezeEndsAt = 0;
+        this.frozenTimeLeft = 0;
+        this.ui.setFreezeActive(false);
+      }
+      this.state.timeLeft = Math.max(0, (this.endAt - now) / 1000);
+    }
     if (this.state.combo > 0 && this.state.comboExpiresAt > 0 && now >= this.state.comboExpiresAt) {
       this.state.combo = 0;
       this.state.comboExpiresAt = 0;
     }
-    if (this.state.timeLeft <= 10 && !this.lowTimeSpoken) {
+    if (!isFrozen && this.state.timeLeft <= 10 && !this.lowTimeSpoken) {
       this.lowTimeSpoken = true;
       this.showCatMessage('lowTime');
       this.ui.setPlayCharacter('cheer', 1800);
     }
     const countdownSecond = Math.ceil(this.state.timeLeft);
-    if (countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
+    if (!isFrozen && countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
       this.lastCountdownSecond = countdownSecond;
       playCountdownTick(countdownSecond);
       countdownHaptic(countdownSecond);
@@ -691,7 +758,9 @@ class OingGame {
 
   resume() {
     if (!this.state.running || !this.state.paused) return;
-    this.endAt += performance.now() - this.pauseStartedAt;
+    const pauseDuration = performance.now() - this.pauseStartedAt;
+    this.endAt += pauseDuration;
+    if (this.freezeEndsAt > this.pauseStartedAt) this.freezeEndsAt += pauseDuration;
     this.state.paused = false;
     this.ui.setOverlay('pause-overlay', false);
   }
@@ -701,6 +770,9 @@ class OingGame {
     this.state.running = false;
     this.state.inputLocked = true;
     this.state.timeLeft = 0;
+    this.freezeEndsAt = 0;
+    this.frozenTimeLeft = 0;
+    this.ui.setFreezeActive(false);
     this.stopTimer();
     this.input.cancel();
     this.tutorialActive = false;
@@ -733,6 +805,9 @@ class OingGame {
     this.ui.cancelStartCountdown();
     this.stopTimer();
     this.state.running = false;
+    this.freezeEndsAt = 0;
+    this.frozenTimeLeft = 0;
+    this.ui.setFreezeActive(false);
     this.state.paused = false;
     this.input.cancel();
     this.tutorialActive = false;
@@ -772,6 +847,7 @@ class OingGame {
       comboRemaining,
       target: config.target,
       duration: this.runtime?.duration || GAME_DURATION_SECONDS,
+      freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),
     });
   }
 
@@ -815,6 +891,15 @@ if (game.runtime.testMode) {
       const item = game.boardItems.set(type, row, col, { earnedAtCombo: game.state.combo });
       game.renderBoard();
       return { ...item };
+    },
+    forceFreeze: (seconds = TIME_FREEZE_SECONDS) => {
+      const timeline = freezeTimeline(performance.now(), game.state.timeLeft, seconds);
+      game.freezeEndsAt = timeline.freezeEndsAt;
+      game.frozenTimeLeft = timeline.frozenTimeLeft;
+      game.endAt = timeline.endAt;
+      game.ui.setFreezeActive(true);
+      game.updateHUD();
+      return game.freezeEndsAt;
     },
   };
 }

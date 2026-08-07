@@ -306,6 +306,18 @@ export function playClockSound() {
   });
 }
 
+// Original OING playFreeze(): six ice shards followed by two clear bells.
+export function playFreezeSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  for (let index = 0; index < 6; index += 1) {
+    scheduleTone(ctx, 2000 + Math.random() * 1800, now + index * 0.025, 0.05, 0.08, 'sine', 0.003);
+  }
+  scheduleTone(ctx, 1760, now + 0.16, 0.35, 0.2, 'sine', 0.008);
+  scheduleTone(ctx, 2637, now + 0.21, 0.35, 0.2, 'sine', 0.008);
+}
+
 export function playRoundClearSound() {
   const ctx = getContext();
   if (!ctx) return;

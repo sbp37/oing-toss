@@ -185,3 +185,16 @@ test('clock sound keeps the original OING three-note bell', () => {
   const oscillators = newOscillators(() => audio.playClockSound());
   assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [880, 1320, 1760]);
 });
+
+test('time freeze keeps the original OING ice shards and closing bells', () => {
+  const originalRandom = Math.random;
+  Math.random = () => 0.5;
+  try {
+    const oscillators = newOscillators(() => audio.playFreezeSound());
+    assert.equal(oscillators.length, 8);
+    assert.deepEqual(oscillators.slice(0, 6).map((item) => item.frequency.events[0].value), Array(6).fill(2900));
+    assert.deepEqual(oscillators.slice(6).map((item) => item.frequency.events[0].value), [1760, 2637]);
+  } finally {
+    Math.random = originalRandom;
+  }
+});

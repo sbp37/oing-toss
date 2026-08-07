@@ -121,6 +121,7 @@ export function runtimeConfig() {
     testMode,
     duration: testMode && requested > 0 ? Math.min(requested, 90) : 90,
     forceTutorial: testMode && params.get('tutorial') === '1',
+    forcedItem: testMode ? params.get('item') : null,
   };
 }
 

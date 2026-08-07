@@ -48,6 +48,10 @@ export function clockHaptic() {
   vibrate([8, 24, 12]);
 }
 
+export function freezeHaptic() {
+  vibrate([5, 18, 5, 18, 10]);
+}
+
 export function roundHaptic() {
   vibrate([10, 20, 14, 20, 22]);
 }

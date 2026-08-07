@@ -1,5 +1,6 @@
 export const GAME_DURATION_SECONDS = 90;
 export const COMBO_WINDOW_MS = 3200;
+export const TIME_FREEZE_SECONDS = 15;
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 
 export const ROUND_CONFIG = Object.freeze([
@@ -13,7 +14,7 @@ export const ITEM_DEFINITIONS = Object.freeze({
   shuffle: { id: 'shuffle', initial: 2, implemented: true, asset: 'assets/icons/items/shuffle.webp' },
   bomb: { id: 'bomb', initial: 1, implemented: true, asset: 'assets/icons/items/bomb.webp' },
   clock: { id: 'clock', initial: 1, implemented: true, asset: 'assets/icons/hud/time.webp' },
-  freeze: { id: 'freeze', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/freeze.webp' },
+  freeze: { id: 'freeze', initial: 0, implemented: true, asset: 'assets/icons/items/freeze.webp' },
   clover: { id: 'clover', initial: 0, implemented: false, hook: 'useFutureItem', asset: 'assets/icons/items/clover.webp' },
 });
 
@@ -23,14 +24,14 @@ export const BOARD_DROP_ITEMS = Object.freeze({
   bomb: Object.freeze({ id: 'bomb', label: '폭탄', implemented: true, asset: 'assets/icons/items/bomb.webp' }),
   clock: Object.freeze({ id: 'clock', label: '시계', implemented: true, asset: 'assets/icons/hud/time.webp' }),
   megabomb: Object.freeze({ id: 'megabomb', label: '메가폭탄', implemented: true, asset: 'assets/icons/items/megabomb.webp' }),
-  freeze: Object.freeze({ id: 'freeze', label: '타임프리즈', implemented: false, asset: 'assets/icons/items/freeze.webp' }),
+  freeze: Object.freeze({ id: 'freeze', label: '타임프리즈', implemented: true, asset: 'assets/icons/items/freeze.webp' }),
   clover: Object.freeze({ id: 'clover', label: '클로버', implemented: false, asset: 'assets/icons/items/clover.webp' }),
   candy: Object.freeze({ id: 'candy', label: '콤보사탕', implemented: false, asset: null }),
 });
 
 const BOARD_DROP_POOLS = Object.freeze({
   1: Object.freeze(['bomb', 'bomb', 'bomb', 'clock', 'clock']),
-  2: Object.freeze(['bomb', 'bomb', 'clock', 'clock', 'megabomb']),
+  2: Object.freeze(['bomb', 'bomb', 'clock', 'clock', 'megabomb', 'freeze']),
   3: Object.freeze(['clock', 'clock', 'megabomb', 'megabomb', 'freeze', 'bomb', 'clover']),
 });
 
@@ -66,6 +67,18 @@ export function comboWindowMsForProgress(round = 1, successCount = 0) {
   return COMBO_WINDOW_MS;
 }
 
+export function freezeTimeline(nowMs, timeLeft, seconds = TIME_FREEZE_SECONDS) {
+  const now = Math.max(0, Number(nowMs) || 0);
+  const remaining = Math.max(0, Number(timeLeft) || 0);
+  const duration = Math.max(0, Number(seconds) || 0) * 1000;
+  const freezeEndsAt = now + duration;
+  return Object.freeze({
+    freezeEndsAt,
+    frozenTimeLeft: remaining,
+    endAt: freezeEndsAt + remaining * 1000,
+  });
+}
+
 // Prices and display names must come from the Apps in Toss IAP product list.
 // These local records only define what a verified order will grant later.
 export const PRODUCT_CATALOG = Object.freeze({
@@ -94,6 +107,7 @@ export const MESSAGES = Object.freeze({
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
   clock: Object.freeze(['시간을 더 챙겼다냥!', '8초 더 달려보자냥!']),
+  freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '15초 동안 마음껏 찾아보라냥!', '째깍째깍 잠깐 쉬어간다냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
   bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
   clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),

@@ -798,6 +798,36 @@ export class GameUI {
     this.elements.timePill.classList.remove('is-time-added');
   }
 
+  async animateFreeze(seconds = 15, sourceElement) {
+    if (!sourceElement) return;
+    const screen = this.elements.playScreen;
+    const start = sourceElement.getBoundingClientRect();
+    const target = this.elements.timePill.getBoundingClientRect();
+    const frame = screen.getBoundingClientRect();
+    const flight = document.createElement('div');
+    flight.className = 'freeze-flight';
+    flight.style.left = `${start.left + start.width / 2 - frame.left}px`;
+    flight.style.top = `${start.top + start.height / 2 - frame.top}px`;
+    flight.style.setProperty('--freeze-x', `${target.left + target.width / 2 - start.left - start.width / 2}px`);
+    flight.style.setProperty('--freeze-y', `${target.top + target.height / 2 - start.top - start.height / 2}px`);
+    const icon = document.createElement('img');
+    icon.src = BOARD_DROP_ITEMS.freeze.asset;
+    icon.alt = '';
+    const label = document.createElement('strong');
+    label.textContent = `${seconds}초 정지`;
+    flight.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    screen.appendChild(flight);
+    await delay(570);
+    flight.remove();
+  }
+
+  setFreezeActive(active) {
+    const enabled = Boolean(active);
+    this.elements.playScreen.classList.toggle('is-time-frozen', enabled);
+    this.elements.timePill.classList.toggle('is-frozen', enabled);
+    this.elements.timePill.setAttribute('aria-label', enabled ? '남은 시간이 15초 동안 정지됨' : '남은 시간');
+  }
+
   showItemScoreBurst(points, rect, kind) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
@@ -1087,14 +1117,16 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 90, combo, comboRemaining = 0, progress, target }) {
+  updateHUD({ round, score, timeLeft, duration = 90, freezeRemaining = 0, combo, comboRemaining = 0, progress, target }) {
     this.elements.round.textContent = String(round);
     this.elements.score.textContent = score.toLocaleString('ko-KR');
     const time = Math.max(0, Math.ceil(timeLeft));
     this.elements.time.textContent = `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`;
     this.elements.timePill.style.setProperty('--time-progress', String(clamp(timeLeft / Math.max(1, duration), 0, 1)));
-    this.elements.timePill.classList.toggle('is-warning', time <= 10);
-    const isFinalCountdown = time > 0 && time <= 10;
+    const isFrozen = freezeRemaining > 0;
+    this.elements.timePill.classList.toggle('is-warning', !isFrozen && time <= 10);
+    this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
+    const isFinalCountdown = !isFrozen && time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
     this.elements.playScreen.dataset.round = String(round);
     this.boardFrame.dataset.round = String(round);
