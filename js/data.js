@@ -201,11 +201,11 @@ export function scoreForCatBonus(catCount, combo) {
 }
 
 export function scoreForBomb(valueSum) {
-  return Math.max(0, Math.round(Number(valueSum) || 0)) + 20;
+  return 120 + Math.max(0, Math.round(Number(valueSum) || 0)) * 3;
 }
 
 export function scoreForMegaBomb(valueSum) {
-  return Math.max(0, Math.round(Number(valueSum) || 0)) + 40;
+  return 220 + Math.max(0, Math.round(Number(valueSum) || 0)) * 4;
 }
 
 export function getRoundConfig(round) {

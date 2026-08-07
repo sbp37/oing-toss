@@ -13,7 +13,7 @@ import {
   scoreForClear,
   scoreForMegaBomb,
 } from './data.js';
-import { BoardModel } from './board.js';
+import { BoardModel, boardAssistForSuccessCount } from './board.js';
 import { BoardItemField } from './board-items.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
@@ -57,7 +57,6 @@ import {
 } from './haptic.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const EARLY_ASSIST_SUCCESSES = 5;
 
 class OingGame {
   constructor() {
@@ -231,7 +230,7 @@ class OingGame {
   }
 
   generateBoard(size) {
-    return this.model.generate(size, { easy: this.state.successCount < EARLY_ASSIST_SUCCESSES });
+    return this.model.generate(size, { assist: boardAssistForSuccessCount(this.state.successCount) });
   }
 
   renderBoard() {
@@ -552,8 +551,8 @@ class OingGame {
   }
 
   async resolveBomb({ rect, stats }, boardItemKey = null) {
-    const previousCombo = this.advanceCombo();
     const points = scoreForBomb(stats.sum);
+    if (this.state.combo > 0) this.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
     this.state.score += points;
     this.updateHUD();
     this.ui.showItemScoreBurst(points, rect, 'bomb');
@@ -561,19 +560,14 @@ class OingGame {
     this.ui.setPlayCharacter(this.state.combo >= 3 ? 'cheer' : 'success', 950);
     playBombSound();
     bombHaptic();
-    if ([3, 5, 8].includes(this.state.combo) && this.state.combo !== previousCombo) {
-      this.ui.showComboMoment(this.state.combo);
-      playComboSound(this.state.combo);
-    }
-
     await this.ui.animateBomb(rect);
     this.model.remove(rect);
     this.finishBlast(boardItemKey);
   }
 
   async resolveMegaBomb({ row, col, rect, cells, stats }, boardItemKey) {
-    const previousCombo = this.advanceCombo();
     const points = scoreForMegaBomb(stats.sum);
+    if (this.state.combo > 0) this.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
     this.state.score += points;
     this.updateHUD();
     this.ui.showItemScoreBurst(points, rect, 'megabomb');
@@ -581,11 +575,6 @@ class OingGame {
     this.ui.setPlayCharacter('success', 1100);
     playMegaBombSound();
     megaBombHaptic();
-    if ([3, 5, 8].includes(this.state.combo) && this.state.combo !== previousCombo) {
-      this.ui.showComboMoment(this.state.combo);
-      playComboSound(this.state.combo);
-    }
-
     await this.ui.animateMegaBomb(cells, { row, col });
     this.model.removeCells(cells);
     this.finishBlast(boardItemKey);

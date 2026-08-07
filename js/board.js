@@ -2,24 +2,37 @@ const MIN_VALUE = 1;
 const MAX_VALUE = 9;
 const GENERATION_ATTEMPTS = 72;
 export const BONUS_CAT_RATIO = 0.07;
-export const EASY_BOARD_BONUS = Object.freeze({ minimumAnswers: 3, minimumSimpleAnswers: 2 });
+export const EASY_BOARD_BONUS = Object.freeze({ minimumAnswers: 3, minimumSimpleAnswers: 2, minimumAdjacentPairs: 2 });
+export const BOARD_ASSIST_PROFILES = Object.freeze({
+  starter: Object.freeze({ minimumAnswers: 5, minimumSimpleAnswers: 3, minimumAdjacentPairs: 3 }),
+  guided: EASY_BOARD_BONUS,
+  standard: Object.freeze({ minimumAnswers: 0, minimumSimpleAnswers: 0, minimumAdjacentPairs: 0 }),
+});
 
 // The board gets denser every round, but the kind of answer changes too:
 // round 1 teaches with obvious pairs, round 2 mixes shapes, and round 3
 // rewards wider 3+ tile rectangles. Every profile still guarantees choices.
 export const BOARD_DIFFICULTY = Object.freeze({
-  4: Object.freeze({ minimumAnswers: 5, minimumSimpleAnswers: 3, minimumRichAnswers: 1 }),
-  5: Object.freeze({ minimumAnswers: 7, minimumSimpleAnswers: 2, minimumRichAnswers: 2 }),
-  6: Object.freeze({ minimumAnswers: 9, minimumSimpleAnswers: 1, minimumRichAnswers: 4 }),
+  4: Object.freeze({ minimumAnswers: 5, minimumSimpleAnswers: 3, minimumAdjacentPairs: 3, minimumRichAnswers: 1 }),
+  5: Object.freeze({ minimumAnswers: 7, minimumSimpleAnswers: 2, minimumAdjacentPairs: 2, minimumRichAnswers: 2 }),
+  6: Object.freeze({ minimumAnswers: 9, minimumSimpleAnswers: 1, minimumAdjacentPairs: 1, minimumRichAnswers: 4 }),
 });
 
-const qualityTarget = (size, easy = false) => {
+export function boardAssistForSuccessCount(successCount) {
+  const count = Math.max(0, Math.floor(Number(successCount) || 0));
+  if (count < 2) return 'starter';
+  if (count < 5) return 'guided';
+  return 'standard';
+}
+
+const qualityTarget = (size, assist = 'standard') => {
   const base = BOARD_DIFFICULTY[size] || BOARD_DIFFICULTY[6];
-  if (!easy) return base;
+  const bonus = BOARD_ASSIST_PROFILES[assist] || BOARD_ASSIST_PROFILES.standard;
   return {
     ...base,
-    minimumAnswers: base.minimumAnswers + EASY_BOARD_BONUS.minimumAnswers,
-    minimumSimpleAnswers: base.minimumSimpleAnswers + EASY_BOARD_BONUS.minimumSimpleAnswers,
+    minimumAnswers: base.minimumAnswers + bonus.minimumAnswers,
+    minimumSimpleAnswers: base.minimumSimpleAnswers + bonus.minimumSimpleAnswers,
+    minimumAdjacentPairs: base.minimumAdjacentPairs + bonus.minimumAdjacentPairs,
   };
 };
 
@@ -33,11 +46,21 @@ function makeRandomGrid(size) {
   return Array.from({ length: size }, () => Array.from({ length: size }, randomValue));
 }
 
-function hasGoodAnswerMix(grid, easy = false) {
-  const { minimumAnswers, minimumSimpleAnswers, minimumRichAnswers } = qualityTarget(grid.length, easy);
+function isAdjacentPair(answer) {
+  return answer.count === 2 && (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1) === 2;
+}
+
+function hasGoodAnswerMix(grid, assist = 'standard') {
+  const {
+    minimumAnswers,
+    minimumSimpleAnswers,
+    minimumAdjacentPairs,
+    minimumRichAnswers,
+  } = qualityTarget(grid.length, assist);
   const answers = findAllSumTenRects(grid);
   return answers.length >= minimumAnswers
     && answers.filter((answer) => answer.count === 2).length >= minimumSimpleAnswers
+    && answers.filter(isAdjacentPair).length >= minimumAdjacentPairs
     && answers.filter((answer) => answer.count >= 3).length >= minimumRichAnswers;
 }
 
@@ -51,7 +74,7 @@ function rectContainsCell(rect, row, col) {
   return row >= rect.r1 && row <= rect.r2 && col >= rect.c1 && col <= rect.c2;
 }
 
-function placeBonusCats(grid, easy = false) {
+function placeBonusCats(grid, assist = 'standard') {
   const cats = new Set();
   const target = bonusCatTargetForSize(grid.length);
 
@@ -68,7 +91,7 @@ function placeBonusCats(grid, easy = false) {
           const [catRow, catCol] = key.split(':').map(Number);
           return answers.some((answer) => rectContainsCell(answer, catRow, catCol));
         });
-        if (hasGoodAnswerMix(grid, easy) && catAnswers.length && everyCatStillCollectable) {
+        if (hasGoodAnswerMix(grid, assist) && catAnswers.length && everyCatStillCollectable) {
           candidates.push({ row, col, coverage: catAnswers.length });
         }
         grid[row][col] = previous;
@@ -86,15 +109,15 @@ function placeBonusCats(grid, easy = false) {
   return cats;
 }
 
-function seedProfileAnswers(grid, easy = false) {
+function seedProfileAnswers(grid, assist = 'standard') {
   const size = grid.length;
-  const { minimumSimpleAnswers, minimumRichAnswers } = qualityTarget(size, easy);
+  const { minimumAdjacentPairs, minimumRichAnswers } = qualityTarget(size, assist);
   const pairPatterns = [[1, 9], [2, 8], [3, 7], [4, 6]];
   const richPatterns = [[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]];
   const rows = shuffled(Array.from({ length: size }, (_, index) => index));
 
   for (let index = 0; index < minimumRichAnswers; index += 1) {
-    const row = rows[(minimumSimpleAnswers + index) % rows.length];
+    const row = rows[(minimumAdjacentPairs + index) % rows.length];
     const start = Math.min(size - 3, index % Math.max(1, size - 2));
     shuffled(richPatterns[index % richPatterns.length]).forEach((value, offset) => {
       grid[row][start + offset] = value;
@@ -103,7 +126,7 @@ function seedProfileAnswers(grid, easy = false) {
 
   const starts = size >= 6 ? [0, 2, size - 2] : [0, size - 2];
   const pairSlots = shuffled(rows.flatMap((row) => starts.map((start) => ({ row, start }))));
-  for (let index = 0; index < minimumSimpleAnswers; index += 1) {
+  for (let index = 0; index < minimumAdjacentPairs; index += 1) {
     const { row, start } = pairSlots[index % pairSlots.length];
     shuffled(pairPatterns[index % pairPatterns.length]).forEach((value, offset) => {
       grid[row][start + offset] = value;
@@ -240,13 +263,15 @@ export class BoardModel {
 
   generate(size = this.size, options = {}) {
     this.size = size;
-    const easy = Boolean(options.easy);
-    const attempts = easy ? GENERATION_ATTEMPTS * 5 : GENERATION_ATTEMPTS * 3;
+    const assist = options.assist || (options.easy ? 'guided' : 'standard');
+    const attempts = assist === 'starter'
+      ? GENERATION_ATTEMPTS * 7
+      : assist === 'guided' ? GENERATION_ATTEMPTS * 5 : GENERATION_ATTEMPTS * 3;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       this.grid = makeRandomGrid(size);
-      if (easy) seedProfileAnswers(this.grid, true);
-      if (!hasGoodAnswerMix(this.grid, easy)) continue;
-      const bonusCats = placeBonusCats(this.grid, easy);
+      if (assist !== 'standard') seedProfileAnswers(this.grid, assist);
+      if (!hasGoodAnswerMix(this.grid, assist)) continue;
+      const bonusCats = placeBonusCats(this.grid, assist);
       if (bonusCats?.size === bonusCatTargetForSize(size)) {
         this.bonusCats = bonusCats;
         return this.grid;
@@ -258,9 +283,9 @@ export class BoardModel {
     // not in layout, so a round never silently loses its bonus cats.
     while (true) {
       this.grid = makeRandomGrid(size);
-      seedProfileAnswers(this.grid, easy);
-      if (!hasGoodAnswerMix(this.grid, easy)) continue;
-      const bonusCats = placeBonusCats(this.grid, easy);
+      seedProfileAnswers(this.grid, assist);
+      if (!hasGoodAnswerMix(this.grid, assist)) continue;
+      const bonusCats = placeBonusCats(this.grid, assist);
       if (bonusCats?.size !== bonusCatTargetForSize(size)) continue;
       this.bonusCats = bonusCats;
       return this.grid;

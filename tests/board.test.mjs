@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {
   BOARD_DIFFICULTY,
+  BOARD_ASSIST_PROFILES,
   BoardModel,
   EASY_BOARD_BONUS,
+  boardAssistForSuccessCount,
   bonusCatTargetForSize,
   bombRect,
   cellListStats,
@@ -34,6 +36,12 @@ for (const size of [4, 5, 6]) {
       `${size}x${size} board must keep its round-specific simple-answer floor`,
     );
     assert.ok(
+      answers.filter((answer) => answer.count === 2
+        && (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1) === 2).length
+        >= profile.minimumAdjacentPairs,
+      `${size}x${size} board must keep its adjacent-pair floor`,
+    );
+    assert.ok(
       answers.filter((answer) => answer.count >= 3).length >= profile.minimumRichAnswers,
       `${size}x${size} board must keep its round-specific rich-answer floor`,
     );
@@ -57,6 +65,12 @@ for (const size of [4, 5, 6]) {
         >= profile.minimumSimpleAnswers + EASY_BOARD_BONUS.minimumSimpleAnswers,
       `${size}x${size} early board must expose extra simple pairs`,
     );
+    assert.ok(
+      answers.filter((answer) => answer.count === 2
+        && (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1) === 2).length
+        >= profile.minimumAdjacentPairs + EASY_BOARD_BONUS.minimumAdjacentPairs,
+      `${size}x${size} early board must expose extra adjacent pairs`,
+    );
     const easyAnswer = board.findEasyAnswer();
     assert.equal(easyAnswer.count, 2, `${size}x${size} onboarding answer should prefer a pair`);
     assert.equal(
@@ -66,6 +80,13 @@ for (const size of [4, 5, 6]) {
     );
   }
 }
+
+assert.equal(boardAssistForSuccessCount(0), 'starter');
+assert.equal(boardAssistForSuccessCount(1), 'starter');
+assert.equal(boardAssistForSuccessCount(2), 'guided');
+assert.equal(boardAssistForSuccessCount(4), 'guided');
+assert.equal(boardAssistForSuccessCount(5), 'standard');
+assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 
 assert.deepEqual(normalizeRect({ r: 3, c: 2 }, { r: 1, c: 0 }), { r1: 1, r2: 3, c1: 0, c2: 2 });
 assert.deepEqual(bombRect(4, 0, 0), { r1: 0, r2: 1, c1: 0, c2: 1 });
@@ -105,7 +126,7 @@ assert.ok(scoreForClear(3, 5) > scoreForClear(3, 1), 'combo multiplier must incr
 assert.ok(scoreForClear(4, 1) > scoreForClear(2, 1) * 2, 'large rectangles must earn a meaningful bonus');
 assert.equal(scoreForCatBonus(1, 1), 120, 'one cat grants a visible base bonus on the V2 score scale');
 assert.ok(scoreForCatBonus(1, 5) > scoreForCatBonus(1, 1), 'cat bonus follows the live combo multiplier');
-assert.equal(scoreForBomb(37), 57, 'bomb score keeps the original sum plus 20 idea');
-assert.equal(scoreForMegaBomb(37), 77, 'mega bomb score keeps the original sum plus 40 idea');
+assert.equal(scoreForBomb(37), 231, 'bomb reward must be meaningful on the V2 score scale');
+assert.equal(scoreForMegaBomb(37), 368, 'mega bomb reward must exceed a normal bomb without replacing core clears');
 
 console.log('board.test.mjs: 750 regular and 300 early-assist boards plus scoring assertions passed');
