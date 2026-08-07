@@ -52,8 +52,18 @@ export function boardDropReward(previousCombo, nextCombo, earnedCount = 0) {
 }
 
 export function boardDropInventoryGrant(type) {
-  if (type === 'bomb' || type === 'clock') return Object.freeze({ itemId: type, quantity: 1 });
+  // Visible board drops are one-tap actions, matching the original OING.
+  // Footer inventory is reserved for starting or separately granted items.
   return null;
+}
+
+export function comboWindowMsForProgress(round = 1, successCount = 0) {
+  const stage = Math.max(1, Math.round(Number(round) || 1));
+  const clears = Math.max(0, Math.round(Number(successCount) || 0));
+  if (stage === 1 && clears < 5) return 5200;
+  if (stage <= 2 && clears < 12) return 4400;
+  if (clears < 20) return 3700;
+  return COMBO_WINDOW_MS;
 }
 
 // Prices and display names must come from the Apps in Toss IAP product list.

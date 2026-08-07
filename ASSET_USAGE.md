@@ -85,3 +85,10 @@
 - 힌트를 직접 가리키는 전용 포즈 (`cat-wave`를 사용)
 
 누락 항목을 다른 캐릭터나 이모지로 대체하지 않았다.
+
+## 로컬 글꼴
+
+| 실제 사용 파일 | 원본 | 사용 위치 | 비고 |
+|---|---|---|---|
+| `assets/fonts/Jua-Korean-Game.woff2` | Google Fonts Jua | 제목·버튼·숫자 | 화면 문구 전체를 다시 스캔한 로컬 서브셋 |
+| `assets/fonts/Pretendard-OING.woff2` | Pretendard 1.3.9 | HUD·설명·고양이 멘트 | 외부 CDN 없이 동작하는 게임 전용 로컬 서브셋 |

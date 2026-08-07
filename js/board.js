@@ -342,6 +342,11 @@ export class BoardModel {
     };
   }
 
+  bombTarget(row, col) {
+    const rect = bombRect(this.size, row, col);
+    return { rect, stats: this.stats(rect) };
+  }
+
   findAnswers() {
     return findAllSumTenRects(this.grid);
   }

@@ -1,11 +1,10 @@
 import {
   BOARD_DROP_ITEMS,
   GAME_DURATION_SECONDS,
-  COMBO_WINDOW_MS,
   START_COUNTDOWN_STEPS,
-  boardDropInventoryGrant,
   boardDropReward,
   chooseBoardDrop,
+  comboWindowMsForProgress,
   getRoundConfig,
   pickMessage,
   scoreForBomb,
@@ -24,7 +23,6 @@ import {
   isSoundEnabled,
   playComboSound,
   playCatBonusSound,
-  playItemCollectSound,
   playItemDropSound,
   playBombSound,
   playClockSound,
@@ -313,7 +311,7 @@ class OingGame {
       ? this.state.combo
       : 0;
     this.state.combo = previousCombo + 1;
-    this.state.comboExpiresAt = now + COMBO_WINDOW_MS;
+    this.state.comboExpiresAt = now + this.comboWindowMs();
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
     const reward = boardDropReward(previousCombo, this.state.combo, this.state.boardDropsEarned);
     if (reward) {
@@ -388,18 +386,9 @@ class OingGame {
       catCount,
       catBonusPoints,
     });
-    if (catCount > 0) this.ui.showCatBonus(catBonusPoints, rect, catCount);
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
     this.speakForSuccess(catCount);
-    if (this.state.boardDropsEarned === 0 && this.state.combo === 1) {
-      window.setTimeout(() => {
-        if (this.state.running && !this.state.paused && this.state.boardDropsEarned === 0) {
-          this.ui.showItemTease('bomb');
-        }
-      }, catCount > 0 ? 500 : 300);
-    }
-
     await this.ui.animateSuccess(rect, this.state.combo);
     this.model.remove(rect);
 
@@ -412,13 +401,13 @@ class OingGame {
       this.boardItems.carry();
       this.generateBoard(config.size);
       this.renderBoard();
-      this.ui.toast('새 보드로 바로 이어갈게!');
+      this.showCatMessage('shuffle');
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
       if (placed.length) this.announceBoardItems(placed);
     }
-    this.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
+    this.state.comboExpiresAt = performance.now() + this.comboWindowMs();
     this.state.inputLocked = false;
     this.updateHUD();
   }
@@ -552,7 +541,7 @@ class OingGame {
 
   async resolveBomb({ rect, stats }, boardItemKey = null) {
     const points = scoreForBomb(stats.sum);
-    if (this.state.combo > 0) this.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
+    if (this.state.combo > 0) this.state.comboExpiresAt = performance.now() + this.comboWindowMs();
     this.state.score += points;
     this.updateHUD();
     this.ui.showItemScoreBurst(points, rect, 'bomb');
@@ -567,7 +556,7 @@ class OingGame {
 
   async resolveMegaBomb({ row, col, rect, cells, stats }, boardItemKey) {
     const points = scoreForMegaBomb(stats.sum);
-    if (this.state.combo > 0) this.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
+    if (this.state.combo > 0) this.state.comboExpiresAt = performance.now() + this.comboWindowMs();
     this.state.score += points;
     this.updateHUD();
     this.ui.showItemScoreBurst(points, rect, 'megabomb');
@@ -636,25 +625,8 @@ class OingGame {
     this.beginFirstInteraction();
     this.input.cancel();
     this.state.inputLocked = true;
-    const grant = boardDropInventoryGrant(item.type);
-    if (grant) {
-      const sourceElement = this.ui.tileAt(item.row, item.col);
-      await this.ui.animateItemCollect(item, sourceElement);
-      const granted = this.inventory.grant(grant.itemId, grant.quantity, { source: 'earned' });
-      if (!granted.ok) {
-        this.state.inputLocked = false;
-        this.ui.toast('아이템을 담지 못했다냥');
-        return;
-      }
-      this.boardItems.delete(key);
-      this.renderBoard();
-      this.syncInventory();
-      this.showCatMessage(item.type === 'clock' ? 'clockCollected' : 'bombCollected');
-      this.ui.setPlayCharacter('wave', 900);
-      playItemCollectSound();
-      itemHaptic();
-      this.inputGuardUntil = performance.now() + 120;
-      this.state.inputLocked = false;
+    if (item.type === 'bomb') {
+      await this.resolveBomb(this.model.bombTarget(item.row, item.col), key);
       return;
     }
     if (item.type === 'megabomb') {
@@ -791,10 +763,20 @@ class OingGame {
 
   updateHUD() {
     const config = getRoundConfig(this.state.round);
+    const comboWindowMs = this.comboWindowMs();
     const comboRemaining = this.state.combo > 0 && this.state.comboExpiresAt > 0
-      ? Math.max(0, (this.state.comboExpiresAt - performance.now()) / COMBO_WINDOW_MS)
+      ? Math.max(0, (this.state.comboExpiresAt - performance.now()) / comboWindowMs)
       : 0;
-    this.ui.updateHUD({ ...this.state, comboRemaining, target: config.target });
+    this.ui.updateHUD({
+      ...this.state,
+      comboRemaining,
+      target: config.target,
+      duration: this.runtime?.duration || GAME_DURATION_SECONDS,
+    });
+  }
+
+  comboWindowMs() {
+    return comboWindowMsForProgress(this.state.round, this.state.successCount);
   }
 
   showCatMessage(type) {
@@ -823,7 +805,7 @@ if (game.runtime.testMode) {
     findAnswer: () => game.model.findAnswer(),
     setCombo: (combo) => {
       game.state.combo = Math.max(0, Math.floor(Number(combo) || 0));
-      game.state.comboExpiresAt = performance.now() + COMBO_WINDOW_MS;
+      game.state.comboExpiresAt = performance.now() + game.comboWindowMs();
       game.updateHUD();
       return game.state.combo;
     },

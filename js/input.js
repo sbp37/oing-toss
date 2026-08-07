@@ -4,20 +4,33 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function cellFromPoint(boardEl, clientX, clientY) {
-  const direct = document.elementFromPoint(clientX, clientY)?.closest('.tile');
-  if (direct && boardEl.contains(direct)) {
-    return { r: Number(direct.dataset.row), c: Number(direct.dataset.col) };
-  }
-
+function cellFromPoint(boardEl, clientX, clientY, stickyCell = null) {
   const rect = boardEl.getBoundingClientRect();
   const size = Number(boardEl.dataset.size) || 4;
   if (!rect.width || !rect.height) return null;
   const x = clamp(clientX, rect.left + 1, rect.right - 1);
   const y = clamp(clientY, rect.top + 1, rect.bottom - 1);
+  const cellWidth = rect.width / size;
+  const cellHeight = rect.height / size;
+  let row = clamp(Math.floor((y - rect.top) / cellHeight), 0, size - 1);
+  let col = clamp(Math.floor((x - rect.left) / cellWidth), 0, size - 1);
+
+  // Keep the previous cell for a few pixels around a grid seam. This absorbs
+  // fingertip jitter without slowing intentional or fast diagonal movement.
+  if (stickyCell) {
+    const hysteresis = clamp(Math.min(cellWidth, cellHeight) * 0.075, 3, 6);
+    if (Math.abs(col - stickyCell.c) === 1) {
+      const boundary = rect.left + Math.max(col, stickyCell.c) * cellWidth;
+      if (Math.abs(x - boundary) < hysteresis) col = stickyCell.c;
+    }
+    if (Math.abs(row - stickyCell.r) === 1) {
+      const boundary = rect.top + Math.max(row, stickyCell.r) * cellHeight;
+      if (Math.abs(y - boundary) < hysteresis) row = stickyCell.r;
+    }
+  }
   return {
-    r: clamp(Math.floor(((y - rect.top) / rect.height) * size), 0, size - 1),
-    c: clamp(Math.floor(((x - rect.left) / rect.width) * size), 0, size - 1),
+    r: row,
+    c: col,
   };
 }
 
@@ -34,9 +47,11 @@ export function attachStickyRectangleInput({
   let lastCell = null;
   let lastKey = '';
   let committed = false;
+  let queuedEvent = null;
+  let previewFrame = 0;
 
   const previewAt = (event) => {
-    const cell = cellFromPoint(boardEl, event.clientX, event.clientY);
+    const cell = cellFromPoint(boardEl, event.clientX, event.clientY, lastCell);
     if (!cell || !startCell) return;
     lastCell = cell;
     const rect = normalizeRect(startCell, cell);
@@ -48,6 +63,19 @@ export function attachStickyRectangleInput({
     onPreview(rect, { x: event.clientX, y: event.clientY });
   };
 
+  const flushPreview = () => {
+    previewFrame = 0;
+    if (!queuedEvent || !startCell) return;
+    const event = queuedEvent;
+    queuedEvent = null;
+    previewAt(event);
+  };
+
+  const queuePreview = (event) => {
+    queuedEvent = { clientX: event.clientX, clientY: event.clientY };
+    if (!previewFrame) previewFrame = requestAnimationFrame(flushPreview);
+  };
+
   const reset = (cancelled = false) => {
     const oldPointerId = pointerId;
     pointerId = null;
@@ -55,6 +83,9 @@ export function attachStickyRectangleInput({
     lastCell = null;
     lastKey = '';
     committed = false;
+    queuedEvent = null;
+    if (previewFrame) cancelAnimationFrame(previewFrame);
+    previewFrame = 0;
     boardEl.classList.remove('is-dragging');
     if (cancelled) onCancel?.();
     if (oldPointerId !== null && boardEl.hasPointerCapture?.(oldPointerId)) {
@@ -80,12 +111,17 @@ export function attachStickyRectangleInput({
   const onPointerMove = (event) => {
     if (event.pointerId !== pointerId || !startCell) return;
     event.preventDefault();
-    previewAt(event);
+    queuePreview(event);
   };
 
   const onPointerUp = (event) => {
     if (event.pointerId !== pointerId || !startCell || committed) return;
     event.preventDefault();
+    if (previewFrame) {
+      cancelAnimationFrame(previewFrame);
+      previewFrame = 0;
+    }
+    queuedEvent = null;
     previewAt(event);
     const returnedToOrigin = lastCell
       && lastCell.r === startCell.r

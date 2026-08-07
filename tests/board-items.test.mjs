@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop } from '../js/data.js';
+import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop, comboWindowMsForProgress } from '../js/data.js';
 
-test('ordinary board drops enter the run inventory while megabombs stay instant', () => {
-  assert.deepEqual(boardDropInventoryGrant('bomb'), { itemId: 'bomb', quantity: 1 });
-  assert.deepEqual(boardDropInventoryGrant('clock'), { itemId: 'clock', quantity: 1 });
+test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
+  assert.equal(boardDropInventoryGrant('bomb'), null);
+  assert.equal(boardDropInventoryGrant('clock'), null);
   assert.equal(boardDropInventoryGrant('megabomb'), null);
+});
+
+test('combo timing starts forgiving and tightens as the run advances', () => {
+  assert.equal(comboWindowMsForProgress(1, 0), 5200);
+  assert.equal(comboWindowMsForProgress(2, 6), 4400);
+  assert.equal(comboWindowMsForProgress(3, 14), 3700);
+  assert.equal(comboWindowMsForProgress(3, 24), 3200);
 });
 
 test('the first short chain guarantees an early board item, then seven-combo milestones take over', () => {

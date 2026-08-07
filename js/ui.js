@@ -161,6 +161,8 @@ export class GameUI {
   }
 
   renderBoard(model, boardItems = new Map()) {
+    this.elements.scoreBurst.classList.remove('is-visible');
+    this.boardFrame.querySelectorAll('.cat-bonus-pop, .item-tease').forEach((element) => element.remove());
     this.board.dataset.size = String(model.size);
     this.boardFrame.dataset.size = String(model.size);
     this.board.style.setProperty('--board-size', model.size);
@@ -189,12 +191,7 @@ export class GameUI {
           const itemDefinition = BOARD_DROP_ITEMS[boardItem.type];
           tile.dataset.item = boardItem.type;
           tile.tabIndex = 0;
-          tile.setAttribute(
-            'aria-label',
-            boardItem.type === 'megabomb'
-              ? `${itemDefinition?.label || '아이템'} 즉시 발동`
-              : `${itemDefinition?.label || '아이템'} 보관함에 담기`,
-          );
+          tile.setAttribute('aria-label', `${itemDefinition?.label || '아이템'} 즉시 발동`);
           const icon = document.createElement('img');
           icon.className = 'board-item-icon';
           icon.src = itemDefinition?.asset || '';
@@ -294,16 +291,16 @@ export class GameUI {
       const pointerY = Number.isFinite(pointer?.y)
         ? pointer.y - bounds.frame.top
         : bounds.top;
-      pullX = clamp(((pointerX / bounds.frameWidth) - 0.5) * 5.6, -2.8, 2.8);
-      pullY = clamp(((pointerY / bounds.frameHeight) - 0.5) * 5.6, -2.8, 2.8);
+      pullX = 0;
+      pullY = 0;
       const selectionWidth = Math.max(1, bounds.right - bounds.left);
       const selectionHeight = Math.max(1, bounds.bottom - bounds.top);
       const syrupX = clamp(((pointerX - bounds.left) / selectionWidth) * 100, 10, 90);
       const syrupY = clamp(((pointerY - bounds.top) / selectionHeight) * 100, 10, 90);
       marquee.style.setProperty('--syrup-x', `${syrupX}%`);
       marquee.style.setProperty('--syrup-y', `${syrupY}%`);
-      marquee.style.setProperty('--syrup-pull-x', `${pullX * 0.48}px`);
-      marquee.style.setProperty('--syrup-pull-y', `${pullY * 0.48}px`);
+      marquee.style.setProperty('--syrup-pull-x', `${pullX}px`);
+      marquee.style.setProperty('--syrup-pull-y', `${pullY}px`);
       const sideOffset = pointerX > bounds.frameWidth / 2 ? -48 : 48;
       const bubbleX = clamp(pointerX + sideOffset, 49, bounds.frameWidth - 49);
       const bubbleY = clamp(Math.min(bounds.top - 39, pointerY - 52), -31, bounds.frameHeight - 44);
@@ -312,8 +309,8 @@ export class GameUI {
     }
 
     this.elements.sumBubble.classList.add('is-visible');
-    this.boardFrame.style.setProperty('--drag-pull-x', `${pullX * 0.32}px`);
-    this.boardFrame.style.setProperty('--drag-pull-y', `${pullY * 0.32}px`);
+    this.boardFrame.style.setProperty('--drag-pull-x', '0px');
+    this.boardFrame.style.setProperty('--drag-pull-y', '0px');
   }
 
   selectionSnap(isPerfect = false) {
@@ -321,21 +318,15 @@ export class GameUI {
     // onSelectionStep fires immediately before previewSelection. On a fresh
     // gesture the marquee still carries its previous geometry, so animating it
     // here can expose a one-frame outline at the old position.
-    if (!this.lastSelectionBounds || !marquee.classList.contains('is-visible')) return;
+    if (!isPerfect || !this.lastSelectionBounds || !marquee.classList.contains('is-visible')) return;
     this.selectionSnapAnimation?.cancel();
     clearTimeout(this.selectionSnapTimer);
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && typeof marquee.animate === 'function') {
-      const frames = isPerfect
-        ? [
-          { scale: '0.978', filter: 'brightness(1)' },
-          { scale: '1.022', filter: 'brightness(1.08) saturate(1.06)', offset: 0.52 },
-          { scale: '1', filter: 'brightness(1.025)' },
-        ]
-        : [
-          { scale: '0.99 1.01', borderRadius: '18px' },
-          { scale: '1.009 0.995', borderRadius: '14px', offset: 0.5 },
-          { scale: '1', borderRadius: '16px' },
-        ];
+      const frames = [
+        { scale: '0.978', filter: 'brightness(1)' },
+        { scale: '1.022', filter: 'brightness(1.08) saturate(1.06)', offset: 0.52 },
+        { scale: '1', filter: 'brightness(1.025)' },
+      ];
       this.selectionSnapAnimation = marquee.animate(frames, {
         duration: isPerfect ? 102 : 86,
         easing: 'cubic-bezier(.18,.82,.25,1.18)',
@@ -912,8 +903,6 @@ export class GameUI {
         : 'NICE!';
     celebration.classList.remove('is-visible');
     this.boardFrame.classList.remove('combo-celebrating');
-    void celebration.offsetWidth;
-    celebration.classList.add('is-visible');
     this.boardFrame.dataset.comboCelebration = level;
     this.boardFrame.classList.add('combo-celebrating');
     this.spawnComboConfetti(Number(level));
@@ -1098,11 +1087,12 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, combo, comboRemaining = 0, progress, target }) {
+  updateHUD({ round, score, timeLeft, duration = 90, combo, comboRemaining = 0, progress, target }) {
     this.elements.round.textContent = String(round);
     this.elements.score.textContent = score.toLocaleString('ko-KR');
     const time = Math.max(0, Math.ceil(timeLeft));
     this.elements.time.textContent = `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`;
+    this.elements.timePill.style.setProperty('--time-progress', String(clamp(timeLeft / Math.max(1, duration), 0, 1)));
     this.elements.timePill.classList.toggle('is-warning', time <= 10);
     const isFinalCountdown = time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
