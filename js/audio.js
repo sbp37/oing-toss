@@ -131,6 +131,16 @@ export function playCatBonusSound() {
   scheduleTone(ctx, 2900, now + 0.15, 0.1, 0.025, 'sine', 0.006);
 }
 
+export function playItemDropSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [783.99, 1046.5, 1318.5].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.055, 0.16, 0.07 - index * 0.008, 'sine', 0.008);
+  });
+  scheduleTone(ctx, 2093, now + 0.18, 0.11, 0.025, 'triangle', 0.006);
+}
+
 // Original OING index.html playComboUp()/playCombo7(), adapted to this game's
 // visible milestones (3, 5, 8). Every chained clear climbs in pitch.
 export function playComboSound(combo) {

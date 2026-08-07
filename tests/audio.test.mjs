@@ -107,6 +107,12 @@ test('cat bonus keeps the original OING rising meow glide', () => {
   assert.equal(oscillators[2].frequency.events[0].value, 2900);
 });
 
+test('item drop uses a bright compact reward flourish', () => {
+  const oscillators = newOscillators(() => audio.playItemDropSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [783.99, 1046.5, 1318.5, 2093]);
+  assert.equal(oscillators.at(-1).type, 'triangle');
+});
+
 test('start sound confirms mobile audio unlock with a short two-note cue', async () => {
   assert.equal(await audio.unlockAudio(), true);
   const oscillators = newOscillators(() => audio.playStartSound());

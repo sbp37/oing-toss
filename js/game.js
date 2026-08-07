@@ -2,6 +2,7 @@ import {
   BOARD_DROP_ITEMS,
   GAME_DURATION_SECONDS,
   COMBO_WINDOW_MS,
+  boardDropReward,
   chooseBoardDrop,
   getRoundConfig,
   pickMessage,
@@ -21,6 +22,7 @@ import {
   isSoundEnabled,
   playComboSound,
   playCatBonusSound,
+  playItemDropSound,
   playBombSound,
   playClockSound,
   playCountdownTick,
@@ -111,6 +113,7 @@ class OingGame {
       maxClearCells: 0,
       catsCollected: 0,
       catBonusScore: 0,
+      boardDropsEarned: 0,
       items: this.inventory.snapshot(),
     };
   }
@@ -299,11 +302,15 @@ class OingGame {
     this.state.combo = previousCombo + 1;
     this.state.comboExpiresAt = now + COMBO_WINDOW_MS;
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
-    const previousMilestone = Math.floor(previousCombo / 7);
-    const nextMilestone = Math.floor(this.state.combo / 7);
-    if (nextMilestone > previousMilestone) {
-      const drop = chooseBoardDrop(this.state.combo);
-      if (drop) this.boardItems.queue(drop.id, { earnedAtCombo: this.state.combo });
+    const reward = boardDropReward(previousCombo, this.state.combo, this.state.boardDropsEarned);
+    if (reward) {
+      const drop = reward === 'starter'
+        ? BOARD_DROP_ITEMS.bomb
+        : chooseBoardDrop(this.state.combo);
+      if (drop) {
+        this.boardItems.queue(drop.id, { earnedAtCombo: this.state.combo, reward });
+        this.state.boardDropsEarned += 1;
+      }
     }
     return previousCombo;
   }
@@ -312,6 +319,7 @@ class OingGame {
     this.ui.showBoardItemDrops(items);
     this.showCatMessage('itemDrop');
     this.ui.setPlayCharacter('wave', 1000);
+    playItemDropSound();
     itemHaptic();
   }
 
@@ -371,6 +379,13 @@ class OingGame {
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
     this.speakForSuccess(catCount);
+    if (this.state.boardDropsEarned === 0 && this.state.combo === 1) {
+      window.setTimeout(() => {
+        if (this.state.running && !this.state.paused && this.state.boardDropsEarned === 0) {
+          this.ui.showItemTease('bomb');
+        }
+      }, catCount > 0 ? 500 : 300);
+    }
 
     await this.ui.animateSuccess(rect, this.state.combo);
     this.model.remove(rect);

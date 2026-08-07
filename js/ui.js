@@ -607,6 +607,7 @@ export class GameUI {
   }
 
   showBoardItemDrops(items) {
+    this.boardFrame.querySelector('.item-tease')?.remove();
     items.forEach(({ row, col, type }, index) => {
       const tile = this.tileAt(row, col);
       if (!tile) return;
@@ -622,13 +623,36 @@ export class GameUI {
       const icon = document.createElement('img');
       icon.src = definition?.asset || '';
       icon.alt = '';
-      effect.append(icon, document.createElement('i'), document.createElement('i'));
+      const label = document.createElement('span');
+      label.textContent = `${definition?.label || '아이템'} 등장!`;
+      effect.append(icon, label, document.createElement('i'), document.createElement('i'));
       this.boardFrame.appendChild(effect);
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
         effect.remove();
       }, 900 + index * 70);
     });
+  }
+
+  showItemTease(type = 'bomb') {
+    this.boardFrame.querySelector('.item-tease')?.remove();
+    const definition = BOARD_DROP_ITEMS[type] || BOARD_DROP_ITEMS.bomb;
+    const tease = document.createElement('div');
+    tease.className = `item-tease item-tease-${definition.id}`;
+    const icon = document.createElement('img');
+    icon.src = definition.asset || '';
+    icon.width = 286;
+    icon.height = 312;
+    icon.alt = '';
+    const copy = document.createElement('div');
+    const kicker = document.createElement('span');
+    kicker.textContent = 'NEXT BONUS';
+    const title = document.createElement('strong');
+    title.textContent = `다음 합10에 ${definition.label}!`;
+    copy.append(kicker, title);
+    tease.append(icon, copy, document.createElement('i'), document.createElement('i'));
+    this.boardFrame.appendChild(tease);
+    setTimeout(() => tease.remove(), 1150);
   }
 
   pressBoardItem(row, col, pressed) {

@@ -41,6 +41,15 @@ export function chooseBoardDrop(combo, random = Math.random) {
   return BOARD_DROP_ITEMS[pool[index]];
 }
 
+export function boardDropReward(previousCombo, nextCombo, earnedCount = 0) {
+  const previous = Math.max(0, Math.round(Number(previousCombo) || 0));
+  const next = Math.max(0, Math.round(Number(nextCombo) || 0));
+  const earned = Math.max(0, Math.round(Number(earnedCount) || 0));
+  if (earned === 0 && previous < 2 && next >= 2) return 'starter';
+  if (Math.floor(next / 7) > Math.floor(previous / 7)) return 'milestone';
+  return null;
+}
+
 // Prices and display names must come from the Apps in Toss IAP product list.
 // These local records only define what a verified order will grant later.
 export const PRODUCT_CATALOG = Object.freeze({

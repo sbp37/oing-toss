@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { chooseBoardDrop } from '../js/data.js';
+import { boardDropReward, chooseBoardDrop } from '../js/data.js';
+
+test('the first short chain guarantees an early board item, then seven-combo milestones take over', () => {
+  assert.equal(boardDropReward(0, 1, 0), null);
+  assert.equal(boardDropReward(1, 2, 0), 'starter');
+  assert.equal(boardDropReward(1, 2, 1), null);
+  assert.equal(boardDropReward(6, 7, 1), 'milestone');
+  assert.equal(boardDropReward(7, 8, 2), null);
+  assert.equal(boardDropReward(13, 14, 2), 'milestone');
+});
 
 test('combo-seven pool only returns currently implemented drops', () => {
   assert.equal(chooseBoardDrop(7, () => 0).id, 'bomb');
