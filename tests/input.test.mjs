@@ -89,3 +89,20 @@ test('tapping the same anchored cell again cancels without committing', () => {
   assert.equal(cancels, 1);
   input.destroy();
 });
+
+test('tap anchor exposes a clearable visual state callback', () => {
+  const board = new FakeBoard();
+  const anchors = [];
+  const input = attachStickyRectangleInput({
+    boardEl: board,
+    isEnabled: () => true,
+    onPreview: () => {},
+    onCommit: () => {},
+    onTapAnchor: (cell) => anchors.push(cell),
+  });
+  board.dispatchEvent(pointerEvent('pointerdown', { x: 150, y: 150 }));
+  board.dispatchEvent(pointerEvent('pointerup', { x: 150, y: 150 }));
+  assert.deepEqual(anchors, [{ r: 1, c: 1 }]);
+  input.cancel();
+  input.destroy();
+});

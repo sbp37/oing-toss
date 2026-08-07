@@ -43,6 +43,7 @@ export function attachStickyRectangleInput({
   onCancel,
   onSelectionStep,
   onTapAnchor,
+  onTapAnchorExpired,
 }) {
   let pointerId = null;
   let startCell = null;
@@ -53,6 +54,12 @@ export function attachStickyRectangleInput({
   let committed = false;
   let queuedEvent = null;
   let previewFrame = 0;
+  let tapAnchorTimer = 0;
+
+  const clearTapTimer = () => {
+    if (tapAnchorTimer) clearTimeout(tapAnchorTimer);
+    tapAnchorTimer = 0;
+  };
 
   const previewAt = (event) => {
     const cell = cellFromPoint(boardEl, event.clientX, event.clientY, lastCell);
@@ -89,7 +96,10 @@ export function attachStickyRectangleInput({
     committed = false;
     queuedEvent = null;
     usingTapAnchor = false;
-    if (clearTapAnchor) tapAnchor = null;
+    if (clearTapAnchor) {
+      tapAnchor = null;
+      clearTapTimer();
+    }
     if (previewFrame) cancelAnimationFrame(previewFrame);
     previewFrame = 0;
     boardEl.classList.remove('is-dragging');
@@ -141,12 +151,20 @@ export function attachStickyRectangleInput({
         const anchor = { ...tapAnchor };
         reset(false, false);
         onTapAnchor?.(anchor);
+        clearTapTimer();
+        tapAnchorTimer = setTimeout(() => {
+          if (!tapAnchor) return;
+          tapAnchor = null;
+          tapAnchorTimer = 0;
+          onTapAnchorExpired?.();
+        }, 2800);
       }
       return;
     }
     committed = true;
     const rect = normalizeRect(startCell, lastCell || startCell);
     tapAnchor = null;
+    clearTapTimer();
     onCommit(rect, { x: event.clientX, y: event.clientY });
     reset(false);
   };
@@ -171,6 +189,7 @@ export function attachStickyRectangleInput({
   return {
     cancel: () => reset(true),
     destroy() {
+      clearTapTimer();
       boardEl.removeEventListener('pointerdown', onPointerDown);
       boardEl.removeEventListener('pointermove', onPointerMove);
       boardEl.removeEventListener('pointerup', onPointerUp);

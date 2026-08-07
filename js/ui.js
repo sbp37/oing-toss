@@ -74,6 +74,7 @@ export class GameUI {
       comboChip: document.querySelector('#combo-chip'),
       comboTimerFill: document.querySelector('#combo-timer-fill'),
       goal: document.querySelector('#goal-value'),
+      goalLabel: document.querySelector('#goal-label'),
       goalFill: document.querySelector('#goal-fill'),
       goalTrack: document.querySelector('#goal-track'),
       roundMini: document.querySelector('.round-mini'),
@@ -356,6 +357,7 @@ export class GameUI {
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
     this.board.querySelectorAll('.tile.is-selected').forEach((tile) => tile.classList.remove('is-selected'));
+    this.board.querySelectorAll('.tile.is-tap-anchor').forEach((tile) => tile.classList.remove('is-tap-anchor'));
     this.elements.marquee.classList.remove('is-visible', 'is-ten', 'is-snapping', 'is-perfect-snap');
     this.elements.marquee.classList.remove('is-repositioning');
     this.elements.marquee.style.setProperty('--syrup-pull-x', '0px');
@@ -365,6 +367,11 @@ export class GameUI {
     this.elements.sum.textContent = '0';
     this.boardFrame.style.setProperty('--drag-pull-x', '0px');
     this.boardFrame.style.setProperty('--drag-pull-y', '0px');
+  }
+
+  showTapAnchor(cell) {
+    this.board.querySelectorAll('.tile.is-tap-anchor').forEach((tile) => tile.classList.remove('is-tap-anchor'));
+    this.tileAt(cell.r, cell.c)?.classList.add('is-tap-anchor');
   }
 
   spawnParticles(rect, combo = 1) {
@@ -1150,7 +1157,17 @@ export class GameUI {
     const bubble = this.elements.catMessage;
     bubble.classList.remove('is-changing');
     void bubble.offsetWidth;
-    bubble.textContent = message;
+    const emphasis = /(오잉|합 ?10|콤보|아이템|메가폭탄|폭탄|클로버|시간|정답|보너스|다음 판|좋다냥)/g;
+    const parts = String(message).split(emphasis);
+    const nodes = parts.filter(Boolean).map((part) => {
+      if (part.match(emphasis)) {
+        const strong = document.createElement('strong');
+        strong.textContent = part;
+        return strong;
+      }
+      return document.createTextNode(part);
+    });
+    bubble.replaceChildren(...nodes);
     bubble.classList.add('is-changing');
     this.messageTimer = setTimeout(() => {
       if (token === this.messageToken) bubble.classList.remove('is-changing');
@@ -1194,7 +1211,10 @@ export class GameUI {
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
     this.boardFrame.classList.toggle('is-fever', combo >= 8 && comboRemaining > 0);
+    const goalMet = progress >= target;
+    this.elements.goalLabel.textContent = goalMet ? '완료! 남은 10 찾기' : '목표';
     this.elements.goal.textContent = `${Math.min(progress, target)}/${target}`;
+    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', goalMet);
     this.elements.goalFill.style.width = `${Math.min(100, (progress / target) * 100)}%`;
   }
 

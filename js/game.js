@@ -114,10 +114,12 @@ class OingGame {
         this.ui.selectionSnap(stats.sum === 10);
         selectionTick(stats.sum === 10);
       },
-      onTapAnchor: () => {
+      onTapAnchor: (cell) => {
         this.beginFirstInteraction();
+        this.ui.showTapAnchor(cell);
         this.showCatMessage('tapEnd');
       },
+      onTapAnchorExpired: () => this.ui.clearSelection(),
     });
     this.bindEvents();
     this.applySettings();
