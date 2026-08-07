@@ -418,6 +418,31 @@ export class GameUI {
       this.boardFrame.appendChild(glint);
       setTimeout(() => glint.remove(), 500);
     }
+
+    const fragmentVectors = [
+      [-34, -28, -14],
+      [34, -25, 12],
+      [-25, 32, 9],
+      [30, 30, -11],
+    ];
+    const fragmentValues = cellsInRect(rect)
+      .map(({ r, c }) => this.tileAt(r, c)?.dataset.value)
+      .filter((value) => value && value !== '0')
+      .slice(0, combo >= 5 ? 4 : 3);
+    fragmentValues.forEach((value, index) => {
+      const [x, y, rotate] = fragmentVectors[index];
+      const fragment = document.createElement('span');
+      fragment.className = 'success-number-fragment';
+      fragment.textContent = value;
+      fragment.style.left = `${centerX}px`;
+      fragment.style.top = `${centerY}px`;
+      fragment.style.setProperty('--fragment-x', `${x}px`);
+      fragment.style.setProperty('--fragment-y', `${y}px`);
+      fragment.style.setProperty('--fragment-rotate', `${rotate}deg`);
+      fragment.style.setProperty('--fragment-delay', `${index * 18}ms`);
+      this.boardFrame.appendChild(fragment);
+      setTimeout(() => fragment.remove(), 500);
+    });
   }
 
   showScoreFlight(rect, combo = 1) {
@@ -979,6 +1004,21 @@ export class GameUI {
         ? 'SWEET!'
         : 'NICE!';
     celebration.classList.remove('is-visible');
+    const bounds = this.lastSelectionBounds;
+    if (bounds) {
+      const selectionCenter = (bounds.left + bounds.right) / 2;
+      const celebrationX = selectionCenter > bounds.frameWidth / 2
+        ? clamp(bounds.left - 18, 82, bounds.frameWidth - 82)
+        : clamp(bounds.right + 18, 82, bounds.frameWidth - 82);
+      const celebrationY = clamp((bounds.top + bounds.bottom) / 2, 50, bounds.frameHeight - 50);
+      celebration.style.left = `${celebrationX}px`;
+      celebration.style.top = `${celebrationY}px`;
+    } else {
+      celebration.style.left = '50%';
+      celebration.style.top = '42%';
+    }
+    void celebration.offsetWidth;
+    celebration.classList.add('is-visible');
     this.boardFrame.classList.remove('combo-celebrating');
     this.boardFrame.dataset.comboCelebration = level;
     this.boardFrame.classList.add('combo-celebrating');
