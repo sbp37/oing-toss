@@ -59,6 +59,7 @@ export class GameUI {
     this.resultCharacterToken = 0;
     this.lastResultMessage = '';
     this.finalScoreAnimationFrame = 0;
+    this.startCountdownToken = 0;
     this.elements = {
       round: document.querySelector('#round-value'),
       score: document.querySelector('#score-value'),
@@ -66,6 +67,9 @@ export class GameUI {
       time: document.querySelector('#time-value'),
       timePill: document.querySelector('#time-pill'),
       playScreen: document.querySelector('#play-screen'),
+      startCountdown: document.querySelector('#start-countdown'),
+      startCountdownKicker: document.querySelector('#start-countdown-kicker'),
+      startCountdownValue: document.querySelector('#start-countdown-value'),
       combo: document.querySelector('#combo-value'),
       comboChip: document.querySelector('#combo-chip'),
       comboTimerFill: document.querySelector('#combo-timer-fill'),
@@ -117,6 +121,43 @@ export class GameUI {
       screen.classList.toggle('is-active', active);
       screen.setAttribute('aria-hidden', String(!active));
     });
+  }
+
+  async animateStartCountdown(steps, onStep = () => {}) {
+    const token = ++this.startCountdownToken;
+    const overlay = this.elements.startCountdown;
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    overlay.setAttribute('aria-hidden', 'false');
+    void overlay.offsetWidth;
+    overlay.classList.add('is-visible');
+
+    for (const step of steps) {
+      if (token !== this.startCountdownToken) return false;
+      const isGo = step === 'GO!';
+      this.elements.startCountdownKicker.textContent = isGo ? '합10을 찾아라냥!' : 'READY?';
+      this.elements.startCountdownValue.textContent = String(step);
+      overlay.classList.toggle('is-go', isGo);
+      overlay.dataset.step = String(step);
+      this.elements.startCountdownValue.classList.remove('is-popping');
+      void this.elements.startCountdownValue.offsetWidth;
+      this.elements.startCountdownValue.classList.add('is-popping');
+      onStep(step);
+      await delay(isGo ? 560 : 640);
+    }
+
+    if (token !== this.startCountdownToken) return false;
+    overlay.classList.add('is-leaving');
+    await delay(170);
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    overlay.setAttribute('aria-hidden', 'true');
+    return true;
+  }
+
+  cancelStartCountdown() {
+    this.startCountdownToken += 1;
+    const overlay = this.elements.startCountdown;
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    overlay.setAttribute('aria-hidden', 'true');
   }
 
   renderBoard(model, boardItems = new Map()) {
@@ -948,7 +989,16 @@ export class GameUI {
     shift.classList.remove('is-visible');
   }
 
-  async animateGameEnd() {
+  showFinalSecond(second) {
+    this.boardFrame.querySelector('.final-second-pop')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'final-second-pop';
+    pop.textContent = String(second);
+    this.boardFrame.appendChild(pop);
+    setTimeout(() => pop.remove(), 520);
+  }
+
+  async animateGameEnd({ score = 0, maxCombo = 0 } = {}) {
     this.dismissComboCelebration();
     this.clearSelection();
     this.elements.scoreBurst.classList.remove('is-visible');
@@ -958,8 +1008,20 @@ export class GameUI {
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-game-ending');
     timeUp.classList.add('is-visible');
-    await delay(1050);
+    await delay(650);
     timeUp.classList.remove('is-visible');
+    const summary = document.createElement('div');
+    summary.className = 'end-score-summary';
+    const label = document.createElement('small');
+    label.textContent = 'FINAL SCORE';
+    const value = document.createElement('strong');
+    value.textContent = Math.max(0, Math.round(score)).toLocaleString('ko-KR');
+    const combo = document.createElement('span');
+    combo.textContent = maxCombo > 1 ? `최고 콤보 ${maxCombo}` : '끝까지 잘했다냥!';
+    summary.append(label, value, combo, document.createElement('i'), document.createElement('i'));
+    this.boardFrame.appendChild(summary);
+    await delay(780);
+    summary.remove();
     this.boardFrame.classList.remove('is-game-ending');
   }
 

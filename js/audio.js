@@ -71,6 +71,47 @@ export function playStartSound() {
   scheduleTone(ctx, 880, now + 0.08, 0.16, 0.09, 'sine', 0.008);
 }
 
+// Original OING playCountNum(): 3→2→1 rises 400→520→640Hz with a soft harmonic.
+export function playReadyCountSound(number) {
+  const ctx = getContext();
+  if (!ctx) return;
+  const count = Math.min(3, Math.max(1, Math.round(Number(number) || 1)));
+  const now = ctx.currentTime;
+  const frequency = 400 + (3 - count) * 120;
+
+  const voice = ctx.createOscillator();
+  const voiceGain = ctx.createGain();
+  voice.type = 'sine';
+  voice.frequency.setValueAtTime(frequency, now);
+  voice.frequency.exponentialRampToValueAtTime(frequency * 1.1, now + 0.08);
+  voiceGain.gain.setValueAtTime(0.0001, now);
+  voiceGain.gain.linearRampToValueAtTime(0.16, now + 0.02);
+  voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  voice.connect(voiceGain); voiceGain.connect(ctx.destination);
+  voice.start(now); voice.stop(now + 0.24);
+
+  scheduleTone(ctx, frequency * 2, now, 0.18, 0.05, 'triangle', 0.006);
+}
+
+// Original OING playGo(): rising C5–C6 fanfare followed by a high sparkle.
+export function playGoSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [523, 659, 784, 1046].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.08, 0.25, index === 3 ? 0.13 : 0.12, index === 3 ? 'triangle' : 'sine', 0.02);
+  });
+  const sparkle = ctx.createOscillator();
+  const sparkleGain = ctx.createGain();
+  sparkle.type = 'triangle';
+  sparkle.frequency.setValueAtTime(2000, now + 0.24);
+  sparkle.frequency.exponentialRampToValueAtTime(3500, now + 0.45);
+  sparkleGain.gain.setValueAtTime(0.045, now + 0.24);
+  sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+  sparkle.connect(sparkleGain); sparkleGain.connect(ctx.destination);
+  sparkle.start(now + 0.24); sparkle.stop(now + 0.52);
+}
+
 export function playSelectionSound(sum = 0) {
   const boundedSum = Math.min(Math.max(Number(sum) || 0, 0), 10);
   const frequency = 620 + boundedSum * 24;

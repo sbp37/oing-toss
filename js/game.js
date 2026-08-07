@@ -2,6 +2,7 @@ import {
   BOARD_DROP_ITEMS,
   GAME_DURATION_SECONDS,
   COMBO_WINDOW_MS,
+  START_COUNTDOWN_STEPS,
   boardDropInventoryGrant,
   boardDropReward,
   chooseBoardDrop,
@@ -33,9 +34,10 @@ import {
   playHintSound,
   playRoundClearSound,
   playShuffleSound,
-  playStartSound,
   playSuccessSound,
   playMegaBombSound,
+  playGoSound,
+  playReadyCountSound,
   setSoundEnabled,
   unlockAudio,
 } from './audio.js';
@@ -48,6 +50,7 @@ import {
   itemHaptic,
   megaBombHaptic,
   roundHaptic,
+  readyCountHaptic,
   selectionTick,
   setHapticEnabled,
   successHaptic,
@@ -75,6 +78,7 @@ class OingGame {
     this.waitingForFirstDrag = false;
     this.lastCatMessage = '';
     this.lastResultSummary = null;
+    this.startSequenceId = 0;
     this.state = this.freshState();
     this.input = attachStickyRectangleInput({
       boardEl: this.ui.board,
@@ -164,20 +168,18 @@ class OingGame {
     this.ui.updateToggle(document.querySelector('#haptic-toggle'), isHapticEnabled());
   }
 
-  start() {
+  async start() {
     this.stopTimer();
-    if (this.settings.sound) {
-      unlockAudio().then((ready) => {
-        if (ready && this.state.running) playStartSound();
-        else if (!ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
-      });
-    }
+    const sequenceId = ++this.startSequenceId;
+    this.ui.cancelStartCountdown();
+    const audioReady = this.settings.sound ? unlockAudio() : Promise.resolve(false);
     this.inventory = createRunInventory();
     this.state = this.freshState();
     this.boardItems.reset();
     this.itemTapCandidate = null;
     this.inputGuardUntil = 0;
     this.state.running = true;
+    this.state.inputLocked = true;
     this.lowTimeSpoken = false;
     this.lastCountdownSecond = null;
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
@@ -189,8 +191,18 @@ class OingGame {
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();
-    window.setTimeout(() => this.maybeShowTutorial(), 180);
-    if (!this.waitingForFirstDrag) this.beginCountdown();
+    const ready = await audioReady;
+    if (this.settings.sound && !ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
+    const completed = await this.ui.animateStartCountdown(START_COUNTDOWN_STEPS, (step) => {
+      if (step === 'GO!') playGoSound();
+      else playReadyCountSound(step);
+      readyCountHaptic(step);
+    });
+    if (!completed || sequenceId !== this.startSequenceId || !this.state.running) return;
+    this.state.inputLocked = false;
+    this.inputGuardUntil = performance.now() + 100;
+    if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
+    else this.beginCountdown();
   }
 
   beginCountdown() {
@@ -702,6 +714,7 @@ class OingGame {
       this.lastCountdownSecond = countdownSecond;
       playCountdownTick(countdownSecond);
       countdownHaptic(countdownSecond);
+      if (countdownSecond <= 3) this.ui.showFinalSecond(countdownSecond);
     }
     this.updateHUD();
     if (this.state.timeLeft <= 0) this.finish();
@@ -735,7 +748,7 @@ class OingGame {
     this.ui.showMessage('시간 끝! 끝까지 멋졌다냥!');
     this.ui.setPlayCharacter(this.state.score >= 1200 ? 'success' : 'cheer');
     playGameOverSound();
-    await this.ui.animateGameEnd();
+    await this.ui.animateGameEnd({ score: this.state.score, maxCombo: this.state.maxCombo });
     const oldBest = storageAdapter.getBestScore();
     const previousScore = storageAdapter.getLastScore();
     const newRecord = this.state.score > oldBest;
@@ -755,6 +768,8 @@ class OingGame {
   }
 
   goHome() {
+    this.startSequenceId += 1;
+    this.ui.cancelStartCountdown();
     this.stopTimer();
     this.state.running = false;
     this.state.paused = false;

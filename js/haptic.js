@@ -55,3 +55,8 @@ export function roundHaptic() {
 export function countdownHaptic(seconds) {
   if (Number(seconds) <= 3) vibrate(Number(seconds) === 1 ? [7, 18, 11] : 6);
 }
+
+export function readyCountHaptic(step) {
+  if (step === 'GO!') vibrate([8, 16, 13]);
+  else vibrate(Number(step) === 1 ? 8 : 5);
+}

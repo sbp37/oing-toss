@@ -125,6 +125,21 @@ test('start sound confirms mobile audio unlock with a short two-note cue', async
   assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [659.25, 880]);
 });
 
+test('ready count reuses the original rising 3 2 1 pitch steps', () => {
+  const three = newOscillators(() => audio.playReadyCountSound(3));
+  const two = newOscillators(() => audio.playReadyCountSound(2));
+  const one = newOscillators(() => audio.playReadyCountSound(1));
+  assert.deepEqual(three.map((item) => item.frequency.events[0].value), [400, 800]);
+  assert.deepEqual(two.map((item) => item.frequency.events[0].value), [520, 1040]);
+  assert.deepEqual(one.map((item) => item.frequency.events[0].value), [640, 1280]);
+});
+
+test('go sound keeps the original rising fanfare and sparkle glide', () => {
+  const oscillators = newOscillators(() => audio.playGoSound());
+  assert.deepEqual(oscillators.slice(0, 4).map((item) => item.frequency.events[0].value), [523, 659, 784, 1046]);
+  assert.deepEqual(oscillators.at(-1).frequency.events.map((event) => event.value), [2000, 3500]);
+});
+
 test('combo sound rises with the chain and uses the high milestone arpeggio', () => {
   const combo2 = newOscillators(() => audio.playComboSound(2));
   const combo5 = newOscillators(() => audio.playComboSound(5));

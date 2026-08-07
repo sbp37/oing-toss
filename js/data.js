@@ -1,5 +1,6 @@
 export const GAME_DURATION_SECONDS = 90;
 export const COMBO_WINDOW_MS = 3200;
+export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 
 export const ROUND_CONFIG = Object.freeze([
   { round: 1, size: 4, target: 3 },
