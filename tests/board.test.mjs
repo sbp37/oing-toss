@@ -6,7 +6,6 @@ import {
   EASY_BOARD_BONUS,
   boardAssistForSuccessCount,
   bonusCatTargetForSize,
-  luckyCatBonusForSize,
   bombRect,
   cellListStats,
   findBestBombTarget,
@@ -88,16 +87,6 @@ assert.equal(boardAssistForSuccessCount(2), 'guided');
 assert.equal(boardAssistForSuccessCount(4), 'guided');
 assert.equal(boardAssistForSuccessCount(5), 'standard');
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
-
-for (const size of [4, 5, 6]) {
-  const luckyBoard = new BoardModel(size);
-  const before = luckyBoard.bonusCats.size;
-  const added = luckyBoard.addLuckyCats();
-  assert.ok(added.length >= 1, `${size}x${size} clover must add at least one collectable cat`);
-  assert.ok(added.length <= luckyCatBonusForSize(size));
-  assert.equal(luckyBoard.bonusCats.size, before + added.length);
-  assert.ok(luckyBoard.findAnswer(), 'clover must preserve at least one sum-ten answer');
-}
 
 assert.deepEqual(normalizeRect({ r: 3, c: 2 }, { r: 1, c: 0 }), { r1: 1, r2: 3, c1: 0, c2: 2 });
 assert.deepEqual(bombRect(4, 0, 0), { r1: 0, r2: 1, c1: 0, c2: 1 });

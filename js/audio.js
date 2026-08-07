@@ -139,12 +139,11 @@ export function playSuccessSound() {
   sparkle.stop(now + 0.18);
 }
 
-// Original OING playMeow(): a short rising "nyang" glide, mixed lower here
-// so it reads as a bonus accent instead of fighting the clear chime.
+// Original OING playMeow(): the same immediate rising "nyang" glide and mix.
 export function playCatBonusSound() {
   const ctx = getContext();
   if (!ctx) return;
-  const now = ctx.currentTime + 0.09;
+  const now = ctx.currentTime;
 
   const voice = ctx.createOscillator();
   const voiceGain = ctx.createGain();
@@ -153,7 +152,7 @@ export function playCatBonusSound() {
   voice.frequency.exponentialRampToValueAtTime(1400, now + 0.07);
   voice.frequency.exponentialRampToValueAtTime(1100, now + 0.18);
   voiceGain.gain.setValueAtTime(0.0001, now);
-  voiceGain.gain.linearRampToValueAtTime(0.13, now + 0.03);
+  voiceGain.gain.linearRampToValueAtTime(0.55, now + 0.03);
   voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
   voice.connect(voiceGain); voiceGain.connect(ctx.destination);
   voice.start(now); voice.stop(now + 0.24);
@@ -164,12 +163,20 @@ export function playCatBonusSound() {
   harmonic.frequency.setValueAtTime(1800, now);
   harmonic.frequency.exponentialRampToValueAtTime(2800, now + 0.07);
   harmonic.frequency.exponentialRampToValueAtTime(2200, now + 0.18);
-  harmonicGain.gain.setValueAtTime(0.038, now);
+  harmonicGain.gain.setValueAtTime(0.15, now);
   harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
   harmonic.connect(harmonicGain); harmonicGain.connect(ctx.destination);
   harmonic.start(now); harmonic.stop(now + 0.22);
 
-  scheduleTone(ctx, 2900, now + 0.15, 0.1, 0.025, 'sine', 0.006);
+  const tail = ctx.createOscillator();
+  const tailGain = ctx.createGain();
+  tail.type = 'sine';
+  tail.frequency.setValueAtTime(2600, now + 0.15);
+  tail.frequency.exponentialRampToValueAtTime(3200, now + 0.22);
+  tailGain.gain.setValueAtTime(0.1, now + 0.15);
+  tailGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+  tail.connect(tailGain); tailGain.connect(ctx.destination);
+  tail.start(now + 0.15); tail.stop(now + 0.26);
 }
 
 export function playItemDropSound() {
@@ -192,24 +199,21 @@ export function playItemCollectSound() {
   scheduleTone(ctx, 2349.32, now + 0.15, 0.09, 0.022, 'triangle', 0.005);
 }
 
-// Original OING index.html playComboUp()/playCombo7(), adapted to this game's
-// visible milestones (3, 5, 8). Every chained clear climbs in pitch.
+// Original OING playComboUp()/playCombo7() without extra notes or octave lifts.
 export function playComboSound(combo) {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  if (combo >= 8) {
+  if (combo > 0 && combo % 7 === 0) {
     [1046, 1318, 1568, 2093].forEach((frequency, index) => {
       scheduleTone(ctx, frequency, now + index * 0.07, 0.2, 0.14, 'sine', 0.01);
     });
     return;
   }
   const base = 440 + Math.min(Math.max(combo, 2), 6) * 80;
-  const notes = combo >= 3 ? [base, base * 1.25, base * 1.5] : [base, base * 1.25];
-  notes.forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, 0.11 - index * 0.012, 'sine', 0.008);
+  [base, base * 1.25].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, 0.12, 'sine', 0.001);
   });
-  if (combo >= 5) scheduleTone(ctx, base * 2, now + 0.16, 0.16, 0.045, 'triangle', 0.006);
 }
 
 export function playFailSound() {
@@ -302,7 +306,7 @@ export function playClockSound() {
   if (!ctx) return;
   const now = ctx.currentTime;
   [880, 1320, 1760].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.1, 0.5, 0.18, 'sine', 0.01);
+    scheduleTone(ctx, frequency, now + index * 0.1, 0.5, 0.3, 'sine', 0.01);
   });
 }
 
@@ -315,7 +319,7 @@ export function playFreezeSound() {
     scheduleTone(ctx, 2000 + Math.random() * 1800, now + index * 0.025, 0.05, 0.08, 'sine', 0.003);
   }
   scheduleTone(ctx, 1760, now + 0.16, 0.35, 0.2, 'sine', 0.008);
-  scheduleTone(ctx, 2637, now + 0.21, 0.35, 0.2, 'sine', 0.008);
+  scheduleTone(ctx, 2637, now + 0.2, 0.35, 0.2, 'sine', 0.008);
 }
 
 export function playCloverSound() {

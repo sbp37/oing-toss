@@ -828,7 +828,7 @@ export class GameUI {
     this.elements.timePill.setAttribute('aria-label', enabled ? '남은 시간이 15초 동안 정지됨' : '남은 시간');
   }
 
-  async animateClover(seconds = 20, sourceElement) {
+  async animateClover(sourceElement) {
     if (!sourceElement) return;
     const screen = this.elements.playScreen;
     const start = sourceElement.getBoundingClientRect();
@@ -844,27 +844,19 @@ export class GameUI {
     icon.src = BOARD_DROP_ITEMS.clover.asset;
     icon.alt = '';
     const label = document.createElement('strong');
-    label.textContent = `${seconds}초 행운`;
+    label.textContent = '정답 발견';
     flight.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
     screen.appendChild(flight);
     await delay(620);
     flight.remove();
   }
 
-  setLuckyActive(active) {
-    const enabled = Boolean(active);
-    this.elements.playScreen.classList.toggle('is-lucky-time', enabled);
-    this.boardFrame.classList.toggle('is-lucky', enabled);
-  }
-
-  showLuckyCats(cells = []) {
-    cells.forEach(({ row, col }, index) => {
-      const tile = this.tileAt(row, col);
-      if (!tile) return;
-      tile.style.setProperty('--lucky-delay', `${index * 80}ms`);
-      tile.classList.add('is-lucky-cat-arrival');
-      setTimeout(() => tile.classList.remove('is-lucky-cat-arrival'), 900 + index * 80);
-    });
+  showCloverHint(rect) {
+    const tiles = cellsInRect(rect)
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter((tile) => tile && !tile.dataset.item);
+    tiles.forEach((tile) => tile.classList.add('is-clover-hint'));
+    setTimeout(() => tiles.forEach((tile) => tile.classList.remove('is-clover-hint')), 4500);
   }
 
   showItemScoreBurst(points, rect, kind) {

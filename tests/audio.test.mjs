@@ -104,7 +104,7 @@ test('cat bonus keeps the original OING rising meow glide', () => {
   assert.equal(oscillators.length, 3);
   assert.deepEqual(oscillators[0].frequency.events.map((event) => event.value), [900, 1400, 1100]);
   assert.deepEqual(oscillators[1].frequency.events.map((event) => event.value), [1800, 2800, 2200]);
-  assert.equal(oscillators[2].frequency.events[0].value, 2900);
+  assert.deepEqual(oscillators[2].frequency.events.map((event) => event.value), [2600, 3200]);
 });
 
 test('item drop uses a bright compact reward flourish', () => {
@@ -140,13 +140,15 @@ test('go sound keeps the original rising fanfare and sparkle glide', () => {
   assert.deepEqual(oscillators.at(-1).frequency.events.map((event) => event.value), [2000, 3500]);
 });
 
-test('combo sound rises with the chain and uses the high milestone arpeggio', () => {
+test('combo sound keeps two notes normally and reserves the original fanfare for multiples of seven', () => {
   const combo2 = newOscillators(() => audio.playComboSound(2));
   const combo5 = newOscillators(() => audio.playComboSound(5));
+  const combo7 = newOscillators(() => audio.playComboSound(7));
   const combo8 = newOscillators(() => audio.playComboSound(8));
   assert.deepEqual(combo2.map((item) => item.frequency.events[0].value), [600, 750]);
-  assert.deepEqual(combo5.map((item) => item.frequency.events[0].value), [840, 1050, 1260, 1680]);
-  assert.deepEqual(combo8.map((item) => item.frequency.events[0].value), [1046, 1318, 1568, 2093]);
+  assert.deepEqual(combo5.map((item) => item.frequency.events[0].value), [840, 1050]);
+  assert.deepEqual(combo7.map((item) => item.frequency.events[0].value), [1046, 1318, 1568, 2093]);
+  assert.deepEqual(combo8.map((item) => item.frequency.events[0].value), [920, 1150]);
 });
 
 test('final countdown grows brighter for the last three seconds', () => {
