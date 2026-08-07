@@ -7,6 +7,9 @@ export const ROUND_CONFIG = Object.freeze([
   { round: 1, size: 4, target: 3 },
   { round: 2, size: 5, target: 5 },
   { round: 3, size: 6, target: 7 },
+  { round: 4, size: 7, target: 9 },
+  { round: 5, size: 8, target: 11 },
+  { round: 6, size: 9, target: 13 },
 ]);
 
 export const ITEM_DEFINITIONS = Object.freeze({
@@ -234,5 +237,13 @@ export function scoreForMegaBomb(valueSum) {
 }
 
 export function getRoundConfig(round) {
-  return ROUND_CONFIG[Math.min(Math.max(round, 1), ROUND_CONFIG.length) - 1];
+  const stage = Math.max(1, Math.round(Number(round) || 1));
+  const fixed = ROUND_CONFIG[stage - 1];
+  if (fixed) return fixed;
+  const last = ROUND_CONFIG.at(-1);
+  return {
+    round: stage,
+    size: last.size,
+    target: Math.min(25, last.target + (stage - last.round) * 2),
+  };
 }

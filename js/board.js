@@ -10,12 +10,15 @@ export const BOARD_ASSIST_PROFILES = Object.freeze({
 });
 
 // The board gets denser every round, but the kind of answer changes too:
-// round 1 teaches with obvious pairs, round 2 mixes shapes, and round 3
-// rewards wider 3+ tile rectangles. Every profile still guarantees choices.
+// Early rounds teach with obvious pairs; later, denser boards increasingly
+// reward wider 3+ tile rectangles. Every profile still guarantees choices.
 export const BOARD_DIFFICULTY = Object.freeze({
   4: Object.freeze({ minimumAnswers: 5, minimumSimpleAnswers: 3, minimumAdjacentPairs: 3, minimumRichAnswers: 1 }),
   5: Object.freeze({ minimumAnswers: 7, minimumSimpleAnswers: 2, minimumAdjacentPairs: 2, minimumRichAnswers: 2 }),
   6: Object.freeze({ minimumAnswers: 9, minimumSimpleAnswers: 1, minimumAdjacentPairs: 1, minimumRichAnswers: 4 }),
+  7: Object.freeze({ minimumAnswers: 12, minimumSimpleAnswers: 1, minimumAdjacentPairs: 1, minimumRichAnswers: 6 }),
+  8: Object.freeze({ minimumAnswers: 15, minimumSimpleAnswers: 1, minimumAdjacentPairs: 1, minimumRichAnswers: 8 }),
+  9: Object.freeze({ minimumAnswers: 18, minimumSimpleAnswers: 1, minimumAdjacentPairs: 1, minimumRichAnswers: 10 }),
 });
 
 export function boardAssistForSuccessCount(successCount) {
@@ -26,7 +29,7 @@ export function boardAssistForSuccessCount(successCount) {
 }
 
 const qualityTarget = (size, assist = 'standard') => {
-  const base = BOARD_DIFFICULTY[size] || BOARD_DIFFICULTY[6];
+  const base = BOARD_DIFFICULTY[size] || BOARD_DIFFICULTY[9];
   const bonus = BOARD_ASSIST_PROFILES[assist] || BOARD_ASSIST_PROFILES.standard;
   return {
     ...base,
@@ -50,18 +53,21 @@ function isAdjacentPair(answer) {
   return answer.count === 2 && (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1) === 2;
 }
 
-function hasGoodAnswerMix(grid, assist = 'standard') {
+function answersMeetQuality(answers, size, assist = 'standard') {
   const {
     minimumAnswers,
     minimumSimpleAnswers,
     minimumAdjacentPairs,
     minimumRichAnswers,
-  } = qualityTarget(grid.length, assist);
-  const answers = findAllSumTenRects(grid);
+  } = qualityTarget(size, assist);
   return answers.length >= minimumAnswers
     && answers.filter((answer) => answer.count === 2).length >= minimumSimpleAnswers
     && answers.filter(isAdjacentPair).length >= minimumAdjacentPairs
     && answers.filter((answer) => answer.count >= 3).length >= minimumRichAnswers;
+}
+
+function hasGoodAnswerMix(grid, assist = 'standard') {
+  return answersMeetQuality(findAllSumTenRects(grid), grid.length, assist);
 }
 
 const cellKey = (row, col) => `${row}:${col}`;
@@ -91,7 +97,7 @@ function placeBonusCats(grid, assist = 'standard') {
           const [catRow, catCol] = key.split(':').map(Number);
           return answers.some((answer) => rectContainsCell(answer, catRow, catCol));
         });
-        if (hasGoodAnswerMix(grid, assist) && catAnswers.length && everyCatStillCollectable) {
+        if (answersMeetQuality(answers, grid.length, assist) && catAnswers.length && everyCatStillCollectable) {
           candidates.push({ row, col, coverage: catAnswers.length });
         }
         grid[row][col] = previous;

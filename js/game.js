@@ -478,7 +478,7 @@ class OingGame {
     this.ui.setPlayCharacter('cheer', 1000);
     this.showCatMessage('round');
     await delay(430);
-    const nextRound = Math.min(3, this.state.round + 1);
+    const nextRound = this.state.round + 1;
     this.state.round = nextRound;
     this.state.progress = 0;
     await this.ui.animateRoundTransition(nextRound, () => this.buildRound());

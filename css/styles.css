@@ -927,6 +927,12 @@ img {
 .screen-play[data-round="2"] .goal-track i { background: linear-gradient(90deg, #7fd6c2, #58c5ad); }
 .screen-play[data-round="3"] .round-mini strong { color: #7a64b9; }
 .screen-play[data-round="3"] .goal-track i { background: linear-gradient(90deg, #c9b0ff, #ff7ba8); }
+.screen-play[data-round="4"] .round-mini strong { color: #e88455; }
+.screen-play[data-round="4"] .goal-track i { background: linear-gradient(90deg, #ffbf76, #ff7ba8); }
+.screen-play[data-round="5"] .round-mini strong { color: #38a894; }
+.screen-play[data-round="5"] .goal-track i { background: linear-gradient(90deg, #8be0cf, #58c5ad); }
+.screen-play[data-round="6"] .round-mini strong { color: #7a64b9; }
+.screen-play[data-round="6"] .goal-track i { background: linear-gradient(90deg, #b8a2ff, #ff8eac); }
 
 /* Board */
 .board-zone {
@@ -953,6 +959,9 @@ img {
 
 .board-frame[data-round="2"] { border-color: rgba(91, 191, 169, 0.52); }
 .board-frame[data-round="3"] { border-color: rgba(153, 125, 203, 0.5); }
+.board-frame[data-round="4"] { border-color: rgba(232, 132, 85, 0.5); }
+.board-frame[data-round="5"] { border-color: rgba(91, 191, 169, 0.52); }
+.board-frame[data-round="6"] { border-color: rgba(153, 125, 203, 0.5); }
 
 .board-frame.is-counting {
   animation: board-countdown-breath 340ms ease-out both;
@@ -1052,6 +1061,16 @@ img {
   -webkit-user-select: none;
   cursor: crosshair;
 }
+
+.board[data-size="7"],
+.board[data-size="8"],
+.board[data-size="9"] {
+  --board-gap: 1px;
+}
+
+.board[data-size="7"] .tile { border-radius: 9px; }
+.board[data-size="8"] .tile { border-radius: 8px; }
+.board[data-size="9"] .tile { border-radius: 7px; }
 
 .tile {
   position: relative;

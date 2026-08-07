@@ -14,7 +14,7 @@ import {
   normalizeRect,
   rectStats,
 } from '../js/board.js';
-import { scoreForBomb, scoreForCatBonus, scoreForClear, scoreForMegaBomb } from '../js/data.js';
+import { getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForMegaBomb } from '../js/data.js';
 
 for (const size of [4, 5, 6]) {
   for (let run = 0; run < 250; run += 1) {
@@ -87,6 +87,25 @@ assert.equal(boardAssistForSuccessCount(2), 'guided');
 assert.equal(boardAssistForSuccessCount(4), 'guided');
 assert.equal(boardAssistForSuccessCount(5), 'standard');
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
+
+assert.deepEqual(getRoundConfig(1), { round: 1, size: 4, target: 3 });
+assert.deepEqual(getRoundConfig(3), { round: 3, size: 6, target: 7 });
+assert.deepEqual(getRoundConfig(6), { round: 6, size: 9, target: 13 });
+assert.deepEqual(getRoundConfig(7), { round: 7, size: 9, target: 15 });
+assert.deepEqual(getRoundConfig(20), { round: 20, size: 9, target: 25 });
+
+for (const size of [7, 8, 9]) {
+  for (let run = 0; run < 8; run += 1) {
+    const board = new BoardModel(size);
+    const profile = BOARD_DIFFICULTY[size];
+    const answers = board.findAnswers();
+    assert.equal(board.grid.length, size);
+    assert.equal(board.grid[0].length, size);
+    assert.ok(answers.length >= profile.minimumAnswers, `${size}x${size} late board must keep enough answers`);
+    assert.equal(board.bonusCats.size, bonusCatTargetForSize(size));
+    assert.ok(board.findAnswer(), `${size}x${size} late board must keep a sum-ten answer`);
+  }
+}
 
 assert.deepEqual(normalizeRect({ r: 3, c: 2 }, { r: 1, c: 0 }), { r1: 1, r2: 3, c1: 0, c2: 2 });
 assert.deepEqual(bombRect(4, 0, 0), { r1: 0, r2: 1, c1: 0, c2: 1 });
