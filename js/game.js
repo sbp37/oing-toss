@@ -22,6 +22,16 @@ import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
 import { preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import {
+  configureMusic,
+  fadeOutMusic,
+  pauseMusic,
+  playMusic,
+  prepareMusic,
+  setMusicEnabled,
+  setMusicVolume,
+  stopMusic,
+} from './music.js';
+import {
   isSoundEnabled,
   playComboSound,
   playCatBonusSound,
@@ -68,6 +78,10 @@ class OingGame {
     this.model = new BoardModel(4);
     this.runtime = runtimeConfig();
     this.settings = storageAdapter.getSettings();
+    configureMusic(document.querySelector('#bgm-audio'), {
+      enabled: this.settings.music,
+      volume: this.settings.musicVolume,
+    });
     this.inventory = createRunInventory();
     this.boardItems = new BoardItemField();
     this.itemTapCandidate = null;
@@ -116,7 +130,7 @@ class OingGame {
       score: 0,
       combo: 0,
       maxCombo: 0,
-      round: 1,
+      round: this.runtime?.forcedRound || 1,
       progress: 0,
       timeLeft: this.runtime?.duration || GAME_DURATION_SECONDS,
       comboExpiresAt: 0,
@@ -132,6 +146,7 @@ class OingGame {
   bindEvents() {
     document.querySelector('#start-button').addEventListener('click', () => this.start());
     document.querySelector('#retry-button').addEventListener('click', () => this.start());
+    document.querySelector('#restart-button').addEventListener('click', () => this.start());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
     document.querySelector('#resume-button').addEventListener('click', () => this.resume());
@@ -156,6 +171,16 @@ class OingGame {
       this.settings.sound = !this.settings.sound;
       this.applySettings();
     });
+    const toggleMusic = () => {
+      this.settings.music = !this.settings.music;
+      this.applySettings();
+    };
+    document.querySelector('#music-button').addEventListener('click', toggleMusic);
+    document.querySelector('#music-toggle').addEventListener('click', toggleMusic);
+    document.querySelector('#music-volume').addEventListener('input', (event) => {
+      this.settings.musicVolume = Number(event.target.value) / 100;
+      this.applySettings();
+    });
     document.querySelector('#haptic-toggle').addEventListener('click', () => {
       this.settings.haptic = !this.settings.haptic;
       this.applySettings();
@@ -168,16 +193,21 @@ class OingGame {
   applySettings() {
     setSoundEnabled(this.settings.sound);
     setHapticEnabled(this.settings.haptic);
+    setMusicVolume(this.settings.musicVolume);
+    setMusicEnabled(this.settings.music);
     storageAdapter.saveSettings(this.settings);
     this.ui.updateToggle(document.querySelector('#sound-toggle'), isSoundEnabled());
     this.ui.updateToggle(document.querySelector('#haptic-toggle'), isHapticEnabled());
+    this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
   async start() {
     this.stopTimer();
+    stopMusic();
     const sequenceId = ++this.startSequenceId;
     this.ui.cancelStartCountdown();
     const audioReady = this.settings.sound ? unlockAudio() : Promise.resolve(false);
+    if (this.settings.music) prepareMusic();
     this.inventory = createRunInventory();
     this.state = this.freshState();
     this.boardItems.reset();
@@ -203,7 +233,10 @@ class OingGame {
     const ready = await audioReady;
     if (this.settings.sound && !ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
     const completed = await this.ui.animateStartCountdown(START_COUNTDOWN_STEPS, (step) => {
-      if (step === 'GO!') playGoSound();
+      if (step === 'GO!') {
+        playGoSound();
+        playMusic({ restart: true });
+      }
       else playReadyCountSound(step);
       readyCountHaptic(step);
     });
@@ -234,13 +267,17 @@ class OingGame {
     this.boardItems.carry();
     this.itemTapCandidate = null;
     const config = getRoundConfig(this.state.round);
-    this.generateBoard(config.size);
+    this.generateBoard(config.size, config.rows);
     this.renderBoard();
     this.updateHUD();
   }
 
-  generateBoard(size) {
-    return this.model.generate(size, { assist: boardAssistForSuccessCount(this.state.successCount) });
+  generateBoard(cols, rows = cols) {
+    return this.model.generate(cols, {
+      cols,
+      rows,
+      assist: boardAssistForSuccessCount(this.state.successCount),
+    });
   }
 
   renderBoard() {
@@ -250,8 +287,8 @@ class OingGame {
   forceTestBoardItem() {
     const type = this.runtime.forcedItem;
     if (!type || !BOARD_DROP_ITEMS[type]?.implemented) return;
-    for (let row = 0; row < this.model.size; row += 1) {
-      for (let col = 0; col < this.model.size; col += 1) {
+    for (let row = 0; row < this.model.rows; row += 1) {
+      for (let col = 0; col < this.model.cols; col += 1) {
         if (this.model.grid[row][col] == null) continue;
         this.model.grid[row][col] = null;
         this.boardItems.set(type, row, col, { earnedAtCombo: 0 });
@@ -339,11 +376,9 @@ class OingGame {
     this.state.combo = previousCombo + 1;
     this.state.comboExpiresAt = now + this.comboWindowMs();
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
-    const reward = boardDropReward(previousCombo, this.state.combo, this.state.boardDropsEarned);
+    const reward = boardDropReward(previousCombo, this.state.combo);
     if (reward) {
-      const drop = reward === 'starter'
-        ? BOARD_DROP_ITEMS.bomb
-        : chooseBoardDrop(this.state.combo);
+      const drop = chooseBoardDrop(this.state.combo);
       if (drop) {
         this.boardItems.queue(drop.id, { earnedAtCombo: this.state.combo, reward });
         this.state.boardDropsEarned += 1;
@@ -408,7 +443,7 @@ class OingGame {
     if ([3, 5, 8].includes(this.state.combo)) {
       this.ui.showComboMoment(this.state.combo);
     }
-    this.ui.showScoreBurst(points, rect, this.model.size, this.state.combo, stats.count, {
+    this.ui.showScoreBurst(points, rect, { rows: this.model.rows, cols: this.model.cols }, this.state.combo, stats.count, {
       catCount,
       catBonusPoints,
     });
@@ -425,7 +460,7 @@ class OingGame {
       await this.clearRound();
     } else if (!this.model.findAnswer()) {
       this.boardItems.carry();
-      this.generateBoard(config.size);
+      this.generateBoard(config.size, config.rows);
       this.renderBoard();
       this.showCatMessage('shuffle');
     } else {
@@ -600,7 +635,7 @@ class OingGame {
     const config = getRoundConfig(this.state.round);
     if (!this.model.findAnswer()) {
       this.boardItems.carry();
-      this.generateBoard(config.size);
+      this.generateBoard(config.size, config.rows);
       this.renderBoard();
       this.ui.toast('새 보드로 바로 이어갈게!');
     } else {
@@ -776,6 +811,7 @@ class OingGame {
     this.state.paused = true;
     this.pauseStartedAt = performance.now();
     this.input.cancel();
+    pauseMusic();
     this.ui.setOverlay('pause-overlay', true);
   }
 
@@ -785,6 +821,7 @@ class OingGame {
     this.endAt += pauseDuration;
     if (this.freezeEndsAt > this.pauseStartedAt) this.freezeEndsAt += pauseDuration;
     this.state.paused = false;
+    playMusic();
     this.ui.setOverlay('pause-overlay', false);
   }
 
@@ -803,6 +840,7 @@ class OingGame {
     this.ui.hideTutorial();
     this.ui.showMessage('시간 끝! 끝까지 멋졌다냥!');
     this.ui.setPlayCharacter(this.state.score >= 1200 ? 'success' : 'cheer');
+    fadeOutMusic();
     playGameOverSound();
     await this.ui.animateGameEnd({ score: this.state.score, maxCombo: this.state.maxCombo });
     const oldBest = storageAdapter.getBestScore();
@@ -827,6 +865,7 @@ class OingGame {
     this.startSequenceId += 1;
     this.ui.cancelStartCountdown();
     this.stopTimer();
+    stopMusic();
     this.state.running = false;
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;

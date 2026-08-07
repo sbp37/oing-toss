@@ -45,8 +45,8 @@ function shuffled(values) {
   return shuffleArray(values.slice());
 }
 
-function makeRandomGrid(size) {
-  return Array.from({ length: size }, () => Array.from({ length: size }, randomValue));
+function makeRandomGrid(rows, cols = rows) {
+  return Array.from({ length: rows }, () => Array.from({ length: cols }, randomValue));
 }
 
 function isAdjacentPair(answer) {
@@ -67,7 +67,8 @@ function answersMeetQuality(answers, size, assist = 'standard') {
 }
 
 function hasGoodAnswerMix(grid, assist = 'standard') {
-  return answersMeetQuality(findAllSumTenRects(grid), grid.length, assist);
+  const difficultySize = Math.max(grid.length, grid[0]?.length || 0);
+  return answersMeetQuality(findAllSumTenRects(grid), difficultySize, assist);
 }
 
 const cellKey = (row, col) => `${row}:${col}`;
@@ -76,18 +77,25 @@ export function bonusCatTargetForSize(size) {
   return Math.max(1, Math.round(size * size * BONUS_CAT_RATIO));
 }
 
+export function bonusCatTargetForDimensions(rows, cols = rows) {
+  return Math.max(1, Math.round(rows * cols * BONUS_CAT_RATIO));
+}
+
 function rectContainsCell(rect, row, col) {
   return row >= rect.r1 && row <= rect.r2 && col >= rect.c1 && col <= rect.c2;
 }
 
 function placeBonusCats(grid, assist = 'standard') {
   const cats = new Set();
-  const target = bonusCatTargetForSize(grid.length);
+  const rows = grid.length;
+  const cols = grid[0]?.length || 0;
+  const target = bonusCatTargetForDimensions(rows, cols);
+  const difficultySize = Math.max(rows, cols);
 
   for (let index = 0; index < target; index += 1) {
     const candidates = [];
-    for (let row = 0; row < grid.length; row += 1) {
-      for (let col = 0; col < grid.length; col += 1) {
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
         if ((grid[row]?.[col] ?? 0) <= 0 || cats.has(cellKey(row, col))) continue;
         const previous = grid[row][col];
         grid[row][col] = null;
@@ -97,7 +105,7 @@ function placeBonusCats(grid, assist = 'standard') {
           const [catRow, catCol] = key.split(':').map(Number);
           return answers.some((answer) => rectContainsCell(answer, catRow, catCol));
         });
-        if (answersMeetQuality(answers, grid.length, assist) && catAnswers.length && everyCatStillCollectable) {
+        if (answersMeetQuality(answers, difficultySize, assist) && catAnswers.length && everyCatStillCollectable) {
           candidates.push({ row, col, coverage: catAnswers.length });
         }
         grid[row][col] = previous;
@@ -116,21 +124,22 @@ function placeBonusCats(grid, assist = 'standard') {
 }
 
 function seedProfileAnswers(grid, assist = 'standard') {
-  const size = grid.length;
-  const { minimumAdjacentPairs, minimumRichAnswers } = qualityTarget(size, assist);
+  const rowCount = grid.length;
+  const colCount = grid[0]?.length || 0;
+  const { minimumAdjacentPairs, minimumRichAnswers } = qualityTarget(Math.max(rowCount, colCount), assist);
   const pairPatterns = [[1, 9], [2, 8], [3, 7], [4, 6]];
   const richPatterns = [[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]];
-  const rows = shuffled(Array.from({ length: size }, (_, index) => index));
+  const rows = shuffled(Array.from({ length: rowCount }, (_, index) => index));
 
   for (let index = 0; index < minimumRichAnswers; index += 1) {
     const row = rows[(minimumAdjacentPairs + index) % rows.length];
-    const start = Math.min(size - 3, index % Math.max(1, size - 2));
+    const start = Math.min(colCount - 3, index % Math.max(1, colCount - 2));
     shuffled(richPatterns[index % richPatterns.length]).forEach((value, offset) => {
       grid[row][start + offset] = value;
     });
   }
 
-  const starts = size >= 6 ? [0, 2, size - 2] : [0, size - 2];
+  const starts = colCount >= 6 ? [0, 2, colCount - 2] : [0, colCount - 2];
   const pairSlots = shuffled(rows.flatMap((row) => starts.map((start) => ({ row, start }))));
   for (let index = 0; index < minimumAdjacentPairs; index += 1) {
     const { row, start } = pairSlots[index % pairSlots.length];
@@ -149,28 +158,39 @@ export function normalizeRect(a, b) {
   };
 }
 
-export function bombRect(size, row, col) {
-  const last = Math.max(0, size - 1);
+function boardDimensions(sizeOrDimensions) {
+  if (typeof sizeOrDimensions === 'number') {
+    const size = Math.max(1, Math.round(sizeOrDimensions));
+    return { rows: size, cols: size };
+  }
   return {
-    r1: Math.max(0, row - 1),
-    r2: Math.min(last, row + 1),
-    c1: Math.max(0, col - 1),
-    c2: Math.min(last, col + 1),
+    rows: Math.max(1, Math.round(sizeOrDimensions?.rows || 1)),
+    cols: Math.max(1, Math.round(sizeOrDimensions?.cols || 1)),
   };
 }
 
-export function megaBombRect(size, row, col) {
-  const last = Math.max(0, size - 1);
+export function bombRect(sizeOrDimensions, row, col) {
+  const { rows, cols } = boardDimensions(sizeOrDimensions);
+  return {
+    r1: Math.max(0, row - 1),
+    r2: Math.min(rows - 1, row + 1),
+    c1: Math.max(0, col - 1),
+    c2: Math.min(cols - 1, col + 1),
+  };
+}
+
+export function megaBombRect(sizeOrDimensions, row, col) {
+  const { rows, cols } = boardDimensions(sizeOrDimensions);
   return {
     r1: Math.max(0, row - 2),
-    r2: Math.min(last, row + 2),
+    r2: Math.min(rows - 1, row + 2),
     c1: Math.max(0, col - 2),
-    c2: Math.min(last, col + 2),
+    c2: Math.min(cols - 1, col + 2),
   };
 }
 
 export function megaBombCells(grid, row, col, limit = 12) {
-  const rect = megaBombRect(grid.length, row, col);
+  const rect = megaBombRect({ rows: grid.length, cols: grid[0]?.length || 0 }, row, col);
   return cellsInRect(rect)
     .filter(({ r, c }) => (grid[r]?.[c] ?? 0) > 0)
     .sort((a, b) => {
@@ -193,11 +213,12 @@ export function cellListStats(grid, cells) {
 }
 
 export function findBestBombTarget(grid) {
-  const size = grid.length;
+  const rows = grid.length;
+  const cols = grid[0]?.length || 0;
   let best = null;
-  for (let row = 0; row < size; row += 1) {
-    for (let col = 0; col < size; col += 1) {
-      const rect = bombRect(size, row, col);
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const rect = bombRect({ rows, cols }, row, col);
       const stats = rectStats(grid, rect);
       if (stats.count === 0) continue;
       const value = stats.count * 100 + stats.sum;
@@ -235,12 +256,13 @@ export function rectStats(grid, rect) {
 }
 
 export function findAllSumTenRects(grid) {
-  const size = grid.length;
+  const rows = grid.length;
+  const cols = grid[0]?.length || 0;
   const answers = [];
-  for (let r1 = 0; r1 < size; r1 += 1) {
-    for (let c1 = 0; c1 < size; c1 += 1) {
-      for (let r2 = r1; r2 < size; r2 += 1) {
-        for (let c2 = c1; c2 < size; c2 += 1) {
+  for (let r1 = 0; r1 < rows; r1 += 1) {
+    for (let c1 = 0; c1 < cols; c1 += 1) {
+      for (let r2 = r1; r2 < rows; r2 += 1) {
+        for (let c2 = c1; c2 < cols; c2 += 1) {
           const rect = { r1, c1, r2, c2 };
           const stats = rectStats(grid, rect);
           if (stats.sum === 10 && stats.count >= 2) answers.push({ ...rect, count: stats.count });
@@ -262,6 +284,8 @@ function shuffleArray(values) {
 export class BoardModel {
   constructor(size = 4) {
     this.size = size;
+    this.cols = size;
+    this.rows = size;
     this.grid = [];
     this.bonusCats = new Set();
     this.generate(size);
@@ -269,16 +293,19 @@ export class BoardModel {
 
   generate(size = this.size, options = {}) {
     this.size = size;
+    this.cols = Math.max(1, Math.round(options.cols || size));
+    this.rows = Math.max(1, Math.round(options.rows || this.cols));
+    this.size = this.cols;
     const assist = options.assist || (options.easy ? 'guided' : 'standard');
     const attempts = assist === 'starter'
       ? GENERATION_ATTEMPTS * 7
       : assist === 'guided' ? GENERATION_ATTEMPTS * 5 : GENERATION_ATTEMPTS * 3;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      this.grid = makeRandomGrid(size);
+      this.grid = makeRandomGrid(this.rows, this.cols);
       if (assist !== 'standard') seedProfileAnswers(this.grid, assist);
       if (!hasGoodAnswerMix(this.grid, assist)) continue;
       const bonusCats = placeBonusCats(this.grid, assist);
-      if (bonusCats?.size === bonusCatTargetForSize(size)) {
+      if (bonusCats?.size === bonusCatTargetForDimensions(this.rows, this.cols)) {
         this.bonusCats = bonusCats;
         return this.grid;
       }
@@ -288,11 +315,11 @@ export class BoardModel {
     // answer profile both hold. This is intentionally deterministic in outcome,
     // not in layout, so a round never silently loses its bonus cats.
     while (true) {
-      this.grid = makeRandomGrid(size);
+      this.grid = makeRandomGrid(this.rows, this.cols);
       seedProfileAnswers(this.grid, assist);
       if (!hasGoodAnswerMix(this.grid, assist)) continue;
       const bonusCats = placeBonusCats(this.grid, assist);
-      if (bonusCats?.size !== bonusCatTargetForSize(size)) continue;
+      if (bonusCats?.size !== bonusCatTargetForDimensions(this.rows, this.cols)) continue;
       this.bonusCats = bonusCats;
       return this.grid;
     }
@@ -342,14 +369,14 @@ export class BoardModel {
     return {
       row,
       col,
-      rect: megaBombRect(this.size, row, col),
+      rect: megaBombRect({ rows: this.rows, cols: this.cols }, row, col),
       cells,
       stats: cellListStats(this.grid, cells),
     };
   }
 
   bombTarget(row, col) {
-    const rect = bombRect(this.size, row, col);
+    const rect = bombRect({ rows: this.rows, cols: this.cols }, row, col);
     return { rect, stats: this.stats(rect) };
   }
 
@@ -370,12 +397,13 @@ export class BoardModel {
     if (!answers.length) return null;
     const simple = answers.filter((answer) => answer.count === 2);
     const pool = simple.length ? simple : answers;
-    const center = (this.size - 1) / 2;
+    const centerRow = (this.rows - 1) / 2;
+    const centerCol = (this.cols - 1) / 2;
     return pool.slice().sort((a, b) => {
       const areaA = (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1);
       const areaB = (b.r2 - b.r1 + 1) * (b.c2 - b.c1 + 1);
-      const centerA = Math.abs((a.r1 + a.r2) / 2 - center) + Math.abs((a.c1 + a.c2) / 2 - center);
-      const centerB = Math.abs((b.r1 + b.r2) / 2 - center) + Math.abs((b.c1 + b.c2) / 2 - center);
+      const centerA = Math.abs((a.r1 + a.r2) / 2 - centerRow) + Math.abs((a.c1 + a.c2) / 2 - centerCol);
+      const centerB = Math.abs((b.r1 + b.r2) / 2 - centerRow) + Math.abs((b.c1 + b.c2) / 2 - centerCol);
       return areaA - areaB || centerA - centerB;
     })[0];
   }
@@ -387,8 +415,8 @@ export class BoardModel {
   shuffleRemaining() {
     const spots = [];
     const original = [];
-    for (let r = 0; r < this.size; r += 1) {
-      for (let c = 0; c < this.size; c += 1) {
+    for (let r = 0; r < this.rows; r += 1) {
+      for (let c = 0; c < this.cols; c += 1) {
         if (this.grid[r][c] > 0) {
           spots.push({ r, c });
           original.push(this.grid[r][c]);

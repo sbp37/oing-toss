@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <audio id="bgm-audio" src="assets/sounds/oing-original-bgm.mp3" loop preload="none"></audio>
   <main class="app-shell" id="app" aria-live="polite">
     <section class="screen screen-home is-active" id="home-screen" data-screen="home" aria-label="홈">
       <div class="home-decor" aria-hidden="true">
@@ -70,9 +71,13 @@
       </div>
       <header class="play-hud">
         <div class="hud-topline">
-          <button class="asset-icon-button pause-button" id="pause-button" type="button" aria-label="일시정지">
-            <img src="assets/ui/button-pause.webp" width="421" height="235" loading="lazy" decoding="async" alt="">
-          </button>
+          <div class="hud-controls">
+            <button class="asset-icon-button pause-button" id="pause-button" type="button" aria-label="일시정지">
+              <img src="assets/ui/button-pause.webp" width="421" height="235" loading="lazy" decoding="async" alt="">
+            </button>
+            <button class="hud-mini-button music-button" id="music-button" type="button" aria-label="배경음악 켜기" aria-pressed="false"><i></i></button>
+            <button class="hud-mini-button restart-button" id="restart-button" type="button" aria-label="게임 다시 하기"><i></i></button>
+          </div>
           <div class="round-mini"><span>ROUND</span><strong id="round-value">1</strong></div>
           <div class="time-readout" id="time-pill">
             <img class="time-clock-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt="">
@@ -203,8 +208,11 @@
       <div class="mini-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <button class="overlay-close" id="settings-close" type="button" aria-label="닫기"><i></i></button>
         <h2 id="settings-title">설정</h2>
+        <div class="setting-row"><span>배경음악</span><button class="toggle" id="music-toggle" type="button" aria-pressed="false">OFF</button></div>
         <div class="setting-row"><span>효과음</span><button class="toggle is-on" id="sound-toggle" type="button" aria-pressed="true">ON</button></div>
         <div class="setting-row"><span>진동</span><button class="toggle is-on" id="haptic-toggle" type="button" aria-pressed="true">ON</button></div>
+        <label class="music-volume-row" for="music-volume"><span>배경음악 크기</span><b id="music-volume-label">40%</b></label>
+        <input class="music-volume" id="music-volume" type="range" min="0" max="100" step="1" value="40" aria-label="배경음악 크기">
       </div>
     </div>
 

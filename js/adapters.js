@@ -47,9 +47,9 @@ export const storageAdapter = {
   },
   getSettings() {
     try {
-      return { sound: true, haptic: true, ...JSON.parse(safeRead(SETTINGS_KEY, '{}')) };
+      return { sound: true, haptic: true, music: false, musicVolume: 0.4, ...JSON.parse(safeRead(SETTINGS_KEY, '{}')) };
     } catch {
-      return { sound: true, haptic: true };
+      return { sound: true, haptic: true, music: false, musicVolume: 0.4 };
     }
   },
   saveSettings(settings) {
@@ -117,11 +117,13 @@ export function runtimeConfig() {
   const params = new URLSearchParams(location.search);
   const testMode = params.get('test') === '1';
   const requested = Number(params.get('duration'));
+  const requestedRound = Number(params.get('round'));
   return {
     testMode,
     duration: testMode && requested > 0 ? Math.min(requested, 180) : 90,
     forceTutorial: testMode && params.get('tutorial') === '1',
     forcedItem: testMode ? params.get('item') : null,
+    forcedRound: testMode && requestedRound > 0 ? Math.min(30, Math.round(requestedRound)) : 1,
   };
 }
 

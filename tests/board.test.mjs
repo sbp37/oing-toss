@@ -5,6 +5,7 @@ import {
   BoardModel,
   EASY_BOARD_BONUS,
   boardAssistForSuccessCount,
+  bonusCatTargetForDimensions,
   bonusCatTargetForSize,
   bombRect,
   cellListStats,
@@ -88,11 +89,13 @@ assert.equal(boardAssistForSuccessCount(4), 'guided');
 assert.equal(boardAssistForSuccessCount(5), 'standard');
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 
-assert.deepEqual(getRoundConfig(1), { round: 1, size: 4, target: 3 });
-assert.deepEqual(getRoundConfig(3), { round: 3, size: 6, target: 7 });
-assert.deepEqual(getRoundConfig(6), { round: 6, size: 9, target: 13 });
-assert.deepEqual(getRoundConfig(7), { round: 7, size: 9, target: 15 });
-assert.deepEqual(getRoundConfig(20), { round: 20, size: 9, target: 25 });
+assert.deepEqual(getRoundConfig(1), { round: 1, size: 4, cols: 4, rows: 4, target: 3 });
+assert.deepEqual(getRoundConfig(3), { round: 3, size: 6, cols: 6, rows: 6, target: 7 });
+assert.deepEqual(getRoundConfig(4), { round: 4, size: 7, cols: 7, rows: 7, target: 9 });
+assert.deepEqual(getRoundConfig(5), { round: 5, size: 7, cols: 7, rows: 8, target: 11 });
+assert.deepEqual(getRoundConfig(6), { round: 6, size: 7, cols: 7, rows: 9, target: 13 });
+assert.deepEqual(getRoundConfig(7), { round: 7, size: 7, cols: 7, rows: 10, target: 15 });
+assert.deepEqual(getRoundConfig(20), { round: 20, size: 7, cols: 7, rows: 10, target: 25 });
 
 for (const size of [7, 8, 9]) {
   for (let run = 0; run < 8; run += 1) {
@@ -104,6 +107,21 @@ for (const size of [7, 8, 9]) {
     assert.ok(answers.length >= profile.minimumAnswers, `${size}x${size} late board must keep enough answers`);
     assert.equal(board.bonusCats.size, bonusCatTargetForSize(size));
     assert.ok(board.findAnswer(), `${size}x${size} late board must keep a sum-ten answer`);
+  }
+}
+
+for (const rows of [8, 9, 10]) {
+  for (let run = 0; run < 8; run += 1) {
+    const board = new BoardModel(7);
+    board.generate(7, { cols: 7, rows });
+    assert.equal(board.cols, 7);
+    assert.equal(board.rows, rows);
+    assert.equal(board.grid.length, rows);
+    assert.ok(board.grid.every((row) => row.length === 7), `7x${rows} board must keep seven columns`);
+    assert.equal(board.bonusCats.size, bonusCatTargetForDimensions(rows, 7));
+    assert.ok(board.findAnswer(), `7x${rows} vertical board must keep a sum-ten answer`);
+    assert.equal(board.shuffleRemaining(), true, `7x${rows} shuffle must succeed`);
+    assert.ok(board.findAnswer(), `7x${rows} shuffled board must keep a sum-ten answer`);
   }
 }
 

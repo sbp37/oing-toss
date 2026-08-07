@@ -13,6 +13,7 @@
 | 실제 사용 파일 | 원본 경로 | 사용 화면 | CSS 표시 크기 |
 |---|---|---|---:|
 | `assets/fonts/Jua-Korean-Game.woff2` | Google Fonts `ofl/jua/Jua-Regular.ttf`에서 사용 한글만 서브셋 | 홈·버튼·말풍선·결과·오버레이의 강조 문구 | 12–20px |
+| `assets/sounds/oing-original-bgm.mp3` | 원조 OING `https://sbp37.github.io/oing/bgm.mp3` | 플레이 배경음악(사용자가 음악 ON 시에만 로드) | 기본 슬라이더 40%, 제곱 게인 0.16 |
 | `assets/backgrounds/home-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/home-bg@2x.webp` | 홈·결과 배경 | 최대 430×932 |
 | `assets/backgrounds/play-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/play-bg@2x.webp` | 플레이 배경 | 최대 430×932 |
 | `assets/characters/cat-idle.webp` | `oing-toss-assets-v1/assets/cat/cat-idle.webp` | 홈 중심 캐릭터 | 홈 약 188–270px |

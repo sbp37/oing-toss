@@ -26,11 +26,11 @@ test('combo timing starts forgiving and tightens as the run advances', () => {
   assert.equal(comboWindowMsForProgress(3, 24), 3200);
 });
 
-test('the first short chain guarantees an early board item, then seven-combo milestones take over', () => {
+test('board items appear only when a seven-combo boundary is crossed', () => {
   assert.equal(boardDropReward(0, 1, 0), null);
-  assert.equal(boardDropReward(1, 2, 0), 'starter');
-  assert.equal(boardDropReward(1, 2, 1), null);
+  assert.equal(boardDropReward(1, 2, 0), null);
   assert.equal(boardDropReward(6, 7, 1), 'milestone');
+  assert.equal(boardDropReward(6, 8, 1), 'milestone');
   assert.equal(boardDropReward(7, 8, 2), null);
   assert.equal(boardDropReward(13, 14, 2), 'milestone');
 });

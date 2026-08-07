@@ -4,12 +4,13 @@ export const TIME_FREEZE_SECONDS = 15;
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 
 export const ROUND_CONFIG = Object.freeze([
-  { round: 1, size: 4, target: 3 },
-  { round: 2, size: 5, target: 5 },
-  { round: 3, size: 6, target: 7 },
-  { round: 4, size: 7, target: 9 },
-  { round: 5, size: 8, target: 11 },
-  { round: 6, size: 9, target: 13 },
+  { round: 1, size: 4, cols: 4, rows: 4, target: 3 },
+  { round: 2, size: 5, cols: 5, rows: 5, target: 5 },
+  { round: 3, size: 6, cols: 6, rows: 6, target: 7 },
+  { round: 4, size: 7, cols: 7, rows: 7, target: 9 },
+  { round: 5, size: 7, cols: 7, rows: 8, target: 11 },
+  { round: 6, size: 7, cols: 7, rows: 9, target: 13 },
+  { round: 7, size: 7, cols: 7, rows: 10, target: 15 },
 ]);
 
 export const ITEM_DEFINITIONS = Object.freeze({
@@ -46,11 +47,9 @@ export function chooseBoardDrop(combo, random = Math.random) {
   return BOARD_DROP_ITEMS[pool[index]];
 }
 
-export function boardDropReward(previousCombo, nextCombo, earnedCount = 0) {
+export function boardDropReward(previousCombo, nextCombo) {
   const previous = Math.max(0, Math.round(Number(previousCombo) || 0));
   const next = Math.max(0, Math.round(Number(nextCombo) || 0));
-  const earned = Math.max(0, Math.round(Number(earnedCount) || 0));
-  if (earned === 0 && previous < 2 && next >= 2) return 'starter';
   if (Math.floor(next / 7) > Math.floor(previous / 7)) return 'milestone';
   return null;
 }
@@ -244,6 +243,8 @@ export function getRoundConfig(round) {
   return {
     round: stage,
     size: last.size,
+    cols: last.cols,
+    rows: last.rows,
     target: Math.min(25, last.target + (stage - last.round) * 2),
   };
 }

@@ -6,14 +6,15 @@ function clamp(value, min, max) {
 
 function cellFromPoint(boardEl, clientX, clientY, stickyCell = null) {
   const rect = boardEl.getBoundingClientRect();
-  const size = Number(boardEl.dataset.size) || 4;
+  const cols = Number(boardEl.dataset.cols || boardEl.dataset.size) || 4;
+  const rows = Number(boardEl.dataset.rows || boardEl.dataset.size) || 4;
   if (!rect.width || !rect.height) return null;
   const x = clamp(clientX, rect.left + 1, rect.right - 1);
   const y = clamp(clientY, rect.top + 1, rect.bottom - 1);
-  const cellWidth = rect.width / size;
-  const cellHeight = rect.height / size;
-  let row = clamp(Math.floor((y - rect.top) / cellHeight), 0, size - 1);
-  let col = clamp(Math.floor((x - rect.left) / cellWidth), 0, size - 1);
+  const cellWidth = rect.width / cols;
+  const cellHeight = rect.height / rows;
+  let row = clamp(Math.floor((y - rect.top) / cellHeight), 0, rows - 1);
+  let col = clamp(Math.floor((x - rect.left) / cellWidth), 0, cols - 1);
 
   // Keep the previous cell for a few pixels around a grid seam. This absorbs
   // fingertip jitter without slowing intentional or fast diagonal movement.

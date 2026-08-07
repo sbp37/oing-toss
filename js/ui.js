@@ -163,12 +163,19 @@ export class GameUI {
   renderBoard(model, boardItems = new Map()) {
     this.elements.scoreBurst.classList.remove('is-visible');
     this.boardFrame.querySelectorAll('.cat-bonus-pop, .item-tease').forEach((element) => element.remove());
-    this.board.dataset.size = String(model.size);
-    this.boardFrame.dataset.size = String(model.size);
-    this.board.style.setProperty('--board-size', model.size);
+    const cols = model.cols || model.size;
+    const rows = model.rows || model.size;
+    this.board.dataset.size = String(cols);
+    this.board.dataset.cols = String(cols);
+    this.board.dataset.rows = String(rows);
+    this.boardFrame.dataset.size = String(cols);
+    this.boardFrame.dataset.rows = String(rows);
+    this.elements.playScreen.classList.toggle('is-tall-board', rows > cols);
+    this.board.style.setProperty('--board-cols', cols);
+    this.board.style.setProperty('--board-rows', rows);
     const fragment = document.createDocumentFragment();
-    for (let r = 0; r < model.size; r += 1) {
-      for (let c = 0; c < model.size; c += 1) {
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
         const value = model.valueAt(r, c);
         const boardItem = boardItems.get(`${r}:${c}`);
         const bonusCat = model.hasBonusCat?.(r, c) || false;
@@ -884,7 +891,7 @@ export class GameUI {
     }, 760);
   }
 
-  showScoreBurst(points, rect, size, combo, cellCount, bonus = {}) {
+  showScoreBurst(points, rect, dimensions, combo, cellCount, bonus = {}) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
@@ -902,8 +909,10 @@ export class GameUI {
       burst.style.left = `${(bounds.left + bounds.right) / 2}px`;
       burst.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
     } else {
-      burst.style.left = `${((rect.c1 + rect.c2 + 1) / 2 / size) * 100}%`;
-      burst.style.top = `${((rect.r1 + rect.r2 + 1) / 2 / size) * 100}%`;
+      const cols = typeof dimensions === 'number' ? dimensions : dimensions.cols;
+      const rows = typeof dimensions === 'number' ? dimensions : dimensions.rows;
+      burst.style.left = `${((rect.c1 + rect.c2 + 1) / 2 / cols) * 100}%`;
+      burst.style.top = `${((rect.r1 + rect.r2 + 1) / 2 / rows) * 100}%`;
     }
     burst.classList.remove('is-visible');
     void burst.offsetWidth;
@@ -1291,6 +1300,24 @@ export class GameUI {
     button.classList.toggle('is-on', enabled);
     button.textContent = enabled ? 'ON' : 'OFF';
     button.setAttribute('aria-pressed', String(enabled));
+  }
+
+  updateMusicControls(enabled, volume = 0.4) {
+    const active = Boolean(enabled);
+    const percent = Math.round(clamp(Number(volume) || 0, 0, 1) * 100);
+    const settingsToggle = document.querySelector('#music-toggle');
+    const quickToggle = document.querySelector('#music-button');
+    const slider = document.querySelector('#music-volume');
+    const label = document.querySelector('#music-volume-label');
+
+    if (settingsToggle) this.updateToggle(settingsToggle, active);
+    if (quickToggle) {
+      quickToggle.classList.toggle('is-on', active);
+      quickToggle.setAttribute('aria-pressed', String(active));
+      quickToggle.setAttribute('aria-label', active ? '배경음악 끄기' : '배경음악 켜기');
+    }
+    if (slider) slider.value = String(percent);
+    if (label) label.textContent = percent > 0 ? `${percent}%` : 'OFF';
   }
 
   toast(message) {

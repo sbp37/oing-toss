@@ -12,17 +12,18 @@ function adjacentNumberCount(grid, row, col) {
 }
 
 export function rankBoardItemCells(grid, occupiedKeys = new Set()) {
-  const center = (grid.length - 1) / 2;
+  const centerRow = (grid.length - 1) / 2;
+  const centerCol = ((grid[0]?.length || 1) - 1) / 2;
   const cells = [];
   for (let row = 0; row < grid.length; row += 1) {
-    for (let col = 0; col < grid.length; col += 1) {
+    for (let col = 0; col < (grid[row]?.length || 0); col += 1) {
       const key = cellKey(row, col);
       if ((grid[row]?.[col] ?? 0) > 0 || occupiedKeys.has(key)) continue;
       cells.push({
         row,
         col,
         adjacency: adjacentNumberCount(grid, row, col),
-        centerDistance: Math.abs(row - center) + Math.abs(col - center),
+        centerDistance: Math.abs(row - centerRow) + Math.abs(col - centerCol),
       });
     }
   }
