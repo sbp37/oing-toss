@@ -2,9 +2,9 @@ const MIN_VALUE = 1;
 const MAX_VALUE = 9;
 const GENERATION_ATTEMPTS = 72;
 export const BONUS_CAT_RATIO = 0.07;
-export const EASY_BOARD_BONUS = Object.freeze({ minimumAnswers: 3, minimumSimpleAnswers: 2, minimumAdjacentPairs: 2 });
+export const EASY_BOARD_BONUS = Object.freeze({ minimumAnswers: 1, minimumSimpleAnswers: 2, minimumAdjacentPairs: 2 });
 export const BOARD_ASSIST_PROFILES = Object.freeze({
-  starter: Object.freeze({ minimumAnswers: 5, minimumSimpleAnswers: 3, minimumAdjacentPairs: 3 }),
+  starter: Object.freeze({ minimumAnswers: 3, minimumSimpleAnswers: 3, minimumAdjacentPairs: 3 }),
   guided: EASY_BOARD_BONUS,
   standard: Object.freeze({ minimumAnswers: 0, minimumSimpleAnswers: 0, minimumAdjacentPairs: 0 }),
 });
@@ -23,10 +23,11 @@ export const BOARD_DIFFICULTY = Object.freeze({
 
 export function boardAssistForSuccessCount(successCount) {
   const count = Math.max(0, Math.floor(Number(successCount) || 0));
-  // Keep the first two rounds especially readable, then taper assistance
-  // through roughly the first five rounds instead of dropping it mid-round 3.
-  if (count < 8) return 'starter';
-  if (count < 35) return 'guided';
+  // A real board often has more clears than its displayed minimum target.
+  // These thresholds follow measured clears, keeping rounds 1-2 in starter,
+  // rounds 3-5 guided, and switching to standard around round 6.
+  if (count < 15) return 'starter';
+  if (count < 55) return 'guided';
   return 'standard';
 }
 

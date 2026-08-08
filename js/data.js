@@ -79,10 +79,10 @@ export function boardDropInventoryGrant(type) {
 export function comboWindowMsForProgress(round = 1, successCount = 0) {
   const stage = Math.max(1, Math.round(Number(round) || 1));
   const clears = Math.max(0, Math.round(Number(successCount) || 0));
-  if (stage === 1 || clears < 8) return 5600;
+  if (stage <= 2 || clears < 15) return 5600;
   if (stage <= 3 || clears < 18) return 4800;
   if (stage <= 5 || clears < 35) return 4100;
-  if (clears < 55) return 3500;
+  if (stage === 6 || clears < 75) return 3500;
   return COMBO_WINDOW_MS;
 }
 

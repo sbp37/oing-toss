@@ -4502,6 +4502,12 @@ img {
   .result-cat-row { min-height: 128px; }
   .result-character-stage { width: 118px; height: 128px; }
   .toast { bottom: calc(158px + var(--safe-bottom)); }
+
+  /* Tall boards keep the same readable tile width. Reclaim only the
+     surrounding chrome so 9–10 row rounds remain tappable at 780px tall. */
+  .screen-play.is-tall-board { row-gap: 4px; }
+  .screen-play.is-tall-board .play-footer { gap: 4px; margin-top: 0; }
+  .screen-play.is-tall-board .cat-coach { height: 78px; }
 }
 
 @media (max-width: 340px) {

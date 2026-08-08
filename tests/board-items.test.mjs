@@ -21,10 +21,11 @@ test('time freeze holds the displayed time and rebases the deadline after 15 sec
 
 test('combo timing starts forgiving and tightens as the run advances', () => {
   assert.equal(comboWindowMsForProgress(1, 0), 5600);
-  assert.equal(comboWindowMsForProgress(2, 8), 4800);
+  assert.equal(comboWindowMsForProgress(2, 14), 5600);
+  assert.equal(comboWindowMsForProgress(3, 20), 4800);
   assert.equal(comboWindowMsForProgress(4, 24), 4100);
-  assert.equal(comboWindowMsForProgress(6, 42), 3500);
-  assert.equal(comboWindowMsForProgress(7, 55), 3200);
+  assert.equal(comboWindowMsForProgress(6, 58), 3500);
+  assert.equal(comboWindowMsForProgress(7, 75), 3200);
 });
 
 test('board items appear only when a seven-combo boundary is crossed', () => {
