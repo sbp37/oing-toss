@@ -156,12 +156,14 @@ export function runtimeConfig() {
   const testMode = params.get('test') === '1';
   const requested = Number(params.get('duration'));
   const requestedRound = Number(params.get('round'));
+  const requestedCombo = Number(params.get('combo'));
   return {
     testMode,
     duration: testMode && requested > 0 ? Math.min(requested, 360) : 180,
     forceTutorial: testMode && params.get('tutorial') === '1',
     forcedItem: testMode ? params.get('item') : null,
     forcedRound: testMode && requestedRound > 0 ? Math.min(30, Math.round(requestedRound)) : 1,
+    forcedCombo: testMode && requestedCombo > 0 ? Math.min(99, Math.round(requestedCombo)) : 0,
   };
 }
 

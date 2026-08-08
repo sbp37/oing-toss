@@ -148,6 +148,7 @@ class OingGame {
       catsCollected: 0,
       catBonusScore: 0,
       boardDropsEarned: 0,
+      lastBoardDropType: null,
       cloverDropped: false,
       items: this.inventory.snapshot(),
     };
@@ -255,6 +256,12 @@ class OingGame {
       readyCountHaptic(step);
     });
     if (!completed || sequenceId !== this.startSequenceId || !this.state.running) return;
+    if (this.runtime.forcedCombo > 0) {
+      this.state.combo = this.runtime.forcedCombo;
+      this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
+      this.state.comboExpiresAt = performance.now() + this.comboWindowMs();
+      this.updateHUD();
+    }
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 100;
     if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
@@ -396,10 +403,13 @@ class OingGame {
     if (reward) {
       const drop = chooseBoardDrop(this.state.combo, Math.random, {
         cloverGiven: this.state.cloverDropped,
+        previousType: this.state.lastBoardDropType,
+        rewardIndex: this.state.boardDropsEarned,
       });
       if (drop) {
         this.boardItems.queue(drop.id, { earnedAtCombo: this.state.combo, reward });
         this.state.boardDropsEarned += 1;
+        this.state.lastBoardDropType = drop.id;
         if (drop.id === 'clover') this.state.cloverDropped = true;
       }
     }

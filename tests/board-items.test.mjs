@@ -54,22 +54,41 @@ test('a round waits until its goal is met and no sum-ten answer remains', () => 
 });
 
 test('combo-seven pool only returns currently implemented drops', () => {
-  assert.ok(['bomb', 'clock'].includes(chooseBoardDrop(7, () => 0.1).id));
-  assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true }).id, 'clock');
+  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true, rewardIndex: 1 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1 }).id, 'clock');
   for (const random of [0, 0.24, 0.49, 0.74, 0.999]) {
-    assert.ok(['bomb', 'clock'].includes(chooseBoardDrop(7, () => random, { cloverGiven: true }).id));
+    assert.ok(['bomb', 'clock'].includes(chooseBoardDrop(7, () => random, { cloverGiven: true, rewardIndex: 1 }).id));
   }
-  assert.equal(chooseBoardDrop(21, () => 0.1).id, 'clover');
-  assert.equal(chooseBoardDrop(14, () => 0.999, { cloverGiven: true }).id, 'megabomb');
-  assert.equal(chooseBoardDrop(21, () => 0.7, { cloverGiven: true }).id, 'freeze');
+  assert.equal(chooseBoardDrop(21, () => 0.1, { rewardIndex: 3 }).id, 'clover');
+  assert.equal(chooseBoardDrop(14, () => 0.999, { cloverGiven: true, rewardIndex: 2 }).id, 'megabomb');
+  assert.equal(chooseBoardDrop(21, () => 0.7, { cloverGiven: true, rewardIndex: 3 }).id, 'freeze');
   for (const combo of [14, 21, 35]) {
     for (const random of [0, 0.24, 0.49, 0.74, 0.999]) {
       assert.ok(['bomb', 'clock', 'megabomb', 'freeze'].includes(
-        chooseBoardDrop(combo, () => random, { cloverGiven: true }).id,
+        chooseBoardDrop(combo, () => random, { cloverGiven: true, rewardIndex: 2 }).id,
       ));
     }
   }
+});
+
+test('earned drops teach with a bomb and avoid immediate duplicate rewards', () => {
+  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(7, () => 0, {
+    rewardIndex: 1,
+    previousType: 'bomb',
+    cloverGiven: true,
+  }).id, 'clock');
+  assert.equal(chooseBoardDrop(7, () => 0.999, {
+    rewardIndex: 2,
+    previousType: 'clock',
+    cloverGiven: true,
+  }).id, 'bomb');
+  assert.notEqual(chooseBoardDrop(21, () => 0.999, {
+    rewardIndex: 4,
+    previousType: 'freeze',
+    cloverGiven: true,
+  }).id, 'freeze');
 });
 
 test('drops prefer empty cells next to playable numbers', () => {

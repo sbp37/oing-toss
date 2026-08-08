@@ -45,15 +45,27 @@ const BOARD_DROP_POOLS = Object.freeze({
   3: Object.freeze(['clock', 'clock', 'megabomb', 'megabomb', 'freeze', 'freeze', 'bomb']),
 });
 
-export function chooseBoardDrop(combo, random = Math.random, { cloverGiven = false } = {}) {
+export function chooseBoardDrop(combo, random = Math.random, {
+  cloverGiven = false,
+  previousType = null,
+  rewardIndex = 0,
+} = {}) {
   const streak = Math.max(0, Math.round(Number(combo) || 0));
+  const earned = Math.max(0, Math.round(Number(rewardIndex) || 0));
+  // The first earned board item always demonstrates the most tactile reward.
+  if (earned === 0) return BOARD_DROP_ITEMS.bomb;
   const tier = streak >= 21 ? 3 : streak >= 14 ? 2 : 1;
   // Clover is a late-run surprise, not an early seven-combo reward.
   if (streak >= 21 && !cloverGiven && Math.max(0, random()) < 0.15) return BOARD_DROP_ITEMS.clover;
   const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
   if (!pool.length) return null;
-  const index = Math.min(pool.length - 1, Math.floor(Math.max(0, random()) * pool.length));
-  return BOARD_DROP_ITEMS[pool[index]];
+  // Back-to-back identical drops feel like a missed reward. Preserve the
+  // weighted pool while choosing from another available type when possible.
+  const variedPool = pool.some((id) => id !== previousType)
+    ? pool.filter((id) => id !== previousType)
+    : pool;
+  const index = Math.min(variedPool.length - 1, Math.floor(Math.max(0, random()) * variedPool.length));
+  return BOARD_DROP_ITEMS[variedPool[index]];
 }
 
 export function boardDropReward(previousCombo, nextCombo) {
