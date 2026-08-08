@@ -20,10 +20,11 @@ test('time freeze holds the displayed time and rebases the deadline after 15 sec
 });
 
 test('combo timing starts forgiving and tightens as the run advances', () => {
-  assert.equal(comboWindowMsForProgress(1, 0), 5200);
-  assert.equal(comboWindowMsForProgress(2, 6), 4400);
-  assert.equal(comboWindowMsForProgress(3, 14), 3700);
-  assert.equal(comboWindowMsForProgress(3, 24), 3200);
+  assert.equal(comboWindowMsForProgress(1, 0), 5600);
+  assert.equal(comboWindowMsForProgress(2, 8), 4800);
+  assert.equal(comboWindowMsForProgress(4, 24), 4100);
+  assert.equal(comboWindowMsForProgress(6, 42), 3500);
+  assert.equal(comboWindowMsForProgress(7, 55), 3200);
 });
 
 test('board items appear only when a seven-combo boundary is crossed', () => {
@@ -43,12 +44,13 @@ test('a round waits until its goal is met and no sum-ten answer remains', () => 
 });
 
 test('combo-seven pool only returns currently implemented drops', () => {
-  assert.equal(chooseBoardDrop(7, () => 0.1).id, 'clover');
+  assert.ok(['bomb', 'clock'].includes(chooseBoardDrop(7, () => 0.1).id));
   assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true }).id, 'clock');
   for (const random of [0, 0.24, 0.49, 0.74, 0.999]) {
     assert.ok(['bomb', 'clock'].includes(chooseBoardDrop(7, () => random, { cloverGiven: true }).id));
   }
+  assert.equal(chooseBoardDrop(21, () => 0.1).id, 'clover');
   assert.equal(chooseBoardDrop(14, () => 0.999, { cloverGiven: true }).id, 'megabomb');
   assert.equal(chooseBoardDrop(21, () => 0.7, { cloverGiven: true }).id, 'freeze');
   for (const combo of [14, 21, 35]) {

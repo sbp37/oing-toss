@@ -85,9 +85,11 @@ for (const size of [4, 5, 6]) {
 assert.equal(boardAssistForSuccessCount(0), 'starter');
 assert.equal(boardAssistForSuccessCount(1), 'starter');
 assert.equal(boardAssistForSuccessCount(4), 'starter');
-assert.equal(boardAssistForSuccessCount(5), 'guided');
+assert.equal(boardAssistForSuccessCount(7), 'starter');
+assert.equal(boardAssistForSuccessCount(8), 'guided');
 assert.equal(boardAssistForSuccessCount(11), 'guided');
-assert.equal(boardAssistForSuccessCount(12), 'standard');
+assert.equal(boardAssistForSuccessCount(34), 'guided');
+assert.equal(boardAssistForSuccessCount(35), 'standard');
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 
 assert.deepEqual(getRoundConfig(1), { round: 1, size: 4, cols: 4, rows: 4, target: 3 });

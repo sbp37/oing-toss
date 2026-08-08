@@ -23,8 +23,10 @@ export const BOARD_DIFFICULTY = Object.freeze({
 
 export function boardAssistForSuccessCount(successCount) {
   const count = Math.max(0, Math.floor(Number(successCount) || 0));
-  if (count < 5) return 'starter';
-  if (count < 12) return 'guided';
+  // Keep the first two rounds especially readable, then taper assistance
+  // through roughly the first five rounds instead of dropping it mid-round 3.
+  if (count < 8) return 'starter';
+  if (count < 35) return 'guided';
   return 'standard';
 }
 

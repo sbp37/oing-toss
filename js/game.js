@@ -489,8 +489,9 @@ class OingGame {
   async handleFailure(rect) {
     this.state.inputLocked = true;
     this.state.combo = Math.max(0, this.state.combo - 1);
+    const recoveryWindow = Math.max(1600, Math.round(this.comboWindowMs() * 0.45));
     this.state.comboExpiresAt = this.state.combo > 0
-      ? Math.max(this.state.comboExpiresAt, performance.now() + 1200)
+      ? Math.max(this.state.comboExpiresAt, performance.now() + recoveryWindow)
       : 0;
     failHaptic();
     playFailSound();

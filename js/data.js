@@ -40,8 +40,10 @@ const BOARD_DROP_POOLS = Object.freeze({
 });
 
 export function chooseBoardDrop(combo, random = Math.random, { cloverGiven = false } = {}) {
-  const tier = combo >= 21 ? 3 : combo >= 14 ? 2 : 1;
-  if (!cloverGiven && Math.max(0, random()) < 0.15) return BOARD_DROP_ITEMS.clover;
+  const streak = Math.max(0, Math.round(Number(combo) || 0));
+  const tier = streak >= 21 ? 3 : streak >= 14 ? 2 : 1;
+  // Clover is a late-run surprise, not an early seven-combo reward.
+  if (streak >= 21 && !cloverGiven && Math.max(0, random()) < 0.15) return BOARD_DROP_ITEMS.clover;
   const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
   if (!pool.length) return null;
   const index = Math.min(pool.length - 1, Math.floor(Math.max(0, random()) * pool.length));
@@ -70,9 +72,10 @@ export function boardDropInventoryGrant(type) {
 export function comboWindowMsForProgress(round = 1, successCount = 0) {
   const stage = Math.max(1, Math.round(Number(round) || 1));
   const clears = Math.max(0, Math.round(Number(successCount) || 0));
-  if (stage === 1 && clears < 5) return 5200;
-  if (stage <= 2 && clears < 12) return 4400;
-  if (clears < 20) return 3700;
+  if (stage === 1 || clears < 8) return 5600;
+  if (stage <= 3 || clears < 18) return 4800;
+  if (stage <= 5 || clears < 35) return 4100;
+  if (clears < 55) return 3500;
   return COMBO_WINDOW_MS;
 }
 
