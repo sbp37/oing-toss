@@ -897,11 +897,11 @@ img {
   min-width: 96px;
   min-height: 34px;
   padding: 4px 7px 6px;
-  border: 1px solid rgba(111, 184, 211, 0.58);
+  border: 1.5px solid rgba(91, 168, 201, 0.68);
   border-radius: 16px;
-  background: rgba(250, 254, 252, 0.91);
-  box-shadow: 0 2px 0 rgba(82, 139, 166, 0.08), inset 0 1px 0 white;
-  color: #24799f;
+  background: rgba(255, 255, 251, 0.97);
+  box-shadow: 0 3px 0 rgba(82, 139, 166, 0.1), 0 5px 12px rgba(77, 143, 173, 0.08), inset 0 1.5px 0 white;
+  color: #1f7399;
 }
 
 .time-readout::before,
@@ -911,8 +911,8 @@ img {
   z-index: 0;
   left: 10px;
   right: 10px;
-  bottom: 4px;
-  height: 3px;
+  bottom: 3px;
+  height: 4px;
   border-radius: 99px;
   pointer-events: none;
 }
@@ -956,7 +956,7 @@ img {
   position: relative;
   z-index: 1;
   font-family: var(--font-display);
-  font-size: 21px;
+  font-size: 23px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
@@ -1096,6 +1096,27 @@ img {
   animation: combo-punch 500ms cubic-bezier(.2,.9,.25,1.3);
 }
 
+.combo-readout.is-punching::before {
+  content: attr(data-callout);
+  position: absolute;
+  z-index: 4;
+  right: 4px;
+  top: -17px;
+  padding: 3px 7px 2px;
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 99px;
+  background: rgba(255,248,225,0.97);
+  box-shadow: 0 3px 8px rgba(198,123,70,0.15);
+  color: #df785d;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: combo-hud-callout 500ms cubic-bezier(.16,.82,.24,1.12) both;
+}
+
 .combo-readout[data-level="3"] strong { color: #e38b42; }
 .combo-readout[data-level="5"] strong { color: #ea6280; text-shadow: 0 0 7px rgba(255, 193, 79, 0.2); }
 .combo-readout[data-level="8"] strong { color: var(--coral-deep); text-shadow: 0 0 8px rgba(255,113,136,0.25); }
@@ -1103,6 +1124,12 @@ img {
 @keyframes combo-punch {
   32% { transform: translateY(-1px) scale(1.13); }
   68% { transform: scale(0.98); }
+}
+
+@keyframes combo-hud-callout {
+  0% { opacity: 0; transform: translateY(5px) scale(0.74); }
+  26%, 72% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-4px) scale(0.94); }
 }
 
 .goal-status {
@@ -1957,9 +1984,7 @@ img {
   transform: translate(var(--syrup-pull-x), var(--syrup-pull-y)) scale(0.985);
   transform-origin: center;
   will-change: opacity, transform;
-  transition:
-    opacity 34ms ease,
-    transform 34ms ease;
+  transition: none;
 }
 
 .selection-marquee.is-visible {
@@ -2930,9 +2955,6 @@ img {
   66% { opacity: 0.95; }
   100% { opacity: 0; }
 }
-
-.board-frame.fail-kick { animation: board-fail 175ms ease; }
-@keyframes board-fail { 30% { transform: translateX(-1.5px); } 65% { transform: translateX(1.5px); } }
 
 .success-glint {
   position: absolute;

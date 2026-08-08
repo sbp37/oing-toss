@@ -331,10 +331,17 @@ export class GameUI {
 
   selectionSnap(isPerfect = false) {
     const marquee = this.elements.marquee;
+    if (!isPerfect) {
+      this.selectionSnapAnimation?.cancel();
+      this.selectionSnapAnimation = null;
+      clearTimeout(this.selectionSnapTimer);
+      marquee.classList.remove('is-snapping', 'is-perfect-snap');
+      return;
+    }
     // onSelectionStep fires immediately before previewSelection. On a fresh
     // gesture the marquee still carries its previous geometry, so animating it
     // here can expose a one-frame outline at the old position.
-    if (!isPerfect || !this.lastSelectionBounds || !marquee.classList.contains('is-visible')) return;
+    if (!this.lastSelectionBounds || !marquee.classList.contains('is-visible')) return;
     this.selectionSnapAnimation?.cancel();
     clearTimeout(this.selectionSnapTimer);
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && typeof marquee.animate === 'function') {
@@ -370,6 +377,8 @@ export class GameUI {
     this.elements.marquee.classList.remove('is-repositioning');
     this.elements.marquee.style.setProperty('--syrup-pull-x', '0px');
     this.elements.marquee.style.setProperty('--syrup-pull-y', '0px');
+    this.elements.marquee.style.width = '0px';
+    this.elements.marquee.style.height = '0px';
     this.elements.sumBubble.classList.remove('is-visible', 'is-ten');
     this.board.classList.remove('is-perfect');
     this.elements.sum.textContent = '0';
@@ -528,10 +537,8 @@ export class GameUI {
       .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile) => tile.classList.add('is-fail'));
     this.elements.marquee.classList.add('is-fail');
-    this.boardFrame.classList.add('fail-kick');
     await delay(175);
     tiles.forEach((tile) => tile.classList.remove('is-fail'));
-    this.boardFrame.classList.remove('fail-kick');
     this.elements.marquee.classList.remove('is-fail');
     this.clearSelection();
   }
@@ -1036,27 +1043,14 @@ export class GameUI {
     clearTimeout(this.comboCelebrationTimer);
     celebration.dataset.level = level;
     this.elements.comboCelebrationValue.textContent = String(combo);
-    this.elements.comboCelebrationKicker.textContent = level === '8'
+    const callout = level === '8'
       ? 'OING FEVER!'
       : level === '5'
         ? 'SWEET!'
         : 'NICE!';
+    this.elements.comboCelebrationKicker.textContent = callout;
+    this.elements.comboChip.dataset.callout = callout;
     celebration.classList.remove('is-visible');
-    const bounds = this.lastSelectionBounds;
-    if (bounds) {
-      const selectionCenter = (bounds.left + bounds.right) / 2;
-      const celebrationX = selectionCenter > bounds.frameWidth / 2
-        ? clamp(bounds.left - 18, 82, bounds.frameWidth - 82)
-        : clamp(bounds.right + 18, 82, bounds.frameWidth - 82);
-      const celebrationY = clamp((bounds.top + bounds.bottom) / 2, 50, bounds.frameHeight - 50);
-      celebration.style.left = `${celebrationX}px`;
-      celebration.style.top = `${celebrationY}px`;
-    } else {
-      celebration.style.left = '50%';
-      celebration.style.top = '42%';
-    }
-    void celebration.offsetWidth;
-    celebration.classList.add('is-visible');
     this.boardFrame.classList.remove('combo-celebrating');
     this.boardFrame.dataset.comboCelebration = level;
     this.boardFrame.classList.add('combo-celebrating');
@@ -1098,6 +1092,7 @@ export class GameUI {
     clearTimeout(this.comboCelebrationTimer);
     this.comboCelebrationTimer = null;
     this.elements.comboCelebration.classList.remove('is-visible');
+    delete this.elements.comboChip.dataset.callout;
     this.boardFrame.classList.remove('combo-celebrating');
     delete this.boardFrame.dataset.comboCelebration;
   }
