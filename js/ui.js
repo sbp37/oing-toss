@@ -1364,6 +1364,15 @@ export class GameUI {
     this.showScreen('result');
     this.animateFinalScore(score);
     const screen = document.querySelector('#result-screen');
+    screen.dataset.resultTone = newRecord
+      ? 'record'
+      : score < 900
+        ? 'low'
+        : score >= 6000
+          ? 'legend'
+          : score >= 2800
+            ? 'high'
+            : 'normal';
     screen.classList.remove('is-entering');
     void screen.offsetWidth;
     screen.classList.add('is-entering');
