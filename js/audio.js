@@ -184,9 +184,9 @@ export function playItemDropSound() {
   if (!ctx) return;
   const now = ctx.currentTime;
   [783.99, 1046.5, 1318.5].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.055, 0.16, 0.07 - index * 0.008, 'sine', 0.008);
+    scheduleTone(ctx, frequency, now + index * 0.055, 0.16, 0.052 - index * 0.006, 'sine', 0.008);
   });
-  scheduleTone(ctx, 2093, now + 0.18, 0.11, 0.025, 'triangle', 0.006);
+  scheduleTone(ctx, 2093, now + 0.18, 0.11, 0.016, 'triangle', 0.006);
 }
 
 export function playItemCollectSound() {
@@ -306,7 +306,7 @@ export function playClockSound() {
   if (!ctx) return;
   const now = ctx.currentTime;
   [880, 1320, 1760].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.1, 0.5, 0.3, 'sine', 0.01);
+    scheduleTone(ctx, frequency, now + index * 0.1, 0.5, 0.19, 'sine', 0.01);
   });
 }
 
@@ -316,10 +316,10 @@ export function playFreezeSound() {
   if (!ctx) return;
   const now = ctx.currentTime;
   for (let index = 0; index < 6; index += 1) {
-    scheduleTone(ctx, 2000 + Math.random() * 1800, now + index * 0.025, 0.05, 0.08, 'sine', 0.003);
+    scheduleTone(ctx, 2000 + Math.random() * 1800, now + index * 0.025, 0.05, 0.055, 'sine', 0.003);
   }
-  scheduleTone(ctx, 1760, now + 0.16, 0.35, 0.2, 'sine', 0.008);
-  scheduleTone(ctx, 2637, now + 0.2, 0.35, 0.2, 'sine', 0.008);
+  scheduleTone(ctx, 1760, now + 0.16, 0.35, 0.13, 'sine', 0.008);
+  scheduleTone(ctx, 2637, now + 0.2, 0.35, 0.13, 'sine', 0.008);
 }
 
 export function playCloverSound() {
@@ -327,9 +327,9 @@ export function playCloverSound() {
   if (!ctx) return;
   const now = ctx.currentTime;
   [659.25, 880, 1046.5, 1318.5].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.065, 0.25, index === 3 ? 0.16 : 0.11, 'sine', 0.008);
+    scheduleTone(ctx, frequency, now + index * 0.065, 0.25, index === 3 ? 0.1 : 0.075, 'sine', 0.008);
   });
-  scheduleTone(ctx, 2637, now + 0.22, 0.28, 0.08, 'triangle', 0.006);
+  scheduleTone(ctx, 2637, now + 0.22, 0.28, 0.045, 'triangle', 0.006);
 }
 
 export function playRoundClearSound() {

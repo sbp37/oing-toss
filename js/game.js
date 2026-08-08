@@ -39,6 +39,7 @@ import {
   isSoundEnabled,
   playComboSound,
   playCatBonusSound,
+  playItemCollectSound,
   playItemDropSound,
   playBombSound,
   playClockSound,
@@ -455,11 +456,11 @@ class OingGame {
     return previousCombo;
   }
 
-  announceBoardItems(items) {
+  announceBoardItems(items, { playSound = true } = {}) {
     this.ui.showBoardItemDrops(items);
     this.showCatMessage('itemDrop');
     this.ui.setPlayCharacter('wave', 1000);
-    playItemDropSound();
+    if (playSound) playItemDropSound();
     itemHaptic();
   }
 
@@ -529,12 +530,12 @@ class OingGame {
       await this.clearRound();
     } else if (!remainingAnswer) {
       const carried = this.buildRound();
-      if (carried.length) this.announceBoardItems(carried);
+      if (carried.length) this.announceBoardItems(carried, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
       this.showCatMessage('shuffle');
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
-      if (placed.length) this.announceBoardItems(placed);
+      if (placed.length) this.announceBoardItems(placed, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
     }
     this.state.comboExpiresAt = performance.now() + this.comboWindowMs();
     this.state.inputLocked = false;
@@ -585,8 +586,10 @@ class OingGame {
     this.ui.showRoundClear();
     this.ui.setPlayCharacter('cheer', 1000);
     this.showCatMessage('round');
-    const storedItems = this.storeRoundItems();
-    await delay(500);
+    const [storedItems] = await Promise.all([
+      this.storeRoundItems({ soundDelay: 460 }),
+      delay(500),
+    ]);
     const nextRound = this.state.round + 1;
     this.state.round = nextRound;
     this.state.progress = 0;
@@ -600,9 +603,20 @@ class OingGame {
     this.ui.showRoundReady(420);
   }
 
-  storeRoundItems() {
+  async storeRoundItems({ soundDelay = 0 } = {}) {
+    const sourceItems = this.boardItems.snapshot().visible
+      .filter((item) => ['bomb', 'clock'].includes(item.type))
+      .map((item) => ({
+        item,
+        sourceElement: this.ui.tileAt(item.row, item.col),
+      }));
     const stored = this.boardItems.extractTypes(new Set(['bomb', 'clock']));
     if (!stored.length) return stored;
+    if (soundDelay > 0) await delay(soundDelay);
+    playItemCollectSound();
+    await Promise.all(sourceItems.map(({ item, sourceElement }) => (
+      this.ui.animateItemCollect(item, sourceElement)
+    )));
     const grants = stored.reduce((result, item) => {
       result[item.type] = (result[item.type] || 0) + 1;
       return result;

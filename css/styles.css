@@ -1802,6 +1802,12 @@ img {
 .item-drop-fx.item-drop-clock::before,
 .item-drop-fx.item-drop-clock::after { border-color: rgba(93,213,197,0.62); }
 
+.item-drop-fx.item-drop-freeze::before,
+.item-drop-fx.item-drop-freeze::after { border-color: rgba(101,201,238,0.7); }
+
+.item-drop-fx.item-drop-clover::before,
+.item-drop-fx.item-drop-clover::after { border-color: rgba(91,198,125,0.68); }
+
 .item-drop-fx.item-drop-megabomb::before {
   border-color: rgba(255,111,93,0.72);
 }
@@ -1847,6 +1853,22 @@ img {
 
 .item-drop-fx.item-drop-clock > span { color: #397f79; background: rgba(236,255,250,0.97); }
 .item-drop-fx.item-drop-megabomb > span { color: #c75450; background: rgba(255,243,218,0.98); }
+.item-drop-fx.item-drop-freeze > span { color: #397ea4; background: rgba(239,252,255,0.98); }
+.item-drop-fx.item-drop-clover > span { color: #3b8c5b; background: rgba(246,255,237,0.98); }
+
+.item-drop-fx.item-drop-freeze i {
+  background: #e9fdff;
+  box-shadow: 0 0 8px rgba(90,205,237,0.78);
+}
+
+.item-drop-fx.item-drop-clover i {
+  border-radius: 50%;
+  background: #dfffaf;
+  box-shadow: 0 0 8px rgba(83,196,117,0.68);
+}
+
+.item-drop-fx.item-drop-freeze > b.item-drop-paw { filter: hue-rotate(135deg) drop-shadow(0 0 5px rgba(92,194,229,0.52)); }
+.item-drop-fx.item-drop-clover > b.item-drop-paw { filter: hue-rotate(55deg) drop-shadow(0 0 5px rgba(80,187,112,0.48)); }
 
 .item-drop-fx.item-drop-megabomb img {
   width: 48px;
@@ -3626,7 +3648,7 @@ img {
   overflow: visible;
   border: 1.5px solid color-mix(in srgb, var(--item-accent, #e8cd94) 48%, #eadab9);
   border-radius: clamp(16px, 4.6vw, 19px);
-  background: linear-gradient(180deg, rgba(255,255,252,0.98) 0%, #fff9ed 66%, #fff0d4 100%);
+  background: linear-gradient(180deg, var(--item-top, rgba(255,255,252,0.98)) 0%, var(--item-mid, #fff9ed) 66%, var(--item-bottom, #fff0d4) 100%);
   box-shadow:
     0 3px 0 color-mix(in srgb, var(--item-accent, #d9be85) 34%, #d7c49f),
     0 6px 11px rgba(102,82,57,0.1),
@@ -3648,20 +3670,35 @@ img {
   pointer-events: none;
 }
 
-.hint-button { --item-accent: #efbd4f; color: #695642; }
+.hint-button {
+  --item-accent: #efbd4f;
+  --item-top: #fffef5;
+  --item-mid: #fff8d9;
+  --item-bottom: #ffe9ae;
+  color: #695642;
+}
 
 .shuffle-button {
   --item-accent: #63cbb6;
+  --item-top: #f8fffc;
+  --item-mid: #e4fbf4;
+  --item-bottom: #c5f1e5;
   color: #3d746c;
 }
 
 .bomb-button {
   --item-accent: #ef879e;
+  --item-top: #fff9fb;
+  --item-mid: #ffe8ed;
+  --item-bottom: #ffcdd9;
   color: #9b584b;
 }
 
 .clock-button {
   --item-accent: #75bfe0;
+  --item-top: #f8fdff;
+  --item-mid: #e6f7ff;
+  --item-bottom: #ccecff;
   color: #4d7890;
 }
 
@@ -3732,7 +3769,21 @@ img {
 .item-button.is-depleted .item-icon { filter: grayscale(0.9); opacity: 0.58; }
 .item-button.is-depleted b { background: #9b9892; box-shadow: none; }
 .item-button.is-depleted::after {
-  content: none;
+  content: "소진";
+  position: absolute;
+  z-index: 4;
+  right: 3px;
+  bottom: 3px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255,255,255,0.88);
+  border-radius: 999px;
+  background: rgba(105,102,96,0.88);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 /* Result */

@@ -40,6 +40,14 @@ const CHARACTER_ALT = Object.freeze({
   fail: '살짝 아쉬워하는 블루 고양이',
 });
 
+const ITEM_DROP_COPY = Object.freeze({
+  bomb: '톡 누르면 바로 펑!',
+  megabomb: '톡 누르면 크게 펑!',
+  clock: '톡 누르면 +8초!',
+  freeze: '톡 누르면 15초 정지!',
+  clover: '톡 누르면 정답 발견!',
+});
+
 export class GameUI {
   constructor() {
     this.screens = [...document.querySelectorAll('[data-screen]')];
@@ -773,7 +781,7 @@ export class GameUI {
       icon.src = definition?.asset || '';
       icon.alt = '';
       const label = document.createElement('span');
-      label.textContent = `${definition?.label || '아이템'} 등장!`;
+      label.textContent = ITEM_DROP_COPY[type] || `${definition?.label || '아이템'} 등장!`;
       effect.append(icon, label);
       for (let sparkle = 0; sparkle < 4; sparkle += 1) effect.appendChild(document.createElement('i'));
       for (let pawIndex = 0; pawIndex < 2; pawIndex += 1) {
@@ -1349,6 +1357,10 @@ export class GameUI {
     this.elements.shuffleButton.classList.toggle('is-depleted', shuffle <= 0);
     this.elements.bombButton.classList.toggle('is-depleted', bomb <= 0);
     this.elements.clockButton.classList.toggle('is-depleted', clock <= 0);
+    this.elements.hintButton.dataset.count = String(hint);
+    this.elements.shuffleButton.dataset.count = String(shuffle);
+    this.elements.bombButton.dataset.count = String(bomb);
+    this.elements.clockButton.dataset.count = String(clock);
     this.elements.hintButton.setAttribute('aria-label', `힌트, ${hint}회 남음`);
     this.elements.shuffleButton.setAttribute('aria-label', `섞기, ${shuffle}회 남음`);
     this.elements.bombButton.setAttribute('aria-label', `폭탄, ${bomb}회 남음`);
