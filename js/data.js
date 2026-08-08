@@ -3,6 +3,11 @@ export const COMBO_WINDOW_MS = 3200;
 export const ITEM_REWARD_INTERVAL = 7;
 export const TIME_FREEZE_SECONDS = 15;
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
+export const RESULT_SCORE_THRESHOLDS = Object.freeze({
+  normal: 10000,
+  high: 25000,
+  legend: 50000,
+});
 
 export const ROUND_CONFIG = Object.freeze([
   { round: 1, size: 4, cols: 4, rows: 4, target: 3 },
@@ -171,10 +176,22 @@ export function pickMessage(type, previous = '', random = Math.random) {
 
 export function resultMessageType(score, newRecord = false) {
   if (newRecord) return 'record';
-  if (score < 900) return 'resultLow';
-  if (score < 2800) return 'resultNormal';
-  if (score < 6000) return 'resultHigh';
-  return 'resultLegend';
+  const tone = resultToneForScore(score);
+  return tone === 'low'
+    ? 'resultLow'
+    : tone === 'normal'
+      ? 'resultNormal'
+      : tone === 'high'
+        ? 'resultHigh'
+        : 'resultLegend';
+}
+
+export function resultToneForScore(score) {
+  const points = Math.max(0, Math.round(Number(score) || 0));
+  if (points < RESULT_SCORE_THRESHOLDS.normal) return 'low';
+  if (points < RESULT_SCORE_THRESHOLDS.high) return 'normal';
+  if (points < RESULT_SCORE_THRESHOLDS.legend) return 'high';
+  return 'legend';
 }
 
 export function pickResultMessage(score, { newRecord = false, previous = '', random = Math.random } = {}) {

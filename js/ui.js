@@ -4,6 +4,7 @@ import {
   buildScoreComparisons,
   comboMultiplier,
   pickResultMessage,
+  resultToneForScore,
 } from './data.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1396,11 +1397,12 @@ export class GameUI {
     this.elements.newRecord.hidden = !newRecord;
     this.elements.resultDecor.classList.toggle('is-record', newRecord);
 
+    const resultTone = resultToneForScore(score);
     if (newRecord) {
       this.setResultCharacter('success');
-    } else if (score < 900) {
+    } else if (resultTone === 'low') {
       this.setResultCharacter('fail');
-    } else if (score >= 2500) {
+    } else if (resultTone === 'high' || resultTone === 'legend') {
       this.setResultCharacter('success');
     } else {
       this.setResultCharacter('cheer');
@@ -1419,15 +1421,7 @@ export class GameUI {
     this.showScreen('result');
     this.animateFinalScore(score);
     const screen = document.querySelector('#result-screen');
-    screen.dataset.resultTone = newRecord
-      ? 'record'
-      : score < 900
-        ? 'low'
-        : score >= 6000
-          ? 'legend'
-          : score >= 2800
-            ? 'high'
-            : 'normal';
+    screen.dataset.resultTone = newRecord ? 'record' : resultTone;
     screen.classList.remove('is-entering');
     void screen.offsetWidth;
     screen.classList.add('is-entering');
