@@ -99,6 +99,13 @@ test('success sound keeps the original OING note sequence', () => {
   assert.equal(oscillators[3].frequency.events[0].value, 1800);
 });
 
+test('wide clear keeps the original OING WOW chord rise', () => {
+  const oscillators = newOscillators(() => audio.playWideClearSound());
+  assert.deepEqual(oscillators.slice(0, 9).map((item) => item.frequency.events[0].value), [523, 659, 784, 587, 740, 880, 659, 830, 988]);
+  assert.equal(oscillators.at(-1).type, 'triangle');
+  assert.deepEqual(oscillators.at(-1).frequency.events.map((event) => event.value), [1400, 3200]);
+});
+
 test('cat bonus keeps the original OING rising meow glide', () => {
   const oscillators = newOscillators(() => audio.playCatBonusSound());
   assert.equal(oscillators.length, 3);

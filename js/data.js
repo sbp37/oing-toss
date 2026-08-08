@@ -1,12 +1,14 @@
-export const GAME_DURATION_SECONDS = 180;
-export const COMBO_WINDOW_MS = 3200;
+export const GAME_DURATION_SECONDS = 120;
+export const PRACTICE_DURATION_SECONDS = 240;
 export const ITEM_REWARD_INTERVAL = 7;
 export const TIME_FREEZE_SECONDS = 15;
+export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
+export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 export const RESULT_SCORE_THRESHOLDS = Object.freeze({
-  normal: 10000,
-  high: 25000,
-  legend: 50000,
+  normal: 6000,
+  high: 15000,
+  legend: 30000,
 });
 
 export const ROUND_CONFIG = Object.freeze([
@@ -40,9 +42,12 @@ export const BOARD_DROP_ITEMS = Object.freeze({
 });
 
 const BOARD_DROP_POOLS = Object.freeze({
-  1: Object.freeze(['bomb', 'bomb', 'bomb', 'clock', 'clock']),
-  2: Object.freeze(['bomb', 'bomb', 'clock', 'clock', 'megabomb']),
-  3: Object.freeze(['clock', 'clock', 'megabomb', 'megabomb', 'freeze', 'freeze', 'bomb']),
+  // Time items are memorable but must not create an endless reward loop.
+  // Seven-combo rewards therefore stay frequent while most drops affect the
+  // board instead of extending the two-minute session.
+  1: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'clock']),
+  2: Object.freeze(['bomb', 'bomb', 'bomb', 'megabomb', 'megabomb', 'clock']),
+  3: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'megabomb', 'megabomb', 'megabomb', 'megabomb', 'megabomb', 'clock', 'freeze']),
 });
 
 export function chooseBoardDrop(combo, random = Math.random, {
@@ -56,7 +61,9 @@ export function chooseBoardDrop(combo, random = Math.random, {
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
   const tier = streak >= 21 ? 3 : streak >= 14 ? 2 : 1;
   // Clover is a late-run surprise, not an early seven-combo reward.
-  if (streak >= 21 && !cloverGiven && Math.max(0, random()) < 0.15) return BOARD_DROP_ITEMS.clover;
+  if (streak >= 21 && !cloverGiven && (earned >= 3 || Math.max(0, random()) < 0.15)) {
+    return BOARD_DROP_ITEMS.clover;
+  }
   const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
   if (!pool.length) return null;
   // Back-to-back identical drops feel like a missed reward. Preserve the
@@ -75,6 +82,20 @@ export function boardDropReward(previousCombo, nextCombo) {
   return null;
 }
 
+export function comboAfterFailure(combo) {
+  return Math.floor(Math.max(0, Math.round(Number(combo) || 0)) * 0.7);
+}
+
+export function comboGainForClear(cellCount) {
+  return Math.max(0, Math.round(Number(cellCount) || 0)) >= 5 ? 2 : 1;
+}
+
+export function comboMilestoneCrossed(previousCombo, nextCombo) {
+  const previous = Math.max(0, Math.round(Number(previousCombo) || 0));
+  const next = Math.max(previous, Math.round(Number(nextCombo) || 0));
+  return [8, 5, 3].find((milestone) => previous < milestone && next >= milestone) || 0;
+}
+
 export function itemRewardCountdown(combo) {
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   const remainder = streak % ITEM_REWARD_INTERVAL;
@@ -82,9 +103,19 @@ export function itemRewardCountdown(combo) {
 }
 
 export function shouldAdvanceRound(progress, target, hasAnswer) {
-  const clears = Math.max(0, Math.round(Number(progress) || 0));
-  const required = Math.max(1, Math.round(Number(target) || 1));
-  return clears >= required && !hasAnswer;
+  // A board is a stage. Clear counts are feedback, not a gate that forces
+  // another generated board before the player may advance.
+  return !hasAnswer;
+}
+
+export function shouldShowBeginnerAutoHint({
+  running = false, inputLocked = false, tutorialActive = false, alreadyShown = false,
+  timeLeft = 0, idleMs = 0, bestScore = 0, completedRuns = 0,
+} = {}) {
+  const isBeginner = Math.max(0, completedRuns) < 3
+    || Math.max(0, Number(bestScore) || 0) < BEGINNER_AUTO_HINT_SCORE_CEILING;
+  return Boolean(running) && !inputLocked && !tutorialActive && !alreadyShown && isBeginner
+    && timeLeft > 10 && timeLeft <= 40 && idleMs >= BEGINNER_AUTO_HINT_IDLE_MS;
 }
 
 export function boardDropInventoryGrant(type) {
@@ -93,14 +124,10 @@ export function boardDropInventoryGrant(type) {
   return null;
 }
 
-export function comboWindowMsForProgress(round = 1, successCount = 0) {
+export function roundTimeBonusSeconds(round = 1) {
   const stage = Math.max(1, Math.round(Number(round) || 1));
-  const clears = Math.max(0, Math.round(Number(successCount) || 0));
-  if (stage <= 2 || clears < 15) return 5600;
-  if (stage <= 3 || clears < 18) return 4800;
-  if (stage <= 5 || clears < 35) return 4100;
-  if (stage === 6 || clears < 75) return 3500;
-  return COMBO_WINDOW_MS;
+  if (stage <= 4) return 2;
+  return 3;
 }
 
 export function freezeTimeline(nowMs, timeLeft, seconds = TIME_FREEZE_SECONDS) {
@@ -160,8 +187,11 @@ export const MESSAGES = Object.freeze({
   combo3: Object.freeze(['손이 빠르다냥!', '콤보가 착착 붙는다냥!', '감이 올라온다냥!']),
   combo5: Object.freeze(['지금 완전 감 잡았다냥!', '계속 이어가자냥!', '숫자가 다 보이나 보다냥!']),
   combo8: Object.freeze(['완전 신났다냥!', '손가락에 날개 달렸냥?', '집중력이 폭발했다냥!']),
+  wow: Object.freeze(['와, 큰 조합이다냥!', '한 번에 쫙 지웠다냥!', '이런 큰 10을 기다렸다냥!']),
   fail: Object.freeze(['앗, 10이 아니다냥', '조금 아깝다냥', '다시 골라보자냥']),
   hint: Object.freeze(['여기 한번 보라냥!', '이쪽이 수상하다냥!', '반짝이는 칸을 이어보라냥!']),
+  autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
+  perfect: Object.freeze(['퍼펙트! 힌트 하나 챙겼다냥!', '판을 싹 비웠다냥! 선물이다냥!']),
   shuffle: Object.freeze(['한번 섞어보자냥!', '새 판에서 다시 찾아보자냥!', '숫자들 자리 바꾼다냥!']),
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
@@ -283,9 +313,14 @@ export function comboMultiplier(combo) {
 
 export function scoreForClear(cellCount, combo) {
   const base = cellCount <= 2
-    ? 240
-    : 240 + (cellCount - 2) * 180 + Math.max(0, cellCount - 3) * 35;
+    ? 210
+    : 210 + (cellCount - 2) * 210 + Math.max(0, cellCount - 3) * 40;
   return Math.round(base * comboMultiplier(combo));
+}
+
+export function scoreForWideClear(cellCount, combo) {
+  const extraCells = Math.max(0, Math.round(Number(cellCount) || 0) - 4);
+  return Math.round(extraCells * 120 * comboMultiplier(combo));
 }
 
 // The original OING cat cell adds five base points before its integer combo

@@ -1,0 +1,279 @@
+import {
+  BoardModel,
+  cellListStats,
+  megaBombCells,
+} from './board.js';
+import {
+  GAME_DURATION_SECONDS,
+  TIME_FREEZE_SECONDS,
+  boardDropReward,
+  chooseBoardDrop,
+  comboAfterFailure,
+  comboGainForClear,
+  getRoundConfig,
+  roundTimeBonusSeconds,
+  scoreForBomb,
+  scoreForCatBonus,
+  scoreForClear,
+  scoreForMegaBomb,
+  scoreForWideClear,
+} from './data.js';
+
+export const PLAYER_PROFILES = Object.freeze({
+  novice: Object.freeze({ id: 'novice', decisionSeconds: 4.15, errorRate: 0.15, itemUseRate: 0.62, richBias: 0.12 }),
+  regular: Object.freeze({ id: 'regular', decisionSeconds: 2.65, errorRate: 0.07, itemUseRate: 0.82, richBias: 0.48 }),
+  expert: Object.freeze({ id: 'expert', decisionSeconds: 1.5, errorRate: 0.02, itemUseRate: 0.94, richBias: 0.82 }),
+});
+
+export function createSeededRandom(seed = 1) {
+  let value = (Math.round(Number(seed) || 1) >>> 0) || 1;
+  return () => {
+    value += 0x6d2b79f5;
+    let mixed = value;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function randomBetween(random, minimum, maximum) {
+  return minimum + (maximum - minimum) * random();
+}
+
+function chooseAnswer(answers, profile, random) {
+  const rich = answers.filter((answer) => answer.count >= 3);
+  const simple = answers.filter((answer) => answer.count === 2);
+  const useRich = rich.length && (!simple.length || random() < profile.richBias);
+  const pool = useRich ? rich : (simple.length ? simple : answers);
+  if (profile.id === 'expert') {
+    const maximum = Math.max(...pool.map((answer) => answer.count));
+    const best = pool.filter((answer) => answer.count === maximum);
+    return best[Math.floor(random() * best.length)];
+  }
+  return pool[Math.floor(random() * pool.length)];
+}
+
+function bestMegaBombTarget(model) {
+  let best = null;
+  for (let row = 0; row < model.rows; row += 1) {
+    for (let col = 0; col < model.cols; col += 1) {
+      const cells = megaBombCells(model.grid, row, col);
+      const stats = cellListStats(model.grid, cells);
+      const value = stats.count * 100 + stats.sum;
+      if (stats.count && (!best || value > best.value)) best = { cells, stats, value };
+    }
+  }
+  return best;
+}
+
+function percentile(values, ratio) {
+  if (!values.length) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * ratio))];
+}
+
+function mean(values) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+export function simulateRun({
+  seed = 1,
+  profile = 'regular',
+  durationSeconds = GAME_DURATION_SECONDS,
+  maximumElapsedSeconds = 300,
+} = {}) {
+  const settings = typeof profile === 'string' ? PLAYER_PROFILES[profile] : profile;
+  if (!settings) throw new Error(`Unknown player profile: ${profile}`);
+  const random = createSeededRandom(seed);
+  const originalRandom = Math.random;
+  Math.random = random;
+  try {
+    const state = {
+      profile: settings.id,
+      seed,
+      elapsedSeconds: 0,
+      timeLeft: durationSeconds,
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      round: 1,
+      clears: 0,
+      errors: 0,
+      simpleClears: 0,
+      richClears: 0,
+      catBonuses: 0,
+      boards: 0,
+      perfectClears: 0,
+      roundTimeBonus: 0,
+      itemTimeBonus: 0,
+      itemsEarned: {},
+      itemsUsed: {},
+      answerCounts: [],
+      initialSimpleAnswerCounts: [],
+      boardClearCounts: [],
+      capped: false,
+    };
+    let model;
+    let clearsOnBoard = 0;
+    let previousDropType = null;
+    let dropsEarned = 0;
+    let cloverGiven = false;
+    let cloverBoost = false;
+
+    const spendTime = (seconds) => {
+      const amount = Math.max(0, seconds);
+      state.elapsedSeconds += amount;
+      state.timeLeft -= amount;
+    };
+    const buildBoard = () => {
+      const config = getRoundConfig(state.round);
+      model = new BoardModel(config.cols);
+      model.generate(config.cols, {
+        cols: config.cols,
+        rows: config.rows,
+        round: state.round,
+        assist: state.clears < 15 ? 'starter' : state.clears < 55 ? 'guided' : 'standard',
+      });
+      const answers = model.findAnswers();
+      state.boards += 1;
+      state.answerCounts.push(answers.length);
+      state.initialSimpleAnswerCounts.push(answers.filter((answer) => answer.count === 2).length);
+      clearsOnBoard = 0;
+    };
+    const completeBoard = () => {
+      state.boardClearCounts.push(clearsOnBoard);
+      if (model.remainingPlayableCells() === 0) state.perfectClears += 1;
+      const bonus = roundTimeBonusSeconds(state.round);
+      state.roundTimeBonus += bonus;
+      state.timeLeft += bonus;
+      state.round += 1;
+      buildBoard();
+    };
+    const useDrop = (drop) => {
+      if (!drop || random() > settings.itemUseRate) return;
+      state.itemsUsed[drop.id] = (state.itemsUsed[drop.id] || 0) + 1;
+      spendTime(randomBetween(random, 0.32, 0.58));
+      if (drop.id === 'clock') {
+        state.timeLeft += 8;
+        state.itemTimeBonus += 8;
+      } else if (drop.id === 'freeze') {
+        state.timeLeft += TIME_FREEZE_SECONDS;
+        state.itemTimeBonus += TIME_FREEZE_SECONDS;
+      } else if (drop.id === 'clover') {
+        cloverBoost = true;
+      } else if (drop.id === 'bomb') {
+        const target = model.bestBombTarget();
+        if (target) {
+          state.score += scoreForBomb(target.stats.sum);
+          model.remove(target.rect);
+        }
+      } else if (drop.id === 'megabomb') {
+        const target = bestMegaBombTarget(model);
+        if (target) {
+          state.score += scoreForMegaBomb(target.stats.sum);
+          model.removeCells(target.cells);
+        }
+      }
+    };
+
+    buildBoard();
+    let actions = 0;
+    while (state.timeLeft > 0 && state.elapsedSeconds < maximumElapsedSeconds && actions < 600) {
+      actions += 1;
+      const roundSlowdown = Math.min(0.55, Math.max(0, state.round - 1) * 0.055);
+      const variation = randomBetween(random, 0.82, 1.2);
+      const cloverFactor = cloverBoost ? 0.62 : 1;
+      cloverBoost = false;
+      spendTime((settings.decisionSeconds + roundSlowdown) * variation * cloverFactor + 0.2);
+      if (state.timeLeft <= 0) break;
+
+      const answers = model.findAnswers();
+      if (!answers.length) {
+        completeBoard();
+        continue;
+      }
+      if (random() < settings.errorRate) {
+        state.errors += 1;
+        state.combo = comboAfterFailure(state.combo);
+        continue;
+      }
+
+      const answer = chooseAnswer(answers, settings, random);
+      const stats = model.stats(answer);
+      const clearedCells = stats.count + stats.catCount;
+      const previousCombo = state.combo;
+      state.combo += comboGainForClear(clearedCells);
+      state.maxCombo = Math.max(state.maxCombo, state.combo);
+      state.score += scoreForClear(clearedCells, state.combo)
+        + scoreForWideClear(clearedCells, state.combo)
+        + scoreForCatBonus(stats.catCount, state.combo);
+      state.clears += 1;
+      clearsOnBoard += 1;
+      state.catBonuses += stats.catCount;
+      if (answer.count >= 3) state.richClears += 1;
+      else state.simpleClears += 1;
+      model.remove(answer);
+
+      if (boardDropReward(previousCombo, state.combo)) {
+        const drop = chooseBoardDrop(state.combo, random, {
+          cloverGiven,
+          previousType: previousDropType,
+          rewardIndex: dropsEarned,
+        });
+        if (drop) {
+          dropsEarned += 1;
+          previousDropType = drop.id;
+          if (drop.id === 'clover') cloverGiven = true;
+          state.itemsEarned[drop.id] = (state.itemsEarned[drop.id] || 0) + 1;
+          useDrop(drop);
+        }
+      }
+      if (!model.findAnswers().length) completeBoard();
+    }
+    state.capped = state.elapsedSeconds >= maximumElapsedSeconds || actions >= 600;
+    state.elapsedSeconds = Math.round(state.elapsedSeconds * 10) / 10;
+    state.timeLeft = Math.max(0, Math.round(state.timeLeft * 10) / 10);
+    return state;
+  } finally {
+    Math.random = originalRandom;
+  }
+}
+
+export function summarizeRuns(runs) {
+  const itemTypes = ['bomb', 'clock', 'megabomb', 'freeze', 'clover'];
+  const sumItems = (field) => Object.fromEntries(itemTypes.map((type) => [
+    type,
+    runs.reduce((sum, run) => sum + (run[field][type] || 0), 0),
+  ]));
+  return {
+    runs: runs.length,
+    scoreMean: Math.round(mean(runs.map((run) => run.score))),
+    scoreP10: Math.round(percentile(runs.map((run) => run.score), 0.1)),
+    scoreP90: Math.round(percentile(runs.map((run) => run.score), 0.9)),
+    elapsedMean: Math.round(mean(runs.map((run) => run.elapsedSeconds)) * 10) / 10,
+    roundMean: Math.round(mean(runs.map((run) => run.round)) * 10) / 10,
+    clearsMean: Math.round(mean(runs.map((run) => run.clears)) * 10) / 10,
+    maxComboMean: Math.round(mean(runs.map((run) => run.maxCombo)) * 10) / 10,
+    errorsMean: Math.round(mean(runs.map((run) => run.errors)) * 10) / 10,
+    initialAnswersMean: Math.round(mean(runs.flatMap((run) => run.answerCounts)) * 10) / 10,
+    initialSimpleAnswersMean: Math.round(mean(runs.flatMap((run) => run.initialSimpleAnswerCounts)) * 10) / 10,
+    clearsPerBoardMean: Math.round(mean(runs.flatMap((run) => run.boardClearCounts)) * 10) / 10,
+    richClearRatio: Math.round(1000 * runs.reduce((sum, run) => sum + run.richClears, 0)
+      / Math.max(1, runs.reduce((sum, run) => sum + run.clears, 0))) / 10,
+    roundTimeBonusMean: Math.round(mean(runs.map((run) => run.roundTimeBonus)) * 10) / 10,
+    itemTimeBonusMean: Math.round(mean(runs.map((run) => run.itemTimeBonus)) * 10) / 10,
+    cappedRuns: runs.filter((run) => run.capped).length,
+    itemsEarned: sumItems('itemsEarned'),
+    itemsUsed: sumItems('itemsUsed'),
+  };
+}
+
+export function simulateBalanceSuite({ runsPerProfile = 40, seed = 20260808 } = {}) {
+  return Object.fromEntries(Object.keys(PLAYER_PROFILES).map((profile, profileIndex) => {
+    const runs = Array.from({ length: runsPerProfile }, (_, index) => simulateRun({
+      profile,
+      seed: seed + profileIndex * 100000 + index,
+    }));
+    return [profile, summarizeRuns(runs)];
+  }));
+}

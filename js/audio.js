@@ -1,6 +1,28 @@
 let enabled = true;
 let context = null;
 let primed = false;
+let mixContext = null;
+let mixBus = null;
+
+function getMixBus(ctx) {
+  if (mixBus && mixContext === ctx) return mixBus;
+  mixContext = ctx;
+  mixBus = ctx.createGain();
+  mixBus.gain.value = 0.72;
+  if (typeof ctx.createDynamicsCompressor === 'function') {
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -18;
+    limiter.knee.value = 12;
+    limiter.ratio.value = 6;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.18;
+    mixBus.connect(limiter);
+    limiter.connect(ctx.destination);
+  } else {
+    mixBus.connect(ctx.destination);
+  }
+  return mixBus;
+}
 
 function getContext() {
   if (!enabled) return null;
@@ -24,7 +46,7 @@ function scheduleTone(ctx, frequency, start, duration, volume = 0.1, type = 'sin
   gain.gain.linearRampToValueAtTime(volume, start + attack);
   gain.gain.exponentialRampToValueAtTime(0.0008, start + duration);
   oscillator.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getMixBus(ctx));
   oscillator.start(start);
   oscillator.stop(start + duration + 0.02);
 }
@@ -87,7 +109,7 @@ export function playReadyCountSound(number) {
   voiceGain.gain.setValueAtTime(0.0001, now);
   voiceGain.gain.linearRampToValueAtTime(0.16, now + 0.02);
   voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-  voice.connect(voiceGain); voiceGain.connect(ctx.destination);
+  voice.connect(voiceGain); voiceGain.connect(getMixBus(ctx));
   voice.start(now); voice.stop(now + 0.24);
 
   scheduleTone(ctx, frequency * 2, now, 0.18, 0.05, 'triangle', 0.006);
@@ -108,7 +130,7 @@ export function playGoSound() {
   sparkle.frequency.exponentialRampToValueAtTime(3500, now + 0.45);
   sparkleGain.gain.setValueAtTime(0.045, now + 0.24);
   sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-  sparkle.connect(sparkleGain); sparkleGain.connect(ctx.destination);
+  sparkle.connect(sparkleGain); sparkleGain.connect(getMixBus(ctx));
   sparkle.start(now + 0.24); sparkle.stop(now + 0.52);
 }
 
@@ -134,16 +156,42 @@ export function playSuccessSound() {
   sparkleGain.gain.setValueAtTime(0.05, now);
   sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
   sparkle.connect(sparkleGain);
-  sparkleGain.connect(ctx.destination);
+  sparkleGain.connect(getMixBus(ctx));
   sparkle.start(now);
   sparkle.stop(now + 0.18);
 }
 
-// Original OING playMeow(): the same immediate rising "nyang" glide and mix.
-export function playCatBonusSound() {
+// Original OING playWow(): three rising major chords and a bright tail.
+export function playWideClearSound() {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
+  const chords = [
+    [523, 659, 784],
+    [587, 740, 880],
+    [659, 830, 988],
+  ];
+  chords.forEach((chord, chordIndex) => {
+    chord.forEach((frequency) => {
+      scheduleTone(ctx, frequency, now + chordIndex * 0.1, 0.22, 0.12, 'sine', 0.02);
+    });
+  });
+  const sparkle = ctx.createOscillator();
+  const sparkleGain = ctx.createGain();
+  sparkle.type = 'triangle';
+  sparkle.frequency.setValueAtTime(1400, now + 0.28);
+  sparkle.frequency.exponentialRampToValueAtTime(3200, now + 0.55);
+  sparkleGain.gain.setValueAtTime(0.12, now + 0.28);
+  sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+  sparkle.connect(sparkleGain); sparkleGain.connect(getMixBus(ctx));
+  sparkle.start(now + 0.28); sparkle.stop(now + 0.62);
+}
+
+// Original OING playMeow(): the same immediate rising "nyang" glide and mix.
+export function playCatBonusSound(startOffset = 0.15) {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime + Math.max(0, Number(startOffset) || 0);
 
   const voice = ctx.createOscillator();
   const voiceGain = ctx.createGain();
@@ -152,9 +200,9 @@ export function playCatBonusSound() {
   voice.frequency.exponentialRampToValueAtTime(1400, now + 0.07);
   voice.frequency.exponentialRampToValueAtTime(1100, now + 0.18);
   voiceGain.gain.setValueAtTime(0.0001, now);
-  voiceGain.gain.linearRampToValueAtTime(0.55, now + 0.03);
+  voiceGain.gain.linearRampToValueAtTime(0.3, now + 0.03);
   voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-  voice.connect(voiceGain); voiceGain.connect(ctx.destination);
+  voice.connect(voiceGain); voiceGain.connect(getMixBus(ctx));
   voice.start(now); voice.stop(now + 0.24);
 
   const harmonic = ctx.createOscillator();
@@ -163,9 +211,9 @@ export function playCatBonusSound() {
   harmonic.frequency.setValueAtTime(1800, now);
   harmonic.frequency.exponentialRampToValueAtTime(2800, now + 0.07);
   harmonic.frequency.exponentialRampToValueAtTime(2200, now + 0.18);
-  harmonicGain.gain.setValueAtTime(0.15, now);
+  harmonicGain.gain.setValueAtTime(0.08, now);
   harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-  harmonic.connect(harmonicGain); harmonicGain.connect(ctx.destination);
+  harmonic.connect(harmonicGain); harmonicGain.connect(getMixBus(ctx));
   harmonic.start(now); harmonic.stop(now + 0.22);
 
   const tail = ctx.createOscillator();
@@ -173,9 +221,9 @@ export function playCatBonusSound() {
   tail.type = 'sine';
   tail.frequency.setValueAtTime(2600, now + 0.15);
   tail.frequency.exponentialRampToValueAtTime(3200, now + 0.22);
-  tailGain.gain.setValueAtTime(0.1, now + 0.15);
+  tailGain.gain.setValueAtTime(0.055, now + 0.15);
   tailGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-  tail.connect(tailGain); tailGain.connect(ctx.destination);
+  tail.connect(tailGain); tailGain.connect(getMixBus(ctx));
   tail.start(now + 0.15); tail.stop(now + 0.26);
 }
 
@@ -245,7 +293,7 @@ export function playShuffleSound() {
     filter.Q.value = 0.9;
     gain.gain.setValueAtTime(0.09, start);
     gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-    source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
     source.start(start);
   }
 }
@@ -268,7 +316,7 @@ export function playBombSound() {
   filter.frequency.value = 400;
   gain.gain.setValueAtTime(0.42, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-  source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
   source.start(now);
   [800, 1200, 600].forEach((frequency, index) => {
     scheduleTone(ctx, frequency, now + index * 0.04, 0.12, 0.1, 'sine', 0.005);
@@ -293,7 +341,7 @@ export function playMegaBombSound() {
   filter.frequency.value = 420;
   gain.gain.setValueAtTime(0.62, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-  source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
   source.start(now);
   [800, 1200, 600, 400, 1600].forEach((frequency, index) => {
     scheduleTone(ctx, frequency, now + index * 0.035, 0.16, 0.12, 'sine', 0.005);
@@ -375,7 +423,7 @@ export function playGameOverSound() {
   sparkleGain.gain.setValueAtTime(0.02, now + 0.6);
   sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
   sparkle.connect(sparkleGain);
-  sparkleGain.connect(ctx.destination);
+  sparkleGain.connect(getMixBus(ctx));
   sparkle.start(now + 0.6);
   sparkle.stop(now + 1.25);
 }

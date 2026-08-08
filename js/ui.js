@@ -64,6 +64,8 @@ export class GameUI {
     this.countdownPulseTimer = null;
     this.goalPulseTimer = null;
     this.itemRewardPreviewTimer = null;
+    this.comboRewardTimer = null;
+    this.comboLossTimer = null;
     this.lastCountdownSecond = null;
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
@@ -94,6 +96,7 @@ export class GameUI {
       sum: document.querySelector('#sum-value'),
       marquee: document.querySelector('#selection-marquee'),
       tutorial: document.querySelector('#tutorial-guide'),
+      tutorialCallout: document.querySelector('#tutorial-callout'),
       catMessage: document.querySelector('#cat-message'),
       playCat: document.querySelector('#play-cat'),
       resultCat: document.querySelector('#result-cat'),
@@ -127,6 +130,8 @@ export class GameUI {
       newRecord: document.querySelector('#new-record'),
       resultBestCompare: document.querySelector('#result-best-compare'),
       resultPreviousCompare: document.querySelector('#result-previous-compare'),
+      resultRecordMeter: document.querySelector('#result-record-meter'),
+      resultRecordMeterLabel: document.querySelector('#result-record-meter-label'),
       resultMessage: document.querySelector('#result-message'),
       toast: document.querySelector('#toast'),
     };
@@ -405,14 +410,8 @@ export class GameUI {
     if (!bounds) return;
     const centerX = (bounds.left + bounds.right) / 2;
     const centerY = (bounds.top + bounds.bottom) / 2;
-    const sources = [
-      'assets/decor/sparkle.webp',
-      'assets/decor/star.webp',
-      'assets/decor/heart.webp',
-      'assets/decor/paw.webp',
-      'assets/decor/sparkle.webp',
-    ];
-    const imageCount = combo >= 5 ? 5 : combo >= 3 ? 4 : 3;
+    const sources = ['assets/decor/sparkle.webp', 'assets/decor/star.webp', 'assets/decor/heart.webp'];
+    const imageCount = combo >= 8 ? 3 : combo >= 5 ? 2 : 1;
     sources.slice(0, imageCount).forEach((source, index) => {
       const particle = document.createElement('img');
       particle.className = `success-particle particle-${index + 1}`;
@@ -424,8 +423,8 @@ export class GameUI {
       setTimeout(() => particle.remove(), 520);
     });
 
-    const glintCount = combo >= 8 ? 12 : combo >= 5 ? 10 : combo >= 3 ? 8 : 6;
-    const glintColors = ['#ff7ba8', '#7fd6c2', '#ffd57e', '#ffffff', '#8db7ff'];
+    const glintCount = combo >= 8 ? 9 : combo >= 5 ? 7 : combo >= 3 ? 6 : 5;
+    const glintColors = ['#ff9ab4', '#8cddca', '#ffd985', '#ffffff'];
     for (let index = 0; index < glintCount; index += 1) {
       const angle = (Math.PI * 2 * index) / glintCount - Math.PI / 2;
       const distance = 34 + (index % 3) * 11 + Math.min(combo, 8) * 1.5;
@@ -445,29 +444,17 @@ export class GameUI {
       setTimeout(() => glint.remove(), 500);
     }
 
-    const fragmentVectors = [
-      [-34, -28, -14],
-      [34, -25, 12],
-      [-25, 32, 9],
-      [30, 30, -11],
-    ];
-    const fragmentValues = cellsInRect(rect)
-      .map(({ r, c }) => this.tileAt(r, c)?.dataset.value)
-      .filter((value) => value && value !== '0')
-      .slice(0, combo >= 5 ? 4 : 3);
-    fragmentValues.forEach((value, index) => {
-      const [x, y, rotate] = fragmentVectors[index];
-      const fragment = document.createElement('span');
-      fragment.className = 'success-number-fragment';
-      fragment.textContent = value;
-      fragment.style.left = `${centerX}px`;
-      fragment.style.top = `${centerY}px`;
-      fragment.style.setProperty('--fragment-x', `${x}px`);
-      fragment.style.setProperty('--fragment-y', `${y}px`);
-      fragment.style.setProperty('--fragment-rotate', `${rotate}deg`);
-      fragment.style.setProperty('--fragment-delay', `${index * 18}ms`);
-      this.boardFrame.appendChild(fragment);
-      setTimeout(() => fragment.remove(), 500);
+    const dropVectors = [[-28, -18], [27, -16], [-20, 24], [23, 22]];
+    dropVectors.slice(0, combo >= 5 ? 4 : 3).forEach(([x, y], index) => {
+      const drop = document.createElement('i');
+      drop.className = 'success-drop';
+      drop.style.left = `${centerX}px`;
+      drop.style.top = `${centerY}px`;
+      drop.style.setProperty('--drop-x', `${x}px`);
+      drop.style.setProperty('--drop-y', `${y}px`);
+      drop.style.setProperty('--drop-delay', `${index * 16}ms`);
+      this.boardFrame.appendChild(drop);
+      setTimeout(() => drop.remove(), 460);
     });
   }
 
@@ -522,6 +509,48 @@ export class GameUI {
     }, 760);
   }
 
+  showComboReward(item, delayMs = 0) {
+    clearTimeout(this.comboRewardTimer);
+    this.elements.playScreen.querySelector('.combo-reward-pop')?.remove();
+    this.comboRewardTimer = window.setTimeout(() => {
+      const pop = document.createElement('div');
+      pop.className = `combo-reward-pop combo-reward-${item.id}`;
+      const icon = document.createElement('img');
+      icon.src = item.asset;
+      icon.alt = '';
+      const copy = document.createElement('span');
+      copy.textContent = `${item.label} 등장!`;
+      pop.append(icon, copy, document.createElement('i'), document.createElement('i'));
+      const chip = this.elements.comboChip.getBoundingClientRect();
+      const screen = this.elements.playScreen.getBoundingClientRect();
+      pop.style.left = `${chip.right - screen.left - 4}px`;
+      pop.style.top = `${chip.top - screen.top - 2}px`;
+      this.elements.playScreen.appendChild(pop);
+      this.elements.comboChip.classList.remove('is-reward-earned');
+      void this.elements.comboChip.offsetWidth;
+      this.elements.comboChip.classList.add('is-reward-earned');
+      window.setTimeout(() => {
+        pop.remove();
+        this.elements.comboChip.classList.remove('is-reward-earned');
+      }, 1050);
+    }, Math.max(0, delayMs));
+  }
+
+  showComboLoss(amount) {
+    const loss = Math.max(1, Math.round(Number(amount) || 1));
+    clearTimeout(this.comboLossTimer);
+    this.elements.playScreen.querySelector('.combo-loss-pop')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'combo-loss-pop';
+    pop.textContent = `COMBO -${loss}`;
+    const chip = this.elements.comboChip.getBoundingClientRect();
+    const screen = this.elements.playScreen.getBoundingClientRect();
+    pop.style.left = `${chip.right - screen.left - 4}px`;
+    pop.style.top = `${chip.top - screen.top}px`;
+    this.elements.playScreen.appendChild(pop);
+    this.comboLossTimer = window.setTimeout(() => pop.remove(), 720);
+  }
+
   async animateSuccess(rect, combo = 1) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
@@ -558,7 +587,10 @@ export class GameUI {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
-    tiles.forEach((tile) => tile.classList.add('is-hint'));
+    tiles.forEach((tile, index) => {
+      tile.style.setProperty('--hint-index', index);
+      tile.classList.add('is-hint');
+    });
     this.board.classList.add('is-hinting');
     const bounds = this.selectionBounds(rect);
     if (bounds) {
@@ -578,7 +610,10 @@ export class GameUI {
       window.setTimeout(() => region.remove(), 1820);
     }
     this.hintTimer = setTimeout(() => {
-      tiles.forEach((tile) => tile.classList.remove('is-hint'));
+      tiles.forEach((tile) => {
+        tile.classList.remove('is-hint');
+        tile.style.removeProperty('--hint-index');
+      });
       this.board.classList.remove('is-hinting');
     }, 1800);
   }
@@ -596,7 +631,6 @@ export class GameUI {
     const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
     const sparkleTrail = this.elements.tutorial.querySelector('.tutorial-sparkle-trail');
     const focus = this.elements.tutorial.querySelector('.tutorial-focus');
-    const label = this.elements.tutorial.querySelector('span');
     sparkleTrail.style.left = `${startX}px`;
     sparkleTrail.style.top = `${startY}px`;
     sparkleTrail.style.width = `${distance}px`;
@@ -605,15 +639,15 @@ export class GameUI {
     focus.style.top = `${bounds.top - 5}px`;
     focus.style.width = `${bounds.right - bounds.left + 10}px`;
     focus.style.height = `${bounds.bottom - bounds.top + 10}px`;
-    label.style.left = `${clamp((bounds.left + bounds.right) / 2, 74, bounds.frameWidth - 74)}px`;
-    label.style.top = `${clamp(bounds.top - 39, 7, bounds.frameHeight - 34)}px`;
     cellsInRect(rect).forEach(({ r, c }) => this.tileAt(r, c)?.classList.add('is-tutorial'));
     this.board.classList.add('is-tutorial-active');
     this.elements.tutorial.classList.add('is-visible');
+    this.elements.tutorialCallout?.classList.add('is-visible');
   }
 
   hideTutorial() {
     this.elements.tutorial.classList.remove('is-visible');
+    this.elements.tutorialCallout?.classList.remove('is-visible');
     this.board.classList.remove('is-tutorial-active');
     this.board.querySelectorAll('.tile.is-tutorial').forEach((tile) => tile.classList.remove('is-tutorial'));
   }
@@ -630,10 +664,14 @@ export class GameUI {
       '.success-particle',
       '.success-glint',
       '.success-number-fragment',
+      '.success-drop',
       '.hint-region',
       '.shuffle-fx',
       '.bomb-fx',
       '.megabomb-fx',
+      '.item-impact-fx',
+      '.game-end-sweep',
+      '.end-score-summary',
       '.item-drop-fx',
       '.item-tease',
       '.cat-bonus-pop',
@@ -641,6 +679,8 @@ export class GameUI {
       '.final-second-pop',
     ].join(',')).forEach((element) => element.remove());
     this.elements.playScreen.querySelectorAll('.score-flight').forEach((element) => element.remove());
+    this.elements.playScreen.querySelector('.final-second-pop')?.remove();
+    this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop').forEach((element) => element.remove());
   }
 
   setShuffleVectors() {
@@ -727,6 +767,11 @@ export class GameUI {
       icon.src = 'assets/icons/items/bomb.webp';
       icon.alt = '';
       effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      for (let index = 0; index < 5; index += 1) {
+        const drop = document.createElement('b');
+        drop.style.setProperty('--bomb-drop-index', String(index));
+        effect.appendChild(drop);
+      }
       this.boardFrame.appendChild(effect);
       setTimeout(() => effect.remove(), 720);
     }
@@ -917,11 +962,18 @@ export class GameUI {
     flight.append(icon, label);
     sourceElement?.classList.add('is-casting');
     screen.appendChild(flight);
+    const impact = document.createElement('div');
+    impact.className = 'item-impact-fx item-impact-clock';
+    impact.style.left = `${target.left + target.width / 2 - frame.left}px`;
+    impact.style.top = `${target.top + target.height / 2 - frame.top}px`;
+    for (let index = 0; index < 4; index += 1) impact.appendChild(document.createElement('i'));
+    screen.appendChild(impact);
     this.elements.timePill.classList.remove('is-time-added');
     void this.elements.timePill.offsetWidth;
     this.elements.timePill.classList.add('is-time-added');
     await delay(620);
     flight.remove();
+    impact.remove();
     sourceElement?.classList.remove('is-casting');
     this.elements.timePill.classList.remove('is-time-added');
   }
@@ -945,8 +997,13 @@ export class GameUI {
     label.textContent = `${seconds}초 정지`;
     flight.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
     screen.appendChild(flight);
+    const impact = document.createElement('div');
+    impact.className = 'item-impact-fx item-impact-freeze';
+    for (let index = 0; index < 7; index += 1) impact.appendChild(document.createElement('i'));
+    this.boardFrame.appendChild(impact);
     await delay(570);
     flight.remove();
+    window.setTimeout(() => impact.remove(), 560);
   }
 
   setFreezeActive(active) {
@@ -975,8 +1032,13 @@ export class GameUI {
     label.textContent = '정답 발견';
     flight.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
     screen.appendChild(flight);
+    const impact = document.createElement('div');
+    impact.className = 'item-impact-fx item-impact-clover';
+    impact.append(document.createElement('i'), document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    this.boardFrame.appendChild(impact);
     await delay(620);
     flight.remove();
+    window.setTimeout(() => impact.remove(), 620);
   }
 
   showCloverHint(rect) {
@@ -1016,16 +1078,20 @@ export class GameUI {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
-    primary.textContent = `+${points}`;
+    const isWide = bonus.comboGain > 1;
+    primary.textContent = isWide ? `WOW! +${points}` : `+${points}`;
     const detail = document.createElement('span');
     const labels = [];
-    if (cellCount >= 3) labels.push(`${cellCount}칸 클리어`);
+    if (isWide) labels.push(`${cellCount}칸 · 콤보 +2`);
+    else if (cellCount >= 3) labels.push(`${cellCount}칸 클리어`);
+    if (bonus.wideBonusPoints > 0) labels.push(`큰 조합 +${bonus.wideBonusPoints}`);
     if (bonus.catBonusPoints > 0) labels.push(`고양이 +${bonus.catBonusPoints}`);
     if (combo > 1) labels.push(`배율 ×${comboMultiplier(combo).toFixed(2)}`);
     detail.textContent = labels.join(' · ');
     detail.hidden = labels.length === 0;
     burst.replaceChildren(primary, detail);
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
+    burst.dataset.wide = String(isWide);
     if (bounds) {
       burst.style.left = `${(bounds.left + bounds.right) / 2}px`;
       burst.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
@@ -1038,7 +1104,10 @@ export class GameUI {
     burst.classList.remove('is-visible');
     void burst.offsetWidth;
     burst.classList.add('is-visible');
-    setTimeout(() => burst.classList.remove('is-visible'), 760);
+    setTimeout(() => {
+      burst.classList.remove('is-visible');
+      delete burst.dataset.wide;
+    }, 760);
   }
 
   showCatBonus(points, rect, catCount = 1) {
@@ -1095,6 +1164,8 @@ export class GameUI {
     this.elements.comboCelebrationKicker.textContent = callout;
     this.elements.comboChip.dataset.callout = callout;
     celebration.classList.remove('is-visible');
+    void celebration.offsetWidth;
+    celebration.classList.add('is-visible');
     this.boardFrame.classList.remove('combo-celebrating');
     this.boardFrame.dataset.comboCelebration = level;
     this.boardFrame.classList.add('combo-celebrating');
@@ -1107,7 +1178,7 @@ export class GameUI {
 
   spawnComboConfetti(level) {
     this.boardFrame.querySelectorAll('.combo-confetti').forEach((particle) => particle.remove());
-    const count = level >= 8 ? 14 : level >= 5 ? 9 : 6;
+    const count = level >= 8 ? 10 : level >= 5 ? 7 : 4;
     const sources = [
       'assets/decor/star.webp',
       'assets/decor/sparkle.webp',
@@ -1136,19 +1207,22 @@ export class GameUI {
     clearTimeout(this.comboCelebrationTimer);
     this.comboCelebrationTimer = null;
     this.elements.comboCelebration.classList.remove('is-visible');
+    this.elements.comboCelebration.setAttribute('aria-hidden', 'true');
     delete this.elements.comboChip.dataset.callout;
     this.boardFrame.classList.remove('combo-celebrating');
     delete this.boardFrame.dataset.comboCelebration;
   }
 
-  showRoundClear() {
+  showRoundClear(timeBonus = 0) {
     this.dismissComboCelebration();
     const clear = this.elements.roundClear;
+    const label = clear.querySelector('strong');
+    if (label) label.textContent = timeBonus > 0 ? `ROUND CLEAR! +${timeBonus}초` : 'ROUND CLEAR!';
     this.elements.scoreBurst.classList.remove('is-visible');
     clear.classList.remove('is-visible');
     void clear.offsetWidth;
     clear.classList.add('is-visible');
-    setTimeout(() => clear.classList.remove('is-visible'), 540);
+    setTimeout(() => clear.classList.remove('is-visible'), 620);
   }
 
   async animateRoundTransition(nextRound, swapBoard) {
@@ -1177,15 +1251,19 @@ export class GameUI {
   }
 
   showFinalSecond(second) {
-    this.boardFrame.querySelector('.final-second-pop')?.remove();
+    this.elements.playScreen.querySelector('.final-second-pop')?.remove();
     const pop = document.createElement('div');
     pop.className = 'final-second-pop';
     pop.textContent = String(second);
-    this.boardFrame.appendChild(pop);
+    const pill = this.elements.timePill.getBoundingClientRect();
+    const screen = this.elements.playScreen.getBoundingClientRect();
+    pop.style.left = `${pill.left + pill.width / 2 - screen.left}px`;
+    pop.style.top = `${pill.bottom - screen.top + 22}px`;
+    this.elements.playScreen.appendChild(pop);
     setTimeout(() => pop.remove(), 520);
   }
 
-  async animateGameEnd({ score = 0, maxCombo = 0 } = {}) {
+  async animateGameEnd({ score = 0, maxCombo = 0, newRecord = false } = {}) {
     this.dismissComboCelebration();
     this.clearSelection();
     this.elements.scoreBurst.classList.remove('is-visible');
@@ -1194,24 +1272,30 @@ export class GameUI {
     timeUp.classList.remove('is-visible');
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-game-ending');
+    const sweep = document.createElement('div');
+    sweep.className = 'game-end-sweep';
+    sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    this.boardFrame.appendChild(sweep);
     timeUp.classList.add('is-visible');
-    await delay(820);
+    await delay(900);
     timeUp.classList.remove('is-visible');
     const summary = document.createElement('div');
     summary.className = 'end-score-summary';
     const label = document.createElement('small');
-    label.textContent = 'FINAL SCORE';
+    label.textContent = newRecord ? 'NEW RECORD!' : 'FINAL SCORE';
     const value = document.createElement('strong');
     value.textContent = Math.max(0, Math.round(score)).toLocaleString('ko-KR');
     const combo = document.createElement('span');
     combo.textContent = maxCombo > 1 ? `최고 콤보 ${maxCombo}` : '끝까지 잘했다냥!';
     summary.append(label, value, combo, document.createElement('i'), document.createElement('i'));
+    summary.classList.toggle('is-record', newRecord);
     this.boardFrame.appendChild(summary);
-    await delay(900);
+    await delay(980);
     summary.remove();
+    sweep.remove();
     this.boardFrame.classList.remove('is-game-ending');
     this.elements.playScreen.classList.add('is-ending-to-result');
-    await delay(180);
+    await delay(230);
   }
 
   setPlayCharacter(pose, duration = 0) {
@@ -1298,7 +1382,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 180, freezeRemaining = 0, combo, comboRemaining = 0, rewardRemaining = 7, progress, target }) {
+  updateHUD({ round, score, timeLeft, duration = 120, freezeRemaining = 0, combo, rewardRemaining = 7, progress, target }) {
     this.elements.round.textContent = String(round);
     this.elements.score.textContent = score.toLocaleString('ko-KR');
     const time = Math.max(0, Math.ceil(timeLeft));
@@ -1331,8 +1415,10 @@ export class GameUI {
       this.boardFrame.classList.remove('is-counting');
     }
     this.elements.combo.textContent = String(combo);
-    this.elements.comboTimerFill.style.transform = `scaleX(${clamp(comboRemaining, 0, 1)})`;
-    this.elements.comboChip.classList.toggle('is-active', combo > 0 && comboRemaining > 0);
+    const comboStep = combo % 7;
+    const rewardProgress = combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
+    this.elements.comboTimerFill.style.transform = `scaleX(${rewardProgress})`;
+    this.elements.comboChip.classList.toggle('is-active', combo > 0);
     this.elements.comboChip.classList.toggle('is-reward-close', combo > 0 && rewardRemaining <= 2);
     this.elements.comboChip.dataset.rewardRemaining = String(rewardRemaining);
     this.elements.comboChip.setAttribute('aria-label', combo > 0 && rewardRemaining <= 2
@@ -1340,12 +1426,11 @@ export class GameUI {
       : `콤보 ${combo}`);
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
-    this.boardFrame.classList.toggle('is-fever', combo >= 8 && comboRemaining > 0);
-    const goalMet = progress >= target;
-    this.elements.goalLabel.textContent = goalMet ? '완료! 남은 10 찾기' : '목표';
-    this.elements.goal.textContent = `${Math.min(progress, target)}/${target}`;
-    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', goalMet);
-    this.elements.goalFill.style.width = `${Math.min(100, (progress / target) * 100)}%`;
+    this.boardFrame.classList.toggle('is-fever', combo >= 8);
+    this.elements.goalLabel.textContent = '찾은 10';
+    this.elements.goal.textContent = `${progress}회`;
+    this.elements.goal.closest('.goal-status')?.classList.remove('is-complete');
+    this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
   }
 
   updateItems({ hint, shuffle, bomb, clock }) {
@@ -1463,11 +1548,22 @@ export class GameUI {
     this.elements.resultPreviousCompare.textContent = comparison.previousText;
     this.elements.resultPreviousCompare.dataset.tone = comparison.previousTone;
     this.elements.resultPreviousCompare.hidden = !comparison.hasPrevious;
+    const recordProgress = newRecord || previousBest <= 0
+      ? 1
+      : clamp(score / Math.max(1, previousBest), 0, 1);
+    const recordPercent = Math.round(recordProgress * 100);
+    this.elements.resultRecordMeterLabel.textContent = newRecord
+      ? '새 최고기록 달성!'
+      : `최고기록 도전 ${recordPercent}%`;
+    this.elements.resultRecordMeter.style.setProperty('--record-progress', String(recordProgress));
+    this.elements.resultRecordMeter.classList.remove('is-animating');
 
     const message = pickResultMessage(score, { newRecord, previous: this.lastResultMessage });
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
     this.showScreen('result');
+    void this.elements.resultRecordMeter.offsetWidth;
+    this.elements.resultRecordMeter.classList.add('is-animating');
     this.animateFinalScore(score);
     const screen = document.querySelector('#result-screen');
     screen.dataset.resultTone = newRecord ? 'record' : resultTone;

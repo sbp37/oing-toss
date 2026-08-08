@@ -9,23 +9,23 @@ import {
 import { buildLocalRecordSummary, buildShareText } from '../js/adapters.js';
 
 test('live cat messages keep the OING nyang voice across score tiers', () => {
-  assert.equal(resultMessageType(9000, false), 'resultLow');
-  assert.equal(resultMessageType(14000, false), 'resultNormal');
-  assert.equal(resultMessageType(32000, false), 'resultHigh');
-  assert.equal(resultMessageType(60000, false), 'resultLegend');
+  assert.equal(resultMessageType(5000, false), 'resultLow');
+  assert.equal(resultMessageType(9000, false), 'resultNormal');
+  assert.equal(resultMessageType(20000, false), 'resultHigh');
+  assert.equal(resultMessageType(35000, false), 'resultLegend');
   assert.equal(resultMessageType(200, true), 'record');
-  for (const score of [9000, 14000, 32000, 60000]) {
+  for (const score of [5000, 9000, 20000, 35000]) {
     assert.match(pickResultMessage(score, { random: () => 0 }), /냥/);
   }
 });
 
-test('result score tiers follow the current three-minute score scale', () => {
-  assert.equal(resultToneForScore(9999), 'low');
-  assert.equal(resultToneForScore(10000), 'normal');
-  assert.equal(resultToneForScore(24999), 'normal');
-  assert.equal(resultToneForScore(25000), 'high');
-  assert.equal(resultToneForScore(49999), 'high');
-  assert.equal(resultToneForScore(50000), 'legend');
+test('result score tiers follow the current score scale', () => {
+  assert.equal(resultToneForScore(5999), 'low');
+  assert.equal(resultToneForScore(6000), 'normal');
+  assert.equal(resultToneForScore(14999), 'normal');
+  assert.equal(resultToneForScore(15000), 'high');
+  assert.equal(resultToneForScore(29999), 'high');
+  assert.equal(resultToneForScore(30000), 'legend');
 });
 
 test('score comparisons cover first run, previous run, record and near-record cases', () => {

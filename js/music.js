@@ -2,6 +2,7 @@ let musicAudio = null;
 let musicContext = null;
 let musicGain = null;
 let fadeTimer = null;
+let duckTimer = null;
 let enabled = false;
 let volume = 0.4;
 let gameActive = false;
@@ -40,6 +41,24 @@ function applyGain(value = targetGain()) {
   else if (musicAudio) musicAudio.volume = value;
 }
 
+export function duckMusic(duration = 360, ratio = 0.62) {
+  if (!enabled || !gameActive || !musicAudio || musicAudio.paused) return;
+  const hold = Math.max(120, Number(duration) || 360);
+  const depth = Math.max(0.28, Math.min(0.9, Number(ratio) || 0.62));
+  const normal = targetGain();
+  clearTimeout(duckTimer);
+  if (musicGain && musicContext) {
+    const now = musicContext.currentTime;
+    musicGain.gain.cancelScheduledValues?.(now);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+    musicGain.gain.linearRampToValueAtTime(normal * depth, now + 0.045);
+    musicGain.gain.linearRampToValueAtTime(normal, now + hold / 1000);
+  } else {
+    applyGain(normal * depth);
+    duckTimer = setTimeout(() => applyGain(normal), hold);
+  }
+}
+
 export function configureMusic(audioElement, settings = {}) {
   musicAudio = audioElement;
   enabled = Boolean(settings.enabled);
@@ -71,6 +90,8 @@ export function playMusic({ restart = false } = {}) {
 
 export function pauseMusic() {
   if (!musicAudio) return;
+  clearTimeout(duckTimer);
+  duckTimer = null;
   musicAudio.pause();
   suspendContext();
 }
@@ -78,6 +99,8 @@ export function pauseMusic() {
 export function stopMusic() {
   gameActive = false;
   clearInterval(fadeTimer);
+  clearTimeout(duckTimer);
+  duckTimer = null;
   fadeTimer = null;
   if (musicAudio) {
     musicAudio.pause();
@@ -89,6 +112,8 @@ export function stopMusic() {
 
 export function fadeOutMusic(duration = 1100) {
   gameActive = false;
+  clearTimeout(duckTimer);
+  duckTimer = null;
   if (!musicAudio || musicAudio.paused) {
     stopMusic();
     return;
