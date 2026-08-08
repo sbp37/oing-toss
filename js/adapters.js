@@ -63,10 +63,48 @@ export const storageAdapter = {
   },
 };
 
+export function buildLocalRecordSummary(scores = [], storedBest = 0) {
+  const recent = (Array.isArray(scores) ? scores : [])
+    .filter(Number.isFinite)
+    .map((score) => Math.max(0, Math.round(score)))
+    .slice(-7);
+  const savedBest = Math.max(0, Math.round(Number(storedBest) || 0));
+  const best = Math.max(savedBest, ...recent, 0);
+  const total = recent.reduce((sum, score) => sum + score, 0);
+  const average = recent.length ? Math.round(total / recent.length) : 0;
+  const last = recent.at(-1) ?? 0;
+  const previous = recent.length > 1 ? recent.at(-2) : null;
+  const delta = previous === null ? null : last - previous;
+  const trendTone = delta === null ? 'new' : delta > 0 ? 'up' : delta < 0 ? 'down' : 'same';
+  const trendText = delta === null
+    ? recent.length ? '첫 기록이 생겼다냥!' : '첫 판을 기다리고 있다냥!'
+    : delta > 0
+      ? `지난 판보다 +${delta.toLocaleString('ko-KR')}점 올랐어!`
+      : delta < 0
+        ? `지난 판보다 ${Math.abs(delta).toLocaleString('ko-KR')}점 낮아`
+        : '지난 판과 같은 점수야!';
+  return Object.freeze({
+    recent: Object.freeze(recent),
+    best,
+    average,
+    last,
+    count: recent.length,
+    delta,
+    trendTone,
+    trendText,
+  });
+}
+
 export const rankingAdapter = {
-  mode: 'mock',
+  mode: 'local-records',
   async open() {
-    return { connected: false, message: '랭킹은 다음 버전에서 연결됩니다.' };
+    return {
+      connected: false,
+      summary: buildLocalRecordSummary(
+        storageAdapter.getRecentScores(),
+        storageAdapter.getBestScore(),
+      ),
+    };
   },
 };
 

@@ -177,6 +177,10 @@ class OingGame {
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
     document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
+    document.querySelector('#ranking-play-button').addEventListener('click', () => {
+      this.ui.setOverlay('ranking-overlay', false);
+      this.start();
+    });
     document.querySelector('#sound-toggle').addEventListener('click', () => {
       this.settings.sound = !this.settings.sound;
       this.applySettings();
@@ -924,8 +928,9 @@ class OingGame {
   }
 
   async openRanking() {
-    await rankingAdapter.open();
+    const records = await rankingAdapter.open();
     this.ui.updateBestScore(storageAdapter.getBestScore());
+    this.ui.renderRanking(records);
     this.ui.setOverlay('ranking-overlay', true);
   }
 

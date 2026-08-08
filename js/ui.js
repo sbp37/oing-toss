@@ -105,6 +105,12 @@ export class GameUI {
       clockButton: document.querySelector('#clock-button'),
       homeBest: document.querySelector('#home-best-score'),
       rankingBest: document.querySelector('#ranking-best-score'),
+      rankingLast: document.querySelector('#ranking-last-score'),
+      rankingAverage: document.querySelector('#ranking-average-score'),
+      rankingCount: document.querySelector('#ranking-run-count'),
+      rankingTrend: document.querySelector('#ranking-trend'),
+      rankingBars: document.querySelector('#ranking-bars'),
+      rankingEmpty: document.querySelector('#ranking-empty'),
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
@@ -1319,6 +1325,36 @@ export class GameUI {
     const text = score.toLocaleString('ko-KR');
     this.elements.homeBest.textContent = text;
     this.elements.rankingBest.textContent = text;
+  }
+
+  renderRanking({ summary } = {}) {
+    const record = summary || { recent: [], best: 0, average: 0, last: 0, count: 0, trendTone: 'new', trendText: '첫 판을 기다리고 있다냥!' };
+    const format = (value) => Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR');
+    this.elements.rankingBest.textContent = format(record.best);
+    this.elements.rankingLast.textContent = format(record.last);
+    this.elements.rankingAverage.textContent = format(record.average);
+    this.elements.rankingCount.textContent = `${record.count}/7`;
+    this.elements.rankingTrend.textContent = record.trendText;
+    this.elements.rankingTrend.dataset.tone = record.trendTone;
+    this.elements.rankingEmpty.hidden = record.count > 0;
+    const maxScore = Math.max(record.best, ...record.recent, 1);
+    const bars = record.recent.map((score, index) => {
+      const bar = document.createElement('i');
+      const height = 22 + (score / maxScore) * 78;
+      bar.style.setProperty('--record-height', `${height}%`);
+      bar.dataset.index = String(index + 1);
+      bar.classList.toggle('is-latest', index === record.recent.length - 1);
+      bar.classList.toggle('is-best', score === record.best);
+      bar.setAttribute('aria-label', `${index + 1}번째 기록 ${format(score)}점`);
+      const value = document.createElement('b');
+      value.textContent = score >= 1000 ? `${(score / 1000).toFixed(score >= 10000 ? 0 : 1)}k` : String(score);
+      bar.appendChild(value);
+      return bar;
+    });
+    this.elements.rankingBars.replaceChildren(...bars);
+    this.elements.rankingBars.setAttribute('aria-label', record.count
+      ? `최근 ${record.count}판 점수: ${record.recent.map(format).join(', ')}`
+      : '저장된 최근 점수가 없음');
   }
 
   animateFinalScore(score) {

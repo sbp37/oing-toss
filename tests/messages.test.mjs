@@ -5,7 +5,7 @@ import {
   pickResultMessage,
   resultMessageType,
 } from '../js/data.js';
-import { buildShareText } from '../js/adapters.js';
+import { buildLocalRecordSummary, buildShareText } from '../js/adapters.js';
 
 test('live cat messages keep the OING nyang voice across score tiers', () => {
   assert.equal(resultMessageType(200, false), 'resultLow');
@@ -35,4 +35,19 @@ test('share copy contains score, combo, round and the original challenge tone', 
   assert.match(text, /최고 콤보 7/);
   assert.match(text, /ROUND 3/);
   assert.match(text, /이겨보라냥/);
+});
+
+test('local records summarize the latest seven real runs without inventing rankings', () => {
+  const summary = buildLocalRecordSummary([100, 300, 200, 500, 700, 600, 900, 1200], 1500);
+  assert.deepEqual([...summary.recent], [300, 200, 500, 700, 600, 900, 1200]);
+  assert.equal(summary.best, 1500);
+  assert.equal(summary.average, 629);
+  assert.equal(summary.last, 1200);
+  assert.equal(summary.count, 7);
+  assert.equal(summary.delta, 300);
+  assert.equal(summary.trendTone, 'up');
+  assert.match(summary.trendText, /\+300점/);
+  const empty = buildLocalRecordSummary([], 0);
+  assert.equal(empty.count, 0);
+  assert.equal(empty.trendTone, 'new');
 });
