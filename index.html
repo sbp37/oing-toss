@@ -6,23 +6,12 @@
   <meta name="theme-color" content="#8edcf1">
   <meta name="description" content="합이 10이면, 뿅! OING 세로 슬라이스">
   <title>OING — 합이 10이면, 뿅!</title>
+  <link rel="icon" href="assets/decor/paw.webp" type="image/webp">
   <link rel="preload" href="assets/backgrounds/home-bg@2x.webp" as="image" type="image/webp" fetchpriority="high">
-  <link rel="preload" href="assets/backgrounds/play-bg@2x.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/ui/logo.webp" as="image" type="image/webp" fetchpriority="high">
   <link rel="preload" href="assets/characters/cat-idle.webp" as="image" type="image/webp" fetchpriority="high">
-  <link rel="preload" href="assets/characters/cat-peek.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/icons/items/hint.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/icons/items/shuffle.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/icons/items/bomb.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/icons/hud/time.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/Pretendard-OING.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-blush.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-peach.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-lemon.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-mint.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-aqua.webp" as="image" type="image/webp">
-  <link rel="preload" href="assets/ui/tiles-syrup-v4/tile-lilac.webp" as="image" type="image/webp">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -75,7 +64,7 @@
           <small id="start-countdown-kicker">READY?</small>
           <strong id="start-countdown-value">3</strong>
         </div>
-        <div class="start-countdown-cat" aria-hidden="true"><img src="assets/characters/cat-wave.webp" width="430" height="481" decoding="async" alt=""></div>
+        <div class="start-countdown-cat" aria-hidden="true"><img src="assets/characters/cat-wave.webp" width="430" height="481" loading="lazy" decoding="async" alt=""></div>
       </div>
       <header class="play-hud">
         <div class="hud-topline">
@@ -141,21 +130,21 @@
       <footer class="play-footer">
         <div class="item-actions">
           <button class="item-button hint-button" id="hint-button" type="button">
-            <img class="item-icon" src="assets/icons/items/hint.webp" width="243" height="314" loading="eager" decoding="async" alt=""><span>힌트</span><b id="hint-count">3</b>
+            <img class="item-icon" src="assets/icons/items/hint.webp" width="243" height="314" loading="lazy" decoding="async" alt=""><span>힌트</span><b id="hint-count">3</b>
           </button>
           <button class="item-button shuffle-button" id="shuffle-button" type="button">
-            <img class="item-icon" src="assets/icons/items/shuffle.webp" width="286" height="256" loading="eager" decoding="async" alt=""><span>섞기</span><b id="shuffle-count">2</b>
+            <img class="item-icon" src="assets/icons/items/shuffle.webp" width="286" height="256" loading="lazy" decoding="async" alt=""><span>섞기</span><b id="shuffle-count">2</b>
           </button>
           <button class="item-button bomb-button" id="bomb-button" type="button">
-            <img class="item-icon" src="assets/icons/items/bomb.webp" width="286" height="312" loading="eager" decoding="async" alt=""><span>폭탄</span><b id="bomb-count">1</b>
+            <img class="item-icon" src="assets/icons/items/bomb.webp" width="286" height="312" loading="lazy" decoding="async" alt=""><span>폭탄</span><b id="bomb-count">1</b>
           </button>
           <button class="item-button clock-button" id="clock-button" type="button">
-            <img class="item-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="eager" decoding="async" alt=""><span>시계</span><b id="clock-count">1</b>
+            <img class="item-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt=""><span>시계</span><b id="clock-count">1</b>
           </button>
         </div>
         <div class="cat-coach">
           <div class="character-stage play-character-stage">
-            <img id="play-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="eager" decoding="async" alt="앉아 있는 블루 고양이">
+            <img id="play-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="lazy" decoding="async" alt="앉아 있는 블루 고양이">
           </div>
           <div class="cat-message" id="cat-message">10을 찾아보자냥!</div>
         </div>

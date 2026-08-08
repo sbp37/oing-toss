@@ -1,19 +1,14 @@
-const PLAY_ASSETS = Object.freeze([
+const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/backgrounds/play-bg@2x.webp',
   'assets/characters/cat-peek.webp',
   'assets/characters/cat-wave.webp',
-  'assets/characters/cat-cheer.webp',
-  'assets/characters/cat-success.webp',
-  'assets/characters/cat-fail.webp',
+  'assets/characters/cat-idle.webp',
   'assets/icons/hud/time.webp',
   'assets/icons/hud/score.webp',
   'assets/decor/star.webp',
   'assets/icons/items/hint.webp',
   'assets/icons/items/shuffle.webp',
   'assets/icons/items/bomb.webp',
-  'assets/icons/items/megabomb.webp',
-  'assets/icons/items/freeze.webp',
-  'assets/icons/items/clover.webp',
   'assets/ui/button-pause.webp',
   'assets/ui/tiles-syrup-v4/tile-blush.webp',
   'assets/ui/tiles-syrup-v4/tile-peach.webp',
@@ -21,6 +16,15 @@ const PLAY_ASSETS = Object.freeze([
   'assets/ui/tiles-syrup-v4/tile-mint.webp',
   'assets/ui/tiles-syrup-v4/tile-aqua.webp',
   'assets/ui/tiles-syrup-v4/tile-lilac.webp',
+]);
+
+const PLAY_DEFERRED_ASSETS = Object.freeze([
+  'assets/characters/cat-cheer.webp',
+  'assets/characters/cat-success.webp',
+  'assets/characters/cat-fail.webp',
+  'assets/icons/items/megabomb.webp',
+  'assets/icons/items/freeze.webp',
+  'assets/icons/items/clover.webp',
 ]);
 
 const RESULT_ASSETS = Object.freeze([
@@ -33,15 +37,26 @@ const RESULT_ASSETS = Object.freeze([
 
 const imageCache = new Map();
 
-export function preloadImages(paths) {
-  paths.forEach((src) => {
-    if (imageCache.has(src)) return;
+export function preloadImages(paths, { urgent = false } = {}) {
+  const requests = paths.map((src) => {
+    if (imageCache.has(src)) {
+      const cached = imageCache.get(src);
+      if (urgent) cached.image.fetchPriority = 'high';
+      return cached.ready;
+    }
     const image = new Image();
     image.decoding = 'async';
+    image.fetchPriority = urgent ? 'high' : 'low';
+    const ready = new Promise((resolve) => {
+      image.addEventListener('load', resolve, { once: true });
+      image.addEventListener('error', resolve, { once: true });
+    });
     image.src = src;
-    imageCache.set(src, image);
+    imageCache.set(src, { image, ready });
     image.decode?.().catch(() => {});
+    return ready;
   });
+  return Promise.all(requests);
 }
 
 function scheduleIdle(callback) {
@@ -53,9 +68,25 @@ function scheduleIdle(callback) {
 }
 
 export function schedulePlayAssetsPreload() {
-  const schedule = () => scheduleIdle(() => preloadImages(PLAY_ASSETS));
-  if (document.readyState === 'complete') schedule();
-  else window.addEventListener('load', schedule, { once: true });
+  const afterFirstPaint = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        scheduleIdle(async () => {
+          await preloadImages(PLAY_CRITICAL_ASSETS);
+          scheduleIdle(() => preloadImages(PLAY_DEFERRED_ASSETS));
+        });
+      });
+    });
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', afterFirstPaint, { once: true });
+  } else {
+    afterFirstPaint();
+  }
+}
+
+export function preloadPlayAssets({ urgent = false } = {}) {
+  return preloadImages(PLAY_CRITICAL_ASSETS, { urgent });
 }
 
 export function preloadResultAssets() {

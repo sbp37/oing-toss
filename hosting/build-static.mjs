@@ -15,4 +15,20 @@ for (const entry of ["index.html", "css", "js", "assets"]) {
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
 
+// Keep editable source sheets and font candidates in the repository, but do not
+// ship them to players. Runtime assets remain untouched and at their source quality.
+for (const entry of [
+  "assets/source",
+  "assets/fonts/candidates",
+  "assets/ui/item-buttons-v1",
+  "assets/ui/tiles-v3",
+  "assets/icons/items/megabomb.png",
+]) {
+  await rm(resolve(client, entry), { recursive: true, force: true });
+}
+
+for (const name of ["blush", "peach", "lemon", "mint", "aqua", "lilac"]) {
+  await rm(resolve(client, `assets/ui/tiles-syrup-v4/tile-${name}.png`), { force: true });
+}
+
 await cp(resolve(root, "hosting/worker.js"), resolve(server, "index.js"));

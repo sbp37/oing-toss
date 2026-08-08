@@ -24,7 +24,7 @@ import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
-import { preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
+import { preloadPlayAssets, preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import {
   configureMusic,
   fadeOutMusic,
@@ -160,6 +160,17 @@ class OingGame {
   }
 
   bindEvents() {
+    const playButtons = [
+      document.querySelector('#start-button'),
+      document.querySelector('#retry-button'),
+      document.querySelector('#ranking-play-button'),
+    ];
+    const primePlay = () => { preloadPlayAssets({ urgent: true }); };
+    playButtons.forEach((button) => {
+      button.addEventListener('pointerdown', primePlay, { passive: true });
+      button.addEventListener('pointerenter', primePlay, { passive: true, once: true });
+      button.addEventListener('focus', primePlay, { passive: true, once: true });
+    });
     document.querySelector('#start-button').addEventListener('click', () => this.start());
     document.querySelector('#retry-button').addEventListener('click', () => this.start());
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
@@ -223,6 +234,7 @@ class OingGame {
   }
 
   async start() {
+    preloadPlayAssets({ urgent: true });
     this.stopTimer();
     stopMusic();
     const sequenceId = ++this.startSequenceId;

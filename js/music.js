@@ -45,9 +45,8 @@ export function configureMusic(audioElement, settings = {}) {
   enabled = Boolean(settings.enabled);
   volume = Math.max(0, Math.min(1, Number(settings.volume) || 0));
   if (!musicAudio) return;
-  musicAudio.preload = enabled ? 'auto' : 'none';
+  musicAudio.preload = enabled ? 'metadata' : 'none';
   applyGain();
-  if (enabled) musicAudio.load();
 }
 
 export function prepareMusic() {
@@ -115,13 +114,11 @@ export function fadeOutMusic(duration = 1100) {
 export function setMusicEnabled(value) {
   enabled = Boolean(value);
   if (enabled) {
-    if (musicAudio) {
-      musicAudio.preload = 'auto';
-      musicAudio.load();
-    }
     if (gameActive) {
       prepareMusic();
       playMusic();
+    } else if (musicAudio) {
+      musicAudio.preload = 'metadata';
     }
   } else {
     pauseMusic();

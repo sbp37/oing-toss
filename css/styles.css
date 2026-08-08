@@ -1,4 +1,10 @@
-@import url("../assets/fonts/Jua-Korean.css");
+@font-face {
+  font-family: "Oing Jua";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/Jua-Korean-Game.woff2") format("woff2");
+}
 
 @font-face {
   font-family: "Pretendard OING";
