@@ -51,6 +51,8 @@ export class GameUI {
     this.selectionSnapTimer = null;
     this.selectionSnapAnimation = null;
     this.comboCelebrationTimer = null;
+    this.hintTimer = null;
+    this.roundReadyTimer = null;
     this.countdownPulseTimer = null;
     this.goalPulseTimer = null;
     this.itemRewardPreviewTimer = null;
@@ -89,8 +91,6 @@ export class GameUI {
       resultCat: document.querySelector('#result-cat'),
       resultDecor: document.querySelector('#result-decor'),
       roundClear: document.querySelector('#round-clear'),
-      roundShift: document.querySelector('#round-shift'),
-      roundShiftValue: document.querySelector('#round-shift-value'),
       timeUp: document.querySelector('#time-up'),
       comboCelebration: document.querySelector('#combo-celebration'),
       comboCelebrationKicker: document.querySelector('#combo-celebration-kicker'),
@@ -202,6 +202,7 @@ export class GameUI {
         tile.dataset.value = String(value || 0);
         tile.style.setProperty('--row', String(r));
         tile.style.setProperty('--col', String(c));
+        tile.style.setProperty('--round-delay', `${Math.min(90, r * 12 + c * 7)}ms`);
         tile.setAttribute('role', 'gridcell');
         if (boardItem) {
           const itemDefinition = BOARD_DROP_ITEMS[boardItem.type];
@@ -544,10 +545,13 @@ export class GameUI {
   }
 
   showHint(rect) {
+    clearTimeout(this.hintTimer);
+    this.board.classList.remove('is-hinting');
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile) => tile.classList.add('is-hint'));
+    this.board.classList.add('is-hinting');
     const bounds = this.selectionBounds(rect);
     if (bounds) {
       this.boardFrame.querySelector('.hint-region')?.remove();
@@ -565,7 +569,10 @@ export class GameUI {
       this.boardFrame.appendChild(region);
       window.setTimeout(() => region.remove(), 1450);
     }
-    setTimeout(() => tiles.forEach((tile) => tile.classList.remove('is-hint')), 1380);
+    this.hintTimer = setTimeout(() => {
+      tiles.forEach((tile) => tile.classList.remove('is-hint'));
+      this.board.classList.remove('is-hinting');
+    }, 1380);
   }
 
   showTutorial(rect) {
@@ -593,12 +600,39 @@ export class GameUI {
     label.style.left = `${clamp((bounds.left + bounds.right) / 2, 74, bounds.frameWidth - 74)}px`;
     label.style.top = `${clamp(bounds.top - 39, 7, bounds.frameHeight - 34)}px`;
     cellsInRect(rect).forEach(({ r, c }) => this.tileAt(r, c)?.classList.add('is-tutorial'));
+    this.board.classList.add('is-tutorial-active');
     this.elements.tutorial.classList.add('is-visible');
   }
 
   hideTutorial() {
     this.elements.tutorial.classList.remove('is-visible');
+    this.board.classList.remove('is-tutorial-active');
     this.board.querySelectorAll('.tile.is-tutorial').forEach((tile) => tile.classList.remove('is-tutorial'));
+  }
+
+  clearTransientBoardFeedback() {
+    clearTimeout(this.hintTimer);
+    this.hintTimer = null;
+    this.clearSelection();
+    this.hideTutorial();
+    this.board.classList.remove('is-hinting', 'is-shuffling-out', 'is-shuffling-in');
+    this.elements.scoreBurst.classList.remove('is-visible');
+    this.elements.roundClear.classList.remove('is-visible');
+    this.boardFrame.querySelectorAll([
+      '.success-particle',
+      '.success-glint',
+      '.success-number-fragment',
+      '.hint-region',
+      '.shuffle-fx',
+      '.bomb-fx',
+      '.megabomb-fx',
+      '.item-drop-fx',
+      '.item-tease',
+      '.cat-bonus-pop',
+      '.combo-confetti',
+      '.final-second-pop',
+    ].join(',')).forEach((element) => element.remove());
+    this.elements.playScreen.querySelectorAll('.score-flight').forEach((element) => element.remove());
   }
 
   setShuffleVectors() {
@@ -1108,24 +1142,28 @@ export class GameUI {
   }
 
   async animateRoundTransition(nextRound, swapBoard) {
-    const shift = this.elements.roundShift;
-    this.elements.roundShiftValue.textContent = String(nextRound);
-    shift.dataset.round = String(nextRound);
+    this.clearTransientBoardFeedback();
     this.boardFrame.classList.add('is-round-leaving');
-    await delay(205);
+    await delay(275);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
     this.elements.roundMini.classList.remove('is-advancing');
     void this.elements.roundMini.offsetWidth;
     this.elements.roundMini.classList.add('is-advancing');
-    shift.classList.remove('is-visible');
-    void shift.offsetWidth;
-    shift.classList.add('is-visible');
     this.boardFrame.classList.add('is-round-arriving');
-    await delay(590);
+    await delay(570);
     this.boardFrame.classList.remove('is-round-arriving');
     this.elements.roundMini.classList.remove('is-advancing');
-    shift.classList.remove('is-visible');
+  }
+
+  showRoundReady(duration = 420) {
+    clearTimeout(this.roundReadyTimer);
+    this.boardFrame.classList.remove('is-round-ready');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-round-ready');
+    this.roundReadyTimer = window.setTimeout(() => {
+      this.boardFrame.classList.remove('is-round-ready');
+    }, duration);
   }
 
   showFinalSecond(second) {

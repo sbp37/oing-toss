@@ -586,7 +586,7 @@ class OingGame {
     this.ui.setPlayCharacter('cheer', 1000);
     this.showCatMessage('round');
     const storedItems = this.storeRoundItems();
-    await delay(430);
+    await delay(500);
     const nextRound = this.state.round + 1;
     this.state.round = nextRound;
     this.state.progress = 0;
@@ -596,7 +596,8 @@ class OingGame {
     });
     if (storedItems.length) this.ui.toast('남은 아이템은 보관함에 챙겼다냥!');
     if (carriedItems.length) this.announceBoardItems(carriedItems);
-    this.inputGuardUntil = performance.now() + 320;
+    this.inputGuardUntil = performance.now() + 420;
+    this.ui.showRoundReady(420);
   }
 
   storeRoundItems() {
