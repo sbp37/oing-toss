@@ -575,12 +575,12 @@ export class GameUI {
       region.append(label);
       for (let index = 0; index < 4; index += 1) region.appendChild(document.createElement('i'));
       this.boardFrame.appendChild(region);
-      window.setTimeout(() => region.remove(), 1450);
+      window.setTimeout(() => region.remove(), 1820);
     }
     this.hintTimer = setTimeout(() => {
       tiles.forEach((tile) => tile.classList.remove('is-hint'));
       this.board.classList.remove('is-hinting');
-    }, 1380);
+    }, 1800);
   }
 
   showTutorial(rect) {
@@ -915,12 +915,14 @@ export class GameUI {
     const label = document.createElement('strong');
     label.textContent = `+${seconds}초`;
     flight.append(icon, label);
+    sourceElement?.classList.add('is-casting');
     screen.appendChild(flight);
     this.elements.timePill.classList.remove('is-time-added');
     void this.elements.timePill.offsetWidth;
     this.elements.timePill.classList.add('is-time-added');
     await delay(620);
     flight.remove();
+    sourceElement?.classList.remove('is-casting');
     this.elements.timePill.classList.remove('is-time-added');
   }
 
@@ -1272,10 +1274,11 @@ export class GameUI {
     }
   }
 
-  showMessage(message, duration = 1500) {
+  showMessage(message, duration = 1500, tone = '') {
     const token = ++this.messageToken;
     clearTimeout(this.messageTimer);
     const bubble = this.elements.catMessage;
+    bubble.dataset.tone = tone;
     bubble.classList.remove('is-changing');
     void bubble.offsetWidth;
     const emphasis = /(오잉|합 ?10|콤보|아이템|메가폭탄|폭탄|클로버|시간|정답|보너스|다음 판|좋다냥)/g;
@@ -1302,6 +1305,7 @@ export class GameUI {
     this.elements.time.textContent = `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`;
     this.elements.timePill.style.setProperty('--time-progress', String(clamp(timeLeft / Math.max(1, duration), 0, 1)));
     const isFrozen = freezeRemaining > 0;
+    this.elements.timePill.classList.toggle('is-low-time', !isFrozen && time > 10 && time <= 30);
     this.elements.timePill.classList.toggle('is-warning', !isFrozen && time <= 10);
     this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
     const isFinalCountdown = !isFrozen && time > 0 && time <= 10;

@@ -571,7 +571,7 @@ class OingGame {
     } else if (this.state.combo > 0 && this.state.combo % ITEM_REWARD_INTERVAL === ITEM_REWARD_INTERVAL - 1) {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
-      this.ui.showMessage('한 번만 더면 아이템 나온다냥!');
+      this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
     } else if (this.state.combo >= 5) {
       this.ui.setPlayCharacter('success', 900);
       this.showCatMessage(this.state.combo >= 8 ? 'combo8' : 'combo5');
@@ -1078,7 +1078,8 @@ class OingGame {
   showCatMessage(type) {
     const message = pickMessage(type, this.lastCatMessage);
     this.lastCatMessage = message;
-    this.ui.showMessage(message);
+    const duration = ['itemDrop', 'lowTime', 'freeze', 'clover'].includes(type) ? 1800 : 1500;
+    this.ui.showMessage(message, duration, type);
   }
 
   stopTimer() {
