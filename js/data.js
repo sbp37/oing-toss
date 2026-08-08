@@ -115,6 +115,28 @@ export function freezeTimeline(nowMs, timeLeft, seconds = TIME_FREEZE_SECONDS) {
   });
 }
 
+export function rebasePausedTimeline({
+  endAt = 0,
+  freezeEndsAt = 0,
+  comboExpiresAt = 0,
+  pauseStartedAt = 0,
+  resumedAt = 0,
+} = {}) {
+  const pausedAt = Math.max(0, Number(pauseStartedAt) || 0);
+  const resumed = Math.max(pausedAt, Number(resumedAt) || 0);
+  const pauseDuration = resumed - pausedAt;
+  const shiftLiveDeadline = (deadline) => {
+    const value = Math.max(0, Number(deadline) || 0);
+    return value > pausedAt ? value + pauseDuration : value;
+  };
+  return Object.freeze({
+    pauseDuration,
+    endAt: shiftLiveDeadline(endAt),
+    freezeEndsAt: shiftLiveDeadline(freezeEndsAt),
+    comboExpiresAt: shiftLiveDeadline(comboExpiresAt),
+  });
+}
+
 // Prices and display names must come from the Apps in Toss IAP product list.
 // These local records only define what a verified order will grant later.
 export const PRODUCT_CATALOG = Object.freeze({

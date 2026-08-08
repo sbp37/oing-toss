@@ -11,6 +11,7 @@ import {
   getRoundConfig,
   itemRewardCountdown,
   pickMessage,
+  rebasePausedTimeline,
   scoreForBomb,
   scoreForCatBonus,
   scoreForClear,
@@ -101,6 +102,10 @@ class OingGame {
     this.lastCatMessage = '';
     this.lastResultSummary = null;
     this.startSequenceId = 0;
+    this.startCountdownInProgress = false;
+    this.resumeNeedsCountdown = false;
+    this.restartConfirmUntil = 0;
+    this.restartConfirmTimer = null;
     this.state = this.freshState();
     this.input = attachStickyRectangleInput({
       boardEl: this.ui.board,
@@ -157,7 +162,7 @@ class OingGame {
   bindEvents() {
     document.querySelector('#start-button').addEventListener('click', () => this.start());
     document.querySelector('#retry-button').addEventListener('click', () => this.start());
-    document.querySelector('#restart-button').addEventListener('click', () => this.start());
+    document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
     document.querySelector('#resume-button').addEventListener('click', () => this.resume());
@@ -201,8 +206,9 @@ class OingGame {
       this.applySettings();
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden' && this.state.running && !this.state.paused) this.pause();
+      if (document.visibilityState === 'hidden') this.pause('background');
     });
+    window.addEventListener('pagehide', () => this.pause('background'));
   }
 
   applySettings() {
@@ -221,6 +227,9 @@ class OingGame {
     stopMusic();
     const sequenceId = ++this.startSequenceId;
     this.ui.cancelStartCountdown();
+    this.startCountdownInProgress = false;
+    this.resumeNeedsCountdown = false;
+    this.resetRestartConfirmation();
     const audioReady = this.settings.sound ? unlockAudio() : Promise.resolve(false);
     if (this.settings.music) prepareMusic();
     this.inventory = createRunInventory();
@@ -245,8 +254,19 @@ class OingGame {
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();
+    this.startCountdownInProgress = true;
     const ready = await audioReady;
+    if (sequenceId !== this.startSequenceId || !this.state.running || this.state.paused) {
+      if (sequenceId === this.startSequenceId) this.startCountdownInProgress = false;
+      if (this.state.paused) this.resumeNeedsCountdown = true;
+      return;
+    }
     if (this.settings.sound && !ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
+    await this.runStartCountdown(sequenceId);
+  }
+
+  async runStartCountdown(sequenceId) {
+    this.startCountdownInProgress = true;
     const completed = await this.ui.animateStartCountdown(START_COUNTDOWN_STEPS, (step) => {
       if (step === 'GO!') {
         playGoSound();
@@ -255,7 +275,13 @@ class OingGame {
       else playReadyCountSound(step);
       readyCountHaptic(step);
     });
-    if (!completed || sequenceId !== this.startSequenceId || !this.state.running) return;
+    const isCurrentSequence = sequenceId === this.startSequenceId;
+    if (isCurrentSequence) this.startCountdownInProgress = false;
+    if (!completed || !isCurrentSequence || !this.state.running) return false;
+    if (this.state.paused) {
+      this.resumeNeedsCountdown = true;
+      return false;
+    }
     if (this.runtime.forcedCombo > 0) {
       this.state.combo = this.runtime.forcedCombo;
       this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
@@ -266,6 +292,7 @@ class OingGame {
     this.inputGuardUntil = performance.now() + 100;
     if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
     else this.beginCountdown();
+    return true;
   }
 
   beginCountdown() {
@@ -863,23 +890,65 @@ class OingGame {
     if (this.state.timeLeft <= 0) this.finish();
   }
 
-  pause() {
+  pause(reason = 'manual') {
     if (!this.state.running || this.state.paused) return;
     this.state.paused = true;
     this.pauseStartedAt = performance.now();
+    if (this.startCountdownInProgress) {
+      this.resumeNeedsCountdown = true;
+      this.startCountdownInProgress = false;
+      this.startSequenceId += 1;
+      this.ui.cancelStartCountdown();
+    }
     this.input.cancel();
     pauseMusic();
+    this.ui.setPauseReason(reason);
     this.ui.setOverlay('pause-overlay', true);
   }
 
   resume() {
     if (!this.state.running || !this.state.paused) return;
-    const pauseDuration = performance.now() - this.pauseStartedAt;
-    this.endAt += pauseDuration;
-    if (this.freezeEndsAt > this.pauseStartedAt) this.freezeEndsAt += pauseDuration;
+    const timeline = rebasePausedTimeline({
+      endAt: this.endAt,
+      freezeEndsAt: this.freezeEndsAt,
+      comboExpiresAt: this.state.comboExpiresAt,
+      pauseStartedAt: this.pauseStartedAt,
+      resumedAt: performance.now(),
+    });
+    this.endAt = timeline.endAt;
+    this.freezeEndsAt = timeline.freezeEndsAt;
+    this.state.comboExpiresAt = timeline.comboExpiresAt;
     this.state.paused = false;
-    playMusic();
+    this.resetRestartConfirmation();
     this.ui.setOverlay('pause-overlay', false);
+    if (this.resumeNeedsCountdown) {
+      this.resumeNeedsCountdown = false;
+      this.state.inputLocked = true;
+      const sequenceId = ++this.startSequenceId;
+      this.runStartCountdown(sequenceId);
+      return;
+    }
+    playMusic();
+  }
+
+  requestRestart() {
+    const now = performance.now();
+    if (now <= this.restartConfirmUntil) {
+      this.resetRestartConfirmation();
+      this.start();
+      return;
+    }
+    this.restartConfirmUntil = now + 2200;
+    this.ui.setRestartConfirm(true);
+    clearTimeout(this.restartConfirmTimer);
+    this.restartConfirmTimer = window.setTimeout(() => this.resetRestartConfirmation(), 2200);
+  }
+
+  resetRestartConfirmation() {
+    this.restartConfirmUntil = 0;
+    clearTimeout(this.restartConfirmTimer);
+    this.restartConfirmTimer = null;
+    this.ui.setRestartConfirm(false);
   }
 
   async finish() {
@@ -921,6 +990,9 @@ class OingGame {
   goHome() {
     this.startSequenceId += 1;
     this.ui.cancelStartCountdown();
+    this.startCountdownInProgress = false;
+    this.resumeNeedsCountdown = false;
+    this.resetRestartConfirmation();
     this.stopTimer();
     stopMusic();
     this.state.running = false;

@@ -1434,6 +1434,23 @@ export class GameUI {
     overlay.hidden = !visible;
   }
 
+  setPauseReason(reason = 'manual') {
+    const background = reason === 'background';
+    const title = document.querySelector('#pause-title');
+    const copy = document.querySelector('#pause-copy');
+    if (title) title.textContent = background ? '게임을 멈춰뒀어' : '잠깐 쉬어가자';
+    if (copy) copy.textContent = background ? '돌아오면 계속하기를 눌러달라냥' : '시간도 같이 멈췄어';
+  }
+
+  setRestartConfirm(confirming) {
+    const button = document.querySelector('#restart-button');
+    const label = button?.querySelector('span');
+    if (!button || !label) return;
+    button.classList.toggle('is-confirming', confirming);
+    button.setAttribute('aria-label', confirming ? '게임 다시 시작 확인' : '게임 다시 하기');
+    label.textContent = confirming ? '한 번 더' : '다시 시작';
+  }
+
   updateToggle(button, enabled) {
     button.classList.toggle('is-on', enabled);
     button.textContent = enabled ? 'ON' : 'OFF';

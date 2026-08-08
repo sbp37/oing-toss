@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop, comboWindowMsForProgress, freezeTimeline, itemRewardCountdown, shouldAdvanceRound } from '../js/data.js';
+import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop, comboWindowMsForProgress, freezeTimeline, itemRewardCountdown, rebasePausedTimeline, shouldAdvanceRound } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -16,6 +16,33 @@ test('time freeze holds the displayed time and rebases the deadline after 15 sec
     freezeEndsAt: 17000,
     frozenTimeLeft: 43.5,
     endAt: 60500,
+  });
+});
+
+test('background pause rebases game, freeze and combo deadlines together', () => {
+  assert.deepEqual(rebasePausedTimeline({
+    endAt: 62000,
+    freezeEndsAt: 17000,
+    comboExpiresAt: 6500,
+    pauseStartedAt: 2000,
+    resumedAt: 12000,
+  }), {
+    pauseDuration: 10000,
+    endAt: 72000,
+    freezeEndsAt: 27000,
+    comboExpiresAt: 16500,
+  });
+  assert.deepEqual(rebasePausedTimeline({
+    endAt: 62000,
+    freezeEndsAt: 0,
+    comboExpiresAt: 0,
+    pauseStartedAt: 2000,
+    resumedAt: 12000,
+  }), {
+    pauseDuration: 10000,
+    endAt: 72000,
+    freezeEndsAt: 0,
+    comboExpiresAt: 0,
   });
 });
 

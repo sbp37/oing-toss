@@ -4181,6 +4181,13 @@ img {
 .pause-tool-button.music-button i { left: 19px; top: 18px; }
 .pause-tool-button.restart-button i { left: 17px; top: 15px; }
 
+.pause-tool-button.restart-button.is-confirming {
+  border-color: rgba(239, 111, 135, 0.68);
+  background: linear-gradient(180deg, #fff7f7 0%, #ffe0e6 100%);
+  color: #b64f66;
+  box-shadow: 0 3px 0 rgba(194, 84, 108, 0.18), inset 0 1px 0 #fff;
+}
+
 .overlay-close {
   position: absolute;
   right: 12px;
