@@ -69,6 +69,7 @@ export class GameUI {
     this.lastCountdownSecond = null;
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
+    this.lastSelectionPerfect = false;
     this.characterToken = 0;
     this.resultCharacterToken = 0;
     this.lastResultMessage = '';
@@ -345,6 +346,8 @@ export class GameUI {
 
   selectionSnap(isPerfect = false) {
     const marquee = this.elements.marquee;
+    if (isPerfect === this.lastSelectionPerfect) return;
+    this.lastSelectionPerfect = isPerfect;
     if (!isPerfect) {
       this.selectionSnapAnimation?.cancel();
       this.selectionSnapAnimation = null;
@@ -383,6 +386,7 @@ export class GameUI {
     clearTimeout(this.selectionSnapTimer);
     this.selectionSnapAnimation?.cancel();
     this.selectionSnapAnimation = null;
+    this.lastSelectionPerfect = false;
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
     this.board.querySelectorAll('.tile.is-selected').forEach((tile) => tile.classList.remove('is-selected'));
@@ -607,7 +611,7 @@ export class GameUI {
       region.append(label);
       for (let index = 0; index < 4; index += 1) region.appendChild(document.createElement('i'));
       this.boardFrame.appendChild(region);
-      window.setTimeout(() => region.remove(), 1820);
+      window.setTimeout(() => region.remove(), 2200);
     }
     this.hintTimer = setTimeout(() => {
       tiles.forEach((tile) => {
@@ -615,7 +619,7 @@ export class GameUI {
         tile.style.removeProperty('--hint-index');
       });
       this.board.classList.remove('is-hinting');
-    }, 1800);
+    }, 2200);
   }
 
   showTutorial(rect) {
@@ -728,14 +732,14 @@ export class GameUI {
     }
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(500);
+    await delay(700);
     this.board.classList.remove('is-shuffling-out');
   }
 
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(500);
+    await delay(650);
     this.board.classList.remove('is-shuffling-in');
     this.board.querySelectorAll('.tile').forEach((tile) => {
       tile.style.removeProperty('--shuffle-x');
@@ -1222,20 +1226,20 @@ export class GameUI {
     clear.classList.remove('is-visible');
     void clear.offsetWidth;
     clear.classList.add('is-visible');
-    setTimeout(() => clear.classList.remove('is-visible'), 620);
+    setTimeout(() => clear.classList.remove('is-visible'), 760);
   }
 
   async animateRoundTransition(nextRound, swapBoard) {
     this.clearTransientBoardFeedback();
     this.boardFrame.classList.add('is-round-leaving');
-    await delay(275);
+    await delay(430);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
     this.elements.roundMini.classList.remove('is-advancing');
     void this.elements.roundMini.offsetWidth;
     this.elements.roundMini.classList.add('is-advancing');
     this.boardFrame.classList.add('is-round-arriving');
-    await delay(570);
+    await delay(780);
     this.boardFrame.classList.remove('is-round-arriving');
     this.elements.roundMini.classList.remove('is-advancing');
   }

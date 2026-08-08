@@ -128,6 +128,7 @@ class OingGame {
     this.activeResolution = false;
     this.finishPending = false;
     this.finishing = false;
+    this.selectionWasPerfect = false;
     this.telemetry = null;
     this.state = this.freshState();
     this.input = attachStickyRectangleInput({
@@ -138,11 +139,21 @@ class OingGame {
         && performance.now() >= this.inputGuardUntil,
       onPreview: (rect, pointer) => this.preview(rect, pointer),
       onCommit: (rect) => this.commit(rect),
-      onCancel: () => this.ui.clearSelection(),
+      onCancel: () => {
+        this.selectionWasPerfect = false;
+        this.ui.clearSelection();
+      },
       onSelectionStep: (rect) => {
         const stats = this.model.stats(rect);
-        this.ui.selectionSnap(stats.sum === 10);
-        selectionTick(stats.sum === 10);
+        const isPerfect = stats.sum === 10;
+        if (isPerfect !== this.selectionWasPerfect) {
+          this.selectionWasPerfect = isPerfect;
+          this.ui.selectionSnap(isPerfect);
+          selectionTick(isPerfect);
+        }
+      },
+      onPointerStart: () => {
+        this.ui.clearSelection();
       },
       onTapAnchor: (cell) => {
         this.beginFirstInteraction();
@@ -525,6 +536,7 @@ class OingGame {
 
   async commit(rect) {
     if (!this.state.running || this.state.paused || this.state.inputLocked) return;
+    this.selectionWasPerfect = false;
     const stats = this.model.stats(rect);
     if (stats.count < 2) {
       this.ui.clearSelection();
@@ -650,6 +662,7 @@ class OingGame {
   }
 
   async clearRound({ perfect = false } = {}) {
+    this.state.inputLocked = true;
     this.telemetry?.roundCleared({ perfect });
     const timeBonus = roundTimeBonusSeconds(this.state.round);
     roundHaptic();
@@ -669,7 +682,7 @@ class OingGame {
     this.updateHUD();
     const [storedItems] = await Promise.all([
       this.storeRoundItems({ soundDelay: 460 }),
-      delay(500),
+      delay(820),
     ]);
     const nextRound = this.state.round + 1;
     this.state.round = nextRound;
@@ -678,10 +691,11 @@ class OingGame {
     await this.ui.animateRoundTransition(nextRound, () => {
       carriedItems = this.buildRound();
     });
+    this.state.inputLocked = false;
     if (storedItems.length) this.ui.toast('남은 아이템은 보관함에 챙겼다냥!');
     if (carriedItems.length) this.announceBoardItems(carriedItems);
-    this.inputGuardUntil = performance.now() + 420;
-    this.ui.showRoundReady(420);
+    this.inputGuardUntil = performance.now() + 680;
+    this.ui.showRoundReady(620);
   }
 
   async storeRoundItems({ soundDelay = 0 } = {}) {
@@ -735,7 +749,7 @@ class OingGame {
     playHintSound();
     itemHaptic();
     await cast;
-    this.inputGuardUntil = performance.now() + 80;
+    this.inputGuardUntil = performance.now() + 120;
     this.state.inputLocked = false;
   }
 
@@ -759,11 +773,12 @@ class OingGame {
     playShuffleSound();
     itemHaptic();
     const cast = this.ui.animateItemCast('shuffle');
-    await delay(135);
+    await delay(170);
     await this.ui.animateShuffleOut();
     this.renderBoard();
     await this.ui.animateShuffleIn();
     await cast;
+    this.inputGuardUntil = performance.now() + 280;
     this.state.inputLocked = false;
   }
 
@@ -962,7 +977,10 @@ class OingGame {
   }
 
   canUseItem() {
-    return this.state.running && !this.state.paused && !this.state.inputLocked;
+    return this.state.running
+      && !this.state.paused
+      && !this.state.inputLocked
+      && performance.now() >= this.inputGuardUntil;
   }
 
   syncInventory() {

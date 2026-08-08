@@ -19,7 +19,7 @@ export function cellFromPoint(boardEl, clientX, clientY, stickyCell = null) {
   // Keep the previous cell for a few pixels around a grid seam. This absorbs
   // fingertip jitter without slowing intentional or fast diagonal movement.
   if (stickyCell) {
-    const hysteresis = clamp(Math.min(cellWidth, cellHeight) * 0.075, 3, 6);
+    const hysteresis = clamp(Math.min(cellWidth, cellHeight) * 0.085, 4, 8);
     if (Math.abs(col - stickyCell.c) === 1) {
       const boundary = rect.left + Math.max(col, stickyCell.c) * cellWidth;
       if (Math.abs(x - boundary) < hysteresis) col = stickyCell.c;
@@ -44,6 +44,7 @@ export function attachStickyRectangleInput({
   onSelectionStep,
   onTapAnchor,
   onTapAnchorExpired,
+  onPointerStart,
 }) {
   let pointerId = null;
   let startCell = null;
@@ -114,6 +115,7 @@ export function attachStickyRectangleInput({
     const cell = cellFromPoint(boardEl, event.clientX, event.clientY);
     if (!cell) return;
     event.preventDefault();
+    onPointerStart?.();
     pointerId = event.pointerId;
     usingTapAnchor = Boolean(tapAnchor);
     startCell = tapAnchor || cell;
