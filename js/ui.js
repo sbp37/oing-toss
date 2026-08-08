@@ -582,13 +582,17 @@ export class GameUI {
     this.board.querySelectorAll('.tile').forEach((tile, index) => {
       const row = Number(tile.dataset.row);
       const col = Number(tile.dataset.col);
-      const x = (col - center) * 15 + (index % 2 ? 8 : -8);
-      const y = (row - center) * 13 + (index % 3 === 0 ? -9 : 7);
+      const angle = Math.atan2(row - center, col - center) + (index % 2 ? 0.48 : -0.48);
+      const distance = 18 + ((index * 7) % 19);
+      const x = Math.cos(angle) * distance;
+      const y = Math.sin(angle) * distance;
+      const curveX = -Math.sin(angle) * (12 + (index % 4) * 3);
+      const curveY = Math.cos(angle) * (12 + (index % 4) * 3);
       tile.style.setProperty('--shuffle-x', `${x}px`);
       tile.style.setProperty('--shuffle-y', `${y}px`);
       const rotate = ((index % 5) - 2) * 5;
-      tile.style.setProperty('--shuffle-mid-x', `${x * 0.48}px`);
-      tile.style.setProperty('--shuffle-mid-y', `${y * 0.48}px`);
+      tile.style.setProperty('--shuffle-mid-x', `${x * 0.46 + curveX}px`);
+      tile.style.setProperty('--shuffle-mid-y', `${y * 0.46 + curveY}px`);
       tile.style.setProperty('--shuffle-rotate', `${rotate}deg`);
       tile.style.setProperty('--shuffle-mid-rotate', `${rotate * 0.45}deg`);
       tile.style.setProperty('--shuffle-delay', `${(index % 5) * 16}ms`);
@@ -604,17 +608,27 @@ export class GameUI {
     icon.src = 'assets/icons/items/shuffle.webp';
     icon.alt = '';
     effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    for (let index = 0; index < 5; index += 1) {
+      const trail = document.createElement('span');
+      trail.className = 'shuffle-curve';
+      effect.appendChild(trail);
+    }
     for (let index = 0; index < 4; index += 1) effect.appendChild(document.createElement('b'));
+    for (let index = 0; index < 3; index += 1) {
+      const paw = document.createElement('em');
+      paw.className = 'shuffle-paw';
+      effect.appendChild(paw);
+    }
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(420);
+    await delay(500);
     this.board.classList.remove('is-shuffling-out');
   }
 
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(430);
+    await delay(500);
     this.board.classList.remove('is-shuffling-in');
     this.board.querySelectorAll('.tile').forEach((tile) => {
       tile.style.removeProperty('--shuffle-x');
@@ -701,12 +715,18 @@ export class GameUI {
       icon.alt = '';
       const label = document.createElement('span');
       label.textContent = `${definition?.label || '아이템'} 등장!`;
-      effect.append(icon, label, document.createElement('i'), document.createElement('i'));
+      effect.append(icon, label);
+      for (let sparkle = 0; sparkle < 4; sparkle += 1) effect.appendChild(document.createElement('i'));
+      for (let pawIndex = 0; pawIndex < 2; pawIndex += 1) {
+        const paw = document.createElement('b');
+        paw.className = 'item-drop-paw';
+        effect.appendChild(paw);
+      }
       this.boardFrame.appendChild(effect);
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
         effect.remove();
-      }, 900 + index * 70);
+      }, 1120 + index * 70);
     });
   }
 

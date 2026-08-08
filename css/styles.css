@@ -1449,7 +1449,19 @@ img {
 }
 
 .tile.is-board-item.is-item-spawning {
-  animation: board-item-arrive 720ms var(--item-drop-delay, 0ms) cubic-bezier(.16,.82,.24,1.18) both;
+  animation: board-item-arrive 860ms var(--item-drop-delay, 0ms) cubic-bezier(.16,.82,.24,1.18) both;
+}
+
+.tile.is-board-item.is-item-spawning::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -16%;
+  border-radius: 46%;
+  background: radial-gradient(circle, rgba(255, 247, 185, 0.88) 0 22%, rgba(255, 210, 112, 0.42) 45%, transparent 72%);
+  filter: blur(2px);
+  pointer-events: none;
+  animation: board-item-halo 880ms var(--item-drop-delay, 0ms) ease-out both;
 }
 
 @keyframes board-item-idle {
@@ -1467,6 +1479,13 @@ img {
   35% { opacity: 1; transform: translateY(2px) scale(1.12) rotate(5deg); }
   62% { transform: translateY(-2px) scale(0.96) rotate(-2deg); }
   100% { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes board-item-halo {
+  0% { opacity: 0; transform: scale(0.35); }
+  26% { opacity: 1; transform: scale(1.12); }
+  62% { opacity: 0.76; transform: scale(0.94); }
+  100% { opacity: 0; transform: scale(1.24); }
 }
 
 .item-drop-fx {
@@ -1566,6 +1585,27 @@ img {
   animation: item-drop-ring 720ms ease-out both;
 }
 
+.item-drop-fx > b.item-drop-paw {
+  --item-paw-x: -31px;
+  --item-paw-y: 27px;
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 15px;
+  height: 15px;
+  background: url("../assets/decor/paw.webp") center / contain no-repeat;
+  opacity: 0;
+  filter: drop-shadow(0 0 5px rgba(255, 176, 130, 0.5));
+  animation: item-drop-paw 780ms 90ms ease-out both;
+}
+
+.item-drop-fx > b.item-drop-paw:nth-of-type(2) {
+  --item-paw-x: 30px;
+  --item-paw-y: 24px;
+  animation-delay: 180ms;
+}
+
 .item-drop-fx::after {
   width: 68px;
   height: 68px;
@@ -1644,6 +1684,8 @@ img {
 
 .item-drop-fx i:nth-of-type(1) { --item-star-x: -35px; --item-star-y: -31px; }
 .item-drop-fx i:nth-of-type(2) { --item-star-x: 33px; --item-star-y: -24px; animation-delay: 70ms; }
+.item-drop-fx i:nth-of-type(3) { --item-star-x: -27px; --item-star-y: 31px; animation-delay: 130ms; }
+.item-drop-fx i:nth-of-type(4) { --item-star-x: 30px; --item-star-y: 28px; animation-delay: 190ms; }
 
 @keyframes item-drop-ring {
   0% { opacity: 0; transform: translate(-50%,-50%) scale(0.25); }
@@ -1669,6 +1711,12 @@ img {
   0%, 16% { opacity: 0; transform: translate(-50%,-50%) rotate(20deg) scale(0.3); }
   38% { opacity: 1; }
   100% { opacity: 0; transform: translate(calc(-50% + var(--item-star-x)), calc(-50% + var(--item-star-y))) rotate(150deg) scale(1); }
+}
+
+@keyframes item-drop-paw {
+  0%, 12% { opacity: 0; transform: translate(-50%,-50%) scale(0.3) rotate(-18deg); }
+  38% { opacity: 0.82; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--item-paw-x)), calc(-50% + var(--item-paw-y))) scale(0.92) rotate(20deg); }
 }
 
 .board.is-dragging .tile.is-selected {
@@ -2045,11 +2093,11 @@ img {
 }
 
 .board.is-shuffling-out .tile {
-  animation: shuffle-scatter-out 350ms var(--shuffle-delay, 0ms) cubic-bezier(.3,.04,.7,.28) both;
+  animation: shuffle-scatter-out 430ms var(--shuffle-delay, 0ms) cubic-bezier(.28,.04,.62,.32) both;
 }
 
 .board.is-shuffling-in .tile {
-  animation: shuffle-scatter-in 370ms var(--shuffle-delay, 0ms) cubic-bezier(.16,.82,.26,1.18) both;
+  animation: shuffle-scatter-in 430ms var(--shuffle-delay, 0ms) cubic-bezier(.16,.82,.26,1.16) both;
 }
 
 @keyframes shuffle-scatter-out {
@@ -2145,6 +2193,62 @@ img {
 .shuffle-fx b:nth-of-type(2) { --shuffle-star-x: 88px; --shuffle-star-y: -48px; animation-delay: 55ms; }
 .shuffle-fx b:nth-of-type(3) { --shuffle-star-x: -74px; --shuffle-star-y: 72px; animation-delay: 105ms; }
 .shuffle-fx b:nth-of-type(4) { --shuffle-star-x: 78px; --shuffle-star-y: 66px; animation-delay: 145ms; }
+
+.shuffle-curve {
+  --curve-angle: -24deg;
+  --curve-radius: 72px;
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: var(--curve-radius);
+  height: calc(var(--curve-radius) * 0.58);
+  border: 3px solid transparent;
+  border-top-color: rgba(106, 222, 202, 0.72);
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.82));
+  transform: translate(-50%,-50%) rotate(var(--curve-angle)) scale(0.55);
+  animation: shuffle-curve-sweep 760ms ease-out both;
+}
+
+.shuffle-curve:nth-of-type(1) { --curve-angle: -18deg; --curve-radius: 92px; }
+.shuffle-curve:nth-of-type(2) { --curve-angle: 54deg; --curve-radius: 104px; animation-delay: 45ms; }
+.shuffle-curve:nth-of-type(3) { --curve-angle: 126deg; --curve-radius: 88px; animation-delay: 90ms; }
+.shuffle-curve:nth-of-type(4) { --curve-angle: 198deg; --curve-radius: 110px; animation-delay: 120ms; }
+.shuffle-curve:nth-of-type(5) { --curve-angle: 272deg; --curve-radius: 82px; animation-delay: 155ms; }
+
+.shuffle-paw {
+  --paw-x: -92px;
+  --paw-y: -46px;
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  background: url("../assets/decor/paw.webp") center / contain no-repeat;
+  opacity: 0;
+  filter: drop-shadow(0 0 5px rgba(85, 194, 177, 0.44));
+  animation: shuffle-paw-pop 820ms ease-out both;
+}
+
+.shuffle-paw:nth-of-type(1) { --paw-x: -92px; --paw-y: -46px; }
+.shuffle-paw:nth-of-type(2) { --paw-x: 94px; --paw-y: -35px; animation-delay: 90ms; }
+.shuffle-paw:nth-of-type(3) { --paw-x: 18px; --paw-y: 88px; animation-delay: 170ms; }
+
+@keyframes shuffle-curve-sweep {
+  0% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--curve-angle)) scale(0.42); }
+  28% { opacity: 0.9; }
+  72% { opacity: 0.66; }
+  100% { opacity: 0; transform: translate(-50%,-50%) rotate(calc(var(--curve-angle) + 74deg)) scale(1.22); }
+}
+
+@keyframes shuffle-paw-pop {
+  0%, 14% { opacity: 0; transform: translate(-50%,-50%) scale(0.28) rotate(-18deg); }
+  42% { opacity: 0.88; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--paw-x)), calc(-50% + var(--paw-y))) scale(0.92) rotate(28deg); }
+}
 
 @keyframes shuffle-star-burst {
   0%, 12% { opacity: 0; transform: translate(-50%,-50%) scale(0.25) rotate(-18deg); }
