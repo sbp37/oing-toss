@@ -1,6 +1,7 @@
 import {
   BOARD_DROP_ITEMS,
   GAME_DURATION_SECONDS,
+  ITEM_REWARD_INTERVAL,
   START_COUNTDOWN_STEPS,
   TIME_FREEZE_SECONDS,
   boardDropReward,
@@ -8,6 +9,7 @@ import {
   comboWindowMsForProgress,
   freezeTimeline,
   getRoundConfig,
+  itemRewardCountdown,
   pickMessage,
   scoreForBomb,
   scoreForCatBonus,
@@ -512,6 +514,10 @@ class OingGame {
     } else if (this.state.combo === 3) {
       this.ui.setPlayCharacter('cheer', 900);
       this.showCatMessage('combo3');
+    } else if (this.state.combo > 0 && this.state.combo % ITEM_REWARD_INTERVAL === ITEM_REWARD_INTERVAL - 1) {
+      this.ui.setPlayCharacter('wave', 900);
+      this.ui.previewItemReward();
+      this.ui.showMessage('한 번만 더면 아이템 나온다냥!');
     } else if (this.state.combo >= 5) {
       this.ui.setPlayCharacter('success', 900);
       this.showCatMessage(this.state.combo >= 8 ? 'combo8' : 'combo5');
@@ -944,6 +950,7 @@ class OingGame {
     this.ui.updateHUD({
       ...this.state,
       comboRemaining,
+      rewardRemaining: itemRewardCountdown(this.state.combo),
       target: config.target,
       duration: this.runtime?.duration || GAME_DURATION_SECONDS,
       freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),

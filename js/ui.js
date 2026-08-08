@@ -52,6 +52,7 @@ export class GameUI {
     this.comboCelebrationTimer = null;
     this.countdownPulseTimer = null;
     this.goalPulseTimer = null;
+    this.itemRewardPreviewTimer = null;
     this.lastCountdownSecond = null;
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
@@ -484,6 +485,16 @@ export class GameUI {
     this.goalPulseTimer = window.setTimeout(() => {
       track.classList.remove('is-rewarded');
     }, 520);
+  }
+
+  previewItemReward() {
+    clearTimeout(this.itemRewardPreviewTimer);
+    this.boardFrame.classList.remove('is-item-reward-near');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-item-reward-near');
+    this.itemRewardPreviewTimer = window.setTimeout(() => {
+      this.boardFrame.classList.remove('is-item-reward-near');
+    }, 760);
   }
 
   async animateSuccess(rect, combo = 1) {
@@ -1134,7 +1145,7 @@ export class GameUI {
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-game-ending');
     timeUp.classList.add('is-visible');
-    await delay(650);
+    await delay(820);
     timeUp.classList.remove('is-visible');
     const summary = document.createElement('div');
     summary.className = 'end-score-summary';
@@ -1146,9 +1157,11 @@ export class GameUI {
     combo.textContent = maxCombo > 1 ? `최고 콤보 ${maxCombo}` : '끝까지 잘했다냥!';
     summary.append(label, value, combo, document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(summary);
-    await delay(780);
+    await delay(900);
     summary.remove();
     this.boardFrame.classList.remove('is-game-ending');
+    this.elements.playScreen.classList.add('is-ending-to-result');
+    await delay(180);
   }
 
   setPlayCharacter(pose, duration = 0) {
@@ -1234,7 +1247,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 180, freezeRemaining = 0, combo, comboRemaining = 0, progress, target }) {
+  updateHUD({ round, score, timeLeft, duration = 180, freezeRemaining = 0, combo, comboRemaining = 0, rewardRemaining = 7, progress, target }) {
     this.elements.round.textContent = String(round);
     this.elements.score.textContent = score.toLocaleString('ko-KR');
     const time = Math.max(0, Math.ceil(timeLeft));
@@ -1268,6 +1281,11 @@ export class GameUI {
     this.elements.combo.textContent = String(combo);
     this.elements.comboTimerFill.style.transform = `scaleX(${clamp(comboRemaining, 0, 1)})`;
     this.elements.comboChip.classList.toggle('is-active', combo > 0 && comboRemaining > 0);
+    this.elements.comboChip.classList.toggle('is-reward-close', combo > 0 && rewardRemaining <= 2);
+    this.elements.comboChip.dataset.rewardRemaining = String(rewardRemaining);
+    this.elements.comboChip.setAttribute('aria-label', combo > 0 && rewardRemaining <= 2
+      ? `콤보 ${combo}, 아이템까지 ${rewardRemaining}번`
+      : `콤보 ${combo}`);
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
     this.boardFrame.classList.toggle('is-fever', combo >= 8 && comboRemaining > 0);
@@ -1335,6 +1353,7 @@ export class GameUI {
   }
 
   showResult({ score, maxCombo, round, maxClearCells, newRecord, previousBest, previousScore }) {
+    this.elements.playScreen.classList.remove('is-ending-to-result');
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
     this.elements.finalLargestClear.textContent = String(maxClearCells);

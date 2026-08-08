@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop, comboWindowMsForProgress, freezeTimeline, shouldAdvanceRound } from '../js/data.js';
+import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop, comboWindowMsForProgress, freezeTimeline, itemRewardCountdown, shouldAdvanceRound } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -34,6 +34,15 @@ test('board items appear only when a seven-combo boundary is crossed', () => {
   assert.equal(boardDropReward(6, 8, 1), 'milestone');
   assert.equal(boardDropReward(7, 8, 2), null);
   assert.equal(boardDropReward(13, 14, 2), 'milestone');
+});
+
+test('the reward countdown makes the sixth combo an explicit one-more moment', () => {
+  assert.equal(itemRewardCountdown(0), 7);
+  assert.equal(itemRewardCountdown(1), 6);
+  assert.equal(itemRewardCountdown(5), 2);
+  assert.equal(itemRewardCountdown(6), 1);
+  assert.equal(itemRewardCountdown(7), 7);
+  assert.equal(itemRewardCountdown(13), 1);
 });
 
 test('a round waits until its goal is met and no sum-ten answer remains', () => {

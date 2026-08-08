@@ -1,5 +1,6 @@
 export const GAME_DURATION_SECONDS = 180;
 export const COMBO_WINDOW_MS = 3200;
+export const ITEM_REWARD_INTERVAL = 7;
 export const TIME_FREEZE_SECONDS = 15;
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 
@@ -53,8 +54,14 @@ export function chooseBoardDrop(combo, random = Math.random, { cloverGiven = fal
 export function boardDropReward(previousCombo, nextCombo) {
   const previous = Math.max(0, Math.round(Number(previousCombo) || 0));
   const next = Math.max(0, Math.round(Number(nextCombo) || 0));
-  if (Math.floor(next / 7) > Math.floor(previous / 7)) return 'milestone';
+  if (Math.floor(next / ITEM_REWARD_INTERVAL) > Math.floor(previous / ITEM_REWARD_INTERVAL)) return 'milestone';
   return null;
+}
+
+export function itemRewardCountdown(combo) {
+  const streak = Math.max(0, Math.round(Number(combo) || 0));
+  const remainder = streak % ITEM_REWARD_INTERVAL;
+  return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
 }
 
 export function shouldAdvanceRound(progress, target, hasAnswer) {
