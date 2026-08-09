@@ -1,12 +1,12 @@
 {
-  "taskId": "gmail-test-20260809-1200",
-  "status": "completed",
-  "success": true,
-  "summary": "- 프로젝트 이름: `oing-toss`\n- 현재 브랜치: `main`\n- 작업 트리: Clean\n- 파일 수정: 없음",
+  "taskId": "shared-watcher-overbutler-gmail-fix-20260809-1244-r1",
+  "status": "failed",
+  "success": false,
+  "summary": "force push is forbidden",
   "changedFiles": [],
   "gitDiffSummary": "",
-  "blocker": null,
-  "startedAt": "2026-08-09T03:01:23Z",
-  "completedAt": "2026-08-09T03:01:48Z",
+  "blocker": "unsafe-prompt",
+  "startedAt": "2026-08-09T04:02:03Z",
+  "completedAt": "2026-08-09T04:02:04Z",
   "transport": "gmail"
 }
