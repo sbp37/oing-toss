@@ -1,11 +1,11 @@
 {
-  "taskId": "bridge-test-20260809-1039",
-  "status": "completed",
-  "success": true,
-  "summary": "프로젝트 이름: **oing-toss**\n\n파일 생성이나 수정은 하지 않았습니다.",
+  "taskId": null,
+  "status": "idle",
+  "success": null,
+  "summary": "OING Codex Bridge is waiting for an approved task.",
   "changedFiles": [],
   "gitDiffSummary": "",
   "blocker": null,
-  "startedAt": "2026-08-09T01:41:15Z",
-  "completedAt": "2026-08-09T01:41:39Z"
+  "startedAt": null,
+  "completedAt": null
 }
