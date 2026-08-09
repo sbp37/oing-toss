@@ -1,11 +1,11 @@
 {
-  "taskId": "oing-verify-main-sync-20260809-r2",
-  "status": "failed",
-  "success": false,
-  "summary": "Local branch must be main.",
+  "taskId": "oing-verify-main-sync-20260809-r3",
+  "status": "completed",
+  "success": true,
+  "summary": "읽기 전용 검증 결과:\n\n- 작업 트리: 깨끗함\n- 현재 브랜치: `main`\n- 로컬 `main`과 `origin/main`: 동기화됨 (`ahead 0 / behind 0`)\n- 최신 커밋 SHA: `00c92387bc3c8a07e4e33a3306c889aeb2f98618`\n- 커밋: `bridge: enqueue approved verification after workspace fix`\n\n파일이나 Git 참조는 수정하지 않았습니다. `origin/main`은 현재 로컬에 저장된 원격 추적 참조 기준입니다.",
   "changedFiles": [],
   "gitDiffSummary": "",
-  "blocker": "safe-sync-blocked",
-  "startedAt": "2026-08-09T02:25:14Z",
-  "completedAt": "2026-08-09T02:25:14Z"
+  "blocker": null,
+  "startedAt": "2026-08-09T02:27:58Z",
+  "completedAt": "2026-08-09T02:28:25Z"
 }
