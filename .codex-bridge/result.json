@@ -1,11 +1,11 @@
 {
-  "taskId": "oing-verify-a065a11-20260809",
+  "taskId": "oing-verify-main-sync-20260809-r2",
   "status": "failed",
   "success": false,
   "summary": "Local branch must be main.",
   "changedFiles": [],
   "gitDiffSummary": "",
   "blocker": "safe-sync-blocked",
-  "startedAt": "2026-08-09T02:23:29Z",
-  "completedAt": "2026-08-09T02:23:29Z"
+  "startedAt": "2026-08-09T02:25:14Z",
+  "completedAt": "2026-08-09T02:25:14Z"
 }
