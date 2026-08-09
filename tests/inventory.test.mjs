@@ -7,17 +7,19 @@ test('run inventory starts with the approved free item counts', () => {
   const inventory = createRunInventory();
   assert.equal(inventory.balance('hint'), 3);
   assert.equal(inventory.balance('shuffle'), 2);
-  assert.equal(inventory.balance('bomb'), 1);
-  assert.equal(inventory.balance('clock'), 1);
+  assert.equal(inventory.balance('bomb'), 0);
+  assert.equal(inventory.balance('clock'), 0);
 });
 
 test('consuming items cannot underflow or create unknown balances', () => {
   const inventory = createRunInventory();
   assert.equal(inventory.consume('hint').ok, true);
   assert.equal(inventory.balance('hint'), 2);
+  assert.equal(inventory.consume('bomb').reason, 'insufficient-balance');
+  assert.equal(inventory.grant('bomb', 1).ok, true);
   assert.equal(inventory.consume('bomb').ok, true);
   assert.equal(inventory.consume('bomb').reason, 'insufficient-balance');
-  assert.equal(inventory.consume('clock').ok, true);
+  assert.equal(inventory.consume('clock').reason, 'insufficient-balance');
   assert.equal(inventory.consume('missing').reason, 'unknown-item');
 });
 

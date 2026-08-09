@@ -6,19 +6,32 @@ export const ITEM_REWARD_INTERVAL = 7;
 export const TIME_FREEZE_SECONDS = 15;
 export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
 export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
+export const STRUGGLE_HINT_FAILURES = 3;
+export const STAGE_TRANSITION_INPUT_GUARD_MS = 420;
+export const FINAL_GESTURE_GRACE_MS = 450;
+export const COMBO_WINDOW_MS = Object.freeze({
+  early: 5200,
+  mid: 4500,
+  advanced: 3800,
+  expert: 3300,
+});
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 export const RESULT_SCORE_THRESHOLDS = Object.freeze({
-  normal: 6000,
-  high: 15000,
-  legend: 30000,
+  normal: 15000,
+  high: 40000,
+  legend: 80000,
 });
+
+export function recordEligibleForStartStage(stage = 1) {
+  return Math.max(1, Math.round(Number(stage) || 1)) === 1;
+}
 
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 7, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0.02, bombChance: 0.08 },
-  { stage: 5, round: 5, size: 7, cols: 7, rows: 7, target: 11, timeLimit: 120, clockChance: 0.025, bombChance: 0.12 },
+  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0, bombChance: 0.08 },
+  { stage: 5, round: 5, size: 7, cols: 7, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
   { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
   { stage: 7, round: 7, size: 7, cols: 7, rows: 9, target: 14, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
   { stage: 8, round: 8, size: 7, cols: 7, rows: 10, target: 16, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
@@ -33,8 +46,8 @@ export const ROUND_CONFIG = STAGE_CONFIG;
 export const ITEM_DEFINITIONS = Object.freeze({
   hint: { id: 'hint', initial: 3, implemented: true, asset: 'assets/icons/items/hint.webp' },
   shuffle: { id: 'shuffle', initial: 2, implemented: true, asset: 'assets/icons/items/shuffle.webp' },
-  bomb: { id: 'bomb', initial: 1, implemented: true, asset: 'assets/icons/items/bomb.webp' },
-  clock: { id: 'clock', initial: 1, implemented: true, asset: 'assets/icons/hud/time.webp' },
+  bomb: { id: 'bomb', initial: 0, implemented: true, asset: 'assets/icons/items/bomb.webp' },
+  clock: { id: 'clock', initial: 0, implemented: true, asset: 'assets/icons/hud/time.webp' },
   freeze: { id: 'freeze', initial: 0, implemented: true, asset: 'assets/icons/items/freeze.webp' },
   clover: { id: 'clover', initial: 0, implemented: true, asset: 'assets/icons/items/clover.webp' },
 });
@@ -50,31 +63,39 @@ export const BOARD_DROP_ITEMS = Object.freeze({
   candy: Object.freeze({ id: 'candy', label: '콤보사탕', implemented: false, asset: null }),
 });
 
-const BOARD_DROP_POOLS = Object.freeze({
-  // Time items are memorable but must not create an endless reward loop.
-  // Seven-combo rewards therefore stay frequent while most drops affect the
-  // board instead of extending the two-minute session.
-  1: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
-  2: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
-  3: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
-});
+function boardDropPoolFor(stage, combo, cloverGiven = false) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  const streak = Math.max(0, Math.round(Number(combo) || 0));
+  const bombWeight = streak >= 21 ? 14 : streak >= 14 ? 16 : 18;
+  const pool = Array.from({ length: bombWeight }, () => 'bomb');
+  if (level >= 5) pool.push('clock');
+  if (level >= 6 && streak >= 14) pool.push('megabomb');
+  if (level >= 7 && streak >= 21) pool.push('freeze');
+  if (level >= 8 && streak >= 28 && !cloverGiven) pool.push('clover');
+  return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
+}
 
 export function chooseBoardDrop(combo, random = Math.random, {
   cloverGiven = false,
   previousType = null,
   rewardIndex = 0,
+  stage = 1,
 } = {}) {
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   const earned = Math.max(0, Math.round(Number(rewardIndex) || 0));
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  if (level < 3) return null;
   // The first earned board item always demonstrates the most tactile reward.
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
-  const tier = streak >= 21 ? 3 : streak >= 14 ? 2 : 1;
-  const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
+  const pool = boardDropPoolFor(level, streak, cloverGiven);
   if (!pool.length) return null;
-  // Do not force variety here: with only bomb and clock in the live pool that
-  // would turn every bomb into a guaranteed clock next, enabling endless time.
-  const index = Math.min(pool.length - 1, Math.floor(Math.max(0, random()) * pool.length));
-  return BOARD_DROP_ITEMS[pool[index]];
+  // Avoid back-to-back rare effects without forcing a clock after every bomb.
+  const repeatSafePool = previousType && previousType !== 'bomb'
+    ? pool.filter((id) => id !== previousType)
+    : pool;
+  const choices = repeatSafePool.length ? repeatSafePool : pool;
+  const index = Math.min(choices.length - 1, Math.floor(Math.max(0, random()) * choices.length));
+  return BOARD_DROP_ITEMS[choices[index]];
 }
 
 export function boardDropReward(previousCombo, nextCombo) {
@@ -88,8 +109,74 @@ export function comboAfterFailure(combo) {
   return Math.floor(Math.max(0, Math.round(Number(combo) || 0)) * 0.7);
 }
 
+export function isNearMissSum(sum) {
+  return Math.abs((Number(sum) || 0) - 10) === 1;
+}
+
+export function comboAfterIncorrectSelection(combo, sum) {
+  const current = Math.max(0, Math.round(Number(combo) || 0));
+  return isNearMissSum(sum) ? Math.max(0, current - 1) : comboAfterFailure(current);
+}
+
+export function shouldOfferStruggleHint(stage = 1, consecutiveFailures = 0) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  const misses = Math.max(0, Math.round(Number(consecutiveFailures) || 0));
+  return level <= 4 && misses >= STRUGGLE_HINT_FAILURES;
+}
+
 export function comboGainForClear(cellCount) {
+  return Math.max(0, Math.round(Number(cellCount) || 0)) >= 4 ? 2 : 1;
+}
+
+export function stageProgressGainForClear(cellCount) {
   return Math.max(0, Math.round(Number(cellCount) || 0)) >= 5 ? 2 : 1;
+}
+
+export function comboWindowMsForStage(stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  if (level <= 2) return COMBO_WINDOW_MS.early;
+  if (level <= 5) return COMBO_WINDOW_MS.mid;
+  if (level <= 8) return COMBO_WINDOW_MS.advanced;
+  return COMBO_WINDOW_MS.expert;
+}
+
+export function comboAfterIdle(combo, stage = 1) {
+  const current = Math.max(0, Math.round(Number(combo) || 0));
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  return Math.max(0, current - (level >= 6 ? 2 : 1));
+}
+
+export function itemUnlockGrantForStage(stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  if (level === 3) return Object.freeze({ bomb: 1 });
+  if (level === 5) return Object.freeze({ clock: 1 });
+  return null;
+}
+
+export function stageChallengeForStage(stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  if (level < 6) return null;
+  const kind = ['wide', 'cat', 'chain'][(level - 6) % 3];
+  if (kind === 'wide') return Object.freeze({ kind, label: '큰 조합', requirement: 5 });
+  if (kind === 'cat') return Object.freeze({ kind, label: '고양이 수집', requirement: 1 });
+  return Object.freeze({ kind, label: '연속 성공', requirement: 3 });
+}
+
+export function stageChallengeBonus(stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  return 450 + level * 75;
+}
+
+export function completesStageChallenge(challenge, {
+  cellCount = 0,
+  catCount = 0,
+  stageStreak = 0,
+} = {}) {
+  if (!challenge) return false;
+  if (challenge.kind === 'wide') return Math.max(0, Number(cellCount) || 0) >= challenge.requirement;
+  if (challenge.kind === 'cat') return Math.max(0, Number(catCount) || 0) >= challenge.requirement;
+  if (challenge.kind === 'chain') return Math.max(0, Number(stageStreak) || 0) >= challenge.requirement;
+  return false;
 }
 
 export function comboMilestoneCrossed(previousCombo, nextCombo) {
@@ -98,7 +185,8 @@ export function comboMilestoneCrossed(previousCombo, nextCombo) {
   return [8, 5, 3].find((milestone) => previous < milestone && next >= milestone) || 0;
 }
 
-export function itemRewardCountdown(combo) {
+export function itemRewardCountdown(combo, stage = 1) {
+  if (Math.max(1, Math.round(Number(stage) || 1)) < 3) return 0;
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   const remainder = streak % ITEM_REWARD_INTERVAL;
   return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
@@ -215,6 +303,8 @@ export const MESSAGES = Object.freeze({
   combo8: Object.freeze(['와, 터진다냥!', '오늘 감 좋은데?', '미쳤다냥!', '이 정도는 해야지냥.']),
   wow: Object.freeze(['와, 크게 지웠다!', '한 번에 쫙! 좋다냥.', '큰 10은 못 참지.']),
   fail: Object.freeze(['어라?', '10이 아닌데냥...', '다시 봐봐.', '앗.', '그건 내가 못 본 걸로 한다냥.']),
+  nearMiss: Object.freeze(['아깝다냥, 거의 10!', '하나 차이다냥!', '오, 거의 맞았는데?']),
+  struggleHint: Object.freeze(['이건 내가 살짝 보여줄게냥!', '잠깐, 여기부터 다시 봐봐!', '이 조합은 서비스다냥.']),
   nearGoal: Object.freeze(['하나만 더!', '거의 다 왔다냥!', '조금만 더!', '끝이 보인다냥!']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
@@ -226,7 +316,13 @@ export const MESSAGES = Object.freeze({
   clock: Object.freeze(['시간 +5초!', '5초 더 달려보자냥!', '시간은 내가 챙겼다.']),
   freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '15초 동안 마음껏 찾아보라냥!', '째깍째깍 잠깐 쉬어간다냥!']),
   clover: Object.freeze(['클로버가 정답을 찾았다냥!', '초록빛 칸을 잘 보라냥!', '이번 정답은 오래 보여준다냥!']),
+  cloverSuccess: Object.freeze(['행운 점수까지 챙겼다냥!', '클로버 보너스 성공!', '이번 조합은 점수가 더 붙는다냥!']),
+  clutch: Object.freeze(['막판 집중력 인정!', '끝까지 잡았다냥!', '마지막까지 깔끔했다냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
+  challengeWide: Object.freeze(['큰 조합 하나 노려보자냥!', '다섯 칸 이상이면 보너스다냥!']),
+  challengeCat: Object.freeze(['이번 판은 고양이를 찾아봐!', '숨어 있는 고양이를 챙겨보라냥!']),
+  challengeChain: Object.freeze(['세 번 연속으로 가보자냥!', '실수 없이 세 번, 할 수 있지?']),
+  challengeComplete: Object.freeze(['보너스까지 챙겼다냥!', '이번 미션도 깔끔하게 성공!', '오, 보너스 인정.']),
   bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
   clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),
   catBonus: Object.freeze(['보너스 고양이까지 챙겼다냥!', '야옹! 점수 더 얹어준다냥!', '고양이 보너스도 놓치지 않았다냥!']),
@@ -362,12 +458,27 @@ export function scoreForCatBonus(catCount, combo) {
   return Math.round(cats * 120 * comboMultiplier(combo));
 }
 
-export function scoreForBomb(valueSum) {
-  return 120 + Math.max(0, Math.round(Number(valueSum) || 0)) * 3;
+export function scoreForCloverBonus(basePoints) {
+  return Math.round(Math.max(0, Number(basePoints) || 0) * 0.5);
 }
 
-export function scoreForMegaBomb(valueSum) {
-  return 220 + Math.max(0, Math.round(Number(valueSum) || 0)) * 4;
+export function scoreForClutch(timeLeft, combo) {
+  const remaining = Math.max(0, Number(timeLeft) || 0);
+  if (remaining > 10) return 0;
+  const urgency = remaining <= 3 ? 180 : 90;
+  return urgency + Math.min(10, Math.max(0, Math.round(Number(combo) || 0))) * 10;
+}
+
+export function scoreForBomb(valueSum, cellCount = 0) {
+  const value = Math.max(0, Math.round(Number(valueSum) || 0));
+  const cells = Math.max(0, Math.round(Number(cellCount) || 0));
+  return 180 + cells * 55 + value * 4;
+}
+
+export function scoreForMegaBomb(valueSum, cellCount = 0) {
+  const value = Math.max(0, Math.round(Number(valueSum) || 0));
+  const cells = Math.max(0, Math.round(Number(cellCount) || 0));
+  return 320 + cells * 70 + value * 4;
 }
 
 export function getStageConfig(stageNumber) {

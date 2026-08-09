@@ -1,5 +1,7 @@
 import {
   BoardModel,
+  analyzeAnswerDiversity,
+  boardAssistForPerformance,
   cellListStats,
   megaBombCells,
 } from './board.js';
@@ -9,15 +11,23 @@ import {
   boardDropReward,
   cappedSessionTime,
   chooseBoardDrop,
+  comboAfterIdle,
   comboAfterFailure,
   comboGainForClear,
+  comboWindowMsForStage,
+  completesStageChallenge,
   getRoundConfig,
   roundTimeBonusSeconds,
   scoreForBomb,
   scoreForCatBonus,
   scoreForClear,
+  scoreForClutch,
+  scoreForCloverBonus,
   scoreForMegaBomb,
   scoreForWideClear,
+  stageChallengeBonus,
+  stageChallengeForStage,
+  stageProgressGainForClear,
 } from './data.js';
 
 export const PLAYER_PROFILES = Object.freeze({
@@ -108,10 +118,19 @@ export function simulateRun({
       perfectClears: 0,
       roundTimeBonus: 0,
       itemTimeBonus: 0,
+      stageChallengeComplete: false,
+      stageChallengeStreak: 0,
+      stageChallengeScore: 0,
+      cloverBonusScore: 0,
+      clutchBonusScore: 0,
+      itemClearedCells: 0,
       itemsEarned: {},
       itemsUsed: {},
       answerCounts: [],
       initialSimpleAnswerCounts: [],
+      initialShapePatternCounts: [],
+      initialValuePatternCounts: [],
+      initialOrientationCounts: [],
       boardClearCounts: [],
       capped: false,
     };
@@ -121,11 +140,30 @@ export function simulateRun({
     let dropsEarned = 0;
     let cloverGiven = false;
     let cloverBoost = false;
+    let comboExpiresAtSeconds = 0;
+
+    const refreshComboDeadline = () => {
+      comboExpiresAtSeconds = state.combo > 0
+        ? state.elapsedSeconds + comboWindowMsForStage(state.round) / 1000
+        : 0;
+    };
+
+    const applyIdleComboDecay = () => {
+      while (state.combo > 0
+        && comboExpiresAtSeconds > 0
+        && state.elapsedSeconds >= comboExpiresAtSeconds) {
+        state.combo = comboAfterIdle(state.combo, state.round);
+        comboExpiresAtSeconds = state.combo > 0
+          ? comboExpiresAtSeconds + comboWindowMsForStage(state.round) / 1000
+          : 0;
+      }
+    };
 
     const spendTime = (seconds) => {
       const amount = Math.max(0, seconds);
       state.elapsedSeconds += amount;
       state.timeLeft -= amount;
+      applyIdleComboDecay();
     };
     const buildBoard = () => {
       const config = getRoundConfig(state.round);
@@ -134,12 +172,21 @@ export function simulateRun({
         cols: config.cols,
         rows: config.rows,
         round: state.round,
-        assist: state.clears < 15 ? 'starter' : state.clears < 55 ? 'guided' : 'standard',
+        assist: boardAssistForPerformance({
+          stage: state.round,
+          successCount: state.clears,
+          failureCount: state.errors,
+          maxCombo: state.maxCombo,
+        }),
       });
       const answers = model.findAnswers();
+      const diversity = analyzeAnswerDiversity(model.grid, answers);
       state.boards += 1;
       state.answerCounts.push(answers.length);
       state.initialSimpleAnswerCounts.push(answers.filter((answer) => answer.count === 2).length);
+      state.initialShapePatternCounts.push(diversity.shapePatterns);
+      state.initialValuePatternCounts.push(diversity.valuePatterns);
+      state.initialOrientationCounts.push(diversity.orientations);
       clearsOnBoard = 0;
     };
     const closeBoard = () => {
@@ -157,6 +204,9 @@ export function simulateRun({
       state.timeLeft = cappedSessionTime(state.timeLeft, bonus);
       state.round += 1;
       state.progress = 0;
+      state.stageChallengeComplete = false;
+      state.stageChallengeStreak = 0;
+      refreshComboDeadline();
       buildBoard();
     };
     const useDrop = (drop) => {
@@ -176,13 +226,15 @@ export function simulateRun({
       } else if (drop.id === 'bomb') {
         const target = model.bestBombTarget();
         if (target) {
-          state.score += scoreForBomb(target.stats.sum);
+          state.score += scoreForBomb(target.stats.sum, target.stats.count);
+          state.itemClearedCells += target.stats.count;
           model.remove(target.rect);
         }
       } else if (drop.id === 'megabomb') {
         const target = bestMegaBombTarget(model);
         if (target) {
-          state.score += scoreForMegaBomb(target.stats.sum);
+          state.score += scoreForMegaBomb(target.stats.sum, target.stats.count);
+          state.itemClearedCells += target.stats.count;
           model.removeCells(target.cells);
         }
       }
@@ -195,7 +247,6 @@ export function simulateRun({
       const roundSlowdown = Math.min(0.55, Math.max(0, state.round - 1) * 0.055);
       const variation = randomBetween(random, 0.82, 1.2);
       const cloverFactor = cloverBoost ? 0.62 : 1;
-      cloverBoost = false;
       spendTime((settings.decisionSeconds + roundSlowdown) * variation * cloverFactor + 0.2);
       if (state.timeLeft <= 0) break;
 
@@ -207,6 +258,8 @@ export function simulateRun({
       if (random() < settings.errorRate) {
         state.errors += 1;
         state.combo = comboAfterFailure(state.combo);
+        state.stageChallengeStreak = 0;
+        refreshComboDeadline();
         continue;
       }
 
@@ -215,12 +268,31 @@ export function simulateRun({
       const clearedCells = stats.count + stats.catCount;
       const previousCombo = state.combo;
       state.combo += comboGainForClear(clearedCells);
+      refreshComboDeadline();
       state.maxCombo = Math.max(state.maxCombo, state.combo);
-      state.score += scoreForClear(clearedCells, state.combo)
-        + scoreForWideClear(clearedCells, state.combo)
-        + scoreForCatBonus(stats.catCount, state.combo);
+      state.stageChallengeStreak += 1;
+      const challenge = stageChallengeForStage(state.round);
+      const challengeCompleted = !state.stageChallengeComplete && completesStageChallenge(challenge, {
+        cellCount: clearedCells,
+        catCount: stats.catCount,
+        stageStreak: state.stageChallengeStreak,
+      });
+      const challengePoints = challengeCompleted ? stageChallengeBonus(state.round) : 0;
+      if (challengeCompleted) {
+        state.stageChallengeComplete = true;
+        state.stageChallengeScore += challengePoints;
+      }
+      const clearPoints = scoreForClear(clearedCells, state.combo);
+      const widePoints = scoreForWideClear(clearedCells, state.combo);
+      const catPoints = scoreForCatBonus(stats.catCount, state.combo);
+      const cloverPoints = cloverBoost ? scoreForCloverBonus(clearPoints + widePoints + catPoints) : 0;
+      const clutchPoints = scoreForClutch(state.timeLeft, state.combo);
+      cloverBoost = false;
+      state.cloverBonusScore += cloverPoints;
+      state.clutchBonusScore += clutchPoints;
+      state.score += clearPoints + widePoints + catPoints + challengePoints + cloverPoints + clutchPoints;
       state.clears += 1;
-      state.progress += 1;
+      state.progress += stageProgressGainForClear(clearedCells);
       clearsOnBoard += 1;
       state.catBonuses += stats.catCount;
       if (answer.count >= 3) state.richClears += 1;
@@ -232,6 +304,7 @@ export function simulateRun({
           cloverGiven,
           previousType: previousDropType,
           rewardIndex: dropsEarned,
+          stage: state.round,
         });
         if (drop) {
           dropsEarned += 1;
@@ -272,9 +345,16 @@ export function summarizeRuns(runs) {
     errorsMean: Math.round(mean(runs.map((run) => run.errors)) * 10) / 10,
     initialAnswersMean: Math.round(mean(runs.flatMap((run) => run.answerCounts)) * 10) / 10,
     initialSimpleAnswersMean: Math.round(mean(runs.flatMap((run) => run.initialSimpleAnswerCounts)) * 10) / 10,
+    initialShapePatternsMean: Math.round(mean(runs.flatMap((run) => run.initialShapePatternCounts)) * 10) / 10,
+    initialValuePatternsMean: Math.round(mean(runs.flatMap((run) => run.initialValuePatternCounts)) * 10) / 10,
+    initialOrientationsMean: Math.round(mean(runs.flatMap((run) => run.initialOrientationCounts)) * 10) / 10,
     clearsPerBoardMean: Math.round(mean(runs.flatMap((run) => run.boardClearCounts)) * 10) / 10,
     richClearRatio: Math.round(1000 * runs.reduce((sum, run) => sum + run.richClears, 0)
       / Math.max(1, runs.reduce((sum, run) => sum + run.clears, 0))) / 10,
+    challengeBonusMean: Math.round(mean(runs.map((run) => run.stageChallengeScore))),
+    cloverBonusMean: Math.round(mean(runs.map((run) => run.cloverBonusScore))),
+    clutchBonusMean: Math.round(mean(runs.map((run) => run.clutchBonusScore))),
+    itemClearedCellsMean: Math.round(mean(runs.map((run) => run.itemClearedCells)) * 10) / 10,
     roundTimeBonusMean: Math.round(mean(runs.map((run) => run.roundTimeBonus)) * 10) / 10,
     itemTimeBonusMean: Math.round(mean(runs.map((run) => run.itemTimeBonus)) * 10) / 10,
     cappedRuns: runs.filter((run) => run.capped).length,

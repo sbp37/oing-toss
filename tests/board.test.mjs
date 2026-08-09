@@ -4,6 +4,8 @@ import {
   BOARD_ASSIST_PROFILES,
   BoardModel,
   EASY_BOARD_BONUS,
+  analyzeAnswerDiversity,
+  boardAssistForPerformance,
   boardAssistForSuccessCount,
   boardPacingForRound,
   bonusCatTargetForDimensions,
@@ -19,7 +21,17 @@ import {
   adjacentSeedCountForRound,
   rectStats,
 } from '../js/board.js';
-import { comboGainForClear, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint } from '../js/data.js';
+import { comboGainForClear, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForCloverBonus, scoreForClutch, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint, stageProgressGainForClear } from '../js/data.js';
+
+const originalRandom = Math.random;
+let randomState = 20260809;
+Math.random = () => {
+  randomState += 0x6d2b79f5;
+  let mixed = randomState;
+  mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+  mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+  return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+};
 
 for (const size of [4, 5, 6]) {
   for (let run = 0; run < 250; run += 1) {
@@ -59,12 +71,35 @@ for (const bag of [easyBag]) {
 }
 assert.equal(tripleUnitCountForRound(110, 1), 0);
 assert.ok(tripleUnitCountForRound(110, 8) >= 7, 'late bags replace some obvious pairs with sum-ten triples');
-assert.equal(adjacentSeedCountForRound(1), 3);
+assert.equal(adjacentSeedCountForRound(1), 4);
 assert.equal(adjacentSeedCountForRound(3), 2);
-assert.equal(adjacentSeedCountForRound(6), 1);
-assert.deepEqual(boardPacingForRound(1), { targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1 });
-assert.deepEqual(boardPacingForRound(5), { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, minimumAdjacentPairs: 1, maximumAdjacentPairs: 3, minimumRichAnswers: 5 });
-assert.equal(boardPacingForRound(7, 'starter').minimumAdjacentPairs, 2);
+assert.equal(adjacentSeedCountForRound(6), 0);
+assert.deepEqual(boardPacingForRound(1), {
+  targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4,
+  minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1,
+  minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2,
+});
+assert.deepEqual(boardPacingForRound(5), {
+  targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9,
+  minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5,
+  minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2,
+});
+assert.equal(boardPacingForRound(7, 'starter').minimumAdjacentPairs, 1);
+
+for (const stage of [1, 3, 5, 8, 10]) {
+  const config = getRoundConfig(stage);
+  const pacing = boardPacingForRound(stage);
+  const samples = [];
+  for (let run = 0; run < 16; run += 1) {
+    const board = new BoardModel(config.cols);
+    board.generate(config.cols, { cols: config.cols, rows: config.rows, round: stage });
+    samples.push(analyzeAnswerDiversity(board.grid, board.findAnswers()));
+  }
+  const mean = (key) => samples.reduce((sum, sample) => sum + sample[key], 0) / samples.length;
+  assert.ok(mean('shapePatterns') >= pacing.minimumShapePatterns, `stage ${stage} must vary answer shapes across boards`);
+  assert.ok(mean('valuePatterns') >= pacing.minimumValuePatterns, `stage ${stage} must vary number combinations across boards`);
+  assert.ok(mean('orientations') >= pacing.minimumOrientations, `stage ${stage} must mix answer directions across boards`);
+}
 
 assert.equal(boardAssistForSuccessCount(0), 'starter');
 assert.equal(boardAssistForSuccessCount(1), 'starter');
@@ -74,6 +109,12 @@ assert.equal(boardAssistForSuccessCount(15), 'guided');
 assert.equal(boardAssistForSuccessCount(35), 'guided');
 assert.equal(boardAssistForSuccessCount(54), 'guided');
 assert.equal(boardAssistForSuccessCount(55), 'standard');
+assert.equal(boardAssistForPerformance({ stage: 1, maxCombo: 20 }), 'starter');
+assert.equal(boardAssistForPerformance({ stage: 2, successCount: 8, failureCount: 1, maxCombo: 5 }), 'guided');
+assert.equal(boardAssistForPerformance({ stage: 3, successCount: 10, failureCount: 0, maxCombo: 10 }), 'standard');
+assert.equal(boardAssistForPerformance({ stage: 4, successCount: 5, failureCount: 4, maxCombo: 2 }), 'starter');
+assert.equal(boardAssistForPerformance({ stage: 5, successCount: 20, failureCount: 1, maxCombo: 12 }), 'standard');
+assert.equal(boardAssistForPerformance({ stage: 6, successCount: 8, failureCount: 8, maxCombo: 2 }), 'guided');
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 assert.equal(EASY_BOARD_BONUS.minimumAnswers, 1);
 
@@ -162,6 +203,11 @@ assert.equal(catStatsModel.remainingPlayableCells(), 4);
 const hintModel = new BoardModel(3);
 hintModel.grid = [[5, 5, 9], [2, 3, 5], [8, 8, 8]];
 hintModel.bonusCats = new Set();
+assert.deepEqual(analyzeAnswerDiversity(hintModel.grid, hintModel.findAnswers()), {
+  shapePatterns: 3,
+  valuePatterns: 3,
+  orientations: 2,
+});
 assert.equal(hintModel.findEasyAnswer().count, 2, 'onboarding keeps the easiest two-cell answer');
 assert.ok(hintModel.findHintAnswer().count >= 3, 'live hints prioritize a richer three-cell answer');
 const megaGrid = Array.from({ length: 6 }, () => Array(6).fill(2));
@@ -178,17 +224,24 @@ assert.equal(megaTarget.stats.count, 12);
 assert.equal(megaModel.grid.flat().filter((value) => value === null).length, 13);
 assert.ok(scoreForClear(3, 5) > scoreForClear(3, 1), 'combo multiplier must increase score');
 assert.ok(scoreForClear(4, 1) > scoreForClear(2, 1) * 2, 'large rectangles must earn a meaningful bonus');
-assert.equal(comboGainForClear(4), 1, 'normal clears advance one combo');
-assert.equal(comboGainForClear(5), 2, 'five-cell clears advance two combo');
+assert.equal(comboGainForClear(3), 1, 'small clears advance one combo');
+assert.equal(comboGainForClear(4), 2, 'four-cell clears advance two combo');
+assert.equal(stageProgressGainForClear(4), 1, 'ordinary clears advance one goal step');
+assert.equal(stageProgressGainForClear(5), 2, 'five-cell clears advance two goal steps');
 assert.equal(scoreForWideClear(4, 8), 0, 'four-cell clears do not receive WOW score');
 assert.equal(scoreForWideClear(5, 1), 120, 'five-cell clears receive a visible WOW score');
 assert.ok(scoreForWideClear(6, 5) > scoreForWideClear(5, 5), 'wider clears increase the WOW reward');
 assert.equal(scoreForCatBonus(1, 1), 120, 'one cat grants a visible base bonus on the V2 score scale');
 assert.ok(scoreForCatBonus(1, 5) > scoreForCatBonus(1, 1), 'cat bonus follows the live combo multiplier');
-assert.equal(scoreForBomb(37), 231, 'bomb reward must be meaningful on the V2 score scale');
-assert.equal(scoreForMegaBomb(37), 368, 'mega bomb reward must exceed a normal bomb without replacing core clears');
+assert.equal(scoreForBomb(37, 9), 823, 'bomb reward must reflect both cleared cells and their value');
+assert.equal(scoreForMegaBomb(37, 12), 1308, 'mega bomb reward must feel rarer and stronger than a normal bomb');
+assert.equal(scoreForCloverBonus(823), 412, 'clover adds a clear half-score bonus to the next success');
+assert.equal(scoreForClutch(11, 8), 0, 'ordinary play does not receive the final countdown bonus');
+assert.equal(scoreForClutch(8, 8), 170, 'the last ten seconds add a modest skill bonus');
+assert.equal(scoreForClutch(2, 8), 260, 'the last three seconds carry the strongest clutch reward');
 assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: 6000, bestScore: 2000, completedRuns: 2 }), true);
 assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 41, idleMs: 9000, bestScore: 2000, completedRuns: 2 }), false);
 assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: 9000, bestScore: 9000, completedRuns: 4 }), false);
 
+Math.random = originalRandom;
 console.log('board.test.mjs: 750 regular and 300 early-assist boards plus scoring assertions passed');

@@ -31,6 +31,33 @@ export function boardAssistForSuccessCount(successCount) {
   return 'standard';
 }
 
+export function boardAssistForPerformance({
+  stage = 1,
+  successCount = 0,
+  failureCount = 0,
+  maxCombo = 0,
+} = {}) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  const successes = Math.max(0, Math.round(Number(successCount) || 0));
+  const failures = Math.max(0, Math.round(Number(failureCount) || 0));
+  const streak = Math.max(0, Math.round(Number(maxCombo) || 0));
+  const attempts = successes + failures;
+  const accuracy = attempts ? successes / attempts : 1;
+
+  if (level === 1) return 'starter';
+  if (level === 2) return streak >= 5 && accuracy >= 0.75 ? 'guided' : 'starter';
+  if (level <= 4) {
+    if (attempts >= 8 && accuracy < 0.65) return 'starter';
+    if (streak >= 10 && accuracy >= 0.85) return 'standard';
+    return 'guided';
+  }
+  // Skilled runs stop receiving hidden easy pairs once the full board is
+  // learned. A struggling run still gets one softer profile without changing
+  // the visible stage rules or stored progression.
+  if (attempts >= 10 && accuracy < 0.6) return 'guided';
+  return 'standard';
+}
+
 const qualityTarget = (size, assist = 'standard') => {
   const base = BOARD_DIFFICULTY[size] || BOARD_DIFFICULTY[9];
   const bonus = BOARD_ASSIST_PROFILES[assist] || BOARD_ASSIST_PROFILES.standard;
@@ -109,16 +136,16 @@ export function tripleUnitCountForRound(numberCount, round = 1) {
   const ratio = stage <= 2
     ? 0
     : stage === 3
-      ? 0.08
+      ? 0.16
       : stage === 4
-        ? 0.12
+        ? 0.24
         : stage === 5
-          ? 0.16
+          ? 0.32
           : stage <= 7
-            ? 0.2
+            ? 0.42
             : stage <= 9
-              ? 0.24
-              : 0.28;
+              ? 0.55
+              : 0.65;
   let units = Math.min(Math.floor(count / 3), Math.round((count * ratio) / 3));
   if (units % 2 !== count % 2) units += units * 3 + 3 <= count ? 1 : -1;
   return Math.max(0, units);
@@ -126,29 +153,30 @@ export function tripleUnitCountForRound(numberCount, round = 1) {
 
 export function adjacentSeedCountForRound(round = 1) {
   const stage = Math.max(1, Math.round(Number(round) || 1));
-  if (stage <= 2) return 3;
-  if (stage <= 4) return 2;
-  if (stage <= 7) return 1;
+  if (stage === 1) return 4;
+  if (stage === 2) return 3;
+  if (stage === 3) return 2;
+  if (stage === 4) return 1;
   return 0;
 }
 
 export function boardPacingForRound(round = 1, assist = 'standard') {
   const stage = Math.max(1, Math.round(Number(round) || 1));
   const base = stage === 1
-    ? { targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1 }
+    ? { targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2 }
     : stage === 2
-      ? { targetAnswers: 8, maximumAnswers: 11, minimumAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 2 }
+      ? { targetAnswers: 8, maximumAnswers: 11, minimumAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 4, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2 }
       : stage === 3
-        ? { targetAnswers: 10, maximumAnswers: 13, minimumAnswers: 7, minimumAdjacentPairs: 2, maximumAdjacentPairs: 4, minimumRichAnswers: 3 }
+        ? { targetAnswers: 10, maximumAnswers: 13, minimumAnswers: 7, minimumAdjacentPairs: 2, maximumAdjacentPairs: 3, minimumRichAnswers: 3, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
         : stage === 4
-          ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, minimumAdjacentPairs: 2, maximumAdjacentPairs: 3, minimumRichAnswers: 4 }
+          ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 4, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
           : stage === 5
-            ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, minimumAdjacentPairs: 1, maximumAdjacentPairs: 3, minimumRichAnswers: 5 }
+            ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5, minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2 }
             : stage <= 7
-              ? { targetAnswers: 13, maximumAnswers: 17, minimumAnswers: 10, minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 6 }
+              ? { targetAnswers: 13, maximumAnswers: 17, minimumAnswers: 10, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2 }
               : stage <= 9
-                ? { targetAnswers: 14, maximumAnswers: 18, minimumAnswers: 10, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 7 }
-                : { targetAnswers: 15, maximumAnswers: 19, minimumAnswers: 11, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8 };
+                ? { targetAnswers: 14, maximumAnswers: 18, minimumAnswers: 10, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 }
+                : { targetAnswers: 15, maximumAnswers: 19, minimumAnswers: 11, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 };
   const assistAdjacentBonus = assist === 'starter' ? 1 : 0;
   return Object.freeze({
     ...base,
@@ -156,11 +184,35 @@ export function boardPacingForRound(round = 1, assist = 'standard') {
   });
 }
 
-function answerMix(answers) {
+export function analyzeAnswerDiversity(grid, answers = findAllSumTenRects(grid)) {
+  const shapePatterns = new Set();
+  const valuePatterns = new Set();
+  const orientations = new Set();
+  answers.forEach((answer) => {
+    const height = answer.r2 - answer.r1 + 1;
+    const width = answer.c2 - answer.c1 + 1;
+    shapePatterns.add(`${height}x${width}:${answer.count}`);
+    orientations.add(height === 1 ? 'horizontal' : width === 1 ? 'vertical' : 'box');
+    const values = cellsInRect(answer)
+      .map(({ r, c }) => grid[r]?.[c] ?? 0)
+      .filter((value) => value > 0)
+      .sort((a, b) => a - b);
+    valuePatterns.add(values.join('+'));
+  });
+  return Object.freeze({
+    shapePatterns: shapePatterns.size,
+    valuePatterns: valuePatterns.size,
+    orientations: orientations.size,
+  });
+}
+
+function answerMix(grid, answers) {
+  const diversity = analyzeAnswerDiversity(grid, answers);
   return {
     total: answers.length,
     adjacent: answers.filter(isAdjacentPair).length,
     rich: answers.filter((answer) => answer.count >= 3).length,
+    ...diversity,
   };
 }
 
@@ -171,8 +223,11 @@ function pacingPenalty(mix, pacing) {
     + below(mix.total, pacing.minimumAnswers) * 18
     + above(mix.total, pacing.maximumAnswers) * 5
     + below(mix.adjacent, pacing.minimumAdjacentPairs) * 14
-    + above(mix.adjacent, pacing.maximumAdjacentPairs) * 3
-    + below(mix.rich, pacing.minimumRichAnswers) * 14;
+    + above(mix.adjacent, pacing.maximumAdjacentPairs) * 18
+    + below(mix.rich, pacing.minimumRichAnswers) * 14
+    + below(mix.shapePatterns, pacing.minimumShapePatterns) * 10
+    + below(mix.valuePatterns, pacing.minimumValuePatterns) * 12
+    + below(mix.orientations, pacing.minimumOrientations) * 18;
 }
 
 function seedAdjacentPairsInGrid(grid, requested) {
@@ -489,7 +544,7 @@ export class BoardModel {
         return answers.some((answer) => rectContainsCell(answer, row, col));
       });
       if (!everyCatCollectable) continue;
-      const mix = answerMix(answers);
+      const mix = answerMix(candidate.grid, answers);
       const penalty = pacingPenalty(mix, pacing);
       if (penalty < bestPenalty) {
         bestPenalty = penalty;
@@ -499,7 +554,10 @@ export class BoardModel {
         && mix.total <= pacing.maximumAnswers
         && mix.adjacent >= pacing.minimumAdjacentPairs
         && mix.adjacent <= pacing.maximumAdjacentPairs
-        && mix.rich >= pacing.minimumRichAnswers;
+        && mix.rich >= pacing.minimumRichAnswers
+        && mix.shapePatterns >= pacing.minimumShapePatterns
+        && mix.valuePatterns >= pacing.minimumValuePatterns
+        && mix.orientations >= pacing.minimumOrientations;
       if (ideal) {
         this.grid = candidate.grid;
         this.bonusCats = cats;

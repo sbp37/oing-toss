@@ -1473,12 +1473,13 @@ export class GameUI {
     }
     this.elements.combo.textContent = String(combo);
     const comboStep = combo % 7;
-    const rewardProgress = combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
+    const rewardUnlocked = rewardRemaining > 0;
+    const rewardProgress = !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
     this.elements.comboTimerFill.style.transform = `scaleX(${rewardProgress})`;
     this.elements.comboChip.classList.toggle('is-active', combo > 0);
-    this.elements.comboChip.classList.toggle('is-reward-close', combo > 0 && rewardRemaining <= 2);
+    this.elements.comboChip.classList.toggle('is-reward-close', rewardUnlocked && combo > 0 && rewardRemaining <= 2);
     this.elements.comboChip.dataset.rewardRemaining = String(rewardRemaining);
-    this.elements.comboChip.setAttribute('aria-label', combo > 0 && rewardRemaining <= 2
+    this.elements.comboChip.setAttribute('aria-label', rewardUnlocked && combo > 0 && rewardRemaining <= 2
       ? `콤보 ${combo}, 아이템까지 ${rewardRemaining}번`
       : `콤보 ${combo}`);
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
@@ -1589,7 +1590,10 @@ export class GameUI {
     this.finalScoreAnimationFrame = requestAnimationFrame(step);
   }
 
-  showResult({ score, maxCombo, round, progress = 0, target = 1, maxClearCells, newRecord, previousBest, previousScore }) {
+  showResult({
+    score, maxCombo, round, progress = 0, target = 1, maxClearCells,
+    newRecord, previousBest, previousScore, recordEligible = true,
+  }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
@@ -1608,16 +1612,24 @@ export class GameUI {
     }
 
     const comparison = buildScoreComparisons(score, previousScore, previousBest);
-    this.elements.resultBestCompare.textContent = comparison.bestText;
-    this.elements.resultBestCompare.dataset.tone = comparison.bestTone;
-    this.elements.resultPreviousCompare.textContent = comparison.previousText;
-    this.elements.resultPreviousCompare.dataset.tone = comparison.previousTone;
-    this.elements.resultPreviousCompare.hidden = !comparison.hasPrevious;
-    const recordProgress = newRecord || previousBest <= 0
+    this.elements.resultBestCompare.textContent = recordEligible
+      ? comparison.bestText
+      : '체크포인트 재도전 점수';
+    this.elements.resultBestCompare.dataset.tone = recordEligible ? comparison.bestTone : 'neutral';
+    this.elements.resultPreviousCompare.textContent = recordEligible
+      ? comparison.previousText
+      : '최고기록에는 반영되지 않아';
+    this.elements.resultPreviousCompare.dataset.tone = recordEligible ? comparison.previousTone : 'neutral';
+    this.elements.resultPreviousCompare.hidden = recordEligible ? !comparison.hasPrevious : false;
+    const recordProgress = !recordEligible
+      ? 0
+      : newRecord || previousBest <= 0
       ? 1
       : clamp(score / Math.max(1, previousBest), 0, 1);
     const recordPercent = Math.round(recordProgress * 100);
-    this.elements.resultRecordMeterLabel.textContent = newRecord
+    this.elements.resultRecordMeterLabel.textContent = !recordEligible
+      ? '재도전 기록 · 최고기록 제외'
+      : newRecord
       ? '새 최고기록 달성!'
       : `최고기록 도전 ${recordPercent}%`;
     this.elements.resultRecordMeter.style.setProperty('--record-progress', String(recordProgress));

@@ -1,32 +1,45 @@
 import {
   BOARD_DROP_ITEMS,
+  FINAL_GESTURE_GRACE_MS,
   GAME_DURATION_SECONDS,
   ITEM_REWARD_INTERVAL,
+  STAGE_TRANSITION_INPUT_GUARD_MS,
   START_COUNTDOWN_STEPS,
   TIME_FREEZE_SECONDS,
   boardDropReward,
   cappedSessionTime,
   chooseBoardDrop,
-  comboAfterFailure,
+  comboAfterIdle,
+  comboAfterIncorrectSelection,
   comboGainForClear,
   comboMilestoneCrossed,
+  comboWindowMsForStage,
+  completesStageChallenge,
   freezeTimeline,
   getRoundConfig,
+  itemUnlockGrantForStage,
   itemRewardCountdown,
   pickMessage,
   rebasePausedTimeline,
+  recordEligibleForStartStage,
   roundTimeBonusSeconds,
   specialTilePlanForStage,
+  stageChallengeBonus,
+  stageChallengeForStage,
+  stageProgressGainForClear,
   stageClearBonus,
   scoreForBomb,
   scoreForCatBonus,
   scoreForClear,
+  scoreForClutch,
+  scoreForCloverBonus,
   scoreForWideClear,
   scoreForMegaBomb,
+  shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
   shouldAdvanceRound,
 } from './data.js';
-import { BoardModel, boardAssistForSuccessCount } from './board.js';
+import { BoardModel, boardAssistForPerformance } from './board.js';
 import { BoardItemField } from './board-items.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
@@ -129,6 +142,8 @@ class OingGame {
     this.lastInteractionAt = performance.now();
     this.beginnerAutoHintShown = false;
     this.activeResolution = false;
+    this.activeGesture = false;
+    this.finishGraceTimer = null;
     this.finishPending = false;
     this.finishing = false;
     this.selectionWasPerfect = false;
@@ -144,8 +159,12 @@ class OingGame {
         && !this.state.inputLocked
         && performance.now() >= this.inputGuardUntil,
       onPreview: (rect, pointer) => this.preview(rect, pointer),
-      onCommit: (rect) => this.commit(rect),
+      onCommit: (rect) => {
+        this.activeGesture = false;
+        return this.commit(rect);
+      },
       onCancel: () => {
+        this.activeGesture = false;
         this.selectionWasPerfect = false;
         this.ui.clearSelection();
       },
@@ -159,14 +178,17 @@ class OingGame {
         }
       },
       onPointerStart: () => {
+        this.activeGesture = true;
         this.ui.clearSelection();
       },
       onTapAnchor: (cell) => {
+        this.activeGesture = false;
         this.beginFirstInteraction();
         this.ui.showTapAnchor(cell);
         this.showCatMessage('tapEnd');
       },
       onTapAnchorExpired: () => {
+        this.activeGesture = false;
         this.ui.clearSelection();
         if (this.tutorialActive && !storageAdapter.hasSeenDragTutorial()) this.maybeShowTutorial();
       },
@@ -180,8 +202,11 @@ class OingGame {
     schedulePlayAssetsPreload();
   }
 
-  freshState(startStage = this.runtime?.forcedRound || 1) {
+  freshState(startStage = this.runtime?.forcedRound || 1, { recordEligible } = {}) {
     const stage = Math.max(1, Math.round(Number(startStage) || 1));
+    const eligible = typeof recordEligible === 'boolean'
+      ? recordEligible
+      : recordEligibleForStartStage(stage);
     return {
       running: false,
       paused: false,
@@ -190,16 +215,26 @@ class OingGame {
       combo: 0,
       maxCombo: 0,
       round: stage,
+      startStage: stage,
+      recordEligible: eligible,
       progress: 0,
       timeLeft: this.runtime?.duration || GAME_DURATION_SECONDS,
       comboExpiresAt: 0,
       successCount: 0,
+      failureCount: 0,
+      consecutiveFailures: 0,
       maxClearCells: 0,
       catsCollected: 0,
       catBonusScore: 0,
+      cloverBoostPending: false,
+      cloverBonusScore: 0,
+      clutchBonusScore: 0,
       boardDropsEarned: 0,
       lastBoardDropType: null,
       cloverDropped: false,
+      stageChallengeComplete: false,
+      stageChallengeStreak: 0,
+      stageChallengeScore: 0,
       items: this.inventory.snapshot(),
     };
   }
@@ -281,7 +316,7 @@ class OingGame {
     this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
-  async start(startStage = this.runtime?.forcedRound || 1) {
+  async start(startStage = this.runtime?.forcedRound || 1, options = {}) {
     if (this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'restart');
     preloadPlayAssets({ urgent: true });
     this.stopTimer();
@@ -294,7 +329,7 @@ class OingGame {
     const audioReady = this.settings.sound ? unlockAudio() : Promise.resolve(false);
     if (this.settings.music) prepareMusic();
     this.inventory = createRunInventory();
-    this.state = this.freshState(startStage);
+    this.state = this.freshState(startStage, options);
     this.retryStage = this.state.round;
     this.stageDuration = this.runtime?.duration || GAME_DURATION_SECONDS;
     this.state.timeLeft = this.stageDuration;
@@ -312,6 +347,9 @@ class OingGame {
     this.beginnerAutoHintShown = false;
     this.lastInteractionAt = performance.now();
     this.activeResolution = false;
+    this.activeGesture = false;
+    clearTimeout(this.finishGraceTimer);
+    this.finishGraceTimer = null;
     this.finishPending = false;
     this.finishing = false;
     this.autoShuffleUsed = false;
@@ -357,12 +395,13 @@ class OingGame {
     if (this.runtime.forcedCombo > 0) {
       this.state.combo = this.runtime.forcedCombo;
       this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
-      this.state.comboExpiresAt = 0;
+      this.refreshComboDeadline();
       this.updateHUD();
     }
     this.telemetry?.playReady();
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 100;
+    this.announceStageChallenge();
     if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
     else this.beginCountdown();
     return true;
@@ -410,7 +449,12 @@ class OingGame {
       cols,
       rows,
       round: this.state.round,
-      assist: boardAssistForSuccessCount(this.state.successCount),
+      assist: boardAssistForPerformance({
+        stage: this.state.round,
+        successCount: this.state.successCount,
+        failureCount: this.state.failureCount,
+        maxCombo: this.state.maxCombo,
+      }),
     });
     this.telemetry?.boardGenerated(this.model.findAnswers().length);
     return grid;
@@ -507,16 +551,17 @@ class OingGame {
   advanceCombo(amount = 1) {
     const previousCombo = this.state.combo;
     this.state.combo = previousCombo + Math.max(1, Math.round(Number(amount) || 1));
-    this.state.comboExpiresAt = 0;
+    this.refreshComboDeadline();
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
     if (!this.runtime.testMode) storageAdapter.saveBestCombo(this.state.maxCombo);
     const reward = boardDropReward(previousCombo, this.state.combo);
     let earnedDrop = null;
-    if (reward) {
+    if (reward && this.state.round >= 3) {
       const drop = chooseBoardDrop(this.state.combo, Math.random, {
         cloverGiven: this.state.cloverDropped,
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
+        stage: this.state.round,
       });
       if (drop) {
         earnedDrop = drop;
@@ -528,6 +573,12 @@ class OingGame {
       }
     }
     return { previousCombo, earnedDrop };
+  }
+
+  refreshComboDeadline(now = performance.now()) {
+    this.state.comboExpiresAt = this.state.combo > 0
+      ? now + comboWindowMsForStage(this.state.round)
+      : 0;
   }
 
   announceBoardItems(items, { playSound = true } = {}) {
@@ -572,8 +623,8 @@ class OingGame {
         this.telemetry?.selection({ correct: true, cellCount: stats.count + (stats.catCount || 0), catCount: stats.catCount || 0 });
         await this.handleSuccess(rect, stats);
       } else {
-        this.telemetry?.selection({ correct: false, cellCount: stats.count });
-        await this.handleFailure(rect);
+        this.telemetry?.selection({ correct: false, cellCount: stats.count, sum: stats.sum });
+        await this.handleFailure(rect, stats);
       }
     } finally {
       this.activeResolution = false;
@@ -594,16 +645,38 @@ class OingGame {
     const { previousCombo, earnedDrop } = this.advanceCombo(comboGain);
     const comboMilestone = comboMilestoneCrossed(previousCombo, this.state.combo);
     this.state.successCount += 1;
+    this.state.consecutiveFailures = 0;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, clearedCellCount);
     const clearPoints = scoreForClear(clearedCellCount, this.state.combo);
     const wideBonusPoints = scoreForWideClear(clearedCellCount, this.state.combo);
     const catBonusPoints = scoreForCatBonus(catCount, this.state.combo);
-    const specialBonusPoints = blastCells.length ? scoreForBomb(blastValue) : 0;
-    const points = clearPoints + wideBonusPoints + catBonusPoints + specialBonusPoints;
+    const specialBonusPoints = blastCells.length ? scoreForBomb(blastValue, blastCells.length) : 0;
+    const cloverBasePoints = clearPoints + wideBonusPoints + catBonusPoints + specialBonusPoints;
+    const cloverBonusPoints = this.state.cloverBoostPending ? scoreForCloverBonus(cloverBasePoints) : 0;
+    const clutchBonusPoints = this.freezeEndsAt > performance.now()
+      ? 0
+      : scoreForClutch(this.state.timeLeft, this.state.combo);
+    this.state.cloverBoostPending = false;
+    this.state.cloverBonusScore += cloverBonusPoints;
+    this.state.clutchBonusScore += clutchBonusPoints;
+    this.state.stageChallengeStreak += 1;
+    const challenge = stageChallengeForStage(this.state.round);
+    const challengeCompleted = !this.state.stageChallengeComplete && completesStageChallenge(challenge, {
+      cellCount: clearedCellCount,
+      catCount,
+      stageStreak: this.state.stageChallengeStreak,
+    });
+    const challengeBonusPoints = challengeCompleted ? stageChallengeBonus(this.state.round) : 0;
+    if (challengeCompleted) {
+      this.state.stageChallengeComplete = true;
+      this.state.stageChallengeScore += challengeBonusPoints;
+    }
+    const points = clearPoints + wideBonusPoints + catBonusPoints + specialBonusPoints
+      + challengeBonusPoints + cloverBonusPoints + clutchBonusPoints;
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
-    this.state.progress += 1;
+    this.state.progress += stageProgressGainForClear(clearedCellCount);
     this.completeTutorial();
     successHaptic(this.state.combo);
     duckMusic(comboGain > 1 ? 560 : 390, comboGain > 1 ? 0.48 : 0.64);
@@ -619,10 +692,26 @@ class OingGame {
       comboGain,
       wideBonusPoints,
       specialBonusPoints,
+      challengeBonusPoints,
+      cloverBonusPoints,
+      clutchBonusPoints,
     });
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
     this.speakForSuccess(catCount, comboGain);
+    if (challengeCompleted) {
+      this.ui.toast(`${challenge.label} 보너스 +${challengeBonusPoints.toLocaleString('ko-KR')}`);
+      this.ui.setPlayCharacter('success', 1000);
+      this.showCatMessage('challengeComplete');
+    }
+    if (cloverBonusPoints > 0) {
+      this.ui.toast(`클로버 보너스 +${cloverBonusPoints.toLocaleString('ko-KR')}`);
+      this.showCatMessage('cloverSuccess');
+    }
+    if (clutchBonusPoints > 0 && !challengeCompleted && cloverBonusPoints === 0) {
+      this.ui.toast(`막판 보너스 +${clutchBonusPoints.toLocaleString('ko-KR')}`);
+      this.showCatMessage('clutch');
+    }
     if (hasClockTile) this.addStageTime(5);
     if (hasClockTile) {
       playClockSound();
@@ -657,7 +746,6 @@ class OingGame {
       this.renderBoard();
       if (placed.length) this.announceBoardItems(placed, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
     }
-    this.state.comboExpiresAt = 0;
     this.state.inputLocked = false;
     this.updateHUD();
   }
@@ -695,18 +783,31 @@ class OingGame {
     this.inputGuardUntil = performance.now() + 140;
   }
 
-  async handleFailure(rect) {
+  async handleFailure(rect, stats = {}) {
     this.state.inputLocked = true;
     const previousCombo = this.state.combo;
-    this.state.combo = comboAfterFailure(previousCombo);
-    this.state.comboExpiresAt = 0;
+    this.state.failureCount += 1;
+    this.state.consecutiveFailures += 1;
+    this.state.combo = comboAfterIncorrectSelection(previousCombo, stats.sum);
+    this.state.stageChallengeStreak = 0;
+    this.refreshComboDeadline();
     failHaptic();
     playFailSound();
     this.updateHUD();
     if (previousCombo > this.state.combo) this.ui.showComboLoss(previousCombo - this.state.combo);
-    this.showCatMessage('fail');
+    this.showCatMessage(Math.abs((Number(stats.sum) || 0) - 10) === 1 ? 'nearMiss' : 'fail');
     this.ui.setPlayCharacter('fail', 700);
     await this.ui.animateFailure(rect);
+    if (!this.tutorialActive && shouldOfferStruggleHint(this.state.round, this.state.consecutiveFailures)) {
+      const answer = this.model.findEasyAnswer();
+      if (answer) {
+        this.state.consecutiveFailures = 0;
+        this.telemetry?.hint('assist');
+        this.ui.showHint(answer);
+        this.ui.setPlayCharacter('wave', 1000);
+        this.showCatMessage('struggleHint');
+      }
+    }
     if (this.tutorialActive && !storageAdapter.hasSeenDragTutorial()) {
       window.setTimeout(() => this.maybeShowTutorial(), 120);
     }
@@ -729,7 +830,9 @@ class OingGame {
     } else if (this.state.combo === 3) {
       this.ui.setPlayCharacter('cheer', 900);
       this.showCatMessage('combo3');
-    } else if (this.state.combo > 0 && this.state.combo % ITEM_REWARD_INTERVAL === ITEM_REWARD_INTERVAL - 1) {
+    } else if (this.state.round >= 3
+      && this.state.combo > 0
+      && this.state.combo % ITEM_REWARD_INTERVAL === ITEM_REWARD_INTERVAL - 1) {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
       this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
@@ -768,10 +871,14 @@ class OingGame {
     const nextRound = this.state.round + 1;
     this.state.round = nextRound;
     this.state.progress = 0;
+    this.state.stageChallengeComplete = false;
+    this.state.stageChallengeStreak = 0;
     this.autoShuffleUsed = false;
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
+    const unlockGrant = itemUnlockGrantForStage(nextRound);
+    if (unlockGrant) this.grantItems(unlockGrant, { source: 'earned' });
     this.state.timeLeft = cappedSessionTime(this.state.timeLeft, timeBonus);
     if (this.state.timeLeft > 10) {
       this.lowTimeSpoken = false;
@@ -786,11 +893,26 @@ class OingGame {
       carriedItems = this.buildRound();
     });
     this.state.inputLocked = false;
+    if (unlockGrant?.bomb) this.ui.toast('폭탄을 쓸 수 있게 됐다냥!');
+    if (unlockGrant?.clock) this.ui.toast('시계 아이템이 열렸다냥!');
     if (storedItems.length) this.ui.toast('남은 아이템은 보관함에 챙겼다냥!');
     if (carriedItems.length) this.announceBoardItems(carriedItems);
-    this.inputGuardUntil = performance.now() + 260;
+    this.inputGuardUntil = performance.now() + STAGE_TRANSITION_INPUT_GUARD_MS;
+    this.refreshComboDeadline(this.inputGuardUntil);
     this.ui.showRoundReady(360);
+    this.announceStageChallenge();
     this.beginCountdown();
+  }
+
+  announceStageChallenge() {
+    const challenge = stageChallengeForStage(this.state.round);
+    if (!challenge || this.state.stageChallengeComplete) return;
+    const type = challenge.kind === 'wide'
+      ? 'challengeWide'
+      : challenge.kind === 'cat'
+        ? 'challengeCat'
+        : 'challengeChain';
+    this.showCatMessage(type);
   }
 
   async storeRoundItems({ soundDelay = 0 } = {}) {
@@ -901,13 +1023,18 @@ class OingGame {
     );
     const cast = this.ui.animateItemCast('bomb', center || this.ui.boardFrame);
     await delay(175);
-    await this.resolveBomb(target);
+    await this.resolveBomb({ ...target, stats: this.model.stats(target.rect) });
     await cast;
   }
 
   async resolveBomb({ rect, stats }, boardItemKey = null) {
-    const points = scoreForBomb(stats.sum);
+    const catCount = Number(stats.catCount) || 0;
+    const catBonusPoints = scoreForCatBonus(catCount, Math.max(1, this.state.combo));
+    const points = scoreForBomb(stats.sum, stats.count) + catBonusPoints;
     this.state.score += points;
+    this.state.catsCollected += catCount;
+    this.state.catBonusScore += catBonusPoints;
+    this.telemetry?.itemBlast({ type: 'bomb', cellCount: stats.count, catCount });
     this.updateHUD();
     this.ui.showItemScoreBurst(points, rect, 'bomb');
     this.showCatMessage('bomb');
@@ -921,8 +1048,13 @@ class OingGame {
   }
 
   async resolveMegaBomb({ row, col, rect, cells, stats }, boardItemKey) {
-    const points = scoreForMegaBomb(stats.sum);
+    const catCount = cells.reduce((count, cell) => count + (this.model.hasBonusCat(cell.r, cell.c) ? 1 : 0), 0);
+    const catBonusPoints = scoreForCatBonus(catCount, Math.max(1, this.state.combo));
+    const points = scoreForMegaBomb(stats.sum, stats.count) + catBonusPoints;
     this.state.score += points;
+    this.state.catsCollected += catCount;
+    this.state.catBonusScore += catBonusPoints;
+    this.telemetry?.itemBlast({ type: 'megabomb', cellCount: stats.count, catCount });
     this.updateHUD();
     this.ui.showItemScoreBurst(points, rect, 'megabomb');
     this.showCatMessage('megabomb');
@@ -1028,6 +1160,7 @@ class OingGame {
   async resolveClover(boardItemKey, sourceElement) {
     this.state.inputLocked = true;
     const answer = this.model.findAnswer();
+    this.state.cloverBoostPending = true;
     const animation = this.ui.animateClover(sourceElement);
     this.boardItems.delete(boardItemKey);
     this.renderBoard();
@@ -1110,6 +1243,15 @@ class OingGame {
       }
       this.state.timeLeft = Math.max(0, (this.endAt - now) / 1000);
     }
+    if (!this.state.inputLocked
+      && this.state.combo > 0
+      && this.state.comboExpiresAt > 0
+      && now >= this.state.comboExpiresAt) {
+      const previousCombo = this.state.combo;
+      this.state.combo = comboAfterIdle(previousCombo, this.state.round);
+      this.refreshComboDeadline(now);
+      if (previousCombo > this.state.combo) this.ui.showComboLoss(previousCombo - this.state.combo);
+    }
     if (!isFrozen && this.state.timeLeft <= 10 && !this.lowTimeSpoken) {
       this.lowTimeSpoken = true;
       this.showCatMessage('lowTime');
@@ -1133,6 +1275,19 @@ class OingGame {
       this.state.timeLeft = 0;
       this.stopTimer();
       this.updateHUD();
+      return;
+    }
+    if (this.activeGesture) {
+      this.finishPending = true;
+      this.state.timeLeft = 0;
+      this.stopTimer();
+      this.updateHUD();
+      clearTimeout(this.finishGraceTimer);
+      this.finishGraceTimer = window.setTimeout(() => {
+        this.finishGraceTimer = null;
+        this.activeGesture = false;
+        if (this.finishPending && !this.activeResolution) this.finish();
+      }, FINAL_GESTURE_GRACE_MS);
       return;
     }
     this.finish();
@@ -1226,6 +1381,9 @@ class OingGame {
   async finish() {
     if (!this.state.running || this.finishing) return;
     this.finishing = true;
+    clearTimeout(this.finishGraceTimer);
+    this.finishGraceTimer = null;
+    this.activeGesture = false;
     this.finishPending = false;
     this.state.running = false;
     this.state.inputLocked = true;
@@ -1244,16 +1402,17 @@ class OingGame {
     this.ui.setPlayCharacter('fail');
     const oldBest = storageAdapter.getBestScore();
     const previousScore = storageAdapter.getLastScore();
-    const newRecord = this.state.score > oldBest;
+    const recordEligible = this.state.recordEligible !== false;
+    const newRecord = recordEligible && this.state.score > oldBest;
     this.telemetry?.finish(this.state, 'timer');
     fadeOutMusic();
     playGameOverSound();
     gameOverHaptic(newRecord);
     await this.ui.animateGameEnd({ score: this.state.score, maxCombo: this.state.maxCombo, newRecord });
     if (!this.runtime.testMode && newRecord) storageAdapter.saveBestScore(this.state.score);
-    if (!this.runtime.testMode) storageAdapter.saveBestCombo(this.state.maxCombo);
+    if (!this.runtime.testMode && recordEligible) storageAdapter.saveBestCombo(this.state.maxCombo);
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(this.state.round);
-    this.ui.updateBestScore(Math.max(oldBest, this.state.score));
+    this.ui.updateBestScore(recordEligible ? Math.max(oldBest, this.state.score) : oldBest);
     this.lastResultSummary = {
       score: this.state.score,
       maxCombo: this.state.maxCombo,
@@ -1264,10 +1423,11 @@ class OingGame {
       newRecord,
       previousBest: oldBest,
       previousScore,
+      recordEligible,
     };
-    this.retryStage = this.runtime?.forcedRound || 1;
+    this.retryStage = this.state.round;
     this.ui.showResult(this.lastResultSummary);
-    if (!this.runtime.testMode) storageAdapter.saveRunScore(this.state.score);
+    if (!this.runtime.testMode && recordEligible) storageAdapter.saveRunScore(this.state.score);
     this.finishing = false;
   }
 
@@ -1320,7 +1480,7 @@ class OingGame {
     const config = getRoundConfig(this.state.round);
     this.ui.updateHUD({
       ...this.state,
-      rewardRemaining: itemRewardCountdown(this.state.combo),
+      rewardRemaining: itemRewardCountdown(this.state.combo, this.state.round),
       target: config.target,
       duration: this.stageDuration,
       timed: this.stageDuration > 0,
@@ -1355,7 +1515,7 @@ if (game.runtime.testMode) {
     findAnswer: () => game.model.findAnswer(),
     setCombo: (combo) => {
       game.state.combo = Math.max(0, Math.floor(Number(combo) || 0));
-      game.state.comboExpiresAt = 0;
+      game.refreshComboDeadline();
       game.updateHUD();
       return game.state.combo;
     },

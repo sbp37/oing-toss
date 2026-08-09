@@ -46,9 +46,13 @@ export function summarizeTelemetryRuns(runs = []) {
     averageRound: Math.round(mean(completed.map((run) => run.round)) * 10) / 10,
     averageMaxCombo: Math.round(mean(completed.map((run) => run.maxCombo)) * 10) / 10,
     accuracy: selections ? Math.round((successes / selections) * 1000) / 10 : 0,
+    nearMissRate: selections ? Math.round(valid.reduce((sum, run) => sum + whole(run.nearMisses), 0) / selections * 1000) / 10 : 0,
     richClearRatio: successes ? Math.round(valid.reduce((sum, run) => sum + whole(run.richClears), 0) / successes * 1000) / 10 : 0,
     averageFirstInputMs: Math.round(mean(valid.map((run) => run.firstInputMs).filter(Number.isFinite))),
     itemsUsed: Object.freeze(itemsUsed),
+    assistHints: valid.reduce((sum, run) => sum + whole(run.assistHints), 0),
+    itemClearedCells: valid.reduce((sum, run) => sum + whole(run.itemClearedCells), 0),
+    itemCatsCollected: valid.reduce((sum, run) => sum + whole(run.itemCatsCollected), 0),
     exits: Object.freeze(valid.reduce((result, run) => {
       const reason = run.endReason || 'unknown';
       result[reason] = (result[reason] || 0) + 1;
@@ -69,7 +73,8 @@ export class RunTelemetry {
     this.run = {
       schema: 1, startedAt: now(), viewportWidth: whole(viewport.width), viewportHeight: whole(viewport.height), firstInputMs: null,
       selections: 0, successes: 0, failures: 0, simpleClears: 0, richClears: 0, clearedCells: 0, catsCollected: 0,
-      boardsGenerated: 0, roundsCleared: 0, perfectClears: 0, manualHints: 0, autoHints: 0, pauses: 0, pausedMs: 0,
+      boardsGenerated: 0, roundsCleared: 0, perfectClears: 0, manualHints: 0, autoHints: 0, assistHints: 0, nearMisses: 0,
+      itemClearedCells: 0, itemCatsCollected: 0, pauses: 0, pausedMs: 0,
       itemsEarned: {}, itemsUsed: {},
     };
   }
@@ -86,11 +91,15 @@ export class RunTelemetry {
     this.run.initialAnswersTotal = whole(this.run.initialAnswersTotal) + whole(answerCount);
   }
 
-  selection({ correct = false, cellCount = 0, catCount = 0 } = {}) {
+  selection({ correct = false, cellCount = 0, catCount = 0, sum = 0 } = {}) {
     if (this.closed) return;
     this.firstInput();
     this.run.selections += 1;
-    if (!correct) { this.run.failures += 1; return; }
+    if (!correct) {
+      this.run.failures += 1;
+      if (Math.abs(finite(sum) - 10) === 1) this.run.nearMisses += 1;
+      return;
+    }
     this.run.successes += 1;
     const cells = whole(cellCount);
     this.run.clearedCells += cells;
@@ -101,7 +110,17 @@ export class RunTelemetry {
 
   itemEarned(type) { if (!this.closed && type) this.run.itemsEarned[type] = whole(this.run.itemsEarned[type]) + 1; }
   itemUsed(type) { if (!this.closed && type) { this.firstInput(); this.run.itemsUsed[type] = whole(this.run.itemsUsed[type]) + 1; } }
-  hint(kind = 'manual') { if (!this.closed) kind === 'auto' ? this.run.autoHints += 1 : this.run.manualHints += 1; }
+  itemBlast({ cellCount = 0, catCount = 0 } = {}) {
+    if (this.closed) return;
+    this.run.itemClearedCells += whole(cellCount);
+    this.run.itemCatsCollected += whole(catCount);
+  }
+  hint(kind = 'manual') {
+    if (this.closed) return;
+    if (kind === 'auto') this.run.autoHints += 1;
+    else if (kind === 'assist') this.run.assistHints += 1;
+    else this.run.manualHints += 1;
+  }
   roundCleared({ perfect = false } = {}) { if (!this.closed) { this.run.roundsCleared += 1; if (perfect) this.run.perfectClears += 1; } }
   pause() { if (!this.closed && this.pauseStartedAt === null) { this.run.pauses += 1; this.pauseStartedAt = this.monotonicNow(); } }
   resume() { if (!this.closed && this.pauseStartedAt !== null) { this.run.pausedMs += whole(this.monotonicNow() - this.pauseStartedAt); this.pauseStartedAt = null; } }
@@ -114,7 +133,9 @@ export class RunTelemetry {
     const result = Object.freeze({
       ...this.run, endedAt: this.now(), durationSeconds: Math.round(durationMs / 100) / 10,
       outcome: endReason === 'timer' ? 'completed' : 'abandoned', endReason,
-      score: whole(finalState.score), round: Math.max(1, whole(finalState.round, 1)), maxCombo: whole(finalState.maxCombo), successCount: whole(finalState.successCount),
+      score: whole(finalState.score), round: Math.max(1, whole(finalState.round, 1)),
+      startStage: Math.max(1, whole(finalState.startStage, 1)), recordEligible: finalState.recordEligible !== false,
+      maxCombo: whole(finalState.maxCombo), successCount: whole(finalState.successCount),
     });
     saveTelemetryRun(result, this.storage);
     return result;

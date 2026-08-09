@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
 import { simulateBalanceSuite, simulateRun } from '../js/balance.js';
+import { recordEligibleForStartStage } from '../js/data.js';
+
+assert.equal(recordEligibleForStartStage(1), true, 'full runs starting at stage 1 may update records');
+assert.equal(recordEligibleForStartStage(2), false, 'checkpoint retries must not update global records');
+assert.equal(recordEligibleForStartStage(8), false, 'late checkpoint retries must remain record-ineligible');
 
 const first = simulateRun({ seed: 77, profile: 'regular' });
 const repeat = simulateRun({ seed: 77, profile: 'regular' });
@@ -15,11 +20,17 @@ assert.ok(suite.novice.scoreMean < suite.regular.scoreMean);
 assert.ok(suite.regular.scoreMean < suite.expert.scoreMean);
 assert.ok(suite.novice.clearsMean < suite.expert.clearsMean);
 assert.ok(suite.expert.richClearRatio > suite.novice.richClearRatio);
+assert.ok(suite.expert.initialShapePatternsMean > suite.novice.initialShapePatternsMean);
+assert.ok(suite.expert.initialValuePatternsMean > suite.novice.initialValuePatternsMean);
+assert.ok(suite.expert.initialOrientationsMean >= suite.novice.initialOrientationsMean);
+assert.ok(suite.novice.maxComboMean < suite.regular.maxComboMean);
+assert.ok(suite.regular.maxComboMean < suite.expert.maxComboMean, 'tighter late windows still reward genuinely fast play');
+assert.ok(suite.expert.challengeBonusMean > suite.regular.challengeBonusMean);
 assert.ok(suite.novice.roundMean >= 3 && suite.novice.roundMean <= 5.5, 'novices should usually finish around stages 3-5');
 assert.ok(suite.regular.roundMean >= 5 && suite.regular.roundMean <= 7.5, 'regular players should usually finish around stages 5-7');
 assert.ok(suite.expert.roundMean >= 7.5 && suite.expert.roundMean <= 10.5, 'experts should usually reach stages 8-10+');
 assert.ok(suite.expert.roundTimeBonusMean <= 30, 'only the three board-size milestones may add stage time');
-assert.ok(suite.expert.itemTimeBonusMean <= 5, 'rare clocks must not dominate survival time');
+assert.ok(suite.expert.itemTimeBonusMean <= 15, 'rare clock and freeze rewards must not dominate survival time');
 assert.equal(suite.novice.cappedRuns, 0);
 
 console.log('balance.test.mjs: seeded novice/regular/expert progression passed');
