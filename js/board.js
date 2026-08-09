@@ -106,7 +106,19 @@ export function numberBagForRound(numberCount, round = 1) {
 export function tripleUnitCountForRound(numberCount, round = 1) {
   const count = Math.max(2, Math.round(Number(numberCount) || 2));
   const stage = Math.max(1, Math.round(Number(round) || 1));
-  const ratio = stage <= 2 ? 0 : stage === 3 ? 0.08 : stage === 4 ? 0.12 : stage === 5 ? 0.16 : 0.2;
+  const ratio = stage <= 2
+    ? 0
+    : stage === 3
+      ? 0.08
+      : stage === 4
+        ? 0.12
+        : stage === 5
+          ? 0.16
+          : stage <= 7
+            ? 0.2
+            : stage <= 9
+              ? 0.24
+              : 0.28;
   let units = Math.min(Math.floor(count / 3), Math.round((count * ratio) / 3));
   if (units % 2 !== count % 2) units += units * 3 + 3 <= count ? 1 : -1;
   return Math.max(0, units);
@@ -115,8 +127,9 @@ export function tripleUnitCountForRound(numberCount, round = 1) {
 export function adjacentSeedCountForRound(round = 1) {
   const stage = Math.max(1, Math.round(Number(round) || 1));
   if (stage <= 2) return 3;
-  if (stage <= 5) return 2;
-  return 1;
+  if (stage <= 4) return 2;
+  if (stage <= 7) return 1;
+  return 0;
 }
 
 export function boardPacingForRound(round = 1, assist = 'standard') {
@@ -131,7 +144,11 @@ export function boardPacingForRound(round = 1, assist = 'standard') {
           ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, minimumAdjacentPairs: 2, maximumAdjacentPairs: 3, minimumRichAnswers: 4 }
           : stage === 5
             ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, minimumAdjacentPairs: 1, maximumAdjacentPairs: 3, minimumRichAnswers: 5 }
-            : { targetAnswers: 13, maximumAnswers: 17, minimumAnswers: 10, minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 6 };
+            : stage <= 7
+              ? { targetAnswers: 13, maximumAnswers: 17, minimumAnswers: 10, minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 6 }
+              : stage <= 9
+                ? { targetAnswers: 14, maximumAnswers: 18, minimumAnswers: 10, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 7 }
+                : { targetAnswers: 15, maximumAnswers: 19, minimumAnswers: 11, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8 };
   const assistAdjacentBonus = assist === 'starter' ? 1 : 0;
   return Object.freeze({
     ...base,

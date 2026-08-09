@@ -1,5 +1,5 @@
-// Kept as a compatibility fallback for older callers. Live play now uses the
-// per-stage time limit returned by getStageConfig().
+// One run starts with two minutes. Stage transitions and time items can extend
+// real play, but the amount currently held never exceeds this cap.
 export const GAME_DURATION_SECONDS = 120;
 export const PRACTICE_DURATION_SECONDS = 240;
 export const ITEM_REWARD_INTERVAL = 7;
@@ -14,16 +14,16 @@ export const RESULT_SCORE_THRESHOLDS = Object.freeze({
 });
 
 export const STAGE_CONFIG = Object.freeze([
-  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 0, clockChance: 0, bombChance: 0 },
-  { stage: 2, round: 2, size: 4, cols: 4, rows: 4, target: 4, timeLimit: 0, clockChance: 0, bombChance: 0 },
-  { stage: 3, round: 3, size: 4, cols: 4, rows: 4, target: 5, timeLimit: 0, clockChance: 0, bombChance: 0 },
-  { stage: 4, round: 4, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 0, clockChance: 0, bombChance: 0 },
-  { stage: 5, round: 5, size: 5, cols: 5, rows: 5, target: 6, timeLimit: 0, clockChance: 0, bombChance: 0 },
-  { stage: 6, round: 6, size: 5, cols: 5, rows: 5, target: 7, timeLimit: 90, clockChance: 0.55, bombChance: 0 },
-  { stage: 7, round: 7, size: 6, cols: 6, rows: 6, target: 7, timeLimit: 90, clockChance: 0.5, bombChance: 0.38 },
-  { stage: 8, round: 8, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 86, clockChance: 0.48, bombChance: 0.42 },
-  { stage: 9, round: 9, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 82, clockChance: 0.46, bombChance: 0.46 },
-  { stage: 10, round: 10, size: 6, cols: 6, rows: 6, target: 10, timeLimit: 78, clockChance: 0.44, bombChance: 0.5 },
+  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
+  { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
+  { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 7, timeLimit: 120, clockChance: 0, bombChance: 0 },
+  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0.02, bombChance: 0.08 },
+  { stage: 5, round: 5, size: 7, cols: 7, rows: 7, target: 11, timeLimit: 120, clockChance: 0.025, bombChance: 0.12 },
+  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 7, cols: 7, rows: 9, target: 14, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 7, cols: 7, rows: 10, target: 16, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 7, cols: 7, rows: 10, target: 18, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 7, cols: 7, rows: 10, target: 20, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -54,9 +54,9 @@ const BOARD_DROP_POOLS = Object.freeze({
   // Time items are memorable but must not create an endless reward loop.
   // Seven-combo rewards therefore stay frequent while most drops affect the
   // board instead of extending the two-minute session.
-  1: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'clock']),
-  2: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'clock']),
-  3: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
+  1: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
+  2: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
+  3: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
 });
 
 export function chooseBoardDrop(combo, random = Math.random, {
@@ -71,13 +71,10 @@ export function chooseBoardDrop(combo, random = Math.random, {
   const tier = streak >= 21 ? 3 : streak >= 14 ? 2 : 1;
   const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
   if (!pool.length) return null;
-  // Back-to-back identical drops feel like a missed reward. Preserve the
-  // weighted pool while choosing from another available type when possible.
-  const variedPool = pool.some((id) => id !== previousType)
-    ? pool.filter((id) => id !== previousType)
-    : pool;
-  const index = Math.min(variedPool.length - 1, Math.floor(Math.max(0, random()) * variedPool.length));
-  return BOARD_DROP_ITEMS[variedPool[index]];
+  // Do not force variety here: with only bomb and clock in the live pool that
+  // would turn every bomb into a guaranteed clock next, enabling endless time.
+  const index = Math.min(pool.length - 1, Math.floor(Math.max(0, random()) * pool.length));
+  return BOARD_DROP_ITEMS[pool[index]];
 }
 
 export function boardDropReward(previousCombo, nextCombo) {
@@ -129,7 +126,19 @@ export function boardDropInventoryGrant(type) {
   return null;
 }
 
+export function cappedSessionTime(timeLeft = 0, bonusSeconds = 0) {
+  return Math.min(
+    GAME_DURATION_SECONDS,
+    Math.max(0, Number(timeLeft) || 0) + Math.max(0, Number(bonusSeconds) || 0),
+  );
+}
+
 export function roundTimeBonusSeconds(round = 1) {
+  const current = getStageConfig(round);
+  const next = getStageConfig(current.stage + 1);
+  if (current.cols === 4 && next.cols === 5) return 5;
+  if (current.cols === 5 && next.cols === 6) return 10;
+  if (current.cols === 6 && next.cols === 7) return 15;
   return 0;
 }
 
@@ -373,10 +382,10 @@ export function getStageConfig(stageNumber) {
     size: last.size,
     cols: last.cols,
     rows: last.rows,
-    target: Math.min(18, last.target + Math.floor((extra + 1) / 2)),
-    timeLimit: Math.max(50, last.timeLimit - extra * 2),
-    clockChance: Math.max(0.28, last.clockChance - extra * 0.015),
-    bombChance: Math.min(0.72, last.bombChance + extra * 0.018),
+    target: Math.min(30, last.target + extra * 2),
+    timeLimit: GAME_DURATION_SECONDS,
+    clockChance: Math.min(0.065, last.clockChance + extra * 0.002),
+    bombChance: Math.min(0.58, last.bombChance + extra * 0.02),
   };
 }
 

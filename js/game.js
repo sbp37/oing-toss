@@ -1,9 +1,11 @@
 import {
   BOARD_DROP_ITEMS,
+  GAME_DURATION_SECONDS,
   ITEM_REWARD_INTERVAL,
   START_COUNTDOWN_STEPS,
   TIME_FREEZE_SECONDS,
   boardDropReward,
+  cappedSessionTime,
   chooseBoardDrop,
   comboAfterFailure,
   comboGainForClear,
@@ -13,6 +15,7 @@ import {
   itemRewardCountdown,
   pickMessage,
   rebasePausedTimeline,
+  roundTimeBonusSeconds,
   specialTilePlanForStage,
   stageClearBonus,
   scoreForBomb,
@@ -131,9 +134,9 @@ class OingGame {
     this.selectionWasPerfect = false;
     this.telemetry = null;
     this.stageDuration = 0;
-    this.retryStage = storageAdapter.getHighestStage();
+    this.retryStage = 1;
     this.autoShuffleUsed = false;
-    this.state = this.freshState(this.retryStage);
+    this.state = this.freshState();
     this.input = attachStickyRectangleInput({
       boardEl: this.ui.board,
       isEnabled: () => this.state.running
@@ -177,9 +180,8 @@ class OingGame {
     schedulePlayAssetsPreload();
   }
 
-  freshState(startStage = this.runtime?.forcedRound || storageAdapter.getHighestStage()) {
+  freshState(startStage = this.runtime?.forcedRound || 1) {
     const stage = Math.max(1, Math.round(Number(startStage) || 1));
-    const config = getRoundConfig(stage);
     return {
       running: false,
       paused: false,
@@ -189,7 +191,7 @@ class OingGame {
       maxCombo: 0,
       round: stage,
       progress: 0,
-      timeLeft: this.runtime?.duration || config.timeLimit || 0,
+      timeLeft: this.runtime?.duration || GAME_DURATION_SECONDS,
       comboExpiresAt: 0,
       successCount: 0,
       maxClearCells: 0,
@@ -214,7 +216,7 @@ class OingGame {
       button.addEventListener('pointerenter', primePlay, { passive: true, once: true });
       button.addEventListener('focus', primePlay, { passive: true, once: true });
     });
-    document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || storageAdapter.getHighestStage()));
+    document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
     document.querySelector('#retry-button').addEventListener('click', () => this.start(this.retryStage));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
@@ -239,7 +241,7 @@ class OingGame {
     document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
-      this.start(this.runtime.forcedRound || storageAdapter.getHighestStage());
+      this.start(this.runtime.forcedRound || 1);
     });
     document.querySelector('#sound-toggle').addEventListener('click', () => {
       this.settings.sound = !this.settings.sound;
@@ -279,7 +281,7 @@ class OingGame {
     this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
-  async start(startStage = storageAdapter.getHighestStage()) {
+  async start(startStage = this.runtime?.forcedRound || 1) {
     if (this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'restart');
     preloadPlayAssets({ urgent: true });
     this.stopTimer();
@@ -294,7 +296,7 @@ class OingGame {
     this.inventory = createRunInventory();
     this.state = this.freshState(startStage);
     this.retryStage = this.state.round;
-    this.stageDuration = this.runtime?.duration || getRoundConfig(this.state.round).timeLimit || 0;
+    this.stageDuration = this.runtime?.duration || GAME_DURATION_SECONDS;
     this.state.timeLeft = this.stageDuration;
     this.telemetry = new RunTelemetry({ viewport: { width: window.innerWidth, height: window.innerHeight } });
     this.boardItems.reset();
@@ -665,13 +667,15 @@ class OingGame {
     const amount = Math.max(0, Number(seconds) || 0);
     const source = this.ui.board.querySelector('.tile.is-clock-triggered')
       || this.ui.board.querySelector('.tile[data-special="clock"]');
-    this.state.timeLeft = Math.min(999, this.state.timeLeft + amount);
+    const previousTime = this.state.timeLeft;
+    this.state.timeLeft = cappedSessionTime(previousTime, amount);
+    const gainedTime = this.state.timeLeft - previousTime;
     if (this.freezeEndsAt > performance.now()) this.frozenTimeLeft = this.state.timeLeft;
-    if (this.timer) this.endAt += amount * 1000;
+    if (this.timer) this.endAt += gainedTime * 1000;
     this.lowTimeSpoken = this.state.timeLeft <= 10;
     this.updateHUD();
-    if (source) this.ui.animateClock(amount, source);
-    return true;
+    if (source && gainedTime > 0) this.ui.animateClock(gainedTime, source);
+    return gainedTime > 0;
   }
 
   async handleNoAnswers() {
@@ -742,6 +746,7 @@ class OingGame {
     this.telemetry?.roundCleared({ perfect });
     this.stopTimer();
     const clearedStage = this.state.round;
+    const timeBonus = roundTimeBonusSeconds(clearedStage);
     const scoreBonus = stageClearBonus(clearedStage, this.state.timeLeft, perfect);
     this.state.score += scoreBonus;
     roundHaptic();
@@ -767,8 +772,11 @@ class OingGame {
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
-    this.stageDuration = this.runtime?.duration || getRoundConfig(nextRound).timeLimit || 0;
-    this.state.timeLeft = this.stageDuration;
+    this.state.timeLeft = cappedSessionTime(this.state.timeLeft, timeBonus);
+    if (this.state.timeLeft > 10) {
+      this.lowTimeSpoken = false;
+      this.lastCountdownSecond = null;
+    }
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
     this.ui.setFreezeActive(false);
@@ -963,9 +971,11 @@ class OingGame {
   async resolveClock(boardItemKey = null, sourceElement = this.ui.elements.clockButton) {
     this.state.inputLocked = true;
     const now = performance.now();
-    this.state.timeLeft = Math.min(999, this.state.timeLeft + 5);
+    const previousTime = this.state.timeLeft;
+    this.state.timeLeft = cappedSessionTime(previousTime, 5);
+    const gainedTime = this.state.timeLeft - previousTime;
     if (this.freezeEndsAt > now) this.frozenTimeLeft = this.state.timeLeft;
-    if (this.timer) this.endAt += 5000;
+    if (this.timer) this.endAt += gainedTime * 1000;
     if (this.state.timeLeft > 10) {
       this.lowTimeSpoken = false;
       this.lastCountdownSecond = null;
@@ -976,7 +986,9 @@ class OingGame {
     duckMusic(650, 0.58);
     playClockSound();
     clockHaptic();
-    const animation = this.ui.animateClock(5, sourceElement);
+    const animation = gainedTime > 0
+      ? this.ui.animateClock(gainedTime, sourceElement)
+      : Promise.resolve();
     if (boardItemKey) {
       this.boardItems.delete(boardItemKey);
       this.renderBoard();
@@ -1195,7 +1207,7 @@ class OingGame {
     const now = performance.now();
     if (now <= this.restartConfirmUntil) {
       this.resetRestartConfirmation();
-      this.start(this.state.round);
+      this.start(this.runtime?.forcedRound || 1);
       return;
     }
     this.restartConfirmUntil = now + 2200;
@@ -1253,7 +1265,7 @@ class OingGame {
       previousBest: oldBest,
       previousScore,
     };
-    this.retryStage = this.state.round;
+    this.retryStage = this.runtime?.forcedRound || 1;
     this.ui.showResult(this.lastResultSummary);
     if (!this.runtime.testMode) storageAdapter.saveRunScore(this.state.score);
     this.finishing = false;
@@ -1373,8 +1385,6 @@ if (game.runtime.testMode) {
       game.stopTimer();
       game.state.round = Math.max(1, Math.floor(Number(stage) || 1));
       game.state.progress = 0;
-      game.stageDuration = game.runtime?.duration || getRoundConfig(game.state.round).timeLimit || 0;
-      game.state.timeLeft = game.stageDuration;
       game.autoShuffleUsed = false;
       game.buildRound();
       game.state.inputLocked = false;

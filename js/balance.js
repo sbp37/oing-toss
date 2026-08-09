@@ -7,6 +7,7 @@ import {
   GAME_DURATION_SECONDS,
   TIME_FREEZE_SECONDS,
   boardDropReward,
+  cappedSessionTime,
   chooseBoardDrop,
   comboAfterFailure,
   comboGainForClear,
@@ -97,6 +98,7 @@ export function simulateRun({
       combo: 0,
       maxCombo: 0,
       round: 1,
+      progress: 0,
       clears: 0,
       errors: 0,
       simpleClears: 0,
@@ -140,13 +142,21 @@ export function simulateRun({
       state.initialSimpleAnswerCounts.push(answers.filter((answer) => answer.count === 2).length);
       clearsOnBoard = 0;
     };
-    const completeBoard = () => {
+    const closeBoard = () => {
       state.boardClearCounts.push(clearsOnBoard);
       if (model.remainingPlayableCells() === 0) state.perfectClears += 1;
+    };
+    const replaceBoard = () => {
+      closeBoard();
+      buildBoard();
+    };
+    const completeStage = () => {
+      closeBoard();
       const bonus = roundTimeBonusSeconds(state.round);
       state.roundTimeBonus += bonus;
-      state.timeLeft += bonus;
+      state.timeLeft = cappedSessionTime(state.timeLeft, bonus);
       state.round += 1;
+      state.progress = 0;
       buildBoard();
     };
     const useDrop = (drop) => {
@@ -154,11 +164,13 @@ export function simulateRun({
       state.itemsUsed[drop.id] = (state.itemsUsed[drop.id] || 0) + 1;
       spendTime(randomBetween(random, 0.32, 0.58));
       if (drop.id === 'clock') {
-        state.timeLeft += 8;
-        state.itemTimeBonus += 8;
+        const previousTime = state.timeLeft;
+        state.timeLeft = cappedSessionTime(state.timeLeft, 5);
+        state.itemTimeBonus += state.timeLeft - previousTime;
       } else if (drop.id === 'freeze') {
-        state.timeLeft += TIME_FREEZE_SECONDS;
-        state.itemTimeBonus += TIME_FREEZE_SECONDS;
+        const previousTime = state.timeLeft;
+        state.timeLeft = cappedSessionTime(state.timeLeft, TIME_FREEZE_SECONDS);
+        state.itemTimeBonus += state.timeLeft - previousTime;
       } else if (drop.id === 'clover') {
         cloverBoost = true;
       } else if (drop.id === 'bomb') {
@@ -189,7 +201,7 @@ export function simulateRun({
 
       const answers = model.findAnswers();
       if (!answers.length) {
-        completeBoard();
+        replaceBoard();
         continue;
       }
       if (random() < settings.errorRate) {
@@ -208,6 +220,7 @@ export function simulateRun({
         + scoreForWideClear(clearedCells, state.combo)
         + scoreForCatBonus(stats.catCount, state.combo);
       state.clears += 1;
+      state.progress += 1;
       clearsOnBoard += 1;
       state.catBonuses += stats.catCount;
       if (answer.count >= 3) state.richClears += 1;
@@ -228,7 +241,9 @@ export function simulateRun({
           useDrop(drop);
         }
       }
-      if (!model.findAnswers().length) completeBoard();
+      const config = getRoundConfig(state.round);
+      if (state.progress >= config.target) completeStage();
+      else if (!model.findAnswers().length) replaceBoard();
     }
     state.capped = state.elapsedSeconds >= maximumElapsedSeconds || actions >= 600;
     state.elapsedSeconds = Math.round(state.elapsedSeconds * 10) / 10;

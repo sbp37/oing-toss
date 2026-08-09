@@ -77,16 +77,26 @@ assert.equal(boardAssistForSuccessCount(55), 'standard');
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 assert.equal(EASY_BOARD_BONUS.minimumAnswers, 1);
 
-assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 0, clockChance: 0, bombChance: 0 });
-assert.equal(getRoundConfig(3).size, 4);
-assert.equal(getRoundConfig(3).timeLimit, 0);
-assert.equal(getRoundConfig(4).size, 5);
-assert.equal(getRoundConfig(6).size, 5);
-assert.equal(getRoundConfig(6).timeLimit, 90);
-assert.equal(getRoundConfig(7).size, 6);
-assert.equal(getRoundConfig(20).size, 6);
-assert.ok(getRoundConfig(20).timeLimit >= 50);
+assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 });
+assert.deepEqual(
+  [1, 2, 3, 4, 5].map((stage) => {
+    const config = getRoundConfig(stage);
+    return [config.cols, config.rows, config.target];
+  }),
+  [[4, 4, 3], [5, 5, 5], [6, 6, 7], [6, 6, 9], [7, 7, 11]],
+);
+assert.deepEqual(
+  [6, 7, 8].map((stage) => {
+    const config = getRoundConfig(stage);
+    return [config.cols, config.rows, config.target];
+  }),
+  [[7, 8, 12], [7, 9, 14], [7, 10, 16]],
+);
+assert.equal(getRoundConfig(20).size, 7);
+assert.equal(getRoundConfig(20).rows, 10);
+assert.equal(getRoundConfig(20).timeLimit, 120);
 assert.ok(getRoundConfig(20).target > getRoundConfig(10).target);
+assert.ok(getRoundConfig(20).clockChance < 0.07, 'late-stage clocks must stay rare');
 
 {
   const board = new BoardModel(6);
