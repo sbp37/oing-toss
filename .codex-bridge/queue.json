@@ -1,8 +1,8 @@
 {
-  "id": "",
-  "status": "idle",
+  "id": "bridge-test-20260809-1039",
+  "status": "approved",
   "project": "oing-toss",
-  "prompt": "",
-  "createdAt": null,
+  "prompt": "README에 임시 테스트 파일을 만들지 말고 현재 프로젝트 이름만 읽어 결과로 보고해줘.",
+  "createdAt": "2026-08-09T01:41:00Z",
   "requiresPushApproval": true
 }
