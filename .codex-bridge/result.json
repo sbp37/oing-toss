@@ -1,0 +1,11 @@
+{
+  "taskId": null,
+  "status": "idle",
+  "success": null,
+  "summary": "OING Codex Bridge is waiting for an approved task.",
+  "changedFiles": [],
+  "gitDiffSummary": "",
+  "blocker": null,
+  "startedAt": null,
+  "completedAt": null
+}
