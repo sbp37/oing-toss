@@ -153,6 +153,25 @@ export function itemUnlockGrantForStage(stage = 1) {
   return null;
 }
 
+export function stageIntroForStage(stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  const config = getStageConfig(level);
+  if (level === 1) return Object.freeze({ kicker: 'WARM UP', title: 'STAGE 1', detail: '4×4 · 목표 3' });
+  if (level === 2) return Object.freeze({ kicker: 'BOARD UP', title: 'STAGE 2', detail: '5×5 OPEN' });
+  if (level === 3) return Object.freeze({ kicker: 'WIDE OPEN', title: 'STAGE 3', detail: '6×6 OPEN' });
+  if (level === 4) return Object.freeze({ kicker: 'ITEM ON', title: 'STAGE 4', detail: '폭탄 등장' });
+  if (level === 5) return Object.freeze({ kicker: 'BIG BOARD', title: 'STAGE 5', detail: '7×7 OPEN' });
+  const challenge = stageChallengeForStage(level);
+  const detail = challenge
+    ? `${challenge.label} 보너스 · 목표 ${config.target}`
+    : `${config.cols}×${config.rows} · 목표 ${config.target}`;
+  return Object.freeze({
+    kicker: level >= 8 ? 'OING FEVER' : 'LEVEL UP',
+    title: `STAGE ${level}`,
+    detail,
+  });
+}
+
 export function stageChallengeForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   if (level < 6) return null;
@@ -329,32 +348,65 @@ export const MESSAGES = Object.freeze({
   round: Object.freeze(['다음 판 가자냥!', '오잉, 클리어!', '깔끔했다!', '이 정도쯤이야.']),
   stage: Object.freeze(['다음 판 가자냥!', '오잉, 클리어!', '깔끔했다!', '이 정도쯤이야.']),
   lowTime: Object.freeze(['빨리빨리!', '시간 없다냥!', '10초 남았어!', '서둘러라냥!']),
-  stageFail: Object.freeze(['아깝다냥...', '다시 하면 되지.', '이번엔 봐준다냥.']),
-  stageFailNear: Object.freeze(['하나만 더였는데!', '진짜 아깝다냥...', '거의 다 왔는데!']),
   resultLow: Object.freeze([
-    '워밍업 한 판이었다고 생각하면 딱이다냥',
-    '처음엔 다 이렇다냥, 몇 판 더 하면 확 달라진다냥',
-    '몸 풀렸으니 이제 진짜 시작이다냥',
-    '합10 조합이 눈에 익으면 확 빨라진다냥',
+    '워밍업 끝! 이제 감 올라온다냥',
+    '첫 판부터 기록 하나 만들었네!',
+    '좋아, 다음 판은 더 빨라지겠다냥',
+    '합10 보는 눈이 슬슬 열린다냥',
+    '이번 판 데이터 접수! 한 판 더?',
+    '출발 좋았어. 이제 속도만 붙이면 돼!',
   ]),
   resultNormal: Object.freeze([
-    '숫자 조합이 눈에 들어오기 시작했다냥',
-    '한 판 한 판 늘고 있다냥, 이 감각 기억해두라냥',
-    '감은 잡았다냥, 이제 속도만 올리면 된다냥',
-    '오, 이번 판 흐름 괜찮았다냥?',
+    '숫자 조합이 제대로 보이기 시작했다냥',
+    '이번 판 흐름 좋았어!',
+    '오, 속도가 붙었는데?',
+    '콤보 감각이 살아 있다냥',
+    '이번 기록, 다음 판에 넘을 수 있겠어!',
+    '이 정도면 손이 기억하겠다냥',
   ]),
   resultHigh: Object.freeze([
     '속도가 장난 아니다냥',
     '숫자가 다 보이나 보다냥',
     '콤보 타이밍이 예술이다냥',
-    '완전 고수의 향기다냥...!',
+    '완전 고수의 흐름이다냥!',
+    '이번 판은 인정. 진짜 빨랐어!',
+    '보드가 따라오질 못하겠다냥',
   ]),
   resultLegend: Object.freeze([
     '오잉게임 마스터 인정이다냥',
     '오늘의 오잉왕 후보 확정이다냥',
     '이런 점수는 자랑부터 해야 한다냥',
+    '이 정도면 숫자가 먼저 도망가겠다냥',
+    '전설급 기록이다. 이번엔 진짜 인정!',
   ]),
-  record: Object.freeze(['새 최고기록이다냥!', '최고점수를 갈아치웠다냥!', '오늘 기록은 오래 남겠다냥!']),
+  record: Object.freeze([
+    '새 최고기록이다냥!',
+    '최고점수를 갈아치웠다냥!',
+    '오늘 기록은 오래 남겠다냥!',
+    '오잉! 기록판 맨 위를 바꿔버렸네!',
+    '신기록 폭발! 이번 판은 자랑해도 된다냥',
+  ]),
+  nearRecord: Object.freeze([
+    '최고기록 바로 앞까지 왔다냥!',
+    '다음 판에 기록 넘어가겠는데?',
+    '기록 경신 흐름이 딱 보인다냥',
+  ]),
+  rising: Object.freeze([
+    '지난 판보다 확실히 빨라졌어!',
+    '점수가 계속 오르는데? 감 잡았냥?',
+    '상승세 제대로 탔다냥!',
+    '또 올랐어. 지금 흐름 놓치지 마!',
+  ]),
+  comboRecord: Object.freeze([
+    '오늘 콤보 감각 최고였다냥!',
+    '그 콤보는 다시 봐도 멋진데?',
+    '연속 성공 리듬이 제대로였다냥',
+  ]),
+  stageRecord: Object.freeze([
+    '새 스테이지까지 뚫었다냥!',
+    '오늘 가장 멀리 갔어!',
+    '보드가 커져도 문제없는데?',
+  ]),
 });
 
 export function pickMessage(type, previous = '', random = Math.random) {
@@ -389,6 +441,55 @@ export function pickResultMessage(score, { newRecord = false, previous = '', ran
   return pickMessage(resultMessageType(score, newRecord), previous, random);
 }
 
+function pickFreshMessage(type, recentMessages = [], random = Math.random) {
+  const pool = MESSAGES[type] || MESSAGES.resultNormal;
+  const blocked = new Set(Array.isArray(recentMessages) ? recentMessages : []);
+  const fresh = pool.filter((message) => !blocked.has(message));
+  const choices = fresh.length ? fresh : pool;
+  const index = Math.min(choices.length - 1, Math.floor(Math.max(0, random()) * choices.length));
+  return choices[index];
+}
+
+export function buildResultReaction({
+  score = 0,
+  newRecord = false,
+  previousBest = 0,
+  previousScore = null,
+  recentScores = [],
+  maxCombo = 0,
+  previousBestCombo = 0,
+  round = 1,
+  previousHighestStage = 1,
+} = {}, { recentMessages = [], random = Math.random } = {}) {
+  const current = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  const last = previousScore === null || previousScore === undefined
+    ? null
+    : Math.max(0, Math.round(Number(previousScore) || 0));
+  const scores = (Array.isArray(recentScores) ? recentScores : [])
+    .filter(Number.isFinite)
+    .map((value) => Math.max(0, Math.round(value)))
+    .slice(-4);
+  const average = scores.length
+    ? scores.reduce((sum, value) => sum + value, 0) / scores.length
+    : 0;
+  const rising = scores.length >= 2
+    && current > scores.at(-1)
+    && scores.at(-1) >= scores.at(-2);
+  const nearRecord = best > 0 && current < best && current / best >= 0.9;
+  const comboRecord = maxCombo > 2 && maxCombo > Math.max(0, Number(previousBestCombo) || 0);
+  const stageRecord = round > Math.max(1, Number(previousHighestStage) || 1);
+
+  let type = resultMessageType(current, newRecord);
+  if (newRecord) type = 'record';
+  else if (stageRecord) type = 'stageRecord';
+  else if (comboRecord) type = 'comboRecord';
+  else if (nearRecord) type = 'nearRecord';
+  else if (rising || (last !== null && current > last && current >= average)) type = 'rising';
+
+  return Object.freeze({ type, message: pickFreshMessage(type, recentMessages, random) });
+}
+
 export function buildScoreComparisons(score, previousScore, previousBest) {
   const current = Math.max(0, Math.round(Number(score) || 0));
   const best = Math.max(0, Math.round(Number(previousBest) || 0));
@@ -418,8 +519,8 @@ export function buildScoreComparisons(score, previousScore, previousBest) {
     previousText = `지난 판보다 +${(current - last).toLocaleString('ko-KR')}점 올랐다냥!`;
     previousTone = 'up';
   } else if (last !== null && current < last) {
-    previousText = `지난 판보다 ${(last - current).toLocaleString('ko-KR')}점 낮지만 감은 살아 있다냥`;
-    previousTone = 'down';
+    previousText = `지난 판 ${last.toLocaleString('ko-KR')}점 · 이번 기록도 저장 완료!`;
+    previousTone = 'neutral';
   } else if (last !== null) {
     previousText = '지난 판과 똑같은 점수다냥!';
     previousTone = 'same';
@@ -432,6 +533,27 @@ export function buildScoreComparisons(score, previousScore, previousBest) {
     previousTone,
     hasPrevious: last !== null,
   };
+}
+
+export function resultRetryLabel({
+  score = 0,
+  previousBest = 0,
+  newRecord = false,
+  recordEligible = true,
+  maxCombo = 0,
+  round = 1,
+} = {}) {
+  if (!recordEligible) return 'STAGE 1부터 도전!';
+  if (newRecord) return '신기록 또 넘기기!';
+  const current = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  if (best > 0 && current < best && (best - current <= 150 || current / best >= 0.9)) {
+    return '최고기록 넘기기!';
+  }
+  if (Math.max(0, Number(maxCombo) || 0) >= 5 || Math.max(1, Number(round) || 1) >= 5) {
+    return '더 높이 가기!';
+  }
+  return '한 판 더!';
 }
 
 export function comboMultiplier(combo) {

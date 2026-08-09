@@ -72,6 +72,7 @@
             <button class="asset-icon-button pause-button" id="pause-button" type="button" aria-label="일시정지">
               <img src="assets/ui/button-pause.webp" width="421" height="235" loading="lazy" decoding="async" alt="">
             </button>
+            <button class="hud-mini-button music-button is-on" id="hud-music-button" type="button" aria-label="배경음악 끄기" aria-pressed="true"><i></i></button>
           </div>
           <div class="round-mini"><span>STAGE</span><strong id="round-value">1</strong></div>
           <div class="time-readout" id="time-pill" hidden>
@@ -95,7 +96,9 @@
         </div>
         <div class="play-feedback-rail" aria-hidden="true">
           <div class="round-clear" id="round-clear">
-            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><strong>STAGE CLEAR!</strong><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+            <div><strong>STAGE CLEAR!</strong><span id="round-clear-reward">다음 판 가자!</span></div>
+            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
           </div>
           <div class="combo-celebration" id="combo-celebration">
             <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
@@ -169,7 +172,7 @@
         <div class="result-grid">
           <div><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><span>최고 콤보</span><b id="final-combo">0</b></div>
           <div><img src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>도달 스테이지</span><b id="final-round">1</b></div>
-          <div><img src="assets/icons/hud/goal.webp" width="283" height="279" loading="lazy" decoding="async" alt=""><span>최대 클리어</span><b><i id="final-largest-clear">0</i>칸</b></div>
+          <div><img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>고양이 구조</span><b><i id="final-cats">0</i>마리</b></div>
         </div>
       </article>
       <div class="result-cat-row">
@@ -179,7 +182,7 @@
         <div class="result-message" id="result-message">이번 판 좋았어!</div>
       </div>
       <div class="result-actions">
-        <button class="btn btn-primary" id="retry-button" type="button">다시 도전</button>
+        <button class="btn btn-primary" id="retry-button" type="button">한 판 더!</button>
         <button class="btn btn-mint result-share-button" id="share-button" type="button">
           <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>카톡으로 자랑하기</span>
         </button>
@@ -199,7 +202,8 @@
         <p id="pause-copy">시간도 같이 멈췄어</p>
         <button class="btn btn-primary" id="resume-button" type="button">계속하기</button>
         <div class="pause-quick-actions">
-          <button class="pause-tool-button music-button" id="music-button" type="button" aria-label="배경음악 켜기" aria-pressed="false"><i></i><span>음악</span></button>
+          <button class="pause-tool-button music-button is-on" id="music-button" type="button" aria-label="배경음악 끄기" aria-pressed="true"><i></i><span>음악</span></button>
+          <button class="pause-tool-button sound-button is-on" id="sound-button" type="button" aria-label="효과음 끄기" aria-pressed="true"><i></i><span>효과음</span></button>
           <button class="pause-tool-button restart-button" id="restart-button" type="button" aria-label="게임 다시 하기"><i></i><span>다시 시작</span></button>
         </div>
         <button class="text-button" id="pause-home-button" type="button">홈으로 나가기</button>
@@ -210,7 +214,7 @@
       <div class="mini-panel settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <button class="overlay-close" id="settings-close" type="button" aria-label="닫기"><i></i></button>
         <div class="settings-heading"><img src="assets/ui/button-settings.webp" width="260" height="259" loading="lazy" decoding="async" alt=""><div><h2 id="settings-title">설정</h2><p>내 취향에 맞춰보자냥!</p></div></div>
-        <div class="setting-row"><span>배경음악</span><button class="toggle" id="music-toggle" type="button" aria-pressed="false">OFF</button></div>
+        <div class="setting-row"><span>배경음악</span><button class="toggle is-on" id="music-toggle" type="button" aria-pressed="true">ON</button></div>
         <div class="setting-row"><span>효과음</span><button class="toggle is-on" id="sound-toggle" type="button" aria-pressed="true">ON</button></div>
         <div class="setting-row"><span>진동</span><button class="toggle is-on" id="haptic-toggle" type="button" aria-pressed="true">ON</button></div>
         <label class="music-volume-row" for="music-volume"><span>배경음악 크기</span><b id="music-volume-label">40%</b></label>

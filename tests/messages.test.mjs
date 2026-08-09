@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildScoreComparisons,
+  buildResultReaction,
   pickResultMessage,
+  resultRetryLabel,
   resultMessageType,
   resultToneForScore,
+  stageIntroForStage,
 } from '../js/data.js';
 import { buildLocalRecordSummary, buildShareText } from '../js/adapters.js';
 
@@ -37,6 +40,39 @@ test('score comparisons cover first run, previous run, record and near-record ca
   assert.match(buildScoreComparisons(800, 500, 700).previousText, /\+300점/);
   assert.match(buildScoreComparisons(900, 1200, 1000).bestText, /100점 차이/);
   assert.match(buildScoreComparisons(1500, 1200, 1300).bestText, /\+200점/);
+  assert.doesNotMatch(buildScoreComparisons(800, 1200, 1500).previousText, /낮|실패|아쉽/);
+});
+
+test('result retry copy points toward the next positive goal', () => {
+  assert.equal(resultRetryLabel({ recordEligible: false }), 'STAGE 1부터 도전!');
+  assert.equal(resultRetryLabel({ newRecord: true }), '신기록 또 넘기기!');
+  assert.equal(resultRetryLabel({ score: 900, previousBest: 1000 }), '최고기록 넘기기!');
+  assert.equal(resultRetryLabel({ score: 400, previousBest: 1000, maxCombo: 7 }), '더 높이 가기!');
+  assert.equal(resultRetryLabel({ score: 400, previousBest: 1000, round: 2 }), '한 판 더!');
+});
+
+test('result reactions reward records, progress and streaks without a losing aftertaste', () => {
+  const record = buildResultReaction({ score: 2000, newRecord: true }, { random: () => 0 });
+  assert.equal(record.type, 'record');
+  const rising = buildResultReaction({
+    score: 1800,
+    previousBest: 2200,
+    previousScore: 1400,
+    recentScores: [900, 1100, 1400],
+    round: 4,
+    previousHighestStage: 4,
+  }, { random: () => 0 });
+  assert.equal(rising.type, 'rising');
+  const stage = buildResultReaction({ score: 1200, round: 6, previousHighestStage: 5 }, { random: () => 0 });
+  assert.equal(stage.type, 'stageRecord');
+  for (const reaction of [record, rising, stage]) assert.doesNotMatch(reaction.message, /아쉽|실패|봐준다|못했/);
+});
+
+test('stage intro copy gives every board-size milestone a visible identity', () => {
+  assert.equal(stageIntroForStage(2).detail, '5×5 OPEN');
+  assert.equal(stageIntroForStage(3).detail, '6×6 OPEN');
+  assert.equal(stageIntroForStage(5).detail, '7×7 OPEN');
+  assert.match(stageIntroForStage(8).detail, /보너스|목표/);
 });
 
 test('share copy contains score, combo, stage and the original challenge tone', () => {

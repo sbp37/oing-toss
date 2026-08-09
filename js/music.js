@@ -76,6 +76,33 @@ export function prepareMusic() {
   resumeContext();
 }
 
+// Mobile browsers often require the media element itself to play during the
+// original tap. Prime it silently here so the delayed GO cue can start BGM.
+export async function unlockMusic() {
+  if (!enabled || !musicAudio || volume <= 0) return false;
+  prepareMusic();
+  if (gameActive) {
+    try {
+      await musicAudio.play();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  const wasMuted = Boolean(musicAudio.muted);
+  try {
+    musicAudio.muted = true;
+    await musicAudio.play();
+    musicAudio.pause();
+    musicAudio.currentTime = 0;
+    musicAudio.muted = wasMuted;
+    return true;
+  } catch {
+    musicAudio.muted = wasMuted;
+    return false;
+  }
+}
+
 export function playMusic({ restart = false } = {}) {
   gameActive = true;
   if (!enabled || !musicAudio || volume <= 0) return;

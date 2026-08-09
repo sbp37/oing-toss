@@ -176,6 +176,12 @@ test('game over keeps the original layered six-note fanfare and sparkle', () => 
   assert.equal(oscillators.at(-1).frequency.events[0].value, 1200);
 });
 
+test('a new record adds a restrained four-note victory tail', () => {
+  const oscillators = newOscillators(() => audio.playGameOverSound(true));
+  assert.equal(oscillators.length, 17);
+  assert.deepEqual(oscillators.slice(-4).map((item) => item.frequency.events[0].value), [523.25, 659.25, 783.99, 1046.5]);
+});
+
 test('bomb sound keeps the original OING impact shards', () => {
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playBombSound());

@@ -5,6 +5,7 @@ import {
   BoardModel,
   EASY_BOARD_BONUS,
   analyzeAnswerDiversity,
+  analyzeAnswerSpread,
   boardAssistForPerformance,
   boardAssistForSuccessCount,
   boardPacingForRound,
@@ -78,11 +79,13 @@ assert.deepEqual(boardPacingForRound(1), {
   targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4,
   minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1,
   minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2,
+  minimumAnswerZones: 3, maximumDominantCellShare: 0.52,
 });
 assert.deepEqual(boardPacingForRound(5), {
   targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9,
   minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5,
   minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2,
+  minimumAnswerZones: 4, maximumDominantCellShare: 0.38,
 });
 assert.equal(boardPacingForRound(7, 'starter').minimumAdjacentPairs, 1);
 
@@ -93,12 +96,18 @@ for (const stage of [1, 3, 5, 8, 10]) {
   for (let run = 0; run < 16; run += 1) {
     const board = new BoardModel(config.cols);
     board.generate(config.cols, { cols: config.cols, rows: config.rows, round: stage });
-    samples.push(analyzeAnswerDiversity(board.grid, board.findAnswers()));
+    const answers = board.findAnswers();
+    samples.push({
+      ...analyzeAnswerDiversity(board.grid, answers),
+      ...analyzeAnswerSpread(board.grid, answers),
+    });
   }
   const mean = (key) => samples.reduce((sum, sample) => sum + sample[key], 0) / samples.length;
   assert.ok(mean('shapePatterns') >= pacing.minimumShapePatterns, `stage ${stage} must vary answer shapes across boards`);
   assert.ok(mean('valuePatterns') >= pacing.minimumValuePatterns, `stage ${stage} must vary number combinations across boards`);
   assert.ok(mean('orientations') >= pacing.minimumOrientations, `stage ${stage} must mix answer directions across boards`);
+  assert.ok(mean('answerZones') >= pacing.minimumAnswerZones - 0.1, `stage ${stage} must spread answers around the board`);
+  assert.ok(mean('dominantCellShare') <= pacing.maximumDominantCellShare + 0.05, `stage ${stage} must not funnel most answers through one cell`);
 }
 
 assert.equal(boardAssistForSuccessCount(0), 'starter');
@@ -207,6 +216,10 @@ assert.deepEqual(analyzeAnswerDiversity(hintModel.grid, hintModel.findAnswers())
   shapePatterns: 3,
   valuePatterns: 3,
   orientations: 2,
+});
+assert.deepEqual(analyzeAnswerSpread(hintModel.grid, hintModel.findAnswers()), {
+  answerZones: 3,
+  dominantCellShare: 2 / 3,
 });
 assert.equal(hintModel.findEasyAnswer().count, 2, 'onboarding keeps the easiest two-cell answer');
 assert.ok(hintModel.findHintAnswer().count >= 3, 'live hints prioritize a richer three-cell answer');

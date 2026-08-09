@@ -30,3 +30,48 @@ test('music ducks under important effects and returns to the selected level', as
   assert.equal(audio.paused, true);
   assert.equal(audio.currentTime, 0);
 });
+
+test('music is silently unlocked during the starting tap for delayed mobile playback', async () => {
+  let playCount = 0;
+  const audio = {
+    currentTime: 7,
+    muted: false,
+    paused: true,
+    preload: 'none',
+    volume: 1,
+    load() {},
+    play() { playCount += 1; this.paused = false; return Promise.resolve(); },
+    pause() { this.paused = true; },
+  };
+
+  music.configureMusic(audio, { enabled: true, volume: 0.4 });
+  assert.equal(await music.unlockMusic(), true);
+  assert.equal(audio.muted, false);
+  assert.equal(audio.paused, true);
+  assert.equal(audio.currentTime, 0);
+
+  music.playMusic();
+  assert.equal(playCount, 2);
+  assert.equal(audio.paused, false);
+  music.stopMusic();
+});
+
+test('unlocking music during play never pauses an already active game track', async () => {
+  const audio = {
+    currentTime: 12,
+    muted: false,
+    paused: true,
+    preload: 'none',
+    volume: 1,
+    load() {},
+    play() { this.paused = false; return Promise.resolve(); },
+    pause() { this.paused = true; },
+  };
+
+  music.configureMusic(audio, { enabled: true, volume: 0.4 });
+  music.playMusic();
+  assert.equal(await music.unlockMusic(), true);
+  assert.equal(audio.paused, false);
+  assert.equal(audio.currentTime, 12);
+  music.stopMusic();
+});

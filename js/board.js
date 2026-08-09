@@ -181,6 +181,29 @@ export function boardPacingForRound(round = 1, assist = 'standard') {
   return Object.freeze({
     ...base,
     minimumAdjacentPairs: base.minimumAdjacentPairs + assistAdjacentBonus,
+    minimumAnswerZones: stage <= 2 ? 3 : 4,
+    maximumDominantCellShare: stage <= 2 ? 0.52 : stage <= 4 ? 0.46 : stage <= 7 ? 0.38 : 0.32,
+  });
+}
+
+export function analyzeAnswerSpread(grid, answers = findAllSumTenRects(grid)) {
+  if (!answers.length) return Object.freeze({ answerZones: 0, dominantCellShare: 1 });
+  const rows = grid.length;
+  const cols = grid[0]?.length || 0;
+  const zones = new Set();
+  const cellCoverage = new Map();
+  answers.forEach((answer) => {
+    const centerRow = (answer.r1 + answer.r2 + 1) / (2 * Math.max(1, rows));
+    const centerCol = (answer.c1 + answer.c2 + 1) / (2 * Math.max(1, cols));
+    zones.add(`${centerRow >= 0.5 ? 1 : 0}:${centerCol >= 0.5 ? 1 : 0}`);
+    cellsInRect(answer).forEach(({ r, c }) => {
+      const key = cellKey(r, c);
+      cellCoverage.set(key, (cellCoverage.get(key) || 0) + 1);
+    });
+  });
+  return Object.freeze({
+    answerZones: zones.size,
+    dominantCellShare: Math.max(...cellCoverage.values()) / answers.length,
   });
 }
 
@@ -208,11 +231,13 @@ export function analyzeAnswerDiversity(grid, answers = findAllSumTenRects(grid))
 
 function answerMix(grid, answers) {
   const diversity = analyzeAnswerDiversity(grid, answers);
+  const spread = analyzeAnswerSpread(grid, answers);
   return {
     total: answers.length,
     adjacent: answers.filter(isAdjacentPair).length,
     rich: answers.filter((answer) => answer.count >= 3).length,
     ...diversity,
+    ...spread,
   };
 }
 
@@ -227,7 +252,9 @@ function pacingPenalty(mix, pacing) {
     + below(mix.rich, pacing.minimumRichAnswers) * 14
     + below(mix.shapePatterns, pacing.minimumShapePatterns) * 10
     + below(mix.valuePatterns, pacing.minimumValuePatterns) * 12
-    + below(mix.orientations, pacing.minimumOrientations) * 18;
+    + below(mix.orientations, pacing.minimumOrientations) * 34
+    + below(mix.answerZones, pacing.minimumAnswerZones) * 22
+    + above(mix.dominantCellShare, pacing.maximumDominantCellShare) * 80;
 }
 
 function seedAdjacentPairsInGrid(grid, requested) {
@@ -519,6 +546,7 @@ export class BoardModel {
     this.grid = [];
     this.bonusCats = new Set();
     this.specialTiles = new Map();
+    this.round = 1;
     this.generate(size);
   }
 
@@ -529,6 +557,7 @@ export class BoardModel {
     this.size = this.cols;
     this.specialTiles.clear();
     const round = Math.max(1, Math.round(Number(options.round) || 1));
+    this.round = round;
     const assist = options.assist || (options.easy ? 'guided' : 'standard');
     const catTarget = bonusCatTargetForDimensions(this.rows, this.cols);
     const pacing = boardPacingForRound(round, assist);
@@ -557,7 +586,9 @@ export class BoardModel {
         && mix.rich >= pacing.minimumRichAnswers
         && mix.shapePatterns >= pacing.minimumShapePatterns
         && mix.valuePatterns >= pacing.minimumValuePatterns
-        && mix.orientations >= pacing.minimumOrientations;
+        && mix.orientations >= pacing.minimumOrientations
+        && mix.answerZones >= pacing.minimumAnswerZones
+        && mix.dominantCellShare <= pacing.maximumDominantCellShare;
       if (ideal) {
         this.grid = candidate.grid;
         this.bonusCats = cats;
@@ -755,18 +786,23 @@ export class BoardModel {
     }
     if (spots.length < 2) return false;
 
-    const minimumChoices = spots.length >= 6 ? 3 : 1;
+    const stage = Math.max(1, this.round || 1);
+    const minimumChoices = spots.length < 6 ? 1 : stage <= 2 ? 2 : stage <= 5 ? 3 : 4;
+    const targetChoices = spots.length < 6 ? 1 : stage <= 2 ? 5 : stage <= 5 ? 6 : 7;
     let bestCandidate = original.slice();
     let bestAnswerCount = this.findAnswers().length;
+    let bestDistance = Math.abs(bestAnswerCount - targetChoices);
     for (let attempt = 0; attempt < 120; attempt += 1) {
       const candidate = shuffleArray(original.slice());
       spots.forEach(({ r, c }, index) => { this.grid[r][c] = candidate[index]; });
       const answerCount = this.findAnswers().length;
-      if (answerCount > bestAnswerCount) {
+      const distance = Math.abs(answerCount - targetChoices);
+      if (answerCount >= minimumChoices && (bestAnswerCount < minimumChoices || distance < bestDistance)) {
         bestAnswerCount = answerCount;
+        bestDistance = distance;
         bestCandidate = candidate.slice();
       }
-      if (answerCount >= minimumChoices) {
+      if (answerCount >= minimumChoices && answerCount <= targetChoices + 1) {
         this.assignSpecialTiles(specialTypes);
         return true;
       }

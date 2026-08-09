@@ -5,6 +5,7 @@ const SETTINGS_KEY = 'oing_toss_v2_settings';
 const TUTORIAL_KEY = 'oing_toss_v2_drag_tutorial_done';
 const HIGHEST_STAGE_KEY = 'oing_toss_v2_highest_stage';
 const BEST_COMBO_KEY = 'oing_toss_v2_best_combo';
+const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v2_recent_result_messages';
 
 function safeRead(key, fallback) {
   try {
@@ -49,9 +50,9 @@ export const storageAdapter = {
   },
   getSettings() {
     try {
-      return { sound: true, haptic: true, music: false, musicVolume: 0.4, ...JSON.parse(safeRead(SETTINGS_KEY, '{}')) };
+      return { sound: true, haptic: true, music: true, musicVolume: 0.4, ...JSON.parse(safeRead(SETTINGS_KEY, '{}')) };
     } catch {
-      return { sound: true, haptic: true, music: false, musicVolume: 0.4 };
+      return { sound: true, haptic: true, music: true, musicVolume: 0.4 };
     }
   },
   saveSettings(settings) {
@@ -80,6 +81,23 @@ export const storageAdapter = {
     const next = Math.max(this.getBestCombo(), Math.max(0, Math.round(Number(combo) || 0)));
     try { localStorage.setItem(BEST_COMBO_KEY, String(next)); } catch {}
     return next;
+  },
+  getRecentResultMessages() {
+    try {
+      const values = JSON.parse(safeRead(RECENT_RESULT_MESSAGES_KEY, '[]'));
+      return Array.isArray(values)
+        ? values.filter((value) => typeof value === 'string' && value.trim()).slice(-8)
+        : [];
+    } catch {
+      return [];
+    }
+  },
+  rememberResultMessage(message) {
+    const value = typeof message === 'string' ? message.trim() : '';
+    if (!value) return this.getRecentResultMessages();
+    const recent = [...this.getRecentResultMessages().filter((item) => item !== value), value].slice(-8);
+    try { localStorage.setItem(RECENT_RESULT_MESSAGES_KEY, JSON.stringify(recent)); } catch {}
+    return recent;
   },
 };
 
