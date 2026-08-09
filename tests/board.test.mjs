@@ -77,13 +77,27 @@ assert.equal(boardAssistForSuccessCount(55), 'standard');
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 assert.equal(EASY_BOARD_BONUS.minimumAnswers, 1);
 
-assert.deepEqual(getRoundConfig(1), { round: 1, size: 4, cols: 4, rows: 4, target: 3 });
-assert.deepEqual(getRoundConfig(3), { round: 3, size: 6, cols: 6, rows: 6, target: 7 });
-assert.deepEqual(getRoundConfig(4), { round: 4, size: 7, cols: 7, rows: 7, target: 9 });
-assert.deepEqual(getRoundConfig(5), { round: 5, size: 7, cols: 7, rows: 8, target: 11 });
-assert.deepEqual(getRoundConfig(6), { round: 6, size: 7, cols: 7, rows: 9, target: 13 });
-assert.deepEqual(getRoundConfig(7), { round: 7, size: 7, cols: 7, rows: 10, target: 15 });
-assert.deepEqual(getRoundConfig(20), { round: 20, size: 7, cols: 7, rows: 10, target: 25 });
+assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 0, clockChance: 0, bombChance: 0 });
+assert.equal(getRoundConfig(3).size, 4);
+assert.equal(getRoundConfig(3).timeLimit, 0);
+assert.equal(getRoundConfig(4).size, 5);
+assert.equal(getRoundConfig(6).size, 5);
+assert.equal(getRoundConfig(6).timeLimit, 90);
+assert.equal(getRoundConfig(7).size, 6);
+assert.equal(getRoundConfig(20).size, 6);
+assert.ok(getRoundConfig(20).timeLimit >= 50);
+assert.ok(getRoundConfig(20).target > getRoundConfig(10).target);
+
+{
+  const board = new BoardModel(6);
+  const placed = board.assignSpecialTiles(['clock', 'bomb'], () => 0);
+  assert.equal(placed.length, 2);
+  assert.deepEqual(new Set(placed.map(({ type }) => type)), new Set(['clock', 'bomb']));
+  placed.forEach(({ r, c, type }) => assert.equal(board.specialAt(r, c), type));
+  assert.ok(placed.every(({ r, c }) => board.findAnswers().some((answer) => r >= answer.r1 && r <= answer.r2 && c >= answer.c1 && c <= answer.c2)));
+  assert.equal(board.shuffleRemaining(), true);
+  assert.equal(board.specialTiles.size, 2, 'shuffle keeps both special-tile types on playable cells');
+}
 
 for (const size of [7, 8, 9]) {
   for (let run = 0; run < 8; run += 1) {
@@ -133,7 +147,7 @@ assert.deepEqual(rectStats([[4, 6], [null, 8]], { r1: 0, c1: 0, r2: 0, c2: 1 }),
 const catStatsModel = new BoardModel(4);
 catStatsModel.grid = [[4, 6], [null, 8]];
 catStatsModel.bonusCats = new Set(['1:0']);
-assert.deepEqual(catStatsModel.stats({ r1: 0, c1: 0, r2: 1, c2: 0 }), { sum: 4, count: 1, catCount: 1 });
+assert.deepEqual(catStatsModel.stats({ r1: 0, c1: 0, r2: 1, c2: 0 }), { sum: 4, count: 1, catCount: 1, specials: [] });
 assert.equal(catStatsModel.remainingPlayableCells(), 4);
 const hintModel = new BoardModel(3);
 hintModel.grid = [[5, 5, 9], [2, 3, 5], [8, 8, 8]];

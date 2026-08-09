@@ -39,11 +39,11 @@ test('score comparisons cover first run, previous run, record and near-record ca
   assert.match(buildScoreComparisons(1500, 1200, 1300).bestText, /\+200점/);
 });
 
-test('share copy contains score, combo, round and the original challenge tone', () => {
+test('share copy contains score, combo, stage and the original challenge tone', () => {
   const text = buildShareText({ score: 12580, maxCombo: 7, round: 3 });
   assert.match(text, /12,580점/);
   assert.match(text, /최고 콤보 7/);
-  assert.match(text, /ROUND 3/);
+  assert.match(text, /STAGE 3/);
   assert.match(text, /이겨보라냥/);
 });
 

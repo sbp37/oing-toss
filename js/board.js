@@ -446,6 +446,7 @@ export class BoardModel {
     this.rows = size;
     this.grid = [];
     this.bonusCats = new Set();
+    this.specialTiles = new Map();
     this.generate(size);
   }
 
@@ -454,6 +455,7 @@ export class BoardModel {
     this.cols = Math.max(1, Math.round(options.cols || size));
     this.rows = Math.max(1, Math.round(options.rows || this.cols));
     this.size = this.cols;
+    this.specialTiles.clear();
     const round = Math.max(1, Math.round(Number(options.round) || 1));
     const assist = options.assist || (options.easy ? 'guided' : 'standard');
     const catTarget = bonusCatTargetForDimensions(this.rows, this.cols);
@@ -515,13 +517,45 @@ export class BoardModel {
     return (this.grid[r]?.[c] ?? null) === null && this.bonusCats.has(cellKey(r, c));
   }
 
+  specialAt(r, c) {
+    return this.specialTiles.get(cellKey(r, c)) || null;
+  }
+
+  assignSpecialTiles(types = [], random = Math.random) {
+    const requested = Array.isArray(types) ? types.filter((type) => ['clock', 'bomb'].includes(type)) : [];
+    this.specialTiles.clear();
+    if (!requested.length) return [];
+    const answers = this.findAnswers();
+    const candidates = [];
+    answers.forEach((answer) => {
+      cellsInRect(answer).forEach(({ r, c }) => {
+        if ((this.grid[r]?.[c] ?? 0) <= 0) return;
+        const key = cellKey(r, c);
+        if (!candidates.some((candidate) => candidate.key === key)) candidates.push({ r, c, key });
+      });
+    });
+    const available = candidates.slice();
+    const placed = [];
+    requested.forEach((type) => {
+      if (!available.length) return;
+      const index = Math.min(available.length - 1, Math.floor(Math.max(0, random()) * available.length));
+      const [cell] = available.splice(index, 1);
+      this.specialTiles.set(cell.key, type);
+      placed.push({ ...cell, type });
+    });
+    return placed;
+  }
+
   stats(rect) {
     const stats = rectStats(this.grid, rect);
     const catCount = cellsInRect(rect).reduce(
       (count, { r, c }) => count + (this.hasBonusCat(r, c) ? 1 : 0),
       0,
     );
-    return { ...stats, catCount };
+    const specials = cellsInRect(rect)
+      .map(({ r, c }) => ({ r, c, type: this.specialAt(r, c) }))
+      .filter(({ type }) => Boolean(type));
+    return { ...stats, catCount, specials };
   }
 
   remove(rect) {
@@ -529,6 +563,7 @@ export class BoardModel {
     for (const { r, c } of cellsInRect(rect)) {
       const hadNumber = this.grid[r][c] > 0;
       const hadCat = this.bonusCats.delete(cellKey(r, c));
+      this.specialTiles.delete(cellKey(r, c));
       if (hadNumber || hadCat) removed += 1;
       this.grid[r][c] = null;
     }
@@ -540,6 +575,7 @@ export class BoardModel {
     cells.forEach(({ r, c }) => {
       const hadNumber = (this.grid[r]?.[c] ?? 0) > 0;
       const hadCat = this.bonusCats.delete(cellKey(r, c));
+      this.specialTiles.delete(cellKey(r, c));
       if (hadNumber || hadCat) removed += 1;
       if (this.grid[r]) this.grid[r][c] = null;
     });
@@ -608,11 +644,30 @@ export class BoardModel {
     return this.grid.flat().filter((value) => value > 0).length + this.bonusCats.size;
   }
 
+  specialBombCells(specials = [], selectedRect = null, limit = 4) {
+    const selected = new Set(selectedRect ? cellsInRect(selectedRect).map(({ r, c }) => cellKey(r, c)) : []);
+    const candidates = [];
+    specials.filter(({ type }) => type === 'bomb').forEach(({ r: row, c: col }) => {
+      cellsInRect(bombRect({ rows: this.rows, cols: this.cols }, row, col)).forEach(({ r, c }) => {
+        const key = cellKey(r, c);
+        if (selected.has(key) || (this.grid[r]?.[c] ?? 0) <= 0) return;
+        if (!candidates.some((candidate) => candidate.key === key)) {
+          candidates.push({ r, c, key, distance: Math.abs(r - row) + Math.abs(c - col) });
+        }
+      });
+    });
+    return candidates
+      .sort((a, b) => a.distance - b.distance || a.r - b.r || a.c - b.c)
+      .slice(0, Math.max(0, limit))
+      .map(({ r, c }) => ({ r, c }));
+  }
+
   bestBombTarget() {
     return findBestBombTarget(this.grid);
   }
 
   shuffleRemaining() {
+    const specialTypes = [...this.specialTiles.values()];
     const spots = [];
     const original = [];
     for (let r = 0; r < this.rows; r += 1) {
@@ -636,10 +691,14 @@ export class BoardModel {
         bestAnswerCount = answerCount;
         bestCandidate = candidate.slice();
       }
-      if (answerCount >= minimumChoices) return true;
+      if (answerCount >= minimumChoices) {
+        this.assignSpecialTiles(specialTypes);
+        return true;
+      }
     }
 
     spots.forEach(({ r, c }, index) => { this.grid[r][c] = bestCandidate[index]; });
+    this.assignSpecialTiles(specialTypes);
     return bestAnswerCount > 0;
   }
 }

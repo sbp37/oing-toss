@@ -3,6 +3,8 @@ const LAST_SCORE_KEY = 'oing_toss_v2_last_score';
 const RECENT_SCORES_KEY = 'oing_toss_v2_recent_scores';
 const SETTINGS_KEY = 'oing_toss_v2_settings';
 const TUTORIAL_KEY = 'oing_toss_v2_drag_tutorial_done';
+const HIGHEST_STAGE_KEY = 'oing_toss_v2_highest_stage';
+const BEST_COMBO_KEY = 'oing_toss_v2_best_combo';
 
 function safeRead(key, fallback) {
   try {
@@ -61,6 +63,24 @@ export const storageAdapter = {
   markDragTutorialSeen() {
     try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch {}
   },
+  getHighestStage() {
+    const value = Number(safeRead(HIGHEST_STAGE_KEY, '1'));
+    return Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
+  },
+  saveHighestStage(stage) {
+    const next = Math.max(this.getHighestStage(), Math.max(1, Math.round(Number(stage) || 1)));
+    try { localStorage.setItem(HIGHEST_STAGE_KEY, String(next)); } catch {}
+    return next;
+  },
+  getBestCombo() {
+    const value = Number(safeRead(BEST_COMBO_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  saveBestCombo(combo) {
+    const next = Math.max(this.getBestCombo(), Math.max(0, Math.round(Number(combo) || 0)));
+    try { localStorage.setItem(BEST_COMBO_KEY, String(next)); } catch {}
+    return next;
+  },
 };
 
 export function buildLocalRecordSummary(scores = [], storedBest = 0) {
@@ -110,7 +130,7 @@ export const rankingAdapter = {
 
 export function buildShareText({ score, maxCombo, round }) {
   const points = Math.max(0, Math.round(Number(score) || 0)).toLocaleString('ko-KR');
-  return `오잉게임에서 ${points}점 냈다냥! 최고 콤보 ${Math.max(0, Math.round(Number(maxCombo) || 0))}, ROUND ${Math.max(1, Math.round(Number(round) || 1))}까지 갔다냥. 이겨보라냥!`;
+  return `오잉게임에서 ${points}점 냈다냥! 최고 콤보 ${Math.max(0, Math.round(Number(maxCombo) || 0))}, STAGE ${Math.max(1, Math.round(Number(round) || 1))}까지 갔다냥. 이겨보라냥!`;
 }
 
 export const shareAdapter = {
@@ -156,13 +176,16 @@ export function runtimeConfig() {
   const testMode = params.get('test') === '1';
   const requested = Number(params.get('duration'));
   const requestedRound = Number(params.get('round'));
+  const requestedStage = Number(params.get('stage'));
   const requestedCombo = Number(params.get('combo'));
   return {
     testMode,
-    duration: testMode && requested > 0 ? Math.min(requested, 360) : 120,
+    duration: testMode && requested > 0 ? Math.min(requested, 360) : null,
     forceTutorial: testMode && params.get('tutorial') === '1',
     forcedItem: testMode ? params.get('item') : null,
-    forcedRound: testMode && requestedRound > 0 ? Math.min(30, Math.round(requestedRound)) : 1,
+    forcedRound: testMode && (requestedStage > 0 || requestedRound > 0)
+      ? Math.min(99, Math.round(requestedStage || requestedRound))
+      : null,
     forcedCombo: testMode && requestedCombo > 0 ? Math.min(99, Math.round(requestedCombo)) : 0,
   };
 }

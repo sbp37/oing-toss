@@ -3,7 +3,7 @@ import {
   BOARD_DROP_ITEMS,
   buildScoreComparisons,
   comboMultiplier,
-  pickResultMessage,
+  pickMessage,
   resultToneForScore,
 } from './data.js';
 
@@ -43,7 +43,7 @@ const CHARACTER_ALT = Object.freeze({
 const ITEM_DROP_COPY = Object.freeze({
   bomb: '톡 누르면 바로 펑!',
   megabomb: '톡 누르면 크게 펑!',
-  clock: '톡 누르면 +8초!',
+  clock: '톡 누르면 +5초!',
   freeze: '톡 누르면 15초 정지!',
   clover: '톡 누르면 정답 발견!',
 });
@@ -117,6 +117,7 @@ export class GameUI {
       bombButton: document.querySelector('#bomb-button'),
       clockButton: document.querySelector('#clock-button'),
       homeBest: document.querySelector('#home-best-score'),
+      homeBestStage: document.querySelector('#home-best-stage'),
       rankingBest: document.querySelector('#ranking-best-score'),
       rankingLast: document.querySelector('#ranking-last-score'),
       rankingAverage: document.querySelector('#ranking-average-score'),
@@ -134,6 +135,9 @@ export class GameUI {
       resultRecordMeter: document.querySelector('#result-record-meter'),
       resultRecordMeterLabel: document.querySelector('#result-record-meter-label'),
       resultMessage: document.querySelector('#result-message'),
+      resultKicker: document.querySelector('#result-kicker'),
+      resultStageProgress: document.querySelector('#result-stage-progress'),
+      retryButton: document.querySelector('#retry-button'),
       toast: document.querySelector('#toast'),
     };
   }
@@ -202,6 +206,7 @@ export class GameUI {
         const value = model.valueAt(r, c);
         const boardItem = boardItems.get(`${r}:${c}`);
         const bonusCat = model.hasBonusCat?.(r, c) || false;
+        const special = model.specialAt?.(r, c) || null;
         const tone = value ? TILE_TONE_BY_VALUE[value] : 0;
         const tile = document.createElement('button');
         tile.type = 'button';
@@ -210,7 +215,7 @@ export class GameUI {
           ? `tile is-empty is-board-item board-item-${boardItem.type}`
           : bonusCat
             ? 'tile is-bonus-cat'
-            : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}`;
+            : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}${special ? ` is-special-tile special-${special}` : ''}`;
         tile.dataset.row = String(r);
         tile.dataset.col = String(c);
         tile.dataset.value = String(value || 0);
@@ -246,8 +251,23 @@ export class GameUI {
           badge.setAttribute('aria-hidden', 'true');
           tile.append(cat, badge);
         } else {
-          tile.setAttribute('aria-label', value ? `${value}` : '빈칸');
-          tile.innerHTML = value ? `<span>${value}</span>` : '';
+          const specialLabel = special === 'clock' ? ', 시계 타일 +5초' : special === 'bomb' ? ', 폭탄 타일' : '';
+          tile.setAttribute('aria-label', value ? `${value}${specialLabel}` : '빈칸');
+          if (value) {
+            const number = document.createElement('span');
+            number.textContent = String(value);
+            tile.appendChild(number);
+            if (special) {
+              tile.dataset.special = special;
+              const badge = document.createElement('img');
+              badge.className = 'special-tile-badge';
+              badge.src = special === 'clock'
+                ? 'assets/icons/hud/time.webp'
+                : 'assets/icons/items/bomb.webp';
+              badge.alt = '';
+              tile.appendChild(badge);
+            }
+          }
         }
         fragment.appendChild(tile);
       }
@@ -573,6 +593,33 @@ export class GameUI {
     delete this.boardFrame.dataset.comboImpact;
   }
 
+  async animateSpecialTiles(specials = [], blastCells = []) {
+    if (!specials.length) return;
+    const specialTiles = specials
+      .map(({ r, c, type }) => ({ tile: this.tileAt(r, c), type }))
+      .filter(({ tile }) => tile);
+    specialTiles.forEach(({ tile, type }) => tile.classList.add('is-special-triggered', `is-${type}-triggered`));
+    blastCells
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter(Boolean)
+      .forEach((tile, index) => {
+        tile.style.setProperty('--blast-delay', `${index * 24}ms`);
+        tile.classList.add('is-special-blast');
+      });
+    const source = specialTiles[0]?.tile?.getBoundingClientRect();
+    const frame = this.boardFrame.getBoundingClientRect();
+    if (source) {
+      const pop = document.createElement('div');
+      pop.className = `special-trigger-pop special-trigger-${specialTiles[0].type}`;
+      pop.style.left = `${source.left + source.width / 2 - frame.left}px`;
+      pop.style.top = `${source.top + source.height / 2 - frame.top}px`;
+      pop.textContent = specialTiles.some(({ type }) => type === 'clock') ? '+5초' : 'POP!';
+      this.boardFrame.appendChild(pop);
+      setTimeout(() => pop.remove(), 520);
+    }
+    await delay(300);
+  }
+
   async animateFailure(rect) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
@@ -732,14 +779,14 @@ export class GameUI {
     }
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(700);
+    await delay(360);
     this.board.classList.remove('is-shuffling-out');
   }
 
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(650);
+    await delay(380);
     this.board.classList.remove('is-shuffling-in');
     this.board.querySelectorAll('.tile').forEach((tile) => {
       tile.style.removeProperty('--shuffle-x');
@@ -1090,6 +1137,7 @@ export class GameUI {
     else if (cellCount >= 3) labels.push(`${cellCount}칸 클리어`);
     if (bonus.wideBonusPoints > 0) labels.push(`큰 조합 +${bonus.wideBonusPoints}`);
     if (bonus.catBonusPoints > 0) labels.push(`고양이 +${bonus.catBonusPoints}`);
+    if (bonus.specialBonusPoints > 0) labels.push(`폭탄 +${bonus.specialBonusPoints}`);
     if (combo > 1) labels.push(`배율 ×${comboMultiplier(combo).toFixed(2)}`);
     detail.textContent = labels.join(' · ');
     detail.hidden = labels.length === 0;
@@ -1173,7 +1221,7 @@ export class GameUI {
     this.boardFrame.classList.remove('combo-celebrating');
     this.boardFrame.dataset.comboCelebration = level;
     this.boardFrame.classList.add('combo-celebrating');
-    this.spawnComboConfetti(Number(level));
+    if (level) this.spawnComboConfetti(Number(level));
     const duration = level === '8' ? 820 : level === '5' ? 760 : 700;
     this.comboCelebrationTimer = window.setTimeout(() => {
       this.dismissComboCelebration();
@@ -1217,29 +1265,30 @@ export class GameUI {
     delete this.boardFrame.dataset.comboCelebration;
   }
 
-  showRoundClear(timeBonus = 0) {
+  showRoundClear(scoreBonus = 0, stage = 1) {
     this.dismissComboCelebration();
     const clear = this.elements.roundClear;
     const label = clear.querySelector('strong');
-    if (label) label.textContent = timeBonus > 0 ? `ROUND CLEAR! +${timeBonus}초` : 'ROUND CLEAR!';
+    if (label) label.textContent = scoreBonus > 0 ? `STAGE CLEAR! +${scoreBonus}` : 'STAGE CLEAR!';
+    clear.dataset.stage = String(stage);
     this.elements.scoreBurst.classList.remove('is-visible');
     clear.classList.remove('is-visible');
     void clear.offsetWidth;
     clear.classList.add('is-visible');
-    setTimeout(() => clear.classList.remove('is-visible'), 760);
+    setTimeout(() => clear.classList.remove('is-visible'), 920);
   }
 
   async animateRoundTransition(nextRound, swapBoard) {
     this.clearTransientBoardFeedback();
     this.boardFrame.classList.add('is-round-leaving');
-    await delay(430);
+    await delay(180);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
     this.elements.roundMini.classList.remove('is-advancing');
     void this.elements.roundMini.offsetWidth;
     this.elements.roundMini.classList.add('is-advancing');
     this.boardFrame.classList.add('is-round-arriving');
-    await delay(780);
+    await delay(280);
     this.boardFrame.classList.remove('is-round-arriving');
     this.elements.roundMini.classList.remove('is-advancing');
   }
@@ -1281,7 +1330,7 @@ export class GameUI {
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
     timeUp.classList.add('is-visible');
-    await delay(900);
+    await delay(620);
     timeUp.classList.remove('is-visible');
     const summary = document.createElement('div');
     summary.className = 'end-score-summary';
@@ -1294,12 +1343,12 @@ export class GameUI {
     summary.append(label, value, combo, document.createElement('i'), document.createElement('i'));
     summary.classList.toggle('is-record', newRecord);
     this.boardFrame.appendChild(summary);
-    await delay(980);
+    await delay(620);
     summary.remove();
     sweep.remove();
     this.boardFrame.classList.remove('is-game-ending');
     this.elements.playScreen.classList.add('is-ending-to-result');
-    await delay(230);
+    await delay(170);
   }
 
   setPlayCharacter(pose, duration = 0) {
@@ -1386,17 +1435,21 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 120, freezeRemaining = 0, combo, rewardRemaining = 7, progress, target }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, rewardRemaining = 7, progress, target }) {
     this.elements.round.textContent = String(round);
     this.elements.score.textContent = score.toLocaleString('ko-KR');
     const time = Math.max(0, Math.ceil(timeLeft));
-    this.elements.time.textContent = `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`;
-    this.elements.timePill.style.setProperty('--time-progress', String(clamp(timeLeft / Math.max(1, duration), 0, 1)));
+    this.elements.timePill.hidden = !timed;
+    this.elements.playScreen.classList.toggle('is-untimed', !timed);
+    this.elements.time.textContent = timed
+      ? `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`
+      : '';
+    this.elements.timePill.style.setProperty('--time-progress', String(timed ? clamp(timeLeft / Math.max(1, duration), 0, 1) : 1));
     const isFrozen = freezeRemaining > 0;
-    this.elements.timePill.classList.toggle('is-low-time', !isFrozen && time > 10 && time <= 30);
-    this.elements.timePill.classList.toggle('is-warning', !isFrozen && time <= 10);
+    this.elements.timePill.classList.toggle('is-low-time', timed && !isFrozen && time > 10 && time <= 30);
+    this.elements.timePill.classList.toggle('is-warning', timed && !isFrozen && time <= 10);
     this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
-    const isFinalCountdown = !isFrozen && time > 0 && time <= 10;
+    const isFinalCountdown = timed && !isFrozen && time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
     this.elements.playScreen.dataset.round = String(round);
     this.boardFrame.dataset.round = String(round);
@@ -1431,13 +1484,13 @@ export class GameUI {
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
-    this.elements.goalLabel.textContent = '찾은 10';
-    this.elements.goal.textContent = `${progress}회`;
-    this.elements.goal.closest('.goal-status')?.classList.remove('is-complete');
+    this.elements.goalLabel.textContent = '성공';
+    this.elements.goal.textContent = `${progress} / ${target}`;
+    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', progress >= target);
     this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
   }
 
-  updateItems({ hint, shuffle, bomb, clock }) {
+  updateItems({ hint, shuffle, bomb, clock, clockAvailable = true }) {
     this.elements.hintCount.textContent = String(hint);
     this.elements.shuffleCount.textContent = String(shuffle);
     this.elements.bombCount.textContent = String(bomb);
@@ -1445,11 +1498,12 @@ export class GameUI {
     this.elements.hintButton.disabled = hint <= 0;
     this.elements.shuffleButton.disabled = shuffle <= 0;
     this.elements.bombButton.disabled = bomb <= 0;
-    this.elements.clockButton.disabled = clock <= 0;
+    this.elements.clockButton.disabled = clock <= 0 || !clockAvailable;
     this.elements.hintButton.classList.toggle('is-depleted', hint <= 0);
     this.elements.shuffleButton.classList.toggle('is-depleted', shuffle <= 0);
     this.elements.bombButton.classList.toggle('is-depleted', bomb <= 0);
-    this.elements.clockButton.classList.toggle('is-depleted', clock <= 0);
+    this.elements.clockButton.classList.toggle('is-depleted', clock <= 0 || !clockAvailable);
+    this.elements.clockButton.classList.toggle('is-stage-locked', !clockAvailable);
     this.elements.hintButton.dataset.count = String(hint);
     this.elements.shuffleButton.dataset.count = String(shuffle);
     this.elements.bombButton.dataset.count = String(bomb);
@@ -1457,13 +1511,21 @@ export class GameUI {
     this.elements.hintButton.setAttribute('aria-label', `힌트, ${hint}회 남음`);
     this.elements.shuffleButton.setAttribute('aria-label', `섞기, ${shuffle}회 남음`);
     this.elements.bombButton.setAttribute('aria-label', `폭탄, ${bomb}회 남음`);
-    this.elements.clockButton.setAttribute('aria-label', `시계, ${clock}회 남음`);
+    this.elements.clockButton.setAttribute('aria-label', clockAvailable
+      ? `시계, ${clock}회 남음`
+      : '시계, 시간 제한 스테이지에서 사용 가능');
   }
 
   updateBestScore(score) {
     const text = score.toLocaleString('ko-KR');
     this.elements.homeBest.textContent = text;
     this.elements.rankingBest.textContent = text;
+  }
+
+  updateHighestStage(stage) {
+    if (this.elements.homeBestStage) {
+      this.elements.homeBestStage.textContent = `STAGE ${Math.max(1, Math.round(Number(stage) || 1))}`;
+    }
   }
 
   renderRanking({ summary } = {}) {
@@ -1527,10 +1589,13 @@ export class GameUI {
     this.finalScoreAnimationFrame = requestAnimationFrame(step);
   }
 
-  showResult({ score, maxCombo, round, maxClearCells, newRecord, previousBest, previousScore }) {
+  showResult({ score, maxCombo, round, progress = 0, target = 1, maxClearCells, newRecord, previousBest, previousScore }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
+    this.elements.resultKicker.textContent = `STAGE ${round}`;
+    this.elements.resultStageProgress.textContent = `STAGE ${round} · ${progress} / ${target} 성공`;
+    this.elements.retryButton.textContent = `STAGE ${round} 다시 도전`;
     this.elements.finalLargestClear.textContent = String(maxClearCells);
     this.elements.newRecord.hidden = !newRecord;
     this.elements.resultDecor.classList.toggle('is-record', newRecord);
@@ -1538,12 +1603,8 @@ export class GameUI {
     const resultTone = resultToneForScore(score);
     if (newRecord) {
       this.setResultCharacter('success');
-    } else if (resultTone === 'low') {
-      this.setResultCharacter('fail');
-    } else if (resultTone === 'high' || resultTone === 'legend') {
-      this.setResultCharacter('success');
     } else {
-      this.setResultCharacter('cheer');
+      this.setResultCharacter('fail');
     }
 
     const comparison = buildScoreComparisons(score, previousScore, previousBest);
@@ -1562,7 +1623,8 @@ export class GameUI {
     this.elements.resultRecordMeter.style.setProperty('--record-progress', String(recordProgress));
     this.elements.resultRecordMeter.classList.remove('is-animating');
 
-    const message = pickResultMessage(score, { newRecord, previous: this.lastResultMessage });
+    const resultMessageType = target - progress === 1 ? 'stageFailNear' : 'stageFail';
+    const message = pickMessage(resultMessageType, this.lastResultMessage);
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
     this.showScreen('result');

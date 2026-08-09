@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop, comboAfterFailure, comboMilestoneCrossed, freezeTimeline, itemRewardCountdown, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound } from '../js/data.js';
+import { boardDropInventoryGrant, boardDropReward, chooseBoardDrop, comboAfterFailure, comboMilestoneCrossed, freezeTimeline, itemRewardCountdown, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, specialTilePlanForStage, stageClearBonus } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -46,11 +46,16 @@ test('background pause rebases game, freeze and combo deadlines together', () =>
   });
 });
 
-test('stage time bonuses reward clears without making the two-minute run endless', () => {
-  assert.equal(roundTimeBonusSeconds(1), 2);
-  assert.equal(roundTimeBonusSeconds(3), 2);
-  assert.equal(roundTimeBonusSeconds(5), 3);
-  assert.equal(roundTimeBonusSeconds(7), 3);
+test('stage clears do not extend the next stage clock', () => {
+  assert.equal(roundTimeBonusSeconds(1), 0);
+  assert.equal(roundTimeBonusSeconds(7), 0);
+});
+
+test('stage bonus and special tiles ramp in after the tutorial stages', () => {
+  assert.ok(stageClearBonus(8, 30, true) > stageClearBonus(1, 0, false));
+  assert.deepEqual(specialTilePlanForStage(3, () => 0), []);
+  assert.deepEqual(specialTilePlanForStage(6, () => 0), ['clock']);
+  assert.deepEqual(specialTilePlanForStage(7, () => 0), ['clock', 'bomb']);
 });
 
 test('a wrong rectangle trims combo by thirty percent instead of erasing it', () => {
@@ -85,28 +90,24 @@ test('the reward countdown makes the sixth combo an explicit one-more moment', (
   assert.equal(itemRewardCountdown(13), 1);
 });
 
-test('one playable board is one round regardless of its display count', () => {
-  assert.equal(shouldAdvanceRound(3, 3, true), false);
-  assert.equal(shouldAdvanceRound(2, 3, false), true);
+test('stage advances only when its explicit success target is reached', () => {
+  assert.equal(shouldAdvanceRound(3, 3, true), true);
+  assert.equal(shouldAdvanceRound(2, 3, false), false);
   assert.equal(shouldAdvanceRound(3, 3, false), true);
   assert.equal(shouldAdvanceRound(5, 3, false), true);
 });
 
-test('combo-seven pool only returns currently implemented drops', () => {
+test('combo-seven pool is limited to the two approved board items', () => {
   assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true, rewardIndex: 1 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1 }).id, 'clock');
   for (const random of [0, 0.24, 0.49, 0.74, 0.999]) {
     assert.ok(['bomb', 'clock'].includes(chooseBoardDrop(7, () => random, { cloverGiven: true, rewardIndex: 1 }).id));
   }
-  assert.equal(chooseBoardDrop(21, () => 0.1, { rewardIndex: 3 }).id, 'clover');
-  assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 3 }).id, 'clover', 'the fourth earned reward guarantees the late-run clover once');
-  assert.notEqual(chooseBoardDrop(28, () => 0.999, { rewardIndex: 3, cloverGiven: true }).id, 'clover');
   assert.equal(chooseBoardDrop(14, () => 0.999, { cloverGiven: true, rewardIndex: 2 }).id, 'clock');
-  assert.equal(chooseBoardDrop(21, () => 0.7, { cloverGiven: true, rewardIndex: 3 }).id, 'megabomb');
   for (const combo of [14, 21, 35]) {
     for (const random of [0, 0.24, 0.49, 0.74, 0.999]) {
-      assert.ok(['bomb', 'clock', 'megabomb', 'freeze'].includes(
+      assert.ok(['bomb', 'clock'].includes(
         chooseBoardDrop(combo, () => random, { cloverGiven: true, rewardIndex: 2 }).id,
       ));
     }
@@ -116,7 +117,7 @@ test('combo-seven pool only returns currently implemented drops', () => {
     () => index / 100,
     { cloverGiven: true, rewardIndex: 5 },
   ).id);
-  const timeDrops = lateDrops.filter((id) => ['clock', 'freeze'].includes(id)).length;
+  const timeDrops = lateDrops.filter((id) => id === 'clock').length;
   assert.ok(timeDrops <= 20, 'late rewards must favor board action over session-extending time drops');
 });
 

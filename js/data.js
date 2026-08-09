@@ -1,3 +1,5 @@
+// Kept as a compatibility fallback for older callers. Live play now uses the
+// per-stage time limit returned by getStageConfig().
 export const GAME_DURATION_SECONDS = 120;
 export const PRACTICE_DURATION_SECONDS = 240;
 export const ITEM_REWARD_INTERVAL = 7;
@@ -11,15 +13,22 @@ export const RESULT_SCORE_THRESHOLDS = Object.freeze({
   legend: 30000,
 });
 
-export const ROUND_CONFIG = Object.freeze([
-  { round: 1, size: 4, cols: 4, rows: 4, target: 3 },
-  { round: 2, size: 5, cols: 5, rows: 5, target: 5 },
-  { round: 3, size: 6, cols: 6, rows: 6, target: 7 },
-  { round: 4, size: 7, cols: 7, rows: 7, target: 9 },
-  { round: 5, size: 7, cols: 7, rows: 8, target: 11 },
-  { round: 6, size: 7, cols: 7, rows: 9, target: 13 },
-  { round: 7, size: 7, cols: 7, rows: 10, target: 15 },
+export const STAGE_CONFIG = Object.freeze([
+  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 0, clockChance: 0, bombChance: 0 },
+  { stage: 2, round: 2, size: 4, cols: 4, rows: 4, target: 4, timeLimit: 0, clockChance: 0, bombChance: 0 },
+  { stage: 3, round: 3, size: 4, cols: 4, rows: 4, target: 5, timeLimit: 0, clockChance: 0, bombChance: 0 },
+  { stage: 4, round: 4, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 0, clockChance: 0, bombChance: 0 },
+  { stage: 5, round: 5, size: 5, cols: 5, rows: 5, target: 6, timeLimit: 0, clockChance: 0, bombChance: 0 },
+  { stage: 6, round: 6, size: 5, cols: 5, rows: 5, target: 7, timeLimit: 90, clockChance: 0.55, bombChance: 0 },
+  { stage: 7, round: 7, size: 6, cols: 6, rows: 6, target: 7, timeLimit: 90, clockChance: 0.5, bombChance: 0.38 },
+  { stage: 8, round: 8, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 86, clockChance: 0.48, bombChance: 0.42 },
+  { stage: 9, round: 9, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 82, clockChance: 0.46, bombChance: 0.46 },
+  { stage: 10, round: 10, size: 6, cols: 6, rows: 6, target: 10, timeLimit: 78, clockChance: 0.44, bombChance: 0.5 },
 ]);
+
+// Legacy export name retained so older tests/tools importing ROUND_CONFIG do
+// not lose their module contract while the visible game moves to STAGE.
+export const ROUND_CONFIG = STAGE_CONFIG;
 
 export const ITEM_DEFINITIONS = Object.freeze({
   hint: { id: 'hint', initial: 3, implemented: true, asset: 'assets/icons/items/hint.webp' },
@@ -46,8 +55,8 @@ const BOARD_DROP_POOLS = Object.freeze({
   // Seven-combo rewards therefore stay frequent while most drops affect the
   // board instead of extending the two-minute session.
   1: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'clock']),
-  2: Object.freeze(['bomb', 'bomb', 'bomb', 'megabomb', 'megabomb', 'clock']),
-  3: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'megabomb', 'megabomb', 'megabomb', 'megabomb', 'megabomb', 'clock', 'freeze']),
+  2: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'clock']),
+  3: Object.freeze(['bomb', 'bomb', 'bomb', 'bomb', 'bomb', 'clock']),
 });
 
 export function chooseBoardDrop(combo, random = Math.random, {
@@ -60,10 +69,6 @@ export function chooseBoardDrop(combo, random = Math.random, {
   // The first earned board item always demonstrates the most tactile reward.
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
   const tier = streak >= 21 ? 3 : streak >= 14 ? 2 : 1;
-  // Clover is a late-run surprise, not an early seven-combo reward.
-  if (streak >= 21 && !cloverGiven && (earned >= 3 || Math.max(0, random()) < 0.15)) {
-    return BOARD_DROP_ITEMS.clover;
-  }
   const pool = BOARD_DROP_POOLS[tier].filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
   if (!pool.length) return null;
   // Back-to-back identical drops feel like a missed reward. Preserve the
@@ -103,10 +108,10 @@ export function itemRewardCountdown(combo) {
 }
 
 export function shouldAdvanceRound(progress, target, hasAnswer) {
-  // A board is a stage. Clear counts are feedback, not a gate that forces
-  // another generated board before the player may advance.
-  return !hasAnswer;
+  return Math.max(0, Number(progress) || 0) >= Math.max(1, Number(target) || 1);
 }
+
+export const shouldAdvanceStage = shouldAdvanceRound;
 
 export function shouldShowBeginnerAutoHint({
   running = false, inputLocked = false, tutorialActive = false, alreadyShown = false,
@@ -125,9 +130,21 @@ export function boardDropInventoryGrant(type) {
 }
 
 export function roundTimeBonusSeconds(round = 1) {
-  const stage = Math.max(1, Math.round(Number(round) || 1));
-  if (stage <= 4) return 2;
-  return 3;
+  return 0;
+}
+
+export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  const time = Math.max(0, Math.floor(Number(timeLeft) || 0));
+  return 220 + level * 35 + Math.min(180, time * 2) + (perfect ? 120 : 0);
+}
+
+export function specialTilePlanForStage(stage = 1, random = Math.random) {
+  const config = getStageConfig(stage);
+  const plan = [];
+  if (config.timeLimit > 0 && Math.max(0, random()) < config.clockChance) plan.push('clock');
+  if (Math.max(0, random()) < config.bombChance) plan.push('bomb');
+  return plan;
 }
 
 export function freezeTimeline(nowMs, timeLeft, seconds = TIME_FREEZE_SECONDS) {
@@ -180,30 +197,35 @@ export const PRODUCT_CATALOG = Object.freeze({
 });
 
 export const MESSAGES = Object.freeze({
-  start: Object.freeze(['10을 찾아보자냥!', '슥 밀어서 10이다냥!', '준비됐으면 바로 가자냥!']),
-  tapEnd: Object.freeze(['반대쪽 끝 칸도 톡 눌러보라냥!', '끝 칸을 한 번 더 눌러보라냥!']),
-  firstSuccess: Object.freeze(['오잉, 바로 찾았다냥!', '딱 10이다냥!', '첫 조합부터 좋다냥!']),
-  success: Object.freeze(['좋다냥!', '깔끔하다냥!', '바로 그거다냥!', '눈에 쏙 들어왔다냥!']),
-  combo3: Object.freeze(['손이 빠르다냥!', '콤보가 착착 붙는다냥!', '감이 올라온다냥!']),
-  combo5: Object.freeze(['지금 완전 감 잡았다냥!', '계속 이어가자냥!', '숫자가 다 보이나 보다냥!']),
-  combo8: Object.freeze(['완전 신났다냥!', '손가락에 날개 달렸냥?', '집중력이 폭발했다냥!']),
-  wow: Object.freeze(['와, 큰 조합이다냥!', '한 번에 쫙 지웠다냥!', '이런 큰 10을 기다렸다냥!']),
-  fail: Object.freeze(['앗, 10이 아니다냥', '조금 아깝다냥', '다시 골라보자냥']),
-  hint: Object.freeze(['여기 한번 보라냥!', '이쪽이 수상하다냥!', '반짝이는 칸을 이어보라냥!']),
+  start: Object.freeze(['10을 찾아볼까냥?', '준비됐으면 바로 가자!', '이번 판도 깔끔하게 가자냥.']),
+  tapEnd: Object.freeze(['반대쪽 끝 칸도 톡!', '끝 칸을 한 번 더 눌러봐냥.']),
+  firstSuccess: Object.freeze(['오잉! 바로 찾았네!', '딱 10이다냥!', '첫 조합부터 좋은데?']),
+  success: Object.freeze(['오잉! 딱 10!', '좋아!', '그거다냥!', '이번엔 인정.', '깔끔했다!']),
+  combo3: Object.freeze(['손이 좀 빠른데?', '감 잡았냥?', '오, 연속인데?', '잘한다냥!']),
+  combo5: Object.freeze(['지금 완전 감 잡았어!', '이대로 가라냥!', '멈추지 마!', '오잉, 좀 하는데?']),
+  combo8: Object.freeze(['와, 터진다냥!', '오늘 감 좋은데?', '미쳤다냥!', '이 정도는 해야지냥.']),
+  wow: Object.freeze(['와, 크게 지웠다!', '한 번에 쫙! 좋다냥.', '큰 10은 못 참지.']),
+  fail: Object.freeze(['어라?', '10이 아닌데냥...', '다시 봐봐.', '앗.', '그건 내가 못 본 걸로 한다냥.']),
+  nearGoal: Object.freeze(['하나만 더!', '거의 다 왔다냥!', '조금만 더!', '끝이 보인다냥!']),
+  hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
   perfect: Object.freeze(['퍼펙트! 힌트 하나 챙겼다냥!', '판을 싹 비웠다냥! 선물이다냥!']),
-  shuffle: Object.freeze(['한번 섞어보자냥!', '새 판에서 다시 찾아보자냥!', '숫자들 자리 바꾼다냥!']),
+  shuffle: Object.freeze(['판 좀 뒤집어볼까냥?', '숫자들 자리 바꾼다!', '내가 한번 섞어주지냥.']),
+  noAnswer: Object.freeze(['어라? 없네.', '이건 내가 섞어줄게냥!', '잠깐, 판 좀 뒤집자냥.', '내가 섞어줘야겠네.']),
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
-  clock: Object.freeze(['시간을 더 챙겼다냥!', '8초 더 달려보자냥!']),
+  clock: Object.freeze(['시간 +5초!', '5초 더 달려보자냥!', '시간은 내가 챙겼다.']),
   freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '15초 동안 마음껏 찾아보라냥!', '째깍째깍 잠깐 쉬어간다냥!']),
   clover: Object.freeze(['클로버가 정답을 찾았다냥!', '초록빛 칸을 잘 보라냥!', '이번 정답은 오래 보여준다냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
   bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
   clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),
   catBonus: Object.freeze(['보너스 고양이까지 챙겼다냥!', '야옹! 점수 더 얹어준다냥!', '고양이 보너스도 놓치지 않았다냥!']),
-  round: Object.freeze(['다음 판도 바로 가자냥!', '더 찾아보자냥!', '새 판도 끊지 말고 가자냥!']),
-  lowTime: Object.freeze(['조금만 더다냥!', '시간이 얼마 없다냥!', '마지막까지 눈 크게 뜨라냥!']),
+  round: Object.freeze(['다음 판 가자냥!', '오잉, 클리어!', '깔끔했다!', '이 정도쯤이야.']),
+  stage: Object.freeze(['다음 판 가자냥!', '오잉, 클리어!', '깔끔했다!', '이 정도쯤이야.']),
+  lowTime: Object.freeze(['빨리빨리!', '시간 없다냥!', '10초 남았어!', '서둘러라냥!']),
+  stageFail: Object.freeze(['아깝다냥...', '다시 하면 되지.', '이번엔 봐준다냥.']),
+  stageFailNear: Object.freeze(['하나만 더였는데!', '진짜 아깝다냥...', '거의 다 왔는데!']),
   resultLow: Object.freeze([
     '워밍업 한 판이었다고 생각하면 딱이다냥',
     '처음엔 다 이렇다냥, 몇 판 더 하면 확 달라진다냥',
@@ -339,16 +361,23 @@ export function scoreForMegaBomb(valueSum) {
   return 220 + Math.max(0, Math.round(Number(valueSum) || 0)) * 4;
 }
 
-export function getRoundConfig(round) {
-  const stage = Math.max(1, Math.round(Number(round) || 1));
-  const fixed = ROUND_CONFIG[stage - 1];
+export function getStageConfig(stageNumber) {
+  const stage = Math.max(1, Math.round(Number(stageNumber) || 1));
+  const fixed = STAGE_CONFIG[stage - 1];
   if (fixed) return fixed;
-  const last = ROUND_CONFIG.at(-1);
+  const last = STAGE_CONFIG.at(-1);
+  const extra = stage - last.stage;
   return {
+    stage,
     round: stage,
     size: last.size,
     cols: last.cols,
     rows: last.rows,
-    target: Math.min(25, last.target + (stage - last.round) * 2),
+    target: Math.min(18, last.target + Math.floor((extra + 1) / 2)),
+    timeLimit: Math.max(50, last.timeLimit - extra * 2),
+    clockChance: Math.max(0.28, last.clockChance - extra * 0.015),
+    bombChance: Math.min(0.72, last.bombChance + extra * 0.018),
   };
 }
+
+export const getRoundConfig = getStageConfig;

@@ -51,7 +51,7 @@
         </button>
         <div class="best-record-card" aria-label="내 최고기록">
           <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
-          <span>최고기록</span>
+          <span>최고기록 <small id="home-best-stage">STAGE 1</small></span>
           <strong id="home-best-score">0</strong>
         </div>
       </div>
@@ -73,8 +73,8 @@
               <img src="assets/ui/button-pause.webp" width="421" height="235" loading="lazy" decoding="async" alt="">
             </button>
           </div>
-          <div class="round-mini"><span>ROUND</span><strong id="round-value">1</strong></div>
-          <div class="time-readout" id="time-pill">
+          <div class="round-mini"><span>STAGE</span><strong id="round-value">1</strong></div>
+          <div class="time-readout" id="time-pill" hidden>
             <img class="time-clock-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt="">
             <img class="time-freeze-icon" src="assets/icons/items/freeze.webp" width="512" height="512" loading="lazy" decoding="async" alt="">
             <strong id="time-value">03:00</strong>
@@ -90,19 +90,19 @@
           </div>
         </div>
         <div class="goal-status">
-          <span><em id="goal-label">목표</em> <b id="goal-value">0/3</b></span>
+          <span><b id="goal-value">0 / 3</b> <em id="goal-label">성공</em></span>
           <div class="goal-track" id="goal-track" aria-hidden="true"><i id="goal-fill"></i></div>
         </div>
         <div class="play-feedback-rail" aria-hidden="true">
           <div class="round-clear" id="round-clear">
-            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><strong>ROUND CLEAR!</strong><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><strong>STAGE CLEAR!</strong><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
           </div>
           <div class="combo-celebration" id="combo-celebration">
             <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
             <div><small id="combo-celebration-kicker">NICE!</small><strong>COMBO <b id="combo-celebration-value">3</b></strong></div>
             <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
           </div>
-          <div class="tutorial-callout" id="tutorial-callout">슥 밀거나, 양끝을 톡톡!</div>
+          <div class="tutorial-callout" id="tutorial-callout"><span>드래그해서 숫자를 묶어봐</span><strong>합이 10이면 성공!</strong></div>
         </div>
       </header>
 
@@ -152,8 +152,9 @@
       <div class="result-decor" id="result-decor" aria-hidden="true">
         <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
       </div>
-      <p class="result-kicker">GAME RESULT</p>
+      <p class="result-kicker" id="result-kicker">STAGE RESULT</p>
       <article class="result-card">
+        <p class="result-stage-progress" id="result-stage-progress">STAGE 1 · 0 / 3 성공</p>
         <div class="result-score-label"><img src="assets/icons/hud/score.webp" width="294" height="296" loading="lazy" decoding="async" alt=""><span>최종 점수</span></div>
         <strong class="final-score" id="final-score">0</strong>
         <div class="new-record" id="new-record" hidden>NEW RECORD</div>
@@ -167,7 +168,7 @@
         </div>
         <div class="result-grid">
           <div><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><span>최고 콤보</span><b id="final-combo">0</b></div>
-          <div><img src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>도달 라운드</span><b id="final-round">1</b></div>
+          <div><img src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>도달 스테이지</span><b id="final-round">1</b></div>
           <div><img src="assets/icons/hud/goal.webp" width="283" height="279" loading="lazy" decoding="async" alt=""><span>최대 클리어</span><b><i id="final-largest-clear">0</i>칸</b></div>
         </div>
       </article>
@@ -178,7 +179,7 @@
         <div class="result-message" id="result-message">이번 판 좋았어!</div>
       </div>
       <div class="result-actions">
-        <button class="btn btn-primary" id="retry-button" type="button">다시 하기</button>
+        <button class="btn btn-primary" id="retry-button" type="button">다시 도전</button>
         <button class="btn btn-mint result-share-button" id="share-button" type="button">
           <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>카톡으로 자랑하기</span>
         </button>
