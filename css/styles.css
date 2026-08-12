@@ -1612,15 +1612,16 @@ img {
 .tile.tone-5 { background-image: url("../assets/ui/tiles-syrup-v4/tile-aqua.webp"); }
 .tile.tone-6 { background-image: url("../assets/ui/tiles-syrup-v4/tile-lemon.webp"); }
 
-.tile.value-1 span { color: #4e9a66; }
-.tile.value-2 span { color: #6f61b4; }
-.tile.value-3 span { color: #5c994f; }
-.tile.value-4 span { color: #df5e7d; }
-.tile.value-5 span { color: #2699a4; }
-.tile.value-6 span { color: #4b82b7; }
-.tile.value-7 span { color: #7458aa; }
-.tile.value-8 span { color: #e58a25; }
-.tile.value-9 span { color: #6554a5; }
+/* A-1: 숫자 색을 잉크 한 색으로 통일.
+   이전에는 1~9가 전부 다른 색이었는데(초록/보라/분홍/청록/파랑/주황...),
+   색이 값을 알려주지 않으므로 정보량은 0이고 시각적 소음만 컸다.
+   1·3이 비슷한 초록, 2·7·9가 비슷한 보라라 규칙 학습도 되지 않았다.
+   숫자는 단색으로 두고, 색은 선택·힌트·성공 같은 "의미 있는 상태"에만 남긴다.
+   배경 파스텔 위에서 또렷하게 뜨도록 흰색 헤어라인만 얇게 깐다. */
+.tile[class*="value-"] span {
+  color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
+}
 
 .tile.is-empty {
   border: 1.5px solid rgba(216, 190, 150, 0.58);
