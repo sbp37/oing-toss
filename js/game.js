@@ -756,10 +756,10 @@ class OingGame {
     this.ui.showMatchConfirmation(rect, this.state.combo);
     const successAnimation = this.ui.animateSuccess(rect, this.state.combo);
     const specialAnimation = this.ui.animateSpecialTiles(specials, blastCells);
-    await delay(78);
+    await delay(96);
     scoreFeedback();
     if (this.state.combo >= 2) {
-      await delay(this.state.combo >= 5 ? 72 : 52);
+      await delay(this.state.combo >= 5 ? 90 : 68);
       this.ui.showComboMoment(this.state.combo);
     }
     await Promise.all([successAnimation, specialAnimation]);
@@ -888,6 +888,7 @@ class OingGame {
     this.stopTimer();
     const clearedStage = this.state.round;
     const nextRound = clearedStage + 1;
+    const clearedConfig = getRoundConfig(clearedStage);
     const nextConfig = getRoundConfig(nextRound);
     const timeBonus = roundTimeBonusSeconds(clearedStage);
     const awardedTimeBonus = Math.max(0, Math.round(cappedSessionTime(this.state.timeLeft, timeBonus) - this.state.timeLeft));
@@ -903,6 +904,7 @@ class OingGame {
       nextStage: nextRound,
       rows: nextConfig.rows,
       cols: nextConfig.cols,
+      boardGrew: nextConfig.rows !== clearedConfig.rows || nextConfig.cols !== clearedConfig.cols,
     });
     this.ui.setPlayCharacter('cheer', 1000);
     this.showCatMessage('stage');
@@ -914,7 +916,7 @@ class OingGame {
     this.updateHUD();
     const [storedItems] = await Promise.all([
       this.storeRoundItems({ soundDelay: 260 }),
-      delay(720),
+      delay(760),
     ]);
     this.state.round = nextRound;
     this.state.progress = 0;
@@ -940,7 +942,11 @@ class OingGame {
     let carriedItems = [];
     await this.ui.animateRoundTransition(nextRound, () => {
       carriedItems = this.buildRound();
-    }, stageIntroForStage(nextRound));
+    }, {
+      ...stageIntroForStage(nextRound),
+      target: nextConfig.target,
+      boardGrew: nextConfig.rows !== clearedConfig.rows || nextConfig.cols !== clearedConfig.cols,
+    });
     this.state.inputLocked = false;
     if (unlockGrant?.bomb) this.ui.toast('폭탄을 쓸 수 있게 됐다냥!');
     if (unlockGrant?.clock) this.ui.toast('시계 아이템이 열렸다냥!');
@@ -1306,10 +1312,15 @@ class OingGame {
       this.refreshComboDeadline(now);
       if (previousCombo > this.state.combo) this.ui.showComboLoss(previousCombo - this.state.combo);
     }
-    if (!isFrozen && this.state.timeLeft <= 10 && !this.lowTimeSpoken) {
+    if (!this.startCountdownInProgress
+      && !this.state.inputLocked
+      && !isFrozen
+      && this.state.timeLeft <= 10
+      && !this.lowTimeSpoken) {
       this.lowTimeSpoken = true;
       this.showCatMessage('lowTime');
       this.ui.setPlayCharacter('cheer', 1800);
+      this.ui.showLowTimeAlert(Math.ceil(this.state.timeLeft));
     }
     const countdownSecond = Math.ceil(this.state.timeLeft);
     if (!isFrozen && countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {

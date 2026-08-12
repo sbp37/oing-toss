@@ -560,7 +560,7 @@ export function buildScoreComparisons(score, previousScore, previousBest) {
     previousText = `지난 판보다 +${(current - last).toLocaleString('ko-KR')}점 올랐다냥!`;
     previousTone = 'up';
   } else if (last !== null && current < last) {
-    previousText = `지난 판 ${last.toLocaleString('ko-KR')}점 · 이번 기록도 저장 완료!`;
+    previousText = `지난 판 ${last.toLocaleString('ko-KR')}점 · 다음 판은 더 올라가보자냥!`;
     previousTone = 'neutral';
   } else if (last !== null) {
     previousText = '지난 판과 똑같은 점수다냥!';
@@ -590,9 +590,6 @@ export function resultRetryLabel({
   const best = Math.max(0, Math.round(Number(previousBest) || 0));
   if (best > 0 && current < best && (best - current <= 150 || current / best >= 0.9)) {
     return '최고기록 넘기기!';
-  }
-  if (Math.max(0, Number(maxCombo) || 0) >= 5 || Math.max(1, Number(round) || 1) >= 5) {
-    return '더 높이 가기!';
   }
   return '한 판 더!';
 }

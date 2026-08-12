@@ -273,7 +273,10 @@ export class GameUI {
                 ? 'assets/icons/hud/time.webp'
                 : 'assets/icons/items/bomb.webp';
               badge.alt = '';
-              tile.appendChild(badge);
+              const actionLabel = document.createElement('small');
+              actionLabel.className = 'special-tile-label';
+              actionLabel.textContent = special === 'clock' ? '+5s' : 'POP';
+              tile.append(badge, actionLabel);
             }
           }
         }
@@ -551,7 +554,7 @@ export class GameUI {
       icon.src = item.asset;
       icon.alt = '';
       const copy = document.createElement('span');
-      copy.textContent = `${item.label} 등장!`;
+      copy.textContent = `7 COMBO · ${item.label} GET!`;
       pop.append(icon, copy, document.createElement('i'), document.createElement('i'));
       const chip = this.elements.comboChip.getBoundingClientRect();
       const screen = this.elements.playScreen.getBoundingClientRect();
@@ -593,11 +596,13 @@ export class GameUI {
     });
     this.elements.marquee.classList.add('is-ten');
     this.elements.marquee.classList.add('is-bursting');
+    this.boardFrame.classList.add('is-success-resolving');
     this.boardFrame.dataset.comboImpact = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     this.spawnParticles(rect, combo);
     this.showScoreFlight(rect, combo);
-    await delay(225);
+    await delay(270);
     this.elements.marquee.classList.remove('is-bursting', 'is-visible');
+    this.boardFrame.classList.remove('is-success-resolving');
     delete this.boardFrame.dataset.comboImpact;
   }
 
@@ -612,7 +617,7 @@ export class GameUI {
     confirmation.style.left = `${clamp((bounds.left + bounds.right) / 2, 52, bounds.frameWidth - 52)}px`;
     confirmation.style.top = `${Math.max(22, bounds.top - 8)}px`;
     this.boardFrame.appendChild(confirmation);
-    window.setTimeout(() => confirmation.remove(), 440);
+    window.setTimeout(() => confirmation.remove(), 520);
   }
 
   async animateSpecialTiles(specials = [], blastCells = []) {
@@ -676,7 +681,12 @@ export class GameUI {
       region.style.width = `${bounds.right - bounds.left + pad * 2}px`;
       region.style.height = `${bounds.bottom - bounds.top + pad * 2}px`;
       const label = document.createElement('span');
-      label.textContent = '합10 여기!';
+      const icon = document.createElement('img');
+      icon.src = 'assets/icons/items/hint.webp';
+      icon.alt = '';
+      const labelText = document.createElement('strong');
+      labelText.textContent = '합10 여기!';
+      label.append(icon, labelText);
       region.append(label);
       for (let index = 0; index < 4; index += 1) region.appendChild(document.createElement('i'));
       this.boardFrame.appendChild(region);
@@ -764,6 +774,7 @@ export class GameUI {
     this.scoreBurstTimer = null;
     this.elements.scoreBurst.classList.remove('is-visible');
     this.elements.roundClear.classList.remove('is-visible');
+    this.boardFrame.classList.remove('is-success-resolving');
     this.boardFrame.querySelectorAll([
       '.success-particle',
       '.success-glint',
@@ -784,12 +795,15 @@ export class GameUI {
       '.match-confirmation',
       '.final-second-pop',
       '.stage-entry',
+      '.stage-growth-confetti',
     ].join(',')).forEach((element) => element.remove());
     this.clearEndAnswers();
     this.elements.playScreen.querySelectorAll('.score-flight').forEach((element) => element.remove());
     this.elements.playScreen.querySelector('.final-second-pop')?.remove();
     this.elements.playScreen.querySelector('.time-rescue-label')?.remove();
+    this.elements.playScreen.querySelector('.low-time-alert')?.remove();
     this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop').forEach((element) => element.remove());
+    this.elements.playScreen.classList.remove('is-board-growth-clear', 'is-time-rescued', 'is-low-time-alerting');
   }
 
   setShuffleVectors() {
@@ -881,7 +895,9 @@ export class GameUI {
       const icon = document.createElement('img');
       icon.src = 'assets/icons/items/bomb.webp';
       icon.alt = '';
-      effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      const label = document.createElement('strong');
+      label.textContent = 'POP!';
+      effect.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
       for (let index = 0; index < 5; index += 1) {
         const drop = document.createElement('b');
         drop.style.setProperty('--bomb-drop-index', String(index));
@@ -890,9 +906,7 @@ export class GameUI {
       this.boardFrame.appendChild(effect);
       setTimeout(() => effect.remove(), 720);
     }
-    this.boardFrame.classList.add('bomb-kick');
     await delay(470);
-    this.boardFrame.classList.remove('bomb-kick');
   }
 
   async animateMegaBomb(cells, origin) {
@@ -928,15 +942,35 @@ export class GameUI {
     items.forEach(({ row, col, type }, index) => {
       const tile = this.tileAt(row, col);
       if (!tile) return;
-      tile.style.setProperty('--item-drop-delay', `${index * 70}ms`);
+      const landingDelay = 300 + index * 80;
+      tile.style.setProperty('--item-drop-delay', `${landingDelay}ms`);
       tile.classList.add('is-item-spawning');
       const tileRect = tile.getBoundingClientRect();
       const frameRect = this.boardFrame.getBoundingClientRect();
+      const screenRect = this.elements.playScreen.getBoundingClientRect();
+      const comboRect = this.elements.comboChip.getBoundingClientRect();
+      const definition = BOARD_DROP_ITEMS[type];
+      const flight = document.createElement('div');
+      flight.className = `item-reward-flight item-reward-${type}`;
+      flight.style.left = `${comboRect.left + comboRect.width / 2 - screenRect.left}px`;
+      flight.style.top = `${comboRect.top + comboRect.height / 2 - screenRect.top}px`;
+      const flightX = tileRect.left + tileRect.width / 2 - comboRect.left - comboRect.width / 2;
+      const flightY = tileRect.top + tileRect.height / 2 - comboRect.top - comboRect.height / 2;
+      flight.style.setProperty('--reward-x', `${flightX}px`);
+      flight.style.setProperty('--reward-y', `${flightY}px`);
+      flight.style.setProperty('--reward-mid-x', `${flightX * 0.48}px`);
+      flight.style.setProperty('--reward-mid-y', `${flightY * 0.38 - 24}px`);
+      flight.style.setProperty('--reward-delay', `${index * 80}ms`);
+      const flightIcon = document.createElement('img');
+      flightIcon.src = definition?.asset || '';
+      flightIcon.alt = '';
+      flight.append(flightIcon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      this.elements.playScreen.appendChild(flight);
       const effect = document.createElement('div');
       effect.className = `item-drop-fx item-drop-${type}`;
       effect.style.left = `${tileRect.left + tileRect.width / 2 - frameRect.left}px`;
       effect.style.top = `${tileRect.top + tileRect.height / 2 - frameRect.top}px`;
-      const definition = BOARD_DROP_ITEMS[type];
+      effect.style.setProperty('--item-landing-delay', `${landingDelay}ms`);
       const icon = document.createElement('img');
       icon.src = definition?.asset || '';
       icon.alt = '';
@@ -953,7 +987,8 @@ export class GameUI {
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
         effect.remove();
-      }, 1120 + index * 70);
+        flight.remove();
+      }, 1420 + index * 80);
     });
   }
 
@@ -1073,21 +1108,22 @@ export class GameUI {
     icon.src = 'assets/icons/hud/time.webp';
     icon.alt = '';
     const label = document.createElement('strong');
-    label.textContent = `+${seconds}초`;
+    label.textContent = `+${seconds} SEC`;
     flight.append(icon, label);
     sourceElement?.classList.add('is-casting');
+    this.elements.playScreen.classList.toggle('is-time-rescued', urgent);
     screen.appendChild(flight);
     const impact = document.createElement('div');
     impact.className = 'item-impact-fx item-impact-clock';
     impact.style.left = `${target.left + target.width / 2 - frame.left}px`;
     impact.style.top = `${target.top + target.height / 2 - frame.top}px`;
-    for (let index = 0; index < 4; index += 1) impact.appendChild(document.createElement('i'));
+    for (let index = 0; index < 6; index += 1) impact.appendChild(document.createElement('i'));
     await delay(350);
     screen.appendChild(impact);
     if (urgent) {
       const rescue = document.createElement('div');
       rescue.className = 'time-rescue-label';
-      rescue.textContent = 'TIME SAVED!';
+      rescue.textContent = '시간 살렸다!';
       rescue.style.left = `${target.left + target.width / 2 - frame.left}px`;
       rescue.style.top = `${target.bottom - frame.top + 5}px`;
       screen.appendChild(rescue);
@@ -1101,6 +1137,7 @@ export class GameUI {
     impact.remove();
     sourceElement?.classList.remove('is-casting');
     this.elements.timePill.classList.remove('is-time-added');
+    this.elements.playScreen.classList.remove('is-time-rescued');
   }
 
   async animateFreeze(seconds = 15, sourceElement) {
@@ -1311,6 +1348,29 @@ export class GameUI {
     }, duration);
   }
 
+  showLowTimeAlert(seconds = 10) {
+    this.elements.playScreen.querySelector('.low-time-alert')?.remove();
+    this.dismissComboCelebration();
+    this.elements.playScreen.classList.add('is-low-time-alerting');
+    const alert = document.createElement('div');
+    alert.className = 'low-time-alert';
+    const clock = document.createElement('img');
+    clock.src = 'assets/icons/hud/time.webp';
+    clock.alt = '';
+    const copy = document.createElement('div');
+    const kicker = document.createElement('small');
+    kicker.textContent = 'HURRY UP!';
+    const value = document.createElement('strong');
+    value.textContent = `${Math.max(1, Math.round(Number(seconds) || 10))} SEC`;
+    copy.append(kicker, value);
+    alert.append(clock, copy, document.createElement('i'), document.createElement('i'));
+    this.elements.playScreen.appendChild(alert);
+    window.setTimeout(() => {
+      alert.remove();
+      this.elements.playScreen.classList.remove('is-low-time-alerting');
+    }, 980);
+  }
+
   spawnComboConfetti(level) {
     this.boardFrame.querySelectorAll('.combo-confetti').forEach((particle) => particle.remove());
     const count = level >= 8 ? 10 : level >= 5 ? 7 : 4;
@@ -1349,19 +1409,30 @@ export class GameUI {
     delete this.boardFrame.dataset.comboCelebration;
   }
 
-  showRoundClear({ scoreBonus = 0, timeBonus = 0, stage = 1, nextStage = stage + 1, rows = 0, cols = 0 } = {}) {
+  showRoundClear({
+    scoreBonus = 0,
+    timeBonus = 0,
+    stage = 1,
+    nextStage = stage + 1,
+    rows = 0,
+    cols = 0,
+    boardGrew = false,
+  } = {}) {
     this.dismissComboCelebration();
     const clear = this.elements.roundClear;
     const label = clear.querySelector('strong');
     const reward = clear.querySelector('#round-clear-reward');
-    if (label) label.textContent = 'STAGE CLEAR!';
+    if (label) label.textContent = `STAGE ${stage} CLEAR!`;
     const details = [];
-    if (scoreBonus > 0) details.push(`+${scoreBonus.toLocaleString('ko-KR')}점`);
+    if (boardGrew && rows > 0 && cols > 0) details.push(`${cols}×${rows} OPEN`);
     if (timeBonus > 0) details.push(`+${timeBonus} SEC`);
-    if (rows > 0 && cols > 0) details.push(`${cols}×${rows} OPEN`);
+    if (scoreBonus > 0) details.push(`+${scoreBonus.toLocaleString('ko-KR')}점`);
     if (reward) reward.textContent = details.join(' · ') || `STAGE ${nextStage} GO!`;
     clear.dataset.stage = String(stage);
-    clear.classList.toggle('is-milestone', timeBonus > 0);
+    clear.dataset.nextStage = String(nextStage);
+    clear.classList.toggle('is-milestone', timeBonus > 0 || boardGrew);
+    this.elements.playScreen.classList.toggle('is-board-growth-clear', boardGrew);
+    if (boardGrew) this.spawnStageGrowthConfetti();
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
     this.elements.scoreBurst.classList.remove('is-visible');
@@ -1372,7 +1443,32 @@ export class GameUI {
     setTimeout(() => {
       clear.classList.remove('is-visible');
       this.elements.playScreen.classList.remove('is-stage-clearing');
+      this.elements.playScreen.classList.remove('is-board-growth-clear');
     }, 820);
+  }
+
+  spawnStageGrowthConfetti() {
+    this.boardFrame.querySelectorAll('.stage-growth-confetti').forEach((particle) => particle.remove());
+    const sources = [
+      'assets/decor/star.webp',
+      'assets/decor/sparkle.webp',
+      'assets/decor/heart.webp',
+      'assets/decor/flower.webp',
+    ];
+    const vectors = [
+      [-34, -28], [34, -25], [-42, 7], [43, 10], [-28, 34], [31, 36],
+    ];
+    vectors.forEach(([x, y], index) => {
+      const particle = document.createElement('img');
+      particle.className = 'stage-growth-confetti';
+      particle.src = sources[index % sources.length];
+      particle.alt = '';
+      particle.style.setProperty('--growth-x', `${x}px`);
+      particle.style.setProperty('--growth-y', `${y}px`);
+      particle.style.setProperty('--growth-delay', `${index * 34}ms`);
+      this.boardFrame.appendChild(particle);
+      window.setTimeout(() => particle.remove(), 920);
+    });
   }
 
   showStageTimeBonus(seconds = 0) {
@@ -1399,7 +1495,7 @@ export class GameUI {
   async animateRoundTransition(nextRound, swapBoard, intro = {}) {
     this.clearTransientBoardFeedback();
     this.boardFrame.classList.add('is-round-leaving');
-    await delay(180);
+    await delay(140);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
     this.elements.roundMini.classList.remove('is-advancing');
@@ -1414,9 +1510,12 @@ export class GameUI {
     title.textContent = intro.title || `STAGE ${nextRound}`;
     const detail = document.createElement('span');
     detail.textContent = intro.detail || '새 보드 시작';
-    entry.append(kicker, title, detail, document.createElement('i'), document.createElement('i'));
+    const goal = document.createElement('b');
+    goal.textContent = `목표 ${Math.max(1, Math.round(Number(intro.target) || 1))}`;
+    entry.classList.toggle('is-milestone', Boolean(intro.boardGrew));
+    entry.append(kicker, title, detail, goal, document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(entry);
-    await delay(560);
+    await delay(460);
     entry.remove();
     this.boardFrame.classList.remove('is-round-arriving');
     this.elements.roundMini.classList.remove('is-advancing');
@@ -1646,6 +1745,7 @@ export class GameUI {
       : `콤보 ${combo}`);
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
+    this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
     this.elements.goalLabel.textContent = '성공';
     this.elements.goal.textContent = `${progress} / ${target}`;
@@ -1670,8 +1770,11 @@ export class GameUI {
       if (count > 0) button.dataset.everHeld = '1';
       const everHeld = button.dataset.everHeld === '1';
       const empty = count <= 0;
-      button.classList.toggle('is-depleted', empty && everHeld && !locked);
-      button.classList.toggle('is-stage-locked', locked || (empty && !everHeld));
+      const depleted = empty && everHeld && !locked;
+      const stageLocked = locked || (empty && !everHeld);
+      button.classList.toggle('is-depleted', depleted);
+      button.classList.toggle('is-stage-locked', stageLocked);
+      button.dataset.state = stageLocked ? 'locked' : depleted ? 'depleted' : 'available';
     };
     markItem(this.elements.hintButton, hint);
     markItem(this.elements.shuffleButton, shuffle);

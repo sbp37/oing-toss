@@ -47,7 +47,7 @@ test('result retry copy points toward the next positive goal', () => {
   assert.equal(resultRetryLabel({ recordEligible: false }), 'STAGE 1부터 도전!');
   assert.equal(resultRetryLabel({ newRecord: true }), '신기록 또 넘기기!');
   assert.equal(resultRetryLabel({ score: 900, previousBest: 1000 }), '최고기록 넘기기!');
-  assert.equal(resultRetryLabel({ score: 400, previousBest: 1000, maxCombo: 7 }), '더 높이 가기!');
+  assert.equal(resultRetryLabel({ score: 400, previousBest: 1000, maxCombo: 7 }), '한 판 더!');
   assert.equal(resultRetryLabel({ score: 400, previousBest: 1000, round: 2 }), '한 판 더!');
 });
 

@@ -7110,3 +7110,723 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .play-feedback-rail .round-clear.is-milestone > img { animation: none; }
 }
+
+/* 2026-08 final reward-flow polish -----------------------------------------
+   Make the rule unmistakably read as ten, keep the compact record card calm,
+   and connect match -> score -> combo without moving the entire board. */
+.home-tagline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.home-tagline span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.home-tagline b {
+  display: inline-grid;
+  place-items: center;
+  min-width: 29px;
+  height: 25px;
+  padding: 0 5px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 9px;
+  background: linear-gradient(180deg, #ff8fa9, #f26082);
+  box-shadow: 0 2px 0 rgba(198, 71, 101, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(173, 64, 91, 0.16);
+}
+
+.home-tagline strong {
+  letter-spacing: -0.02em;
+}
+
+.best-record-card {
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  column-gap: 6px;
+}
+
+.best-record-card span em {
+  display: block;
+  overflow: hidden;
+  color: #54766f;
+  font-style: normal;
+  text-overflow: ellipsis;
+}
+
+.best-record-card span small {
+  margin-top: 2px;
+  font-size: 10px;
+}
+
+.best-record-card strong {
+  max-width: 72px;
+  font-size: 13px;
+  text-align: right;
+}
+
+.tile.is-success::before {
+  z-index: 4;
+  inset: 5%;
+  opacity: 0;
+  animation: success-tile-sheen 270ms var(--pop-delay, 0ms) ease-out both;
+}
+
+.tile.is-success span {
+  animation: success-number-pop 270ms var(--pop-delay, 0ms) cubic-bezier(.18, .82, .24, 1.08) both;
+}
+
+.board-frame.is-success-resolving {
+  animation: success-frame-bloom 270ms ease-out both;
+}
+
+@keyframes success-tile-sheen {
+  0% { opacity: 0; transform: translateX(-62%) skewX(-10deg); }
+  28% { opacity: 0.95; }
+  100% { opacity: 0; transform: translateX(58%) skewX(-10deg); }
+}
+
+@keyframes success-number-pop {
+  0% { transform: scale(1); opacity: 1; }
+  32% { transform: translateY(1px) scale(0.91); opacity: 1; }
+  68% { transform: translateY(-2px) scale(1.08); opacity: 1; }
+  100% { transform: translateY(-7px) scale(0.72); opacity: 0; }
+}
+
+@keyframes success-frame-bloom {
+  0% { filter: brightness(1); }
+  42% { filter: brightness(1.035) saturate(1.025); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes stage-clear-rail-hold {
+  0% { opacity: 0; transform: translate(-50%, -7px) scale(0.78); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1.035); }
+  34%, 84% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -6px) scale(0.97); }
+}
+
+.play-feedback-rail .round-clear {
+  min-width: 202px;
+  min-height: 32px;
+  padding-inline: 10px;
+}
+
+.play-feedback-rail .round-clear.is-visible {
+  animation: stage-clear-rail-hold 820ms cubic-bezier(.18, .84, .24, 1.08) both;
+}
+
+.play-feedback-rail .round-clear strong {
+  font-size: clamp(14px, 4vw, 16px);
+}
+
+.play-feedback-rail .round-clear span {
+  max-width: 248px;
+  font-size: 10.5px;
+}
+
+.stage-entry {
+  min-width: min(68%, 220px);
+  padding: 9px 17px 10px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 254, 239, 0.97), rgba(255, 244, 218, 0.95));
+  box-shadow: 0 0 0 6px rgba(255, 216, 224, 0.15), 0 9px 20px rgba(99, 75, 68, 0.15), inset 0 2px 0 #fff;
+}
+
+.stage-entry strong { font-size: clamp(25px, 7.4vw, 32px); }
+
+@media (max-width: 340px) {
+  .home-tagline { gap: 4px; }
+  .home-tagline b { min-width: 26px; height: 23px; font-size: 16px; }
+  .best-record-card { grid-template-columns: 23px minmax(0, 1fr) auto; column-gap: 4px; }
+  .best-record-card strong { max-width: 59px; font-size: 12px; }
+  .play-feedback-rail .round-clear { min-width: 184px; padding-inline: 7px; }
+  .play-feedback-rail .round-clear span { max-width: 208px; font-size: 9.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-success::before,
+  .tile.is-success span,
+  .board-frame.is-success-resolving { animation: none; }
+}
+
+/* Item clarity and reward feedback: the board stays dominant, while every
+   tool communicates available / locked / depleted without relying on opacity. */
+.item-button[data-state="available"] {
+  border-color: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--item-accent) 38%, #d8c9aa),
+    0 3px 0 color-mix(in srgb, var(--item-accent) 31%, #bfad8c),
+    0 6px 10px rgba(86, 69, 50, 0.08),
+    inset 0 2px 0 rgba(255, 255, 255, 0.98);
+}
+
+.item-button[data-state="available"]::before {
+  height: 25%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0));
+}
+
+.item-button[data-state="available"] .item-icon {
+  filter: drop-shadow(0 2px 2px color-mix(in srgb, var(--item-accent) 24%, transparent));
+}
+
+.item-button[data-state="locked"],
+.item-button[data-state="depleted"] {
+  opacity: 1;
+  filter: none;
+  cursor: default;
+  transform: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 1px rgba(190,180,162,0.3);
+}
+
+.item-button[data-state="locked"] {
+  border-color: rgba(210, 200, 181, 0.56);
+  background: linear-gradient(180deg, rgba(251,249,243,0.97), rgba(232,229,220,0.95));
+  color: #938f87;
+}
+
+.item-button[data-state="depleted"] {
+  border: 1px dashed rgba(183, 170, 148, 0.68);
+  background: linear-gradient(180deg, rgba(250,247,239,0.96), rgba(241,235,223,0.94));
+  color: #8b867d;
+}
+
+.item-button[data-state="locked"] .item-icon,
+.item-button[data-state="depleted"] .item-icon {
+  background: rgba(255,255,255,0.58);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  filter: grayscale(0.82) saturate(0.25);
+  opacity: 0.48;
+}
+
+.item-button[data-state="locked"] b,
+.item-button[data-state="depleted"] b {
+  display: none;
+}
+
+.item-button[data-state="locked"]::after,
+.item-button[data-state="depleted"]::after {
+  right: 4px;
+  bottom: 4px;
+  min-width: 27px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 999px;
+  background: rgba(103, 101, 96, 0.82);
+  box-shadow: 0 1px 2px rgba(78, 71, 62, 0.1);
+  color: white;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.item-button[data-state="locked"]::after { content: "잠금"; }
+.item-button[data-state="depleted"]::after { content: "소진"; }
+
+.item-button.is-stocked {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--item-accent) 22%, transparent),
+    0 4px 0 color-mix(in srgb, var(--item-accent) 38%, #bfad8c),
+    0 8px 15px color-mix(in srgb, var(--item-accent) 18%, transparent),
+    inset 0 2px 0 white;
+}
+
+.item-button.is-casting::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  inset: 3px;
+  border-radius: 12px;
+  background: linear-gradient(115deg, transparent 22%, rgba(255,255,255,0.78) 48%, transparent 70%);
+  transform: translateX(-115%);
+  animation: item-button-sheen 310ms ease-out both;
+  pointer-events: none;
+}
+
+@keyframes item-button-sheen {
+  to { transform: translateX(115%); }
+}
+
+/* Hint: a soft mint spotlight with the real hint asset, not another hard line. */
+.board.is-hinting .tile:not(.is-hint) {
+  opacity: 0.62;
+  filter: brightness(0.93) saturate(0.62);
+}
+
+.tile.is-hint {
+  z-index: 6;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,0.98),
+    0 0 0 3px rgba(83, 207, 183, 0.34),
+    0 7px 20px rgba(52, 169, 150, 0.29);
+}
+
+.hint-region {
+  border: 0;
+  border-radius: 19px;
+  background:
+    radial-gradient(ellipse at center, rgba(198, 255, 242, 0.39), rgba(114, 224, 201, 0.16) 58%, transparent 76%);
+  box-shadow:
+    0 0 0 4px rgba(255,255,255,0.55),
+    0 0 24px rgba(61, 196, 174, 0.28),
+    inset 0 0 20px rgba(255,255,255,0.52);
+}
+
+.hint-region span {
+  top: -19px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 94px;
+  min-height: 27px;
+  padding: 3px 8px 3px 4px;
+  border: 1px solid rgba(255,255,255,0.96);
+  background: linear-gradient(180deg, #83e2cf, #48bca6);
+  box-shadow: 0 0 0 3px rgba(112,224,201,0.14), 0 4px 9px rgba(43,139,122,0.2), inset 0 1px 0 rgba(255,255,255,0.64);
+}
+
+.hint-region span img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(66,120,104,0.13));
+}
+
+.hint-region span strong {
+  color: white;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Bomb: keep the energy local to the hit area so the whole grid never jitters. */
+.board-frame.bomb-kick { animation: none; }
+
+.bomb-fx::before {
+  border-width: 5px;
+  border-color: rgba(255, 116, 103, 0.75);
+  box-shadow: 0 0 16px rgba(255, 147, 84, 0.22);
+}
+
+.bomb-fx::after {
+  border-width: 3px;
+  border-color: rgba(255, 212, 87, 0.68);
+}
+
+.bomb-fx strong {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: 0;
+  padding: 4px 8px 3px;
+  border: 2px solid rgba(255,255,255,0.95);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8e7b, #f45877);
+  box-shadow: 0 4px 9px rgba(198,63,81,0.25);
+  color: white;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  opacity: 0;
+  white-space: nowrap;
+  animation: bomb-pop-label 570ms cubic-bezier(.16,.8,.24,1.16) both;
+}
+
+@keyframes bomb-pop-label {
+  0%, 18% { opacity: 0; transform: translate(-50%, -50%) scale(0.45) rotate(-8deg); }
+  38%, 68% { opacity: 1; transform: translate(20px, -48px) scale(1.08) rotate(4deg); }
+  100% { opacity: 0; transform: translate(26px, -62px) scale(0.92) rotate(2deg); }
+}
+
+/* Clock: the gain reads instantly and lands on the timer with six clear ticks. */
+.clock-flight strong {
+  left: 21px;
+  top: -15px;
+  padding: 4px 9px 3px;
+  border-width: 2px;
+  background: linear-gradient(180deg, #f7fffc, #c9f6e9);
+  box-shadow: 0 0 0 3px rgba(98,215,191,0.12), 0 4px 9px rgba(49,138,152,0.18);
+  font-size: 15px;
+}
+
+.item-impact-clock i { --clock-tick-angle: calc(var(--impact-index, 0) * 60deg); }
+.item-impact-clock i:nth-child(5) { --impact-index: 4; }
+.item-impact-clock i:nth-child(6) { --impact-index: 5; }
+
+.time-readout.is-time-added {
+  background: linear-gradient(180deg, rgba(246,255,251,0.99), rgba(211,248,238,0.98));
+  color: #287f75;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-button.is-casting::after,
+  .bomb-fx strong { animation: none; }
+}
+
+/* Seven-combo reward handoff: visibly travel from the combo HUD into the
+   board, then land as a one-tap reward instead of appearing between frames. */
+.combo-reward-pop {
+  min-height: 34px;
+  padding-right: 11px;
+  background: linear-gradient(180deg, rgba(255,253,235,0.99), rgba(255,235,197,0.98));
+  box-shadow: 0 0 0 4px rgba(255,207,104,0.12), 0 6px 14px rgba(168,103,67,0.2), inset 0 1px 0 #fff;
+  color: #c86655;
+  font-size: 11px;
+  letter-spacing: -0.015em;
+}
+
+.combo-reward-pop img {
+  width: 29px;
+  height: 29px;
+  filter: drop-shadow(0 2px 3px rgba(132,83,55,0.16));
+}
+
+.item-reward-flight {
+  position: absolute;
+  z-index: 41;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: item-reward-flight 430ms var(--reward-delay, 0ms) cubic-bezier(.18,.72,.22,1) both;
+}
+
+.item-reward-flight img {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 43px;
+  height: 46px;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 4px 7px rgba(118,79,58,0.23));
+  animation: item-reward-icon-flight 430ms var(--reward-delay, 0ms) ease-out both;
+}
+
+.item-reward-megabomb img { width: 49px; height: 49px; }
+.item-reward-freeze img,
+.item-reward-clover img { width: 47px; height: 47px; }
+
+.item-reward-flight i {
+  --reward-spark-x: -24px;
+  --reward-spark-y: -19px;
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  background: url("../assets/decor/sparkle.webp") center / contain no-repeat;
+  opacity: 0;
+  animation: item-reward-flight-spark 360ms calc(var(--reward-delay, 0ms) + 40ms) ease-out both;
+}
+
+.item-reward-flight i:nth-of-type(2) {
+  --reward-spark-x: 25px;
+  --reward-spark-y: -13px;
+  animation-delay: calc(var(--reward-delay, 0ms) + 90ms);
+}
+
+.item-reward-flight i:nth-of-type(3) {
+  --reward-spark-x: 17px;
+  --reward-spark-y: 22px;
+  animation-delay: calc(var(--reward-delay, 0ms) + 135ms);
+}
+
+@keyframes item-reward-flight {
+  0% { opacity: 0; transform: translate(0,0) scale(.58) rotate(-8deg); }
+  16% { opacity: 1; transform: translate(0,-5px) scale(1.08) rotate(4deg); }
+  62% { opacity: 1; transform: translate(var(--reward-mid-x),var(--reward-mid-y)) scale(.96) rotate(-4deg); }
+  100% { opacity: 0; transform: translate(var(--reward-x),var(--reward-y)) scale(.72) rotate(3deg); }
+}
+
+@keyframes item-reward-icon-flight {
+  0% { transform: translate(-50%,-50%) scale(.68); }
+  30% { transform: translate(-50%,-50%) scale(1.12); }
+  100% { transform: translate(-50%,-50%) scale(.9); }
+}
+
+@keyframes item-reward-flight-spark {
+  0%,18% { opacity:0; transform:translate(-50%,-50%) scale(.25) rotate(-15deg); }
+  42% { opacity:1; }
+  100% { opacity:0; transform:translate(calc(-50% + var(--reward-spark-x)),calc(-50% + var(--reward-spark-y))) scale(.9) rotate(100deg); }
+}
+
+.item-drop-fx::before { animation-delay: var(--item-landing-delay, 0ms); }
+.item-drop-fx::after { animation-delay: calc(var(--item-landing-delay, 0ms) + 70ms); }
+.item-drop-fx img { animation-delay: var(--item-landing-delay, 0ms); }
+.item-drop-fx > span { animation-delay: calc(var(--item-landing-delay, 0ms) + 80ms); }
+.item-drop-fx i:nth-of-type(1) { animation-delay: var(--item-landing-delay, 0ms); }
+.item-drop-fx i:nth-of-type(2) { animation-delay: calc(var(--item-landing-delay, 0ms) + 60ms); }
+.item-drop-fx i:nth-of-type(3) { animation-delay: calc(var(--item-landing-delay, 0ms) + 110ms); }
+.item-drop-fx i:nth-of-type(4) { animation-delay: calc(var(--item-landing-delay, 0ms) + 160ms); }
+.item-drop-fx > b.item-drop-paw { animation-delay: calc(var(--item-landing-delay, 0ms) + 70ms); }
+.item-drop-fx > b.item-drop-paw:nth-of-type(2) { animation-delay: calc(var(--item-landing-delay, 0ms) + 145ms); }
+
+.tile.is-board-item.is-item-spawning {
+  animation-duration: 720ms;
+}
+
+.tile.is-board-item.is-item-spawning .board-item-action {
+  animation-delay: calc(var(--item-drop-delay, 0ms) + 220ms);
+}
+
+/* Number specials still read as number tiles, but their compact action badge
+   stays legible when the board reaches six or seven columns. */
+.tile.is-special-tile {
+  box-shadow: 0 0 0 2px var(--special-ring, rgba(92,190,185,.3)), 0 5px 11px var(--special-shadow, rgba(71,155,166,.14));
+}
+
+.tile.special-clock {
+  --special-ring: rgba(65,190,190,.4);
+  --special-shadow: rgba(47,164,177,.18);
+}
+
+.tile.special-bomb {
+  --special-ring: rgba(241,101,128,.38);
+  --special-shadow: rgba(199,69,98,.17);
+}
+
+.special-tile-label {
+  position: absolute;
+  z-index: 4;
+  right: 3px;
+  bottom: 3px;
+  min-width: 25px;
+  padding: 2px 4px 1px;
+  border: 1px solid rgba(255,255,255,.94);
+  border-radius: 999px;
+  background: rgba(54,151,143,.9);
+  box-shadow: 0 2px 4px rgba(48,107,105,.15), inset 0 1px 0 rgba(255,255,255,.28);
+  color: white;
+  font-family: var(--font-sans);
+  font-size: clamp(7px,1.9vw,9px);
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: -.03em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.tile.special-bomb .special-tile-label { background: rgba(225,90,112,.91); }
+
+.tile.is-special-triggered .special-tile-label {
+  animation: special-badge-pop 300ms cubic-bezier(.18,.82,.24,1.2) both;
+}
+
+@media (max-width: 340px) {
+  .combo-reward-pop { max-width: 170px; font-size: 10px; }
+  .special-tile-label { right: 2px; bottom: 2px; min-width: 21px; padding-inline: 3px; font-size: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-reward-flight,
+  .item-reward-flight img,
+  .item-reward-flight i,
+  .tile.is-special-triggered .special-tile-label { animation-duration: 1ms !important; }
+}
+
+/* Combo tension is persistent but peripheral: the board never scales or
+   shakes, while its frame, HUD and goal rail visibly climb through 3/5/8+. */
+.screen-play[data-combo-band="warm"] .combo-readout {
+  background: linear-gradient(180deg, rgba(255,255,249,.98), rgba(255,246,219,.96));
+}
+
+.screen-play[data-combo-band="hot"] .combo-readout {
+  border-color: rgba(255,156,109,.38);
+  background: linear-gradient(180deg, rgba(255,255,249,.99), rgba(255,232,213,.97));
+  box-shadow: 0 0 0 3px rgba(255,185,105,.08), inset 0 1px 0 white;
+}
+
+.screen-play[data-combo-band="hot"] .goal-track {
+  box-shadow: inset 0 1px 2px rgba(129,99,47,.06), 0 0 8px rgba(255,178,95,.13);
+}
+
+.screen-play[data-combo-band="fever"] .play-hud {
+  box-shadow: 0 3px 12px rgba(66,114,130,.075), 0 0 0 1px rgba(255,108,142,.2), 0 0 14px rgba(255,112,145,.09), inset 0 1px 0 rgba(255,255,255,.96);
+}
+
+.screen-play[data-combo-band="fever"] .combo-readout {
+  border-color: rgba(255,108,142,.46);
+  background: linear-gradient(180deg, rgba(255,255,250,.99), rgba(255,219,231,.98));
+  box-shadow: 0 0 0 4px rgba(255,108,142,.08), 0 4px 10px rgba(200,70,106,.1), inset 0 1px 0 white;
+}
+
+.screen-play[data-combo-band="fever"] .combo-readout img {
+  animation: combo-fever-star 720ms ease-in-out infinite alternate;
+}
+
+.screen-play[data-combo-band="fever"] .goal-track {
+  box-shadow: inset 0 1px 2px rgba(129,99,47,.06), 0 0 10px rgba(255,102,140,.18);
+}
+
+@keyframes combo-fever-star {
+  from { transform: rotate(-4deg) scale(.96); filter: brightness(1); }
+  to { transform: rotate(6deg) scale(1.12); filter: brightness(1.08) saturate(1.08); }
+}
+
+/* Ten seconds: replace the secondary HUD row briefly instead of covering the
+   board, then leave the compact timer and cat reaction to carry the tension. */
+.low-time-alert {
+  position: absolute;
+  z-index: 35;
+  left: 50%;
+  top: calc(42px + var(--safe-top));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 132px;
+  min-height: 34px;
+  padding: 4px 12px 4px 7px;
+  border: 2px solid rgba(255,255,255,.96);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,250,240,.99), rgba(255,218,218,.98));
+  box-shadow: 0 0 0 5px rgba(255,112,139,.1), 0 6px 14px rgba(190,69,94,.18), inset 0 1px 0 white;
+  pointer-events: none;
+  animation: low-time-alert 980ms cubic-bezier(.16,.82,.24,1.12) both;
+}
+
+.low-time-alert img {
+  width: 27px;
+  height: 29px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(180,78,83,.17));
+}
+
+.low-time-alert div { display: grid; line-height: 1; }
+.low-time-alert small { color: #b77863; font-size: 9px; font-weight: 950; letter-spacing: .11em; }
+.low-time-alert strong { color: #e45775; font-family: var(--font-display); font-size: 18px; font-weight: 400; }
+
+.low-time-alert i {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  background: url("../assets/decor/sparkle.webp") center / contain no-repeat;
+  animation: low-time-spark 600ms ease-out both;
+}
+
+.low-time-alert i:last-child { left: auto; right: -5px; top: auto; bottom: -5px; animation-delay: 80ms; }
+.screen-play.is-low-time-alerting .hud-secondline { opacity: 0; transform: scale(.98); }
+
+@keyframes low-time-alert {
+  0% { opacity:0; transform:translate(-50%,7px) scale(.72); }
+  18% { opacity:1; transform:translate(-50%,0) scale(1.08); }
+  34%,76% { opacity:1; transform:translate(-50%,0) scale(1); }
+  100% { opacity:0; transform:translate(-50%,-7px) scale(.96); }
+}
+
+@keyframes low-time-spark {
+  0%,12% { opacity:0; transform:scale(.25) rotate(-15deg); }
+  40% { opacity:1; }
+  100% { opacity:0; transform:scale(1.1) rotate(95deg); }
+}
+
+.screen-play.is-final-countdown .time-readout {
+  border-color: rgba(244,103,133,.58);
+  background: linear-gradient(180deg, rgba(255,251,246,.99), rgba(255,226,228,.98));
+  box-shadow: 0 0 0 3px rgba(255,107,138,.07), 0 4px 10px rgba(187,65,91,.1), inset 0 1px 0 white;
+}
+
+.screen-play.is-final-countdown .time-readout::after {
+  background: linear-gradient(90deg, #ffba65, #ff738f);
+}
+
+.screen-play.is-time-rescued::before {
+  opacity: 1;
+  animation: time-rescued-edge 720ms ease-out both;
+}
+
+@keyframes time-rescued-edge {
+  0% { box-shadow: inset 0 0 0 rgba(91,218,187,0); }
+  32% { box-shadow: inset 0 0 28px 3px rgba(91,218,187,.2); }
+  100% { box-shadow: inset 0 0 10px rgba(91,218,187,0); }
+}
+
+/* Stage growth reads as a reward: clear rail, edge celebration, then the new
+   stage card names both the board identity and the next concrete target. */
+.screen-play.is-board-growth-clear .board-frame {
+  animation: board-growth-bloom 820ms cubic-bezier(.16,.82,.24,1.1) both;
+}
+
+.stage-growth-confetti {
+  position: absolute;
+  z-index: 18;
+  left: 50%;
+  top: 48%;
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(113,91,64,.12));
+  animation: stage-growth-confetti 820ms var(--growth-delay,0ms) cubic-bezier(.16,.72,.24,1) both;
+}
+
+@keyframes board-growth-bloom {
+  0%,100% { filter:brightness(1); }
+  34% { filter:brightness(1.05) saturate(1.04); box-shadow:0 4px 0 rgba(174,124,65,.14),0 12px 24px rgba(55,105,121,.15),0 0 0 7px rgba(116,218,192,.13),0 0 26px rgba(100,207,180,.24),inset 0 2px 0 #fff; }
+}
+
+@keyframes stage-growth-confetti {
+  0%,12% { opacity:0; transform:translate(-50%,-50%) scale(.25) rotate(0); }
+  32% { opacity:1; }
+  100% { opacity:0; transform:translate(calc(-50% + var(--growth-x) * 3.2),calc(-50% + var(--growth-y) * 3.1)) scale(.92) rotate(110deg); }
+}
+
+.stage-entry b {
+  margin-top: 5px;
+  padding: 3px 9px 2px;
+  border: 1px solid rgba(255,255,255,.92);
+  border-radius: 999px;
+  background: rgba(255,255,249,.84);
+  box-shadow: 0 2px 5px rgba(117,88,59,.08);
+  color: #9a7862;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.stage-entry.is-milestone {
+  background: linear-gradient(180deg, rgba(248,255,251,.98), rgba(211,247,236,.97));
+  box-shadow: 0 0 0 7px rgba(105,218,190,.14), 0 10px 22px rgba(61,140,123,.17), inset 0 2px 0 white;
+}
+
+.stage-entry.is-milestone small,
+.stage-entry.is-milestone strong { color: #369b87; }
+.stage-entry.is-milestone b { color: #437d72; }
+
+@media (max-width: 340px) {
+  .low-time-alert { top: calc(40px + var(--safe-top)); min-width: 122px; min-height: 32px; }
+  .low-time-alert strong { font-size: 16px; }
+  .stage-entry b { margin-top: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-play[data-combo-band="fever"] .combo-readout img,
+  .low-time-alert,
+  .low-time-alert i,
+  .screen-play.is-time-rescued::before,
+  .screen-play.is-board-growth-clear .board-frame,
+  .stage-growth-confetti { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}
