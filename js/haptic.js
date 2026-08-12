@@ -21,6 +21,13 @@ export function isHapticEnabled() {
   return enabled;
 }
 
+// iOS 사파리는 Vibration API 자체를 지원하지 않는다. 지원 여부를 모른 채
+// 설정에 진동 토글만 켜두면, 아이폰 유저는 켜도 아무 일이 없어 고장으로 느낀다.
+// 설정 화면에서 이 값으로 토글을 비활성화하고 안내를 띄운다.
+export function isHapticSupported() {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+
 export function selectionTick(isPerfect = false) {
   const now = performance.now();
   if (now - lastImpactAt < 48) return;

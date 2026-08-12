@@ -1662,11 +1662,21 @@ export class GameUI {
     this.elements.shuffleButton.disabled = shuffle <= 0;
     this.elements.bombButton.disabled = bomb <= 0;
     this.elements.clockButton.disabled = clock <= 0 || !clockAvailable;
-    this.elements.hintButton.classList.toggle('is-depleted', hint <= 0);
-    this.elements.shuffleButton.classList.toggle('is-depleted', shuffle <= 0);
-    this.elements.bombButton.classList.toggle('is-depleted', bomb <= 0);
-    this.elements.clockButton.classList.toggle('is-depleted', clock <= 0 || !clockAvailable);
-    this.elements.clockButton.classList.toggle('is-stage-locked', !clockAvailable);
+    // 0개일 때 무조건 "소진"을 붙이면, 아직 한 번도 얻은 적 없는 아이템까지
+    // "다 써버렸다"로 보인다(폭탄은 1스테이지부터 0이라 첫 화면부터 그렇게 보였다).
+    // 한 번이라도 가졌던 적이 있을 때만 소진으로 표시하고, 그 전에는 잠금으로 둔다.
+    const markItem = (button, count, locked = false) => {
+      if (!button) return;
+      if (count > 0) button.dataset.everHeld = '1';
+      const everHeld = button.dataset.everHeld === '1';
+      const empty = count <= 0;
+      button.classList.toggle('is-depleted', empty && everHeld && !locked);
+      button.classList.toggle('is-stage-locked', locked || (empty && !everHeld));
+    };
+    markItem(this.elements.hintButton, hint);
+    markItem(this.elements.shuffleButton, shuffle);
+    markItem(this.elements.bombButton, bomb);
+    markItem(this.elements.clockButton, clock, !clockAvailable);
     this.elements.hintButton.dataset.count = String(hint);
     this.elements.shuffleButton.dataset.count = String(shuffle);
     this.elements.bombButton.dataset.count = String(bomb);
