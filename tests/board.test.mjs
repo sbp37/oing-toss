@@ -77,12 +77,14 @@ assert.equal(adjacentSeedCountForRound(3), 2);
 assert.equal(adjacentSeedCountForRound(6), 0);
 assert.deepEqual(boardPacingForRound(1), {
   targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4,
+  maximumSimpleAnswers: 6,
   minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1,
   minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2,
   minimumAnswerZones: 3, maximumDominantCellShare: 0.52,
 });
 assert.deepEqual(boardPacingForRound(5), {
   targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9,
+  maximumSimpleAnswers: 4,
   minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5,
   minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2,
   minimumAnswerZones: 4, maximumDominantCellShare: 0.38,
@@ -98,6 +100,9 @@ for (const stage of [1, 3, 5, 8, 10]) {
     board.generate(config.cols, { cols: config.cols, rows: config.rows, round: stage });
     const answers = board.findAnswers();
     samples.push({
+      simpleAnswers: answers.filter((answer) => answer.count === 2).length,
+      adjacentPairs: answers.filter((answer) => answer.count === 2
+        && (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1) === 2).length,
       ...analyzeAnswerDiversity(board.grid, answers),
       ...analyzeAnswerSpread(board.grid, answers),
     });
@@ -108,6 +113,8 @@ for (const stage of [1, 3, 5, 8, 10]) {
   assert.ok(mean('orientations') >= pacing.minimumOrientations, `stage ${stage} must mix answer directions across boards`);
   assert.ok(mean('answerZones') >= pacing.minimumAnswerZones - 0.1, `stage ${stage} must spread answers around the board`);
   assert.ok(mean('dominantCellShare') <= pacing.maximumDominantCellShare + 0.05, `stage ${stage} must not funnel most answers through one cell`);
+  assert.ok(mean('simpleAnswers') <= pacing.maximumSimpleAnswers + 0.75, `stage ${stage} must limit obvious two-number answers`);
+  assert.ok(mean('adjacentPairs') <= pacing.maximumAdjacentPairs + 0.4, `stage ${stage} must respect its adjacent-pair difficulty`);
 }
 
 assert.equal(boardAssistForSuccessCount(0), 'starter');

@@ -4,6 +4,7 @@ export const GAME_DURATION_SECONDS = 120;
 export const PRACTICE_DURATION_SECONDS = 240;
 export const ITEM_REWARD_INTERVAL = 7;
 export const TIME_FREEZE_SECONDS = 10;
+export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 2, clover: 4, freeze: 5 });
 export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
 export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
 export const STRUGGLE_HINT_FAILURES = 3;
@@ -88,6 +89,7 @@ function boardDropPoolFor(stage, combo, cloverGiven = false) {
 
 export function chooseBoardDrop(combo, random = Math.random, {
   cloverGiven = false,
+  pity = {},
   previousType = null,
   rewardIndex = 0,
   stage = 1,
@@ -98,15 +100,43 @@ export function chooseBoardDrop(combo, random = Math.random, {
   if (level < 3) return null;
   // The first earned board item always demonstrates the most tactile reward.
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
+  const previousWasTimeItem = ['clock', 'freeze'].includes(previousType);
+  if (!cloverGiven && level >= 8 && streak >= 21
+    && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
+    return BOARD_DROP_ITEMS.clover;
+  }
+  if (!previousWasTimeItem && level >= 7 && streak >= 14
+    && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
+    return BOARD_DROP_ITEMS.freeze;
+  }
+  if (level >= 6 && streak >= 7
+    && Math.max(0, pity.megabomb || 0) >= BOARD_DROP_PITY_LIMITS.megabomb
+    && previousType !== 'megabomb') {
+    return BOARD_DROP_ITEMS.megabomb;
+  }
   const pool = boardDropPoolFor(level, streak, cloverGiven);
   if (!pool.length) return null;
   // Avoid back-to-back rare effects without forcing a clock after every bomb.
   const repeatSafePool = previousType && previousType !== 'bomb'
-    ? pool.filter((id) => id !== previousType)
+    ? pool.filter((id) => id !== previousType && !(previousWasTimeItem && ['clock', 'freeze'].includes(id)))
     : pool;
   const choices = repeatSafePool.length ? repeatSafePool : pool;
   const index = Math.min(choices.length - 1, Math.floor(Math.max(0, random()) * choices.length));
   return BOARD_DROP_ITEMS[choices[index]];
+}
+
+export function nextBoardDropPity(pity = {}, dropType = '', { stage = 1, combo = 0 } = {}) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  const streak = Math.max(0, Math.round(Number(combo) || 0));
+  const type = String(dropType || '');
+  const previousMega = Math.max(0, Math.round(Number(pity.megabomb) || 0));
+  const previousClover = Math.max(0, Math.round(Number(pity.clover) || 0));
+  const previousFreeze = Math.max(0, Math.round(Number(pity.freeze) || 0));
+  return Object.freeze({
+    megabomb: level >= 6 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
+    clover: level >= 8 && streak >= 21 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
+    freeze: level >= 7 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
+  });
 }
 
 export function boardDropReward(previousCombo, nextCombo) {

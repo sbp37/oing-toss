@@ -20,6 +20,7 @@ import {
   getRoundConfig,
   itemUnlockGrantForStage,
   itemRewardCountdown,
+  nextBoardDropPity,
   pickMessage,
   rebasePausedTimeline,
   recordEligibleForStartStage,
@@ -235,6 +236,7 @@ class OingGame {
       cloverBonusScore: 0,
       clutchBonusScore: 0,
       boardDropsEarned: 0,
+      boardDropPity: { megabomb: 0, clover: 0, freeze: 0 },
       lastBoardDropType: null,
       cloverDropped: false,
       stageChallengeComplete: false,
@@ -580,6 +582,7 @@ class OingGame {
     if (reward && this.state.round >= 3) {
       const drop = chooseBoardDrop(this.state.combo, Math.random, {
         cloverGiven: this.state.cloverDropped,
+        pity: this.state.boardDropPity,
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
         stage: this.state.round,
@@ -589,6 +592,10 @@ class OingGame {
         this.boardItems.queue(drop.id, { earnedAtCombo: this.state.combo, reward });
         this.state.boardDropsEarned += 1;
         this.state.lastBoardDropType = drop.id;
+        this.state.boardDropPity = nextBoardDropPity(this.state.boardDropPity, drop.id, {
+          stage: this.state.round,
+          combo: this.state.combo,
+        });
         if (drop.id === 'clover') this.state.cloverDropped = true;
         this.telemetry?.itemEarned(drop.id);
       }

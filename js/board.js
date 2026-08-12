@@ -163,20 +163,20 @@ export function adjacentSeedCountForRound(round = 1) {
 export function boardPacingForRound(round = 1, assist = 'standard') {
   const stage = Math.max(1, Math.round(Number(round) || 1));
   const base = stage === 1
-    ? { targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2 }
+    ? { targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4, maximumSimpleAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2 }
     : stage === 2
-      ? { targetAnswers: 8, maximumAnswers: 11, minimumAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 4, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2 }
+      ? { targetAnswers: 8, maximumAnswers: 11, minimumAnswers: 6, maximumSimpleAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 4, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2 }
       : stage === 3
-        ? { targetAnswers: 10, maximumAnswers: 13, minimumAnswers: 7, minimumAdjacentPairs: 2, maximumAdjacentPairs: 3, minimumRichAnswers: 3, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
+        ? { targetAnswers: 10, maximumAnswers: 13, minimumAnswers: 7, maximumSimpleAnswers: 5, minimumAdjacentPairs: 2, maximumAdjacentPairs: 3, minimumRichAnswers: 3, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
         : stage === 4
-          ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 4, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
+          ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, maximumSimpleAnswers: 5, minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 4, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
           : stage === 5
-            ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5, minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2 }
+            ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5, minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2 }
             : stage <= 7
-              ? { targetAnswers: 13, maximumAnswers: 17, minimumAnswers: 10, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2 }
+              ? { targetAnswers: 13, maximumAnswers: 17, minimumAnswers: 10, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2 }
               : stage <= 9
-                ? { targetAnswers: 14, maximumAnswers: 18, minimumAnswers: 10, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 }
-                : { targetAnswers: 15, maximumAnswers: 19, minimumAnswers: 11, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 };
+                ? { targetAnswers: 14, maximumAnswers: 18, minimumAnswers: 10, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 }
+                : { targetAnswers: 15, maximumAnswers: 19, minimumAnswers: 11, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 };
   const assistAdjacentBonus = assist === 'starter' ? 1 : 0;
   return Object.freeze({
     ...base,
@@ -234,6 +234,7 @@ function answerMix(grid, answers) {
   const spread = analyzeAnswerSpread(grid, answers);
   return {
     total: answers.length,
+    simple: answers.filter((answer) => answer.count === 2).length,
     adjacent: answers.filter(isAdjacentPair).length,
     rich: answers.filter((answer) => answer.count >= 3).length,
     ...diversity,
@@ -247,6 +248,7 @@ function pacingPenalty(mix, pacing) {
   return Math.abs(mix.total - pacing.targetAnswers)
     + below(mix.total, pacing.minimumAnswers) * 18
     + above(mix.total, pacing.maximumAnswers) * 5
+    + above(mix.simple, pacing.maximumSimpleAnswers) * 16
     + below(mix.adjacent, pacing.minimumAdjacentPairs) * 14
     + above(mix.adjacent, pacing.maximumAdjacentPairs) * 18
     + below(mix.rich, pacing.minimumRichAnswers) * 14
@@ -293,7 +295,40 @@ function seedAdjacentPairsInGrid(grid, requested) {
   }
 }
 
-function makeBalancedGrid(rows, cols, round, catTarget) {
+function adjacentPairCount(grid) {
+  let count = 0;
+  for (let row = 0; row < grid.length; row += 1) {
+    for (let col = 0; col < (grid[row]?.length || 0); col += 1) {
+      const value = grid[row][col];
+      if (!(value > 0)) continue;
+      if ((grid[row]?.[col + 1] ?? 0) > 0 && value + grid[row][col + 1] === 10) count += 1;
+      if ((grid[row + 1]?.[col] ?? 0) > 0 && value + grid[row + 1][col] === 10) count += 1;
+    }
+  }
+  return count;
+}
+
+// Preserve the number bag while preventing late boards from accidentally
+// presenting as many obvious adjacent pairs as the tutorial boards.
+function reduceAdjacentPairsInGrid(grid, maximum) {
+  if (!Number.isFinite(maximum)) return;
+  const cells = [];
+  grid.forEach((row, r) => row.forEach((value, c) => {
+    if (value > 0) cells.push({ r, c });
+  }));
+  let current = adjacentPairCount(grid);
+  for (let attempt = 0; current > maximum && attempt < 240; attempt += 1) {
+    const first = cells[Math.floor(Math.random() * cells.length)];
+    const second = cells[Math.floor(Math.random() * cells.length)];
+    if (!first || !second || (first.r === second.r && first.c === second.c)) continue;
+    [grid[first.r][first.c], grid[second.r][second.c]] = [grid[second.r][second.c], grid[first.r][first.c]];
+    const next = adjacentPairCount(grid);
+    if (next <= current) current = next;
+    else [grid[first.r][first.c], grid[second.r][second.c]] = [grid[second.r][second.c], grid[first.r][first.c]];
+  }
+}
+
+function makeBalancedGrid(rows, cols, round, catTarget, pacing) {
   const total = rows * cols;
   const catIndexes = new Set();
   while (catIndexes.size < catTarget) catIndexes.add(Math.floor(Math.random() * total));
@@ -303,6 +338,7 @@ function makeBalancedGrid(rows, cols, round, catTarget) {
     catIndexes.has(row * cols + col) ? null : bag[bagIndex++]
   )));
   seedAdjacentPairsInGrid(grid, adjacentSeedCountForRound(round));
+  if (round >= 3) reduceAdjacentPairsInGrid(grid, pacing.maximumAdjacentPairs);
   return { grid, catIndexes };
 }
 
@@ -564,7 +600,7 @@ export class BoardModel {
     let bestCandidate = null;
     let bestPenalty = Number.POSITIVE_INFINITY;
     for (let attempt = 0; attempt < GENERATION_ATTEMPTS * 2; attempt += 1) {
-      const candidate = makeBalancedGrid(this.rows, this.cols, round, catTarget);
+      const candidate = makeBalancedGrid(this.rows, this.cols, round, catTarget, pacing);
       const answers = findAllSumTenRects(candidate.grid);
       if (!answers.length) continue;
       const cats = new Set([...candidate.catIndexes].map((index) => `${Math.floor(index / this.cols)}:${index % this.cols}`));
@@ -581,6 +617,7 @@ export class BoardModel {
       }
       const ideal = mix.total >= pacing.minimumAnswers
         && mix.total <= pacing.maximumAnswers
+        && mix.simple <= pacing.maximumSimpleAnswers
         && mix.adjacent >= pacing.minimumAdjacentPairs
         && mix.adjacent <= pacing.maximumAdjacentPairs
         && mix.rich >= pacing.minimumRichAnswers

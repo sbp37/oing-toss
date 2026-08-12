@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageClearBonus, stageProgressGainForClear } from '../js/data.js';
+import { boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageClearBonus, stageProgressGainForClear } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -202,6 +202,31 @@ test('earned drops teach with a bomb without forcing a clock after it', () => {
     cloverGiven: true,
     stage: 8,
   }).id, 'freeze');
+});
+
+test('rare drop pity guarantees variety without chaining time effects', () => {
+  assert.equal(chooseBoardDrop(21, () => 0, {
+    pity: { megabomb: 2, freeze: 0 }, previousType: 'bomb', rewardIndex: 3, stage: 7,
+  }).id, 'megabomb');
+  assert.equal(chooseBoardDrop(28, () => 0, {
+    pity: { megabomb: 0, freeze: 5 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
+  }).id, 'freeze');
+  assert.equal(chooseBoardDrop(28, () => 0, {
+    cloverGiven: false, pity: { megabomb: 0, clover: 4, freeze: 0 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
+  }).id, 'clover');
+  assert.notEqual(chooseBoardDrop(28, () => 0.999, {
+    pity: { megabomb: 0, freeze: 5 }, previousType: 'clock', rewardIndex: 5, stage: 8,
+  }).id, 'freeze', 'a clock must not be followed immediately by another time effect');
+  assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 5 }, 'megabomb', { stage: 8, combo: 28 }), {
+    megabomb: 0,
+    clover: 1,
+    freeze: 6,
+  });
+  assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 5 }, 'freeze', { stage: 8, combo: 28 }), {
+    megabomb: 3,
+    clover: 1,
+    freeze: 0,
+  });
 });
 
 test('drops prefer empty cells next to playable numbers', () => {

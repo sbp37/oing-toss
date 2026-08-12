@@ -17,6 +17,7 @@ import {
   comboWindowMsForStage,
   completesStageChallenge,
   getRoundConfig,
+  nextBoardDropPity,
   roundTimeBonusSeconds,
   scoreForBomb,
   scoreForCatBonus,
@@ -139,6 +140,7 @@ export function simulateRun({
     let previousDropType = null;
     let dropsEarned = 0;
     let cloverGiven = false;
+    let dropPity = { megabomb: 0, clover: 0, freeze: 0 };
     let cloverBoost = false;
     let comboExpiresAtSeconds = 0;
 
@@ -302,6 +304,7 @@ export function simulateRun({
       if (boardDropReward(previousCombo, state.combo)) {
         const drop = chooseBoardDrop(state.combo, random, {
           cloverGiven,
+          pity: dropPity,
           previousType: previousDropType,
           rewardIndex: dropsEarned,
           stage: state.round,
@@ -309,6 +312,7 @@ export function simulateRun({
         if (drop) {
           dropsEarned += 1;
           previousDropType = drop.id;
+          dropPity = nextBoardDropPity(dropPity, drop.id, { stage: state.round, combo: state.combo });
           if (drop.id === 'clover') cloverGiven = true;
           state.itemsEarned[drop.id] = (state.itemsEarned[drop.id] || 0) + 1;
           useDrop(drop);
