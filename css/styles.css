@@ -508,7 +508,7 @@ img {
 
 /* Play HUD */
 .screen-play {
-  --board-edge: min(calc(100vw - 26px), 430px, calc(100dvh - 208px));
+  --board-edge: min(calc(100vw - 32px), 398px, calc(100dvh - 226px));
   display: none;
   grid-template-rows: auto auto minmax(0, 1fr);
   align-content: start;
@@ -1383,9 +1383,10 @@ img {
   --drag-pull-x: 0px;
   --drag-pull-y: 0px;
   position: relative;
-  width: var(--board-edge);
-  max-width: 100%;
-  padding: clamp(6px, 1.7vw, 8px);
+  width: calc(var(--board-edge) + 20px);
+  max-width: calc(100% + 20px);
+  margin-inline: -10px;
+  padding: clamp(4px, 1.4vw, 7px);
   border: 2px solid rgba(218,169,95,0.66);
   border-radius: 21px;
   background: linear-gradient(180deg, #fffaf0 0%, #fff0d2 100%);
@@ -5061,7 +5062,7 @@ img {
   .home-character-stage { width: clamp(205px, 61vw, 236px); height: clamp(214px, 29vh, 238px); min-height: 0; max-height: none; }
   .home-tagline { margin-bottom: 5px; padding-block: 7px; }
   .home-instruction { margin-bottom: 8px; }
-  .screen-play { --board-edge: min(calc(100vw - 24px), 404px, calc(100dvh - 202px)); padding-top: calc(5px + var(--safe-top)); }
+  .screen-play { --board-edge: min(calc(100vw - 28px), 358px, calc(100dvh - 218px)); padding-top: calc(5px + var(--safe-top)); }
   .play-hud { min-height: 0; }
   .board-zone { padding: 0; }
   .play-footer { grid-template-rows: auto auto; min-height: 0; height: auto; }
@@ -5101,7 +5102,7 @@ img {
   .best-record-card img { width: 23px; height: 23px; }
   .best-record-card span { font-size: 11px; }
   .best-record-card strong { font-size: 13px; }
-  .screen-play { --board-edge: min(calc(100vw - 20px), calc(100dvh - 202px)); padding-inline: 12px; }
+  .screen-play { --board-edge: min(calc(100vw - 24px), calc(100dvh - 218px)); padding-inline: 12px; }
   .hud-topline { grid-template-columns: 40px minmax(88px, 1fr) 104px; }
   .hud-topline { gap: 6px; }
   .pause-button { width: 40px; height: 32px; }
@@ -5137,7 +5138,7 @@ img {
 
 @media (max-width: 300px) {
   .screen-play {
-    --board-edge: min(calc(100vw - 14px), calc(100dvh - 196px));
+    --board-edge: min(calc(100vw - 16px), calc(100dvh - 208px));
     padding-inline: 8px;
   }
 
@@ -5184,7 +5185,7 @@ img {
   .home-mini-tile { width: 29px; height: 29px; font-size: 18px; }
   .home-equation strong { min-width: 37px; padding-block: 3px 2px; font-size: 18px; }
   .home-actions { padding: 7px; }
-  .screen-play { --board-edge: min(calc(100vw - 20px), calc(100dvh - 196px)); }
+  .screen-play { --board-edge: min(calc(100vw - 24px), calc(100dvh - 208px)); }
   .play-hud { min-height: 0; gap: 0; }
   .board-zone { padding: 0; }
   .play-footer { grid-template-rows: auto auto; height: auto; min-height: 0; gap: 4px; padding-block: 0 3px; }
@@ -6201,7 +6202,8 @@ img {
 .score-readout img,
 .combo-readout img { width: 15px; height: 15px; }
 .score-readout span,
-.combo-readout span { color: #788592; font-size: 11px; }
+.combo-readout span { color: #788592; font-size: 10px; } /* 이 줄은 나중 "2026-08 stage progression
+  pass"에서 촘촘하게 맞춘 값 — 11px로 올리면 COMBO 라벨이 넘쳐서 왼쪽이 잘린다. 원래 값 유지. */
 .score-readout strong,
 .combo-readout strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 .combo-readout { justify-self: end; }
@@ -6586,7 +6588,7 @@ img {
 }
 
 @media (max-width: 320px) {
-  .screen-play { --board-edge: min(calc(100vw - 16px), calc(100dvh - 198px)); padding-inline: 9px; }
+  .screen-play { --board-edge: min(calc(100vw - 18px), calc(100dvh - 210px)); padding-inline: 9px; }
   .play-hud { padding-inline: 6px; }
   .score-readout span,
   .combo-readout span { display: none; }
