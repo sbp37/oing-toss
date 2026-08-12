@@ -66,12 +66,22 @@ export const BOARD_DROP_ITEMS = Object.freeze({
 function boardDropPoolFor(stage, combo, cloverGiven = false) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const streak = Math.max(0, Math.round(Number(combo) || 0));
-  const bombWeight = streak >= 21 ? 14 : streak >= 14 ? 16 : 18;
+  // 시뮬레이션(scripts/item-drop-compare.mjs)으로 확인한 사실: 콤보는 거의
+  // 병목이 아니었다. 일반 플레이는 실패로 잘 끊기지 않아서 스테이지 6+에
+  // 도달할 때 콤보가 이미 21 이상인 경우가 대부분(300판 중 282판)이고,
+  // 예전 문턱(14/21/28)도 이미 넘어서 있었다. 진짜 병목은
+  //  1) 스테이지 6+ 도달 후 실제 "뽑기"가 몇 번 안 일어난다(평균 2~3회,
+  //     시간이 얼마 안 남아서) 는 점과
+  //  2) 폭탄 비중(과거 14~18)이 압도적이라 뽑아도 대부분 폭탄이었다는 점.
+  // 그래서 문턱은 한 단계씩만 낮추고(도달을 살짝 앞당김), 주된 처방은
+  // 폭탄 비중을 더 낮추고 메가폭탄/프리즈를 2배 비중으로 넣는 쪽으로 잡았다.
+  // 클로버는 게임당 1회 한정(!cloverGiven)이고 보너스가 커서 비중은 그대로 1.
+  const bombWeight = streak >= 14 ? 9 : streak >= 7 ? 14 : 18;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
   if (level >= 5) pool.push('clock');
-  if (level >= 6 && streak >= 14) pool.push('megabomb');
-  if (level >= 7 && streak >= 21) pool.push('freeze');
-  if (level >= 8 && streak >= 28 && !cloverGiven) pool.push('clover');
+  if (level >= 6 && streak >= 7) pool.push('megabomb', 'megabomb');
+  if (level >= 7 && streak >= 14) pool.push('freeze', 'freeze');
+  if (level >= 8 && streak >= 21 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
 
