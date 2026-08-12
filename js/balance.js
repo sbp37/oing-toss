@@ -8,6 +8,8 @@ import {
 import {
   GAME_DURATION_SECONDS,
   TIME_FREEZE_SECONDS,
+  TIME_ITEM_CAP_SCORE,
+  availableItemTimeBonus,
   boardDropReward,
   cappedSessionTime,
   chooseBoardDrop,
@@ -216,13 +218,17 @@ export function simulateRun({
       state.itemsUsed[drop.id] = (state.itemsUsed[drop.id] || 0) + 1;
       spendTime(randomBetween(random, 0.32, 0.58));
       if (drop.id === 'clock') {
+        const requestedTime = availableItemTimeBonus(state.itemTimeBonus, 5);
+        if (requestedTime <= 0) state.score += TIME_ITEM_CAP_SCORE;
         const previousTime = state.timeLeft;
-        state.timeLeft = cappedSessionTime(state.timeLeft, 5);
-        state.itemTimeBonus += state.timeLeft - previousTime;
+        state.timeLeft = cappedSessionTime(state.timeLeft, requestedTime);
+        state.itemTimeBonus += Math.min(requestedTime, Math.max(0, state.timeLeft - Math.max(0, previousTime)));
       } else if (drop.id === 'freeze') {
+        const requestedTime = availableItemTimeBonus(state.itemTimeBonus, TIME_FREEZE_SECONDS);
+        if (requestedTime <= 0) state.score += TIME_ITEM_CAP_SCORE;
         const previousTime = state.timeLeft;
-        state.timeLeft = cappedSessionTime(state.timeLeft, TIME_FREEZE_SECONDS);
-        state.itemTimeBonus += state.timeLeft - previousTime;
+        state.timeLeft = cappedSessionTime(state.timeLeft, requestedTime);
+        state.itemTimeBonus += Math.min(requestedTime, Math.max(0, state.timeLeft - Math.max(0, previousTime)));
       } else if (drop.id === 'clover') {
         cloverBoost = true;
       } else if (drop.id === 'bomb') {

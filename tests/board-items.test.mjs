@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageClearBonus, stageProgressGainForClear } from '../js/data.js';
+import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageClearBonus, stageProgressGainForClear } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -47,15 +47,18 @@ test('background pause rebases game, freeze and combo deadlines together', () =>
 });
 
 test('only major board-size transitions refill time and held time stays capped', () => {
-  assert.equal(roundTimeBonusSeconds(1), 5);
-  assert.equal(roundTimeBonusSeconds(2), 10);
+  assert.equal(roundTimeBonusSeconds(1), 3);
+  assert.equal(roundTimeBonusSeconds(2), 7);
   assert.equal(roundTimeBonusSeconds(3), 0);
-  assert.equal(roundTimeBonusSeconds(4), 15);
+  assert.equal(roundTimeBonusSeconds(4), 10);
   assert.equal(roundTimeBonusSeconds(5), 0);
   assert.equal(roundTimeBonusSeconds(10), 0);
   assert.equal(cappedSessionTime(90, 5), 95);
   assert.equal(cappedSessionTime(117, 10), 120);
   assert.equal(cappedSessionTime(120, 15), 120);
+  assert.equal(availableItemTimeBonus(0, 10), 10);
+  assert.equal(availableItemTimeBonus(10, 10), 5);
+  assert.equal(availableItemTimeBonus(15, 5), 0);
 });
 
 test('stage bonus and special tiles ramp in after the tutorial stages', () => {
@@ -70,11 +73,12 @@ test('stage bonus and special tiles ramp in after the tutorial stages', () => {
 test('combo grace tightens by stage and idle decay stays forgiving early', () => {
   assert.equal(comboWindowMsForStage(1), 5200);
   assert.equal(comboWindowMsForStage(3), 4500);
-  assert.equal(comboWindowMsForStage(6), 3800);
-  assert.equal(comboWindowMsForStage(9), 3300);
+  assert.equal(comboWindowMsForStage(6), 3500);
+  assert.equal(comboWindowMsForStage(9), 2900);
   assert.equal(comboAfterIdle(5, 2), 4);
   assert.equal(comboAfterIdle(5, 6), 3);
   assert.equal(comboAfterIdle(1, 9), 0);
+  assert.equal(comboAfterIdle(20, 9), 17);
 });
 
 test('large five-cell answers accelerate the goal without making ordinary answers ambiguous', () => {
@@ -164,8 +168,8 @@ test('combo-seven rewards unlock variety gradually while board actions stay domi
   assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'clock');
-  assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'megabomb');
-  assert.equal(chooseBoardDrop(21, () => 0.999, { rewardIndex: 3, stage: 7 }).id, 'freeze');
+  assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'freeze');
+  assert.equal(chooseBoardDrop(21, () => 0.999, { rewardIndex: 3, stage: 7 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 8 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 5, stage: 8, cloverGiven: true }).id, 'freeze');
 
@@ -209,20 +213,23 @@ test('rare drop pity guarantees variety without chaining time effects', () => {
     pity: { megabomb: 2, freeze: 0 }, previousType: 'bomb', rewardIndex: 3, stage: 7,
   }).id, 'megabomb');
   assert.equal(chooseBoardDrop(28, () => 0, {
-    pity: { megabomb: 0, freeze: 5 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
+    pity: { megabomb: 0, freeze: 3 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
   }).id, 'freeze');
   assert.equal(chooseBoardDrop(28, () => 0, {
-    cloverGiven: false, pity: { megabomb: 0, clover: 4, freeze: 0 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
+    cloverGiven: false, pity: { megabomb: 0, clover: 3, freeze: 0 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
+  }).id, 'clover');
+  assert.equal(chooseBoardDrop(21, () => 0, {
+    cloverGiven: false, pity: { megabomb: 0, clover: 3, freeze: 0 }, previousType: 'bomb', rewardIndex: 4, stage: 7,
   }).id, 'clover');
   assert.notEqual(chooseBoardDrop(28, () => 0.999, {
-    pity: { megabomb: 0, freeze: 5 }, previousType: 'clock', rewardIndex: 5, stage: 8,
+    pity: { megabomb: 0, freeze: 3 }, previousType: 'clock', rewardIndex: 5, stage: 8,
   }).id, 'freeze', 'a clock must not be followed immediately by another time effect');
-  assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 5 }, 'megabomb', { stage: 8, combo: 28 }), {
+  assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 3 }, 'megabomb', { stage: 8, combo: 28 }), {
     megabomb: 0,
     clover: 1,
-    freeze: 6,
+    freeze: 4,
   });
-  assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 5 }, 'freeze', { stage: 8, combo: 28 }), {
+  assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 3 }, 'freeze', { stage: 8, combo: 28 }), {
     megabomb: 3,
     clover: 1,
     freeze: 0,

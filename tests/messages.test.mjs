@@ -70,7 +70,7 @@ test('result reactions reward records, progress and streaks without a losing aft
 
 test('stage intro copy gives every board-size milestone a visible identity', () => {
   assert.equal(stageIntroForStage(2).detail, '5×5 OPEN');
-  assert.equal(stageIntroForStage(3).detail, '6×6 OPEN');
+  assert.equal(stageIntroForStage(3).detail, '6×6 · 목표 8');
   assert.equal(stageIntroForStage(5).detail, '7×7 OPEN');
   assert.match(stageIntroForStage(8).detail, /보너스|목표/);
 });

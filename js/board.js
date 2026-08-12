@@ -173,10 +173,10 @@ export function boardPacingForRound(round = 1, assist = 'standard') {
           : stage === 5
             ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5, minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2 }
             : stage <= 7
-              ? { targetAnswers: 13, maximumAnswers: 17, minimumAnswers: 10, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2 }
+              ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 3, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2 }
               : stage <= 9
-                ? { targetAnswers: 14, maximumAnswers: 18, minimumAnswers: 10, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 }
-                : { targetAnswers: 15, maximumAnswers: 19, minimumAnswers: 11, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 9, minimumOrientations: 3 };
+                ? { targetAnswers: 13, maximumAnswers: 16, minimumAnswers: 9, maximumSimpleAnswers: 3, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3 }
+                : { targetAnswers: 14, maximumAnswers: 17, minimumAnswers: 10, maximumSimpleAnswers: 3, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3 };
   const assistAdjacentBonus = assist === 'starter' ? 1 : 0;
   return Object.freeze({
     ...base,
@@ -505,15 +505,16 @@ export function cellListStats(grid, cells) {
   }, { sum: 0, count: 0 });
 }
 
-export function findBestBombTarget(grid) {
+export function findBestBombTarget(grid, maximumCells = 6) {
   const rows = grid.length;
   const cols = grid[0]?.length || 0;
+  const limit = Math.max(1, Math.round(Number(maximumCells) || 6));
   let best = null;
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       const rect = bombRect({ rows, cols }, row, col);
       const stats = rectStats(grid, rect);
-      if (stats.count === 0) continue;
+      if (stats.count === 0 || stats.count > limit) continue;
       const value = stats.count * 100 + stats.sum;
       if (!best || value > best.value) best = { row, col, rect, stats, value };
     }

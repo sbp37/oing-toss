@@ -4,7 +4,9 @@ export const GAME_DURATION_SECONDS = 120;
 export const PRACTICE_DURATION_SECONDS = 240;
 export const ITEM_REWARD_INTERVAL = 7;
 export const TIME_FREEZE_SECONDS = 10;
-export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 2, clover: 4, freeze: 5 });
+export const MAX_ITEM_TIME_BONUS_SECONDS = 15;
+export const TIME_ITEM_CAP_SCORE = 300;
+export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 2, clover: 3, freeze: 3 });
 export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
 export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
 export const STRUGGLE_HINT_FAILURES = 3;
@@ -13,8 +15,8 @@ export const FINAL_GESTURE_GRACE_MS = 450;
 export const COMBO_WINDOW_MS = Object.freeze({
   early: 5200,
   mid: 4500,
-  advanced: 3800,
-  expert: 3300,
+  advanced: 3500,
+  expert: 2900,
 });
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 export const RESULT_SCORE_THRESHOLDS = Object.freeze({
@@ -30,14 +32,14 @@ export function recordEligibleForStartStage(stage = 1) {
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 7, timeLimit: 120, clockChance: 0, bombChance: 0 },
+  { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0, bombChance: 0.08 },
   { stage: 5, round: 5, size: 7, cols: 7, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
-  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
-  { stage: 7, round: 7, size: 7, cols: 7, rows: 9, target: 14, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
-  { stage: 8, round: 8, size: 7, cols: 7, rows: 10, target: 16, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
-  { stage: 9, round: 9, size: 7, cols: 7, rows: 10, target: 18, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 7, cols: 7, rows: 10, target: 20, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
+  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 10, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 7, cols: 7, rows: 9, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 7, cols: 7, rows: 10, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 7, cols: 7, rows: 10, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 7, cols: 7, rows: 10, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -78,12 +80,12 @@ function boardDropPoolFor(stage, combo, cloverGiven = false) {
   // 후반에도 폭탄·메가폭탄 같은 보드 액션이 보상의 중심이 되게 한다.
   // 프리즈는 등장 가치는 유지하지만 시간 연명을 막기 위해 1슬롯만 사용한다.
   // 클로버는 게임당 1회 한정(!cloverGiven)이고 보너스가 커서 비중은 그대로 1.
-  const bombWeight = streak >= 14 ? 15 : streak >= 7 ? 16 : 18;
+  const bombWeight = streak >= 14 ? 12 : streak >= 7 ? 13 : 15;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
   if (level >= 5) pool.push('clock');
   if (level >= 6 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 7 && streak >= 14) pool.push('freeze');
-  if (level >= 8 && streak >= 21 && !cloverGiven) pool.push('clover');
+  if (level >= 6 && streak >= 14) pool.push('freeze');
+  if (level >= 7 && streak >= 21 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
 
@@ -101,11 +103,11 @@ export function chooseBoardDrop(combo, random = Math.random, {
   // The first earned board item always demonstrates the most tactile reward.
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
   const previousWasTimeItem = ['clock', 'freeze'].includes(previousType);
-  if (!cloverGiven && level >= 8 && streak >= 21
+  if (!cloverGiven && level >= 7 && streak >= 21
     && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
     return BOARD_DROP_ITEMS.clover;
   }
-  if (!previousWasTimeItem && level >= 7 && streak >= 14
+  if (!previousWasTimeItem && level >= 6 && streak >= 14
     && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
     return BOARD_DROP_ITEMS.freeze;
   }
@@ -134,8 +136,8 @@ export function nextBoardDropPity(pity = {}, dropType = '', { stage = 1, combo =
   const previousFreeze = Math.max(0, Math.round(Number(pity.freeze) || 0));
   return Object.freeze({
     megabomb: level >= 6 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
-    clover: level >= 8 && streak >= 21 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
-    freeze: level >= 7 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
+    clover: level >= 7 && streak >= 21 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
+    freeze: level >= 6 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
   });
 }
 
@@ -184,7 +186,8 @@ export function comboWindowMsForStage(stage = 1) {
 export function comboAfterIdle(combo, stage = 1) {
   const current = Math.max(0, Math.round(Number(combo) || 0));
   const level = Math.max(1, Math.round(Number(stage) || 1));
-  return Math.max(0, current - (level >= 6 ? 2 : 1));
+  const decay = level >= 9 && current >= 14 ? 3 : level >= 6 ? 2 : 1;
+  return Math.max(0, current - decay);
 }
 
 export function itemUnlockGrantForStage(stage = 1) {
@@ -199,7 +202,7 @@ export function stageIntroForStage(stage = 1) {
   const config = getStageConfig(level);
   if (level === 1) return Object.freeze({ kicker: 'WARM UP', title: 'STAGE 1', detail: '4×4 · 목표 3' });
   if (level === 2) return Object.freeze({ kicker: 'BOARD UP', title: 'STAGE 2', detail: '5×5 OPEN' });
-  if (level === 3) return Object.freeze({ kicker: 'WIDE OPEN', title: 'STAGE 3', detail: '6×6 OPEN' });
+  if (level === 3) return Object.freeze({ kicker: 'WIDE OPEN', title: 'STAGE 3', detail: '6×6 · 목표 8' });
   if (level === 4) return Object.freeze({ kicker: 'ITEM ON', title: 'STAGE 4', detail: '폭탄 등장' });
   if (level === 5) return Object.freeze({ kicker: 'BIG BOARD', title: 'STAGE 5', detail: '7×7 OPEN' });
   const challenge = stageChallengeForStage(level);
@@ -281,12 +284,18 @@ export function cappedSessionTime(timeLeft = 0, bonusSeconds = 0) {
   );
 }
 
+export function availableItemTimeBonus(usedSeconds = 0, requestedSeconds = 0) {
+  const used = Math.max(0, Number(usedSeconds) || 0);
+  const requested = Math.max(0, Number(requestedSeconds) || 0);
+  return Math.min(requested, Math.max(0, MAX_ITEM_TIME_BONUS_SECONDS - used));
+}
+
 export function roundTimeBonusSeconds(round = 1) {
   const current = getStageConfig(round);
   const next = getStageConfig(current.stage + 1);
-  if (current.cols === 4 && next.cols === 5) return 5;
-  if (current.cols === 5 && next.cols === 6) return 10;
-  if (current.cols === 6 && next.cols === 7) return 15;
+  if (current.cols === 4 && next.cols === 5) return 3;
+  if (current.cols === 5 && next.cols === 6) return 7;
+  if (current.cols === 6 && next.cols === 7) return 10;
   return 0;
 }
 

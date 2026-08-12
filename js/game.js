@@ -6,6 +6,8 @@ import {
   STAGE_TRANSITION_INPUT_GUARD_MS,
   START_COUNTDOWN_STEPS,
   TIME_FREEZE_SECONDS,
+  TIME_ITEM_CAP_SCORE,
+  availableItemTimeBonus,
   boardDropReward,
   buildResultReaction,
   cappedSessionTime,
@@ -235,6 +237,7 @@ class OingGame {
       cloverBoostPending: false,
       cloverBonusScore: 0,
       clutchBonusScore: 0,
+      itemTimeBonusUsed: 0,
       boardDropsEarned: 0,
       boardDropPity: { megabomb: 0, clover: 0, freeze: 0 },
       lastBoardDropType: null,
@@ -790,12 +793,13 @@ class OingGame {
 
   addStageTime(seconds = 5) {
     if (this.stageDuration <= 0) return false;
-    const amount = Math.max(0, Number(seconds) || 0);
+    const amount = availableItemTimeBonus(this.state.itemTimeBonusUsed, seconds);
     const source = this.ui.board.querySelector('.tile.is-clock-triggered')
       || this.ui.board.querySelector('.tile[data-special="clock"]');
     const previousTime = this.state.timeLeft;
     this.state.timeLeft = cappedSessionTime(previousTime, amount);
     const gainedTime = this.state.timeLeft - previousTime;
+    this.state.itemTimeBonusUsed += Math.min(amount, Math.max(0, gainedTime));
     if (this.freezeEndsAt > performance.now()) this.frozenTimeLeft = this.state.timeLeft;
     if (this.timer) this.endAt += gainedTime * 1000;
     this.lowTimeSpoken = this.state.timeLeft <= 10;
@@ -1164,8 +1168,22 @@ class OingGame {
     this.state.inputLocked = true;
     const now = performance.now();
     const previousTime = this.state.timeLeft;
-    this.state.timeLeft = cappedSessionTime(previousTime, 5);
+    const requestedTime = availableItemTimeBonus(this.state.itemTimeBonusUsed, 5);
+    if (requestedTime <= 0) {
+      this.state.score += TIME_ITEM_CAP_SCORE;
+      if (boardItemKey) {
+        this.boardItems.delete(boardItemKey);
+        this.renderBoard();
+      }
+      this.updateHUD();
+      this.ui.toast(`시간 보너스 MAX · +${TIME_ITEM_CAP_SCORE}점`);
+      this.inputGuardUntil = performance.now() + 100;
+      this.state.inputLocked = false;
+      return;
+    }
+    this.state.timeLeft = cappedSessionTime(previousTime, requestedTime);
     const gainedTime = this.state.timeLeft - previousTime;
+    this.state.itemTimeBonusUsed += Math.min(requestedTime, Math.max(0, gainedTime));
     if (this.freezeEndsAt > now) this.frozenTimeLeft = this.state.timeLeft;
     if (this.timer) this.endAt += gainedTime * 1000;
     if (this.state.timeLeft > 10) {
@@ -1196,7 +1214,19 @@ class OingGame {
     const currentTimeLeft = this.freezeEndsAt > now
       ? this.frozenTimeLeft
       : Math.max(0, this.timer ? (this.endAt - now) / 1000 : this.state.timeLeft);
-    const timeline = freezeTimeline(now, currentTimeLeft, TIME_FREEZE_SECONDS);
+    const freezeSeconds = availableItemTimeBonus(this.state.itemTimeBonusUsed, TIME_FREEZE_SECONDS);
+    if (freezeSeconds <= 0) {
+      this.state.score += TIME_ITEM_CAP_SCORE;
+      this.boardItems.delete(boardItemKey);
+      this.renderBoard();
+      this.updateHUD();
+      this.ui.toast(`시간 보너스 MAX · +${TIME_ITEM_CAP_SCORE}점`);
+      this.inputGuardUntil = performance.now() + 80;
+      this.state.inputLocked = false;
+      return;
+    }
+    const timeline = freezeTimeline(now, currentTimeLeft, freezeSeconds);
+    this.state.itemTimeBonusUsed += freezeSeconds;
     this.freezeEndsAt = timeline.freezeEndsAt;
     this.frozenTimeLeft = timeline.frozenTimeLeft;
     this.endAt = timeline.endAt;
@@ -1209,7 +1239,9 @@ class OingGame {
     duckMusic(680, 0.52);
     playFreezeSound();
     freezeHaptic();
-    const animation = this.ui.animateFreeze(TIME_FREEZE_SECONDS, sourceElement);
+    const animation = freezeSeconds > 0
+      ? this.ui.animateFreeze(freezeSeconds, sourceElement)
+      : Promise.resolve();
     this.boardItems.delete(boardItemKey);
     this.renderBoard();
     await animation;

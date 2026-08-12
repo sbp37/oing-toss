@@ -22,7 +22,7 @@ import {
   adjacentSeedCountForRound,
   rectStats,
 } from '../js/board.js';
-import { comboGainForClear, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForCloverBonus, scoreForClutch, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint, stageProgressGainForClear } from '../js/data.js';
+import { comboGainForClear, comboMultiplier, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForCloverBonus, scoreForClutch, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint, stageProgressGainForClear } from '../js/data.js';
 
 const originalRandom = Math.random;
 let randomState = 20260809;
@@ -140,14 +140,14 @@ assert.deepEqual(
     const config = getRoundConfig(stage);
     return [config.cols, config.rows, config.target];
   }),
-  [[4, 4, 3], [5, 5, 5], [6, 6, 7], [6, 6, 9], [7, 7, 11]],
+  [[4, 4, 3], [5, 5, 5], [6, 6, 8], [6, 6, 9], [7, 7, 11]],
 );
 assert.deepEqual(
   [6, 7, 8].map((stage) => {
     const config = getRoundConfig(stage);
     return [config.cols, config.rows, config.target];
   }),
-  [[7, 8, 12], [7, 9, 14], [7, 10, 16]],
+  [[7, 8, 10], [7, 9, 13], [7, 10, 14]],
 );
 assert.equal(getRoundConfig(20).size, 7);
 assert.equal(getRoundConfig(20).rows, 10);
@@ -210,6 +210,8 @@ assert.deepEqual(findBestBombTarget([
   rect: { r1: 0, r2: 2, c1: 0, c2: 2 },
   stats: { sum: 19, count: 5 },
 });
+const denseBombTarget = findBestBombTarget(Array.from({ length: 7 }, () => Array(7).fill(5)));
+assert.equal(denseBombTarget.stats.count, 6, 'inventory bomb targets at most six live number cells');
 assert.deepEqual(rectStats([[4, 6], [null, 8]], { r1: 0, c1: 0, r2: 0, c2: 1 }), { sum: 10, count: 2 });
 const catStatsModel = new BoardModel(4);
 catStatsModel.grid = [[4, 6], [null, 8]];
@@ -243,6 +245,7 @@ assert.equal(megaModel.removeCells(megaTarget.cells), 12);
 assert.equal(megaTarget.stats.count, 12);
 assert.equal(megaModel.grid.flat().filter((value) => value === null).length, 13);
 assert.ok(scoreForClear(3, 5) > scoreForClear(3, 1), 'combo multiplier must increase score');
+assert.equal(comboMultiplier(10), comboMultiplier(80), 'combo score multiplier remains capped for long streaks');
 assert.ok(scoreForClear(4, 1) > scoreForClear(2, 1) * 2, 'large rectangles must earn a meaningful bonus');
 assert.equal(comboGainForClear(3), 1, 'small clears advance one combo');
 assert.equal(comboGainForClear(4), 2, 'four-cell clears advance two combo');
