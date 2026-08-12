@@ -45,7 +45,7 @@ const ITEM_DROP_COPY = Object.freeze({
   bomb: '톡 누르면 바로 펑!',
   megabomb: '톡 누르면 크게 펑!',
   clock: '톡 누르면 +5초!',
-  freeze: '톡 누르면 15초 정지!',
+  freeze: '톡 누르면 10초 정지!',
   clover: '톡 누르면 정답 발견!',
 });
 
@@ -1687,6 +1687,17 @@ export class GameUI {
     this.elements.clockButton.setAttribute('aria-label', clockAvailable
       ? `시계, ${clock}회 남음`
       : '시계, 시간 제한 스테이지에서 사용 가능');
+  }
+
+  resetItemAvailabilityHistory() {
+    [
+      this.elements.hintButton,
+      this.elements.shuffleButton,
+      this.elements.bombButton,
+      this.elements.clockButton,
+    ].forEach((button) => {
+      if (button) delete button.dataset.everHeld;
+    });
   }
 
   updateBestScore(score) {

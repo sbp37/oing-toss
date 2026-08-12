@@ -3,7 +3,7 @@
 export const GAME_DURATION_SECONDS = 120;
 export const PRACTICE_DURATION_SECONDS = 240;
 export const ITEM_REWARD_INTERVAL = 7;
-export const TIME_FREEZE_SECONDS = 15;
+export const TIME_FREEZE_SECONDS = 10;
 export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
 export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
 export const STRUGGLE_HINT_FAILURES = 3;
@@ -73,14 +73,15 @@ function boardDropPoolFor(stage, combo, cloverGiven = false) {
   //  1) 스테이지 6+ 도달 후 실제 "뽑기"가 몇 번 안 일어난다(평균 2~3회,
   //     시간이 얼마 안 남아서) 는 점과
   //  2) 폭탄 비중(과거 14~18)이 압도적이라 뽑아도 대부분 폭탄이었다는 점.
-  // 그래서 문턱은 한 단계씩만 낮추고(도달을 살짝 앞당김), 주된 처방은
-  // 폭탄 비중을 더 낮추고 메가폭탄/프리즈를 2배 비중으로 넣는 쪽으로 잡았다.
+  // 문턱은 한 단계씩 낮춰 희귀 아이템을 보는 재미를 살리되,
+  // 후반에도 폭탄·메가폭탄 같은 보드 액션이 보상의 중심이 되게 한다.
+  // 프리즈는 등장 가치는 유지하지만 시간 연명을 막기 위해 1슬롯만 사용한다.
   // 클로버는 게임당 1회 한정(!cloverGiven)이고 보너스가 커서 비중은 그대로 1.
-  const bombWeight = streak >= 14 ? 9 : streak >= 7 ? 14 : 18;
+  const bombWeight = streak >= 14 ? 15 : streak >= 7 ? 16 : 18;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
   if (level >= 5) pool.push('clock');
   if (level >= 6 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 7 && streak >= 14) pool.push('freeze', 'freeze');
+  if (level >= 7 && streak >= 14) pool.push('freeze');
   if (level >= 8 && streak >= 21 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
@@ -343,7 +344,7 @@ export const MESSAGES = Object.freeze({
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
   clock: Object.freeze(['시간 +5초!', '5초 더 달려보자냥!', '시간은 내가 챙겼다.']),
-  freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '15초 동안 마음껏 찾아보라냥!', '째깍째깍 잠깐 쉬어간다냥!']),
+  freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '10초 동안 마음껏 찾아보라냥!', '째깍째깍 잠깐 쉬어간다냥!']),
   clover: Object.freeze(['클로버가 정답을 찾았다냥!', '초록빛 칸을 잘 보라냥!', '이번 정답은 오래 보여준다냥!']),
   cloverSuccess: Object.freeze(['행운 점수까지 챙겼다냥!', '클로버 보너스 성공!', '이번 조합은 점수가 더 붙는다냥!']),
   clutch: Object.freeze(['막판 집중력 인정!', '끝까지 잡았다냥!', '마지막까지 깔끔했다냥!']),

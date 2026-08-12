@@ -94,6 +94,7 @@ import {
   gameOverHaptic,
   countdownHaptic,
   isHapticEnabled,
+  isHapticSupported,
   itemHaptic,
   megaBombHaptic,
   roundHaptic,
@@ -305,6 +306,7 @@ class OingGame {
       if (this.settings.music) unlockMusic();
     });
     document.querySelector('#haptic-toggle').addEventListener('click', () => {
+      if (!isHapticSupported()) return;
       this.settings.haptic = !this.settings.haptic;
       this.applySettings();
     });
@@ -324,7 +326,12 @@ class OingGame {
     setMusicEnabled(this.settings.music);
     storageAdapter.saveSettings(this.settings);
     this.ui.updateSoundControls(isSoundEnabled());
-    this.ui.updateToggle(document.querySelector('#haptic-toggle'), isHapticEnabled());
+    const hapticToggle = document.querySelector('#haptic-toggle');
+    const hapticSupported = isHapticSupported();
+    this.ui.updateToggle(hapticToggle, hapticSupported && isHapticEnabled());
+    hapticToggle.disabled = !hapticSupported;
+    hapticToggle.textContent = hapticSupported ? (isHapticEnabled() ? 'ON' : 'OFF') : '미지원';
+    hapticToggle.setAttribute('aria-label', hapticSupported ? '진동 설정' : '이 브라우저는 진동을 지원하지 않음');
     this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
@@ -342,6 +349,7 @@ class OingGame {
     const musicReady = this.settings.music ? unlockMusic() : Promise.resolve(false);
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
     this.inventory = createRunInventory();
+    this.ui.resetItemAvailabilityHistory();
     this.state = this.freshState(startStage, options);
     this.retryStage = 1;
     this.stageDuration = this.runtime?.duration || GAME_DURATION_SECONDS;

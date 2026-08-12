@@ -11,11 +11,11 @@ test('all live board drops activate immediately instead of requiring a second in
   assert.equal(boardDropInventoryGrant('clover'), null);
 });
 
-test('time freeze holds the displayed time and rebases the deadline after 15 seconds', () => {
+test('time freeze holds the displayed time and rebases the deadline after 10 seconds', () => {
   assert.deepEqual(freezeTimeline(2000, 43.5), {
-    freezeEndsAt: 17000,
+    freezeEndsAt: 12000,
     frozenTimeLeft: 43.5,
-    endAt: 60500,
+    endAt: 55500,
   });
 });
 
@@ -174,9 +174,9 @@ test('combo-seven rewards unlock variety gradually while board actions stay domi
     () => index / 180,
     { cloverGiven: false, rewardIndex: 5, stage: 9 },
   ).id);
-  const bombs = lateDrops.filter((id) => id === 'bomb').length;
+  const boardActions = lateDrops.filter((id) => ['bomb', 'megabomb'].includes(id)).length;
   const timeEffects = lateDrops.filter((id) => ['clock', 'freeze'].includes(id)).length;
-  assert.ok(bombs >= 135, 'late rewards must still strongly favor tactile board actions');
+  assert.ok(boardActions >= 145, 'late rewards must still strongly favor tactile board actions');
   assert.ok(timeEffects <= 22, 'clock and freeze rewards must not enable endless survival');
   assert.ok(lateDrops.includes('megabomb'));
   assert.ok(lateDrops.includes('clover'));
