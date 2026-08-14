@@ -1734,7 +1734,15 @@ export class GameUI {
 
   updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, progress, target, stageMission = null, stageMissionBonus = 0 }) {
     this.elements.round.textContent = String(round);
-    this.elements.score.textContent = score.toLocaleString('ko-KR');
+    const scoreText = score.toLocaleString('ko-KR');
+    this.elements.score.textContent = scoreText;
+    // The painted score pill has ~50px of room after the coin and the 점수
+    // label; a five-figure score at full size ellipsised to "21,4…" mid-game.
+    // The digits shrink one step per length band instead, so the full number
+    // always reads.
+    this.elements.score.dataset.digits = scoreText.length > 9 ? 'xl'
+      : scoreText.length > 6 ? 'l'
+        : 'm';
     const time = Math.max(0, Math.ceil(timeLeft));
     this.elements.timePill.hidden = !timed;
     this.elements.playScreen.classList.toggle('is-untimed', !timed);

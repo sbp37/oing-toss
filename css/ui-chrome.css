@@ -9,21 +9,26 @@
 
    Measured anchors (artwork pixels → canvas %):
 
-     hud panel      x  28  751   y   82   370    3.590% 4.858% 92.692% 17.062%
-     pause circle   cx 104.5     cy 154.5
-     music circle   cx 187.5     cy 154.5
-     stage ribbon   x 305  475   y   78   120    label centre  y  5.865%
-     stage dome     x 300  480   y  124   238    numeral centre y 10.723%
-     time slot      x 507  729   y  122   201   64.999% 7.227% 28.462% 4.680%
-     score pill     x  60  252   y  248   286    coin painted at x 62..106
-     combo pill     x 520  722   y  248   286    star painted at x 520..562
-     goal groove    x  72  707   y  326   352    9.231% 19.313% 81.410% 1.540%
-     board recess   x  60  718   y  456  1140    7.692% 27.014% 84.359% 40.521%
-     dock slots     x  60.7 726.5 y 1230 1396    7.786% 72.867% 85.359%  9.834%
+     hud panel      x  28  751   y   73   360    3.590% 4.311% 92.692% 17.019%
+     pause circle   cx 104.5     cy 145.1
+     music circle   cx 187.5     cy 145.1
+     stage ribbon   x 305  475   y   69   111    label centre  y  5.315%
+     stage dome     x 300  480   y  115   228    numeral centre y 10.159%
+     time slot      x 507  729   y  113   191   64.999% 6.674% 28.462% 4.667%
+     score pill     x  60  252   y  238   276    coin painted at x 62..106
+     combo pill     x 520  722   y  238   276    star painted at x 520..562
+     goal groove    x  72  707   y  316   342    9.231% 18.724% 81.410% 1.534%
+     board recess   x  60  718   y  415  1177    7.692% 24.585% 84.359% 45.142%
+     dock slots     x  60.7 726.5 y 1270 1422    7.786% 75.249% 85.359%  8.975%
                     slot pitch 169.26, slot width 158 (regression over the four
                     painted slots; the artwork is hand-drawn and not perfectly
                     uniform, worst-case residual is 1.8 artwork px ≈ 0.9 CSS px)
-     speech bubble  x 220  582   y 1451  1583   28.205% 85.960% 46.410%  7.820%
+     speech bubble  x 220  582   y 1472  1592   28.205% 87.196% 46.410%  7.133%
+
+   These anchors were re-derived when build-ui-chrome.py switched to a uniform
+   scale (run it with --anchors for the mapping). The x column never moved; the
+   y column shifted because the dock band is no longer stretched 9.6% and the
+   board recess grew to seat square tiles.
 
    Anything that needs a box on this canvas is positioned inside a full-canvas
    layer (`.play-hud`, `.play-footer`, `.cat-coach`) so a child can use plain
@@ -66,15 +71,15 @@
       top center / 100% var(--chrome-top) no-repeat,
     linear-gradient(180deg,
       rgb(138, 204, 252) 0%,
-      rgb(170, 224, 253) 12%,
-      rgb(200, 238, 253) 25%,
-      rgb(225, 246, 254) 42%,
-      rgb(236, 250, 254) 59%,
-      rgb(211, 240, 253) 70%,
-      rgb(229, 245, 253) 83%,
-      rgb(210, 235, 248) 88.5%,
-      rgb(217, 231, 181) 92.5%,
-      rgb(195, 218, 167) 96%,
+      rgb(170, 224, 253) 11.4%,
+      rgb(200, 238, 253) 23.7%,
+      rgb(225, 246, 254) 41.3%,
+      rgb(236, 250, 254) 60.2%,
+      rgb(211, 240, 253) 72.6%,
+      rgb(229, 245, 253) 84.5%,
+      rgb(210, 235, 248) 89.5%,
+      rgb(217, 231, 181) 93.2%,
+      rgb(195, 218, 167) 96.4%,
       rgb(175, 209, 154) 100%)
       center var(--chrome-top) / 100% var(--chrome-height) no-repeat,
     url("../assets/backgrounds/play-bg@2x.webp") center / cover no-repeat,
@@ -161,7 +166,7 @@
    glyphs stay pinned to the painted circles. */
 .play-ui-v4 .hud-controls {
   position: absolute;
-  top: 5.924%;
+  top: 5.374%;
   left: 3.590%;
   display: block;
   width: 0;
@@ -275,7 +280,7 @@
 
 .play-ui-v4 .round-mini span {
   position: absolute;
-  top: 5.865%;
+  top: 5.315%;
   left: 50%;
   display: block;
   min-width: 0;
@@ -294,7 +299,7 @@
 
 .play-ui-v4 .round-mini strong {
   position: absolute;
-  top: 10.723%;
+  top: 10.159%;
   left: 50%;
   min-width: 0;
   color: #e98f36;
@@ -308,7 +313,7 @@
    darkest ink in the HUD. */
 .play-ui-v4 .time-readout {
   position: absolute;
-  top: 7.227%;
+  top: 6.674%;
   left: 64.999%;
   display: flex;
   width: 28.462%;
@@ -334,7 +339,9 @@
 
 .play-ui-v4 .time-readout strong {
   color: #24506f;
-  font-size: clamp(23px, calc(var(--chrome-width) * 0.08), 32px);
+  /* 0.08 put "02:00" at 117px in a 111px slot at 390px wide — the painted
+     slot, icon and gap leave ~88px, which 0.072 fits at every tested width. */
+  font-size: clamp(21px, calc(var(--chrome-width) * 0.072), 28px);
   font-weight: 800;
   line-height: 1;
 }
@@ -361,7 +368,7 @@
 .play-ui-v4 .score-readout,
 .play-ui-v4 .combo-readout {
   position: absolute;
-  top: 14.158%;
+  top: 13.583%;
   display: flex;
   height: 3.318%;
   min-width: 0;
@@ -434,8 +441,19 @@
   color: #4f6473;
   font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
   line-height: 1;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
+}
+
+/* ui.js grades #score-value by rendered length so a real mid-game score
+   ("21,400") never ellipsises inside the painted pill — the digits give up a
+   step of size instead and the whole number stays readable. */
+.play-ui-v4 .score-readout strong[data-digits="l"] {
+  font-size: clamp(11px, calc(var(--chrome-width) * 0.034), 14px);
+}
+
+.play-ui-v4 .score-readout strong[data-digits="xl"] {
+  font-size: clamp(9px, calc(var(--chrome-width) * 0.028), 11.5px);
 }
 
 /* ---------------------------------------------------------------------------
@@ -443,7 +461,7 @@
    ------------------------------------------------------------------------ */
 .play-ui-v4 .goal-status {
   position: absolute;
-  top: 18.128%;
+  top: 17.542%;
   left: 9.231%;
   display: grid;
   grid-template-columns: max-content minmax(38%, 1fr);
@@ -492,16 +510,26 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Board — fills the painted recess exactly so the artwork's faint 4×4 guide
-   lines never show through beside a live 5×5 … 7×10 grid.
+   Board — square cells, always.
+
+   The recess was regrown to 658 × 762 artwork px (h/w 1.158) precisely so the
+   tallest board, 6 × 7 (h/w 1.167), seats square cells inside it with 0.7% to
+   spare. The grid no longer stretches to fill the recess: the cell edge is the
+   limiting direction's share, the board is cell×cols by cell×rows, and smaller
+   stages float centred on the painted floor (which the artwork build wipes
+   clean of its old pencil grid, so the exposed margin is plain cream).
+
+   A 6 × 7 board is height-bound and every other stage is width-bound; either
+   way rows stack DOWNWARD as squares instead of flattening the tiles the way
+   the old fill-the-recess sizing did from STAGE 5 on.
    ------------------------------------------------------------------------ */
 .play-ui-v4 .board-zone {
   position: absolute;
   z-index: 5;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.27014);
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.24585);
   left: 50%;
   width: calc(var(--chrome-width) * 0.84359);
-  height: calc(var(--chrome-height) * 0.40521);
+  height: calc(var(--chrome-height) * 0.45142);
   padding: 0;
   overflow: visible;
   align-items: center;
@@ -515,6 +543,7 @@
 .play-ui-v4 .board-frame[data-round] {
   display: flex;
   align-items: center;
+  justify-content: center;
   height: 100%;
   width: 100%;
   max-width: 100%;
@@ -527,8 +556,13 @@
 }
 
 .play-ui-v4 .board {
-  width: 100%;
-  height: 100%;
+  /* the square cell edge: whichever axis runs out first decides it */
+  --cell: min(
+    calc(var(--chrome-width) * 0.84359 / var(--board-cols)),
+    calc(var(--chrome-height) * 0.45142 / var(--board-rows))
+  );
+  width: calc(var(--cell) * var(--board-cols));
+  height: calc(var(--cell) * var(--board-rows));
   max-height: none;
   aspect-ratio: auto;
   border: 0;
@@ -540,47 +574,21 @@
   box-shadow: inset 0 2px 4px rgba(119,83,46,.06);
 }
 
-/* The recess is 658 × 684 artwork px, so a 7 × 10 grid has wider cells than it
-   has tall ones. Letting the tile keep `aspect-ratio: 1` made every tile
-   overflow its row by ~14 px from STAGE 6 on: neighbouring tiles overlapped and
-   a column read as one long capsule. Tiles now fill their cell. */
+/* Cells are square by construction now (the grid's own 1px gap and padding
+   skew width vs height by under 0.1px), so the tile just fills its cell. */
 .play-ui-v4 .tile {
   aspect-ratio: auto;
   width: 100%;
   height: 100%;
 }
 
-/* Type scales off the smaller cell edge instead of the column count alone, so
-   the number stays inside a short row on the tall late-stage boards.
-
-   0.2917 filled the cell too far: at 390px on a 6x7 board the glyph was
-   35.2px in a 47.3px-tall cell, a font/cell ratio of 0.744 — the numeral
-   nearly touched the tile's rounded corners on every side, and a digit that
-   fills its frame that tightly reads as more crowded, not more legible.
-   0.25 holds the ratio at ~0.64 for stage 3 (6x6) on up through stage 10.
-
-   That coefficient does nothing for STAGE 1-2 (4x4/5x5), because their
-   spacious cells push the row formula past the cap and the flat 43px ceiling
-   takes over instead — 43px on an 83.9px-tall STAGE 1 cell at 390px is only a
-   0.51 fill ratio, generous by that measure, but it is still a 43px glyph, and
-   large numerals cost more time to recognise per glance than the empty cell
-   around them saves. The cap is what STAGE 1-2 actually render at, so it is
-   what needed to come down, not the ratio.
-
-   30px keeps every stage within one glyph-size band: STAGE 1 sits at the cap
-   everywhere, STAGE 8 already lands here or below from the 0.25 formula alone
-   (30.1px at 390px, 33.2px at 430px), so the two limits meet instead of
-   fighting — a board never looks bigger just because its cells have more
-   spare room. */
+/* Numerals ride the square cell edge at a ~0.55 fill and meet the 30px cap on
+   ordinary phones, so every stage reads at one glyph size — a board never
+   looks bigger just because its cells have more spare room. The cap is doing
+   the real work on STAGE 1-2, whose roomy cells would otherwise push type to
+   43px+, which measured slower to scan, not easier (see git history). */
 .play-ui-v4 .tile span {
-  font-size: clamp(
-    15px,
-    min(
-      calc(var(--chrome-width) * 0.6074 / var(--board-cols)),
-      calc(var(--chrome-height) * 0.25 / var(--board-rows))
-    ),
-    30px
-  );
+  font-size: clamp(15px, calc(var(--cell) * 0.55), 30px);
 }
 
 /* A cleared cell has to read as a shallow recess in the board, never as an
@@ -620,7 +628,7 @@
    ------------------------------------------------------------------------ */
 .play-ui-v4 .play-feedback-rail {
   z-index: 25;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.2295);
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.22347);
   left: 50%;
   bottom: auto;
   width: min(calc(var(--chrome-width) * 0.76), 296px);
@@ -640,7 +648,7 @@
 }
 
 .play-ui-v4.is-stage-clearing .play-feedback-rail {
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.43);
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.42394);
   width: min(calc(var(--chrome-width) * 0.82), 320px);
   height: 48px;
 }
@@ -680,12 +688,12 @@
    ------------------------------------------------------------------------ */
 .play-ui-v4 .item-actions {
   position: absolute;
-  top: 72.867%;
+  top: 75.249%;
   left: 7.786%;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   width: 85.359%;
-  height: 9.834%;
+  height: 8.975%;
   gap: 1.691%;                        /* 11.26 artwork px between slots */
   margin: 0;
   padding: 0;
@@ -886,11 +894,11 @@
 .play-ui-v4 .play-character-stage,
 .play-ui-v4.is-tall-board .play-character-stage {
   position: absolute;
-  top: 84.9%;
+  top: 86.226%;
   left: 1.5%;
   bottom: auto;
   width: 27%;
-  height: 11.6%;
+  height: 10.586%;
 }
 
 .play-ui-v4 .play-character-stage img {
@@ -906,7 +914,7 @@
 .play-ui-v4 .cat-message,
 .play-ui-v4.is-tall-board .cat-message {
   position: absolute;
-  top: 89.87%;
+  top: 90.764%;
   left: 30.385%;
   display: -webkit-box;
   -webkit-box-orient: vertical;
