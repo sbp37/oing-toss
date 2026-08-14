@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
-"""Build the v5 syrup tiles: one saturation, evenly spaced hues.
+"""Build the v5 syrup tiles: one pastel family, measured in CIELAB.
 
-The v4 set graded the master toward six hand-picked colors at a fixed blend
-strength. Because those colors did not share a saturation, the finished tiles
-landed anywhere from 7.9% (aqua) to 82.3% (peach) — half the board read as
-colour and half read as grime, which is what made the board look stained
-rather than rainbow. Three of the six hues also sat within 33 degrees of each
-other, so the set spent its variety in the orange wedge and had nothing left
-for the cool end.
+The v4 set graded the master toward six hand-picked colours at a fixed blend
+strength. Because those colours did not share a saturation, the finished tiles
+landed anywhere from 7.9% to 82.3% — half the board read as colour and half
+read as grime, which is what made the board look stained rather than pretty.
 
-v5 fixes the palette by construction. Hues are spaced around the wheel, and the
-blend strength for each tile is solved numerically so every finished tile
-measures the same face saturation. Lightness is then normalised so the numerals
-keep one contrast ratio everywhere on the board.
+v5 grades the same master toward the same approved palette and then normalises
+what the tile actually measures, so the set is even by construction rather than
+by luck. Two corrections sit on top of that: the warm pair moves apart, because
+peach and lemon were eight degrees from each other, and chroma varies slightly
+per hue, because equal chroma does not look equal.
 
-Colour carries no game meaning in v5 — js/ui.js assigns it from the cell's
-position, never its value — so the palette only has to be calm and even.
+The ruler is L*C*h, not HLS. Normalising on HLS saturation produced a set that
+measured uniform and looked fluorescent: at identical HLS numbers, yellow and
+green land far lighter and far more chromatic than blue or pink. See the notes
+on CONCEPT_PALETTE and TARGET_LIGHTNESS_LAB for the numbers.
+
+Colour carries no game meaning — js/ui.js assigns it from the cell's position,
+never its value — so the palette only has to be calm and even.
 """
 
 from __future__ import annotations
 
-import colorsys
+import math
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageOps
@@ -42,38 +45,56 @@ OUT = ROOT / "assets/ui/tiles-syrup-v5"
 #   mint  #7FD6C2  166°     orange and the set had no yellow at all
 #   aqua  #8DB7FF  218°     lilac #C9B0FF  259°
 #
-# `lemon` moves to a true yellow and keeps its light, buttery character. The
-# other five are untouched.
+# Measured in CIELAB the two warm tiles really were on top of each other, so
+# both move; the cool four are untouched. Rendered hues, h*:
 #
-# Targets are aimed, not final: the master carries a warm cast of its own, so a
-# target lands a few degrees below where it is aimed and yellows drift hardest.
-# `lemon` is aimed at 63° to render at 55°, which is where it finally separates
-# from peach. The build prints both numbers, so re-aim against that table rather
-# than against the hex.
+#   peach #FFB766 -> 74    lemon #FFDFA6 -> 82    eight degrees apart
+#   peach #FFA678 -> 59    lemon #FFE178 -> 91    thirty-two, and both clean
+#
+# An earlier pass aimed lemon at #E8EE72, which does separate (h* 104) but lands
+# in yellow-green: at pastel chroma that reads as khaki, not as lemon. Yellow
+# has very little room between "olive" and "acid", and h* 91 is inside it.
+#
+# The second number is each tile's chroma, and it is deliberately not constant.
+# Equal C* across the wheel does not look equal: yellow and orange go beige and
+# dirty at the chroma that keeps blue and violet from turning garish. The warm
+# tiles carry a few points more so the whole set reads as one pastel family.
+#
+# Targets are aimed, not final — the master has a warm cast, so a tile renders a
+# little below where it is aimed. The build prints both, so re-aim against that
+# table rather than against the hex.
 CONCEPT_PALETTE = {
-    "blush": (255, 123, 168),
-    "peach": (255, 183, 102),
-    "lemon": (232, 238, 114),
-    "mint": (127, 214, 194),
-    "aqua": (141, 183, 255),
-    "lilac": (201, 176, 255),
+    "blush": ((255, 123, 168), 15.0),
+    "peach": ((255, 166, 120), 19.0),
+    "lemon": ((255, 225, 120), 19.0),
+    "mint": ((127, 214, 194), 16.0),
+    "aqua": ((141, 183, 255), 15.0),
+    "lilac": ((201, 176, 255), 15.0),
 }
 
-# Measured on the tile face (centre 40%), matching how the v4 set was audited.
+# Measured on the tile face (centre 40%) in CIELAB, not HLS.
 #
-# Saturation is capped by the numerals, not by taste. The ink is #425374, and
-# the tile has to stay light enough underneath it to clear WCAG AA (4.5:1).
-# Measured at hue 52° (yellow, the worst case of the six):
+# HLS was the wrong ruler. Holding all six at 60% HLS saturation produced a set
+# whose perceived chroma ranged 13.9 (peach) to 24.5 (lilac) and whose perceived
+# lightness ranged L* 83.5 to 93.2. Yellow and green land far lighter and far
+# more chromatic than blue or pink at identical HLS numbers, so lemon and mint
+# read as fluorescent while the rest read as muted — a set that measured uniform
+# and looked nothing of the sort.
 #
-#   saturation 60% / lightness 86%   ->  5.07:1   ok
-#   saturation 70% / lightness 82%   ->  4.36:1   fails AA
-#   saturation 78% / lightness 78%   ->  3.74:1   fails AA
+# L*C*h is perceptually even, so equal numbers here mean equal to the eye.
 #
-# So the board cannot get its contrast from deeper tiles. It gets it from
-# css/ui-chrome.css instead, which pushes the painted chrome behind the board
-# back so the tiles are the only saturated thing on screen.
-TARGET_SATURATION = 0.60
-TARGET_LIGHTNESS = 0.86
+# Chroma is set per tile in CONCEPT_PALETTE above; BASE_CHROMA is the floor the
+# cool hues sit on. L* is shared by all six and is bounded below by the
+# numerals — the ink is #425374 and the tile has to stay light enough beneath it
+# to clear WCAG AA (4.5:1):
+#
+#   L* 90  ->  5.79:1      L* 86  ->  5.24:1
+#   L* 89  ->  5.66:1      L* 80  ->  4.48:1   fails AA
+#
+# So the board cannot get contrast from deeper tiles. It would have to come
+# from pushing the painted chrome behind the board back instead.
+BASE_CHROMA = 15.0
+TARGET_LIGHTNESS_LAB = 89.0
 
 
 def normalized_master() -> Image.Image:
@@ -110,6 +131,47 @@ def face_pixels(image: Image.Image) -> list[tuple[int, int, int, int]]:
     return [pixel for pixel in face.getdata() if pixel[3] > 200]
 
 
+_WHITE = (0.95047, 1.0, 1.08883)
+
+
+def _to_linear(channel: float) -> float:
+    v = channel / 255
+    return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+
+
+def _from_linear(value: float) -> float:
+    v = value if value > 0 else 0.0
+    v = 12.92 * v if v <= 0.0031308 else 1.055 * (v ** (1 / 2.4)) - 0.055
+    return min(255.0, max(0.0, v * 255))
+
+
+def rgb_to_lab(red: float, green: float, blue: float) -> tuple[float, float, float]:
+    r, g, b = _to_linear(red), _to_linear(green), _to_linear(blue)
+    x = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / _WHITE[0]
+    y = (r * 0.2126729 + g * 0.7151522 + b * 0.0721750) / _WHITE[1]
+    z = (r * 0.0193339 + g * 0.1191920 + b * 0.9503041) / _WHITE[2]
+
+    def f(t: float) -> float:
+        return t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116
+
+    fx, fy, fz = f(x), f(y), f(z)
+    return 116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)
+
+
+def lab_to_rgb(lightness: float, a: float, b: float) -> tuple[float, float, float]:
+    fy = (lightness + 16) / 116
+    fx, fz = fy + a / 500, fy - b / 200
+
+    def g(t: float) -> float:
+        return t ** 3 if t ** 3 > 0.008856 else (t - 16 / 116) / 7.787
+
+    x, y, z = g(fx) * _WHITE[0], g(fy) * _WHITE[1], g(fz) * _WHITE[2]
+    r = x * 3.2404542 + y * -1.5371385 + z * -0.4985314
+    gg = x * -0.9692660 + y * 1.8760108 + z * 0.0415560
+    bb = x * 0.0556434 + y * -0.2040259 + z * 1.0572252
+    return _from_linear(r), _from_linear(gg), _from_linear(bb)
+
+
 def mean_rgb(image: Image.Image) -> tuple[float, float, float]:
     pixels = face_pixels(image)
     count = len(pixels)
@@ -118,38 +180,40 @@ def mean_rgb(image: Image.Image) -> tuple[float, float, float]:
             sum(p[2] for p in pixels) / count)
 
 
-def measure(image: Image.Image) -> tuple[float, float]:
-    red, green, blue = mean_rgb(image)
-    _, lightness, saturation = colorsys.rgb_to_hls(red / 255, green / 255, blue / 255)
-    return saturation, lightness
+def measure(image: Image.Image) -> tuple[float, float, float]:
+    """Mean lightness, chroma and hue of the tile face, in L*C*h."""
+    lightness, a, b = rgb_to_lab(*mean_rgb(image))
+    return lightness, math.hypot(a, b), math.degrees(math.atan2(b, a)) % 360
 
 
-def normalize(image: Image.Image) -> Image.Image:
+def normalize(image: Image.Image, target_chroma: float = BASE_CHROMA) -> Image.Image:
     """Scale saturation and shift lightness so the face lands on the targets.
 
-    Blend strength alone cannot do this: the master already measures 65.8%
-    saturation, so no amount of blending toward a warm hue brings blush, peach
-    or lemon down to 45%. Saturation is scaled by one shared factor and
-    lightness shifted by one shared offset, which moves the whole tile onto the
-    target while leaving the master's own shading — and the multicoloured
-    refraction inside the syrup — intact.
+    Blend strength alone cannot do this: the master carries chroma of its own,
+    so no amount of blending toward a pale hue lands every tile in the same
+    place. Chroma is scaled by one shared factor and lightness shifted by one
+    shared offset, which moves the whole tile onto the target while leaving the
+    master's own shading — and the iridescent refraction inside the syrup —
+    intact, since both operations preserve relative variation.
     """
-    saturation, lightness = measure(image)
-    factor = TARGET_SATURATION / saturation if saturation > 0 else 1.0
-    delta = TARGET_LIGHTNESS - lightness
+    lightness, chroma, _ = measure(image)
+    factor = target_chroma / chroma if chroma > 0 else 1.0
+    delta = TARGET_LIGHTNESS_LAB - lightness
 
+    cache: dict[tuple[int, int, int], tuple[int, int, int]] = {}
     out = []
     for red, green, blue, alpha in image.getdata():
         if alpha == 0:
             out.append((red, green, blue, alpha))
             continue
-        hue, pixel_l, pixel_s = colorsys.rgb_to_hls(red / 255, green / 255, blue / 255)
-        nr, ng, nb = colorsys.hls_to_rgb(
-            hue,
-            min(1.0, max(0.0, pixel_l + delta)),
-            min(1.0, pixel_s * factor),
-        )
-        out.append((round(nr * 255), round(ng * 255), round(nb * 255), alpha))
+        key = (red, green, blue)
+        moved = cache.get(key)
+        if moved is None:
+            pixel_l, a, b = rgb_to_lab(red, green, blue)
+            nr, ng, nb = lab_to_rgb(min(100.0, max(0.0, pixel_l + delta)), a * factor, b * factor)
+            moved = (round(nr), round(ng), round(nb))
+            cache[key] = moved
+        out.append((*moved, alpha))
     result = Image.new("RGBA", image.size)
     result.putdata(out)
     return result
@@ -160,24 +224,24 @@ def normalize(image: Image.Image) -> Image.Image:
 GRADE_STRENGTH = 0.85
 
 
-def grade(master: Image.Image, target_rgb: tuple[int, int, int]) -> Image.Image:
-    return normalize(tint_preserving_iridescence(master, target_rgb, GRADE_STRENGTH))
+def grade(master: Image.Image, target_rgb: tuple[int, int, int],
+          chroma: float = BASE_CHROMA) -> Image.Image:
+    return normalize(tint_preserving_iridescence(master, target_rgb, GRADE_STRENGTH), chroma)
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     master = normalized_master()
 
-    print(f"{'tile':8} {'target':9} {'saturation':>11} {'lightness':>10} {'hue':>6}")
-    print("-" * 50)
-    for name, target in CONCEPT_PALETTE.items():
-        compact = grade(master, target).resize((256, 256), Image.Resampling.LANCZOS)
+    print(f"{'tile':8} {'target':9} {'L*':>7} {'C*':>7} {'h':>7}")
+    print("-" * 42)
+    for name, (target, chroma) in CONCEPT_PALETTE.items():
+        compact = grade(master, target, chroma).resize((256, 256), Image.Resampling.LANCZOS)
         compact.save(OUT / f"tile-{name}.png", optimize=True)
         compact.save(OUT / f"tile-{name}.webp", format="WEBP", lossless=True, method=6)
-        saturation, lightness = measure(compact)
-        hue = colorsys.rgb_to_hls(*[c / 255 for c in mean_rgb(compact)])[0] * 360
+        lightness, chroma, hue = measure(compact)
         print(f"{name:8} #{target[0]:02X}{target[1]:02X}{target[2]:02X}  "
-              f"{saturation * 100:10.1f}% {lightness * 100:9.1f}% {hue:5.0f}°")
+              f"{lightness:7.1f} {chroma:7.1f} {hue:6.0f}°")
 
 
 if __name__ == "__main__":
