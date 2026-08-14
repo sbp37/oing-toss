@@ -1296,25 +1296,96 @@ img {
   padding: 0 3px;
 }
 
-.goal-status span {
+.goal-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.goal-copy {
   color: #847961;
   font-size: 13px;
   font-weight: 800;
   white-space: nowrap;
 }
 
-.goal-status em {
+.goal-copy em {
   font-style: normal;
 }
 
-.goal-status b { color: #a8795d; }
+.goal-copy b { color: #a8795d; }
 
-.goal-status.is-complete span {
+.stage-mission {
+  position: relative;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 5px 2px 3px;
+  border: 1px solid rgba(120, 183, 166, 0.34);
+  border-radius: 999px;
+  background: rgba(238, 252, 246, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  color: #54897c;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.stage-mission[hidden] { display: none; }
+
+.stage-mission img {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  object-fit: contain;
+}
+
+.stage-mission strong {
+  overflow: hidden;
+  max-width: 92px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage-mission[data-kind="cat"] {
+  border-color: rgba(236, 159, 172, 0.34);
+  background: rgba(255, 243, 246, 0.86);
+  color: #b06f7f;
+}
+
+.stage-mission[data-kind="chain"] {
+  border-color: rgba(226, 173, 74, 0.36);
+  background: rgba(255, 249, 224, 0.88);
+  color: #a87735;
+}
+
+.stage-mission.is-complete {
+  border-color: rgba(255, 180, 77, 0.5);
+  background: rgba(255, 248, 213, 0.96);
+  color: #ce7654;
+}
+
+.stage-mission.is-rewarded {
+  animation: stage-mission-reward 720ms cubic-bezier(.16,.82,.24,1.16) both;
+}
+
+@keyframes stage-mission-reward {
+  0% { transform: scale(.9); filter: brightness(1); }
+  32% { transform: translateY(-1px) scale(1.11); filter: brightness(1.1) saturate(1.08); box-shadow: 0 0 11px rgba(255,190,74,.28), inset 0 1px 0 white; }
+  68% { transform: scale(.98); }
+  100% { transform: scale(1); filter: none; }
+}
+
+.goal-status.is-complete .goal-copy {
   color: #328d7e;
   font-size: 12px;
 }
 
-.goal-status.is-complete b {
+.goal-status.is-complete .goal-copy b {
   color: #e85c79;
 }
 
@@ -4888,7 +4959,7 @@ img {
 .score-readout strong { color: #334a68; font-size: 20px; }
 .combo-readout strong { font-size: 20px; }
 .goal-status { padding: 0 1px; }
-.goal-status span { color: #756b5d; font-size: 12px; }
+.goal-copy { color: #756b5d; font-size: 12px; }
 .goal-track { height: 6px; background: rgba(238,226,198,.72); }
 
 .board-frame,
@@ -5167,8 +5238,8 @@ img {
   .combo-readout span { font-size: 11px; }
   .score-readout strong,
   .combo-readout strong { font-size: 15px; }
-  .goal-status span { font-size: 11px; }
-  .goal-status.is-complete span { font-size: 11px; }
+  .goal-copy { font-size: 11px; }
+  .goal-status.is-complete .goal-copy { font-size: 11px; }
   .item-actions { width: 100%; gap: 3px; padding-inline: 5px; }
   .item-button { min-width: 0; font-size: 11px; }
   .item-icon { width: 21px; height: 23px; padding: 2px; }
@@ -6222,7 +6293,14 @@ img {
   padding: 0 4px;
 }
 
-.goal-status span {
+.goal-meta {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.goal-copy {
   display: inline-flex;
   align-items: baseline;
   gap: 3px;
@@ -6233,13 +6311,13 @@ img {
   white-space: nowrap;
 }
 
-.goal-status span b {
+.goal-copy b {
   color: #e5617c;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
-.goal-status span em { color: #778493; font-style: normal; }
+.goal-copy em { color: #778493; font-style: normal; }
 .goal-track { height: 5px; border: 0; background: rgba(222,213,188,.55); }
 .goal-status.is-complete .goal-track { box-shadow: 0 0 0 2px rgba(255,208,113,.16); }
 
@@ -8053,6 +8131,8 @@ img {
 }
 
 .cat-message {
+  display: block;
+  align-content: center;
   min-height: 44px;
   padding: 7px 13px 6px;
   font-family: var(--font-display);
@@ -8139,6 +8219,10 @@ img {
   .item-actions { gap: 3px; padding-inline: 5px; }
   .item-button { border-radius: 12px; }
   .special-tile-label { min-width: 27px; padding-inline: 2px; font-size: 9px; }
+  .goal-meta { gap: 3px; }
+  .stage-mission { gap: 1px; padding-inline: 2px 4px; }
+  .stage-mission img { width: 10px; height: 10px; }
+  .stage-mission strong { max-width: 72px; font-size: 9px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop } from '../js/data.js';
+import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -99,6 +99,10 @@ test('bomb and clock inventory unlock only when their teaching stages begin', ()
   assert.equal(itemUnlockGrantForStage(4), null);
   assert.deepEqual(itemUnlockGrantForStage(5), { clock: 1 });
   assert.equal(itemUnlockGrantForStage(6), null);
+  assert.equal(isItemUnlockedAtStage('bomb', 2), false);
+  assert.equal(isItemUnlockedAtStage('bomb', 3), true);
+  assert.equal(isItemUnlockedAtStage('clock', 4), false);
+  assert.equal(isItemUnlockedAtStage('clock', 5), true);
 });
 
 test('late stages rotate optional skill bonuses without replacing the main goal', () => {
@@ -113,6 +117,21 @@ test('late stages rotate optional skill bonuses without replacing the main goal'
   assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 2 }), false);
   assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 3 }), true);
   assert.ok(stageChallengeBonus(10) > stageChallengeBonus(6));
+});
+
+test('late-stage mission HUD exposes actionable progress and completion', () => {
+  const wide = stageChallengeForStage(6);
+  const chain = stageChallengeForStage(8);
+  assert.deepEqual(stageChallengeProgress(null), null);
+  assert.deepEqual(stageChallengeProgress(wide), {
+    kind: 'wide', label: '큰 조합', requirement: 5, progress: 0, target: 1, completed: false,
+  });
+  assert.deepEqual(stageChallengeProgress(chain, { stageStreak: 2 }), {
+    kind: 'chain', label: '연속 성공', requirement: 3, progress: 2, target: 3, completed: false,
+  });
+  assert.deepEqual(stageChallengeProgress(chain, { completed: true, stageStreak: 1 }), {
+    kind: 'chain', label: '연속 성공', requirement: 3, progress: 3, target: 3, completed: true,
+  });
 });
 
 test('a wrong rectangle trims combo by thirty percent instead of erasing it', () => {

@@ -215,6 +215,13 @@ export function itemUnlockGrantForStage(stage = 1) {
   return null;
 }
 
+export function isItemUnlockedAtStage(itemId, stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  if (itemId === 'bomb') return level >= 3;
+  if (itemId === 'clock') return level >= 5;
+  return ['hint', 'shuffle'].includes(itemId);
+}
+
 export function stageIntroForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const config = getStageConfig(level);
@@ -261,6 +268,28 @@ export function completesStageChallenge(challenge, {
   if (challenge.kind === 'cat') return Math.max(0, Number(catCount) || 0) >= challenge.requirement;
   if (challenge.kind === 'chain') return Math.max(0, Number(stageStreak) || 0) >= challenge.requirement;
   return false;
+}
+
+export function stageChallengeProgress(challenge, {
+  completed = false,
+  stageStreak = 0,
+} = {}) {
+  if (!challenge) return null;
+  const requirement = Math.max(1, Math.round(Number(challenge.requirement) || 1));
+  const target = challenge.kind === 'chain' ? requirement : 1;
+  const progress = completed
+    ? target
+    : challenge.kind === 'chain'
+      ? Math.min(target, Math.max(0, Math.round(Number(stageStreak) || 0)))
+      : 0;
+  return Object.freeze({
+    kind: challenge.kind,
+    label: challenge.label,
+    requirement,
+    progress,
+    target,
+    completed: Boolean(completed),
+  });
 }
 
 export function comboMilestoneCrossed(previousCombo, nextCombo) {
@@ -409,9 +438,9 @@ export const MESSAGES = Object.freeze({
   cloverSuccess: Object.freeze(['행운 점수까지 챙겼다냥!', '클로버 보너스 성공!', '이번 조합은 점수가 더 붙는다냥!']),
   clutch: Object.freeze(['막판 집중력 인정!', '끝까지 잡았다냥!', '마지막까지 깔끔했다냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
-  challengeWide: Object.freeze(['큰 조합 하나 노려보자냥!', '다섯 칸 이상이면 보너스다냥!']),
-  challengeCat: Object.freeze(['이번 판은 고양이를 찾아봐!', '숨어 있는 고양이를 챙겨보라냥!']),
-  challengeChain: Object.freeze(['세 번 연속으로 가보자냥!', '실수 없이 세 번, 할 수 있지?']),
+  challengeWide: Object.freeze(['큰 조합 노려보자냥!', '5칸 묶으면 보너스!']),
+  challengeCat: Object.freeze(['고양이 한 마리 찾아봐!', '숨은 고양이 챙겨보라냥!']),
+  challengeChain: Object.freeze(['연속 세 번 가보자냥!', '실수 없이 세 번, 할 수 있지?']),
   challengeComplete: Object.freeze(['보너스까지 챙겼다냥!', '이번 미션도 깔끔하게 성공!', '오, 보너스 인정.']),
   bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
   clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),

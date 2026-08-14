@@ -3,6 +3,7 @@ import {
   BOARD_DROP_ITEMS,
   buildScoreComparisons,
   comboMultiplier,
+  isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
   resultToneForScore,
@@ -64,6 +65,7 @@ export class GameUI {
     this.roundReadyTimer = null;
     this.countdownPulseTimer = null;
     this.goalPulseTimer = null;
+    this.stageMissionPulseTimer = null;
     this.itemRewardPreviewTimer = null;
     this.comboRewardTimer = null;
     this.comboLossTimer = null;
@@ -94,6 +96,9 @@ export class GameUI {
       goalLabel: document.querySelector('#goal-label'),
       goalFill: document.querySelector('#goal-fill'),
       goalTrack: document.querySelector('#goal-track'),
+      stageMission: document.querySelector('#stage-mission'),
+      stageMissionIcon: document.querySelector('#stage-mission-icon'),
+      stageMissionValue: document.querySelector('#stage-mission-value'),
       roundMini: document.querySelector('.round-mini'),
       sumBubble: document.querySelector('#sum-bubble'),
       sum: document.querySelector('#sum-value'),
@@ -1689,7 +1694,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, progress, target }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, progress, target, stageMission = null, stageMissionBonus = 0 }) {
     this.elements.round.textContent = String(round);
     this.elements.score.textContent = score.toLocaleString('ko-KR');
     const time = Math.max(0, Math.ceil(timeLeft));
@@ -1750,9 +1755,47 @@ export class GameUI {
     this.elements.goal.textContent = `${progress} / ${target}`;
     this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', progress >= target);
     this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
+    const mission = this.elements.stageMission;
+    if (mission) {
+      const wasCompleted = mission.dataset.completed === '1';
+      mission.hidden = !stageMission;
+      mission.classList.toggle('is-complete', Boolean(stageMission?.completed));
+      mission.dataset.kind = stageMission?.kind || '';
+      mission.dataset.completed = stageMission?.completed ? '1' : '0';
+      if (stageMission) {
+        const iconByKind = {
+          wide: 'assets/decor/sparkle.webp',
+          cat: 'assets/decor/paw.webp',
+          chain: 'assets/decor/star.webp',
+        };
+        this.elements.stageMissionIcon.src = iconByKind[stageMission.kind] || iconByKind.wide;
+        const activeCopy = stageMission.kind === 'wide'
+          ? `${stageMission.requirement}칸 묶기`
+          : stageMission.kind === 'cat'
+            ? '고양이 찾기'
+            : `${stageMission.label} ${stageMission.progress}/${stageMission.target}`;
+        this.elements.stageMissionValue.textContent = stageMission.completed
+          ? `${stageMission.label} +${Math.max(0, Math.round(stageMissionBonus)).toLocaleString('ko-KR')}`
+          : activeCopy;
+        mission.setAttribute('aria-label', stageMission.completed
+          ? `${stageMission.label} 미션 완료, ${Math.max(0, Math.round(stageMissionBonus)).toLocaleString('ko-KR')}점 보너스`
+          : stageMission.kind === 'wide'
+            ? `${stageMission.requirement}칸을 한 번에 묶는 미션`
+            : stageMission.kind === 'cat'
+              ? '고양이를 한 마리 찾는 미션'
+              : `${stageMission.label} 미션, ${stageMission.progress}/${stageMission.target}`);
+        if (!wasCompleted && stageMission.completed) {
+          clearTimeout(this.stageMissionPulseTimer);
+          mission.classList.remove('is-rewarded');
+          void mission.offsetWidth;
+          mission.classList.add('is-rewarded');
+          this.stageMissionPulseTimer = setTimeout(() => mission.classList.remove('is-rewarded'), 760);
+        }
+      }
+    }
   }
 
-  updateItems({ hint, shuffle, bomb, clock, clockAvailable = true }) {
+  updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true }) {
     this.elements.hintCount.textContent = String(hint);
     this.elements.shuffleCount.textContent = String(shuffle);
     this.elements.bombCount.textContent = String(bomb);
@@ -1764,22 +1807,24 @@ export class GameUI {
     // 0개일 때 무조건 "소진"을 붙이면, 아직 한 번도 얻은 적 없는 아이템까지
     // "다 써버렸다"로 보인다(폭탄은 1스테이지부터 0이라 첫 화면부터 그렇게 보였다).
     // 한 번이라도 가졌던 적이 있을 때만 소진으로 표시하고, 그 전에는 잠금으로 둔다.
-    const markItem = (button, count, locked = false, lockCopy = '잠금') => {
+    const markItem = (button, count, locked = false, lockCopy = '잠금', unlocked = false) => {
       if (!button) return;
       if (count > 0) button.dataset.everHeld = '1';
       const everHeld = button.dataset.everHeld === '1';
       const empty = count <= 0;
-      const depleted = empty && everHeld && !locked;
-      const stageLocked = locked || (empty && !everHeld);
+      const stageLocked = locked || (empty && !everHeld && !unlocked);
+      const depleted = empty && !stageLocked;
       button.classList.toggle('is-depleted', depleted);
       button.classList.toggle('is-stage-locked', stageLocked);
       button.dataset.state = stageLocked ? 'locked' : depleted ? 'depleted' : 'available';
       button.dataset.lockCopy = lockCopy;
     };
-    markItem(this.elements.hintButton, hint);
-    markItem(this.elements.shuffleButton, shuffle);
-    markItem(this.elements.bombButton, bomb, false, 'S3');
-    markItem(this.elements.clockButton, clock, !clockAvailable, 'S5');
+    markItem(this.elements.hintButton, hint, false, '잠금', true);
+    markItem(this.elements.shuffleButton, shuffle, false, '잠금', true);
+    const bombUnlocked = isItemUnlockedAtStage('bomb', stage);
+    const clockUnlocked = isItemUnlockedAtStage('clock', stage) && clockAvailable;
+    markItem(this.elements.bombButton, bomb, !bombUnlocked, 'S3', bombUnlocked);
+    markItem(this.elements.clockButton, clock, !clockUnlocked, 'S5', clockUnlocked);
     this.elements.hintButton.dataset.count = String(hint);
     this.elements.shuffleButton.dataset.count = String(shuffle);
     this.elements.bombButton.dataset.count = String(bomb);

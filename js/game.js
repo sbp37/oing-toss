@@ -30,6 +30,7 @@ import {
   specialTilePlanForStage,
   stageChallengeBonus,
   stageChallengeForStage,
+  stageChallengeProgress,
   stageProgressGainForClear,
   stageShowcaseBoardDrop,
   stageIntroForStage,
@@ -371,7 +372,7 @@ class OingGame {
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
     this.ui.setFreezeActive(false);
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
     this.state.running = true;
     this.state.inputLocked = true;
     this.lowTimeSpoken = false;
@@ -389,7 +390,7 @@ class OingGame {
     this.ui.setOverlay('pause-overlay', false);
     this.buildRound();
     this.forceTestBoardItem();
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
     this.ui.showScreen('play');
     this.ui.setPlayCharacter('peek');
     this.showCatMessage('start');
@@ -972,7 +973,7 @@ class OingGame {
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
     this.ui.setFreezeActive(false);
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
     let carriedItems = [];
     await this.ui.animateRoundTransition(nextRound, () => {
       carriedItems = this.buildRound();
@@ -1342,7 +1343,7 @@ class OingGame {
 
   syncInventory() {
     this.state.items = this.inventory.snapshot();
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
   }
 
   grantItems(grants, metadata = {}) {
@@ -1633,8 +1634,14 @@ class OingGame {
   updateHUD() {
     const config = getRoundConfig(this.state.round);
     const comboWindowMs = comboWindowMsForStage(this.state.round);
+    const stageChallenge = stageChallengeForStage(this.state.round);
     this.ui.updateHUD({
       ...this.state,
+      stageMission: stageChallengeProgress(stageChallenge, {
+        completed: this.state.stageChallengeComplete,
+        stageStreak: this.state.stageChallengeStreak,
+      }),
+      stageMissionBonus: stageChallenge ? stageChallengeBonus(this.state.round) : 0,
       rewardRemaining: itemRewardCountdown(this.state.combo, this.state.round),
       comboRemainingMs: this.state.combo > 0
         ? Math.max(0, this.state.comboExpiresAt - performance.now())
