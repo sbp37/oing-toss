@@ -256,6 +256,23 @@
 .play-ui-v4 .round-mini::before,
 .play-ui-v4 .round-mini::after { display: none; }
 
+/* styles.css pops the whole .round-mini with scale(1.07) on stage advance. That
+   was written for the old small pill; now that .round-mini is the full canvas,
+   scaling it throws the label 27px off the ribbon and the numeral off the dome.
+   Scale the two children about their own centres instead. */
+.play-ui-v4 .round-mini.is-advancing { animation: none; }
+
+.play-ui-v4 .round-mini.is-advancing span,
+.play-ui-v4 .round-mini.is-advancing strong {
+  animation: chrome-stage-advance 570ms cubic-bezier(.16,.82,.24,1.15) both;
+}
+
+@keyframes chrome-stage-advance {
+  0% { transform: translate(-50%, -50%) scale(.94); filter: brightness(1); }
+  38% { transform: translate(-50%, -50%) scale(1.14); filter: brightness(1.1) saturate(1.08); }
+  100% { transform: translate(-50%, -50%) scale(1); filter: none; }
+}
+
 .play-ui-v4 .round-mini span {
   position: absolute;
   top: 5.865%;
