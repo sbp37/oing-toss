@@ -175,15 +175,15 @@ export class GameUI {
     for (const step of steps) {
       if (token !== this.startCountdownToken) return false;
       const isGo = step === 'GO!';
-      this.elements.startCountdownKicker.textContent = isGo ? '합10을 찾아라냥!' : 'READY?';
-      this.elements.startCountdownValue.textContent = String(step);
+      this.elements.startCountdownKicker.textContent = isGo ? '합이 10이면' : '준비!';
+      this.elements.startCountdownValue.textContent = isGo ? '뿅!' : String(step);
       overlay.classList.toggle('is-go', isGo);
       overlay.dataset.step = String(step);
       this.elements.startCountdownValue.classList.remove('is-popping');
       void this.elements.startCountdownValue.offsetWidth;
       this.elements.startCountdownValue.classList.add('is-popping');
       onStep(step);
-      await delay(compact ? (isGo ? 340 : 330) : (isGo ? 560 : 640));
+      await delay(compact ? (isGo ? 320 : 240) : (isGo ? 500 : 420));
     }
 
     if (token !== this.startCountdownToken) return false;
@@ -885,6 +885,17 @@ export class GameUI {
     const paw = document.createElement('em');
     paw.className = 'shuffle-paw';
     effect.appendChild(paw);
+    const mintRibbon = document.createElement('span');
+    mintRibbon.className = 'shuffle-ribbon shuffle-ribbon-mint';
+    const coralRibbon = document.createElement('span');
+    coralRibbon.className = 'shuffle-ribbon shuffle-ribbon-coral';
+    const cat = document.createElement('img');
+    cat.className = 'shuffle-cat-swipe';
+    cat.src = CHARACTER_ASSETS.wave;
+    cat.width = 430;
+    cat.height = 481;
+    cat.alt = '';
+    effect.append(mintRibbon, coralRibbon, cat);
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
     await delay(400);
