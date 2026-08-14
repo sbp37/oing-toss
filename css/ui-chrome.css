@@ -428,7 +428,7 @@
   display: block;
   flex: 0 0 auto;
   color: #7d8587;
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.0275), 12px);
+  font-size: clamp(10px, calc(var(--chrome-width) * 0.031), 13px);
   line-height: 1;
   white-space: nowrap;
 }
@@ -439,7 +439,7 @@
   max-width: 100%;
   overflow: hidden;
   color: #4f6473;
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
+  font-size: clamp(15px, calc(var(--chrome-width) * 0.047), 19px);
   line-height: 1;
   text-overflow: clip;
   white-space: nowrap;
@@ -449,11 +449,11 @@
    ("21,400") never ellipsises inside the painted pill — the digits give up a
    step of size instead and the whole number stays readable. */
 .play-ui-v4 .score-readout strong[data-digits="l"] {
-  font-size: clamp(11px, calc(var(--chrome-width) * 0.034), 14px);
+  font-size: clamp(13px, calc(var(--chrome-width) * 0.039), 16px);
 }
 
 .play-ui-v4 .score-readout strong[data-digits="xl"] {
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.028), 11.5px);
+  font-size: clamp(11px, calc(var(--chrome-width) * 0.032), 13.5px);
 }
 
 /* ---------------------------------------------------------------------------
@@ -479,14 +479,14 @@
 
 .play-ui-v4 .goal-copy {
   color: #4f5b64;
-  font-size: clamp(11px, calc(var(--chrome-width) * 0.0315), 14px);
+  font-size: clamp(12px, calc(var(--chrome-width) * 0.0355), 15px);
   line-height: 1;
   white-space: nowrap;
 }
 
 .play-ui-v4 .goal-copy b {
   color: #e85073;
-  font-size: clamp(17px, calc(var(--chrome-width) * 0.053), 23px);
+  font-size: clamp(19px, calc(var(--chrome-width) * 0.059), 25px);
   line-height: 1;
 }
 
@@ -510,18 +510,21 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Board — square cells, always.
+   Board — square tiles spread over the whole recess.
 
-   The recess was regrown to 658 × 762 artwork px (h/w 1.158) precisely so the
-   tallest board, 6 × 7 (h/w 1.167), seats square cells inside it with 0.7% to
-   spare. The grid no longer stretches to fill the recess: the cell edge is the
-   limiting direction's share, the board is cell×cols by cell×rows, and smaller
-   stages float centred on the painted floor (which the artwork build wipes
-   clean of its old pencil grid, so the exposed margin is plain cream).
+   The recess is 658 × 762 artwork px (h/w 1.158) so the tallest board, 6 × 7
+   (h/w 1.167), seats square tiles inside it. Sizing the *board* to cell×cols by
+   cell×rows made every other stage — 4 × 4, 5 × 5, 6 × 6, all width-bound —
+   float as a square slab on a taller floor, leaving a bare cream band about 27
+   CSS px deep above AND below the tiles. That band read as a broken panel.
 
-   A 6 × 7 board is height-bound and every other stage is width-bound; either
-   way rows stack DOWNWARD as squares instead of flattening the tiles the way
-   the old fill-the-recess sizing did from STAGE 5 on.
+   So the grid now always fills the recess and the leftover is spent *between*
+   rows instead of pooling at the two ends: the track is `1fr`, so the cells
+   share the recess evenly, and the tile is a square of `--cell` centred in its
+   cell by auto margins. Tiles stay square at every stage, the pitch stays
+   perfectly uniform (input.js divides the board rect by cols/rows and must keep
+   landing on the right cell), and the painted floor never shows a dead end
+   band — a 4 × 4 board just breathes ~7 CSS px above and below each row.
    ------------------------------------------------------------------------ */
 .play-ui-v4 .board-zone {
   position: absolute;
@@ -556,39 +559,45 @@
 }
 
 .play-ui-v4 .board {
-  /* the square cell edge: whichever axis runs out first decides it */
+  /* the square tile edge: whichever axis runs out first decides it */
   --cell: min(
     calc(var(--chrome-width) * 0.84359 / var(--board-cols)),
     calc(var(--chrome-height) * 0.45142 / var(--board-rows))
   );
-  width: calc(var(--cell) * var(--board-cols));
-  height: calc(var(--cell) * var(--board-rows));
-  max-height: none;
-  aspect-ratio: auto;
-  border: 0;
-  border-radius: 10px;
-  background-color: #fff9ed;
-  background-image:
-    linear-gradient(to right, rgba(191,159,111,.29) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(191,159,111,.29) 1px, transparent 1px);
-  box-shadow: inset 0 2px 4px rgba(119,83,46,.06);
-}
-
-/* Cells are square by construction now (the grid's own 1px gap and padding
-   skew width vs height by under 0.1px), so the tile just fills its cell. */
-.play-ui-v4 .tile {
-  aspect-ratio: auto;
   width: 100%;
   height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  /* The painted floor is already a clean cream with its own vignette, and a
+     drawn grid would only fit if every tile filled its cell edge to edge —
+     which is exactly what stopped being true. Tiles carry their own ring, so
+     the board contributes no surface of its own. */
+  background: transparent;
+  box-shadow: none;
 }
 
-/* Numerals ride the square cell edge at a ~0.55 fill and meet the 30px cap on
-   ordinary phones, so every stage reads at one glyph size — a board never
-   looks bigger just because its cells have more spare room. The cap is doing
-   the real work on STAGE 1-2, whose roomy cells would otherwise push type to
-   43px+, which measured slower to scan, not easier (see git history). */
+/* Square tile, centred in a cell that may be taller (4×4 … 6×6) or wider
+   (6×7) than it is. */
+.play-ui-v4 .tile {
+  aspect-ratio: 1;
+  width: var(--cell);
+  height: var(--cell);
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+}
+
+/* Numerals ride the square tile edge. The old 0.55/30px pair let the cap bind
+   on every board from STAGE 1 to 6×7 alike, so a roomy 85px STAGE 1 tile
+   carried the same 30px glyph as a cramped 57px one and read as undersized.
+   0.46 with a 42px cap keeps the cap off the common stages: STAGE 1 lands at
+   39-40px, 5×5 at 32px, 6×6 at 27px, 6×7 at 26px. */
 .play-ui-v4 .tile span {
-  font-size: clamp(15px, calc(var(--cell) * 0.55), 30px);
+  font-size: clamp(17px, calc(var(--cell) * 0.46), 42px);
 }
 
 /* A cleared cell has to read as a shallow recess in the board, never as an
@@ -854,7 +863,7 @@
   left: 6%;
   right: 6%;
   bottom: 12%;
-  font-size: clamp(12px, calc(var(--chrome-width) * 0.037), 16px);
+  font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
   line-height: 1;
   text-align: center;
   white-space: nowrap;
