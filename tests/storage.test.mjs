@@ -24,6 +24,12 @@ test('stage and combo progression only move forward while legacy score keys stay
     assert.equal(storageAdapter.hasSeenDragTutorial(), false);
     storageAdapter.markDragTutorialSeen();
     assert.equal(storageAdapter.hasSeenDragTutorial(), true);
+    assert.equal(storageAdapter.getRareShowcaseCount(), 0);
+    assert.equal(storageAdapter.markRareShowcaseSeen(), 1);
+    assert.equal(storageAdapter.markRareShowcaseSeen(), 2);
+    assert.equal(storageAdapter.markRareShowcaseSeen(), 3);
+    assert.equal(storageAdapter.markRareShowcaseSeen(), 3);
+    assert.equal(storageAdapter.getRareShowcaseCount(), 3);
   } finally {
     globalThis.localStorage = previous;
   }

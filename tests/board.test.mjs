@@ -142,15 +142,33 @@ assert.deepEqual(
   }),
   [[4, 4, 3], [5, 5, 5], [6, 6, 8], [6, 6, 9], [7, 7, 11]],
 );
+// Rows stop at 8 so the late-stage numerals stay readable; difficulty rides on
+// `target` from STAGE 6 on instead of a taller board.
 assert.deepEqual(
-  [6, 7, 8].map((stage) => {
+  [6, 7, 8, 9, 10].map((stage) => {
     const config = getRoundConfig(stage);
     return [config.cols, config.rows, config.target];
   }),
-  [[7, 8, 10], [7, 9, 13], [7, 10, 14]],
+  [[7, 8, 12], [7, 8, 13], [7, 8, 14], [7, 8, 15], [7, 8, 17]],
 );
+{
+  const targets = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1).target);
+  // The authored stages must climb every step: STAGE 5 once asked for 11 and
+  // STAGE 6 for 10, so the board grew while the goal shrank.
+  targets.slice(0, 10).forEach((target, index) => {
+    if (index === 0) return;
+    assert.ok(target > targets[index - 1], `STAGE ${index + 1} target must exceed STAGE ${index}`);
+  });
+  // Extrapolated stages keep climbing until the target cap, then hold flat.
+  targets.forEach((target, index) => {
+    if (index === 0) return;
+    assert.ok(target >= targets[index - 1], `STAGE ${index + 1} target must not drop`);
+  });
+  const rows = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1).rows);
+  assert.ok(rows.every((value) => value <= 8), 'no stage may exceed eight rows');
+}
 assert.equal(getRoundConfig(20).size, 7);
-assert.equal(getRoundConfig(20).rows, 10);
+assert.equal(getRoundConfig(20).rows, 8);
 assert.equal(getRoundConfig(20).timeLimit, 120);
 assert.ok(getRoundConfig(20).target > getRoundConfig(10).target);
 assert.ok(getRoundConfig(20).clockChance < 0.07, 'late-stage clocks must stay rare');

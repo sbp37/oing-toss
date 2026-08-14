@@ -6,7 +6,8 @@ export const ITEM_REWARD_INTERVAL = 7;
 export const TIME_FREEZE_SECONDS = 10;
 export const MAX_ITEM_TIME_BONUS_SECONDS = 15;
 export const TIME_ITEM_CAP_SCORE = 300;
-export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 2, clover: 3, freeze: 3 });
+export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 7, clover: 3, freeze: 3 });
+export const EARLY_MEGABOMB_PITY_LIMIT = 4;
 export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
 export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
 export const STRUGGLE_HINT_FAILURES = 3;
@@ -29,17 +30,26 @@ export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
+// The board sits in a recess painted into design/ui-chrome/ui-chrome.png, so its
+// height is fixed and only `rows` can squeeze a cell. Tile type scales off the
+// short cell edge (css/ui-chrome.css: chrome-height * 0.2917 / rows), which put
+// STAGE 8~10 at 24.6px on a 390px screen — too small to read at a glance.
+// `cols` is not the lever: holding rows at 10 and dropping to six columns leaves
+// the type identical and only stretches the cell (ratio 1.37 -> 1.63).
+// So rows stops at 8 and difficulty keeps climbing through `target` and the
+// clock/bomb odds instead. Raising this past 8 shrinks the numerals again;
+// widening the recess needs the artwork redrawn first.
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0, bombChance: 0.08 },
   { stage: 5, round: 5, size: 7, cols: 7, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
-  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 10, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
-  { stage: 7, round: 7, size: 7, cols: 7, rows: 9, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
-  { stage: 8, round: 8, size: 7, cols: 7, rows: 10, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
-  { stage: 9, round: 9, size: 7, cols: 7, rows: 10, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 7, cols: 7, rows: 10, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
+  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 7, cols: 7, rows: 8, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 7, cols: 7, rows: 8, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 7, cols: 7, rows: 8, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 7, cols: 7, rows: 8, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -66,7 +76,19 @@ export const BOARD_DROP_ITEMS = Object.freeze({
   candy: Object.freeze({ id: 'candy', label: '콤보사탕', implemented: false, asset: null }),
 });
 
-function boardDropPoolFor(stage, combo, cloverGiven = false) {
+const STAGE_SHOWCASE_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
+
+// Learners usually finish around STAGE 4~5, while recurring rare drops open
+// at STAGE 6. Preview one rare board item on STAGE 4 during the first three
+// runs only; the caller persists that onboarding limit separately.
+export function stageShowcaseBoardDrop(stage = 1, random = Math.random, alreadyGiven = false) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  if (alreadyGiven || level !== 4) return null;
+  const roll = Math.min(0.999999, Math.max(0, Number(random?.()) || 0));
+  return BOARD_DROP_ITEMS[STAGE_SHOWCASE_DROP_IDS[Math.floor(roll * STAGE_SHOWCASE_DROP_IDS.length)]];
+}
+
+function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = false) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   // 시뮬레이션(scripts/item-drop-compare.mjs)으로 확인한 사실: 콤보는 거의
@@ -82,10 +104,10 @@ function boardDropPoolFor(stage, combo, cloverGiven = false) {
   // 클로버는 게임당 1회 한정(!cloverGiven)이고 보너스가 커서 비중은 그대로 1.
   const bombWeight = streak >= 14 ? 12 : streak >= 7 ? 13 : 15;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
-  if (level >= 5) pool.push('clock');
+  if (level >= 5 && !timeBonusCapped) pool.push('clock');
   if (level >= 6 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 6 && streak >= 14) pool.push('freeze');
-  if (level >= 7 && streak >= 21 && !cloverGiven) pool.push('clover');
+  if (level >= 6 && streak >= 14 && !timeBonusCapped) pool.push('freeze');
+  if (level >= 6 && streak >= 21 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
 
@@ -95,6 +117,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
   previousType = null,
   rewardIndex = 0,
   stage = 1,
+  timeBonusCapped = false,
 } = {}) {
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   const earned = Math.max(0, Math.round(Number(rewardIndex) || 0));
@@ -103,20 +126,24 @@ export function chooseBoardDrop(combo, random = Math.random, {
   // The first earned board item always demonstrates the most tactile reward.
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
   const previousWasTimeItem = ['clock', 'freeze'].includes(previousType);
-  if (!cloverGiven && level >= 7 && streak >= 21
+  if (!cloverGiven && level >= 6 && streak >= 21
     && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
     return BOARD_DROP_ITEMS.clover;
   }
-  if (!previousWasTimeItem && level >= 6 && streak >= 14
+  if (!timeBonusCapped && !previousWasTimeItem && level >= 6 && streak >= 14
     && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
     return BOARD_DROP_ITEMS.freeze;
   }
+  // STAGE 6~7은 메가폭탄을 처음 접하는 보호 구간이다. 자연 드롭 확률은
+  // 후반과 동일하게 유지하고 pity만 짧게 둬 regular의 등장 판 비율이
+  // 20% 아래로 굶지 않게 한다. STAGE 8+는 긴 pity로 희귀도를 회복한다.
+  const megabombPityLimit = level <= 7 ? EARLY_MEGABOMB_PITY_LIMIT : BOARD_DROP_PITY_LIMITS.megabomb;
   if (level >= 6 && streak >= 7
-    && Math.max(0, pity.megabomb || 0) >= BOARD_DROP_PITY_LIMITS.megabomb
+    && Math.max(0, pity.megabomb || 0) >= megabombPityLimit
     && previousType !== 'megabomb') {
     return BOARD_DROP_ITEMS.megabomb;
   }
-  const pool = boardDropPoolFor(level, streak, cloverGiven);
+  const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped);
   if (!pool.length) return null;
   // Avoid back-to-back rare effects without forcing a clock after every bomb.
   const repeatSafePool = previousType && previousType !== 'bomb'
@@ -136,7 +163,7 @@ export function nextBoardDropPity(pity = {}, dropType = '', { stage = 1, combo =
   const previousFreeze = Math.max(0, Math.round(Number(pity.freeze) || 0));
   return Object.freeze({
     megabomb: level >= 6 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
-    clover: level >= 7 && streak >= 21 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
+    clover: level >= 6 && streak >= 21 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
     freeze: level >= 6 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
   });
 }
@@ -197,14 +224,24 @@ export function itemUnlockGrantForStage(stage = 1) {
   return null;
 }
 
+export function isItemUnlockedAtStage(itemId, stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  if (itemId === 'bomb') return level >= 3;
+  if (itemId === 'clock') return level >= 5;
+  return ['hint', 'shuffle'].includes(itemId);
+}
+
 export function stageIntroForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const config = getStageConfig(level);
   if (level === 1) return Object.freeze({ kicker: 'WARM UP', title: 'STAGE 1', detail: '4×4 · 목표 3' });
   if (level === 2) return Object.freeze({ kicker: 'BOARD UP', title: 'STAGE 2', detail: '5×5 OPEN' });
-  if (level === 3) return Object.freeze({ kicker: 'WIDE OPEN', title: 'STAGE 3', detail: '6×6 · 목표 8' });
-  if (level === 4) return Object.freeze({ kicker: 'ITEM ON', title: 'STAGE 4', detail: '폭탄 등장' });
-  if (level === 5) return Object.freeze({ kicker: 'BIG BOARD', title: 'STAGE 5', detail: '7×7 OPEN' });
+  if (level === 3) return Object.freeze({ kicker: 'BOMB OPEN', title: 'STAGE 3', detail: '폭탄 해금 · 목표 8' });
+  if (level === 4) return Object.freeze({ kicker: 'SPECIAL DROP', title: 'STAGE 4', detail: '희귀 아이템 체험' });
+  if (level === 5) return Object.freeze({ kicker: 'CLOCK OPEN', title: 'STAGE 5', detail: '시계 해금 · 목표 11' });
+  if (level === 6) return Object.freeze({ kicker: 'MISSION ON', title: 'STAGE 6', detail: `큰 조합 보너스 · 목표 ${config.target}` });
+  if (level === 7) return Object.freeze({ kicker: 'CAT CHANCE', title: 'STAGE 7', detail: `고양이 수집 보너스 · 목표 ${config.target}` });
+  if (level === 8) return Object.freeze({ kicker: 'CHAIN FEVER', title: 'STAGE 8', detail: `연속 성공 보너스 · 목표 ${config.target}` });
   const challenge = stageChallengeForStage(level);
   const detail = challenge
     ? `${challenge.label} 보너스 · 목표 ${config.target}`
@@ -240,6 +277,28 @@ export function completesStageChallenge(challenge, {
   if (challenge.kind === 'cat') return Math.max(0, Number(catCount) || 0) >= challenge.requirement;
   if (challenge.kind === 'chain') return Math.max(0, Number(stageStreak) || 0) >= challenge.requirement;
   return false;
+}
+
+export function stageChallengeProgress(challenge, {
+  completed = false,
+  stageStreak = 0,
+} = {}) {
+  if (!challenge) return null;
+  const requirement = Math.max(1, Math.round(Number(challenge.requirement) || 1));
+  const target = challenge.kind === 'chain' ? requirement : 1;
+  const progress = completed
+    ? target
+    : challenge.kind === 'chain'
+      ? Math.min(target, Math.max(0, Math.round(Number(stageStreak) || 0)))
+      : 0;
+  return Object.freeze({
+    kind: challenge.kind,
+    label: challenge.label,
+    requirement,
+    progress,
+    target,
+    completed: Boolean(completed),
+  });
 }
 
 export function comboMilestoneCrossed(previousCombo, nextCombo) {
@@ -293,8 +352,8 @@ export function availableItemTimeBonus(usedSeconds = 0, requestedSeconds = 0) {
 export function roundTimeBonusSeconds(round = 1) {
   const current = getStageConfig(round);
   const next = getStageConfig(current.stage + 1);
-  if (current.cols === 4 && next.cols === 5) return 3;
-  if (current.cols === 5 && next.cols === 6) return 7;
+  if (current.cols === 4 && next.cols === 5) return 6;
+  if (current.cols === 5 && next.cols === 6) return 10;
   if (current.cols === 6 && next.cols === 7) return 10;
   return 0;
 }
@@ -305,10 +364,10 @@ export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {
   return 220 + level * 35 + Math.min(180, time * 2) + (perfect ? 120 : 0);
 }
 
-export function specialTilePlanForStage(stage = 1, random = Math.random) {
+export function specialTilePlanForStage(stage = 1, random = Math.random, { timeBonusCapped = false } = {}) {
   const config = getStageConfig(stage);
   const plan = [];
-  if (config.timeLimit > 0 && Math.max(0, random()) < config.clockChance) plan.push('clock');
+  if (!timeBonusCapped && config.timeLimit > 0 && Math.max(0, random()) < config.clockChance) plan.push('clock');
   if (Math.max(0, random()) < config.bombChance) plan.push('bomb');
   return plan;
 }
@@ -388,9 +447,9 @@ export const MESSAGES = Object.freeze({
   cloverSuccess: Object.freeze(['행운 점수까지 챙겼다냥!', '클로버 보너스 성공!', '이번 조합은 점수가 더 붙는다냥!']),
   clutch: Object.freeze(['막판 집중력 인정!', '끝까지 잡았다냥!', '마지막까지 깔끔했다냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
-  challengeWide: Object.freeze(['큰 조합 하나 노려보자냥!', '다섯 칸 이상이면 보너스다냥!']),
-  challengeCat: Object.freeze(['이번 판은 고양이를 찾아봐!', '숨어 있는 고양이를 챙겨보라냥!']),
-  challengeChain: Object.freeze(['세 번 연속으로 가보자냥!', '실수 없이 세 번, 할 수 있지?']),
+  challengeWide: Object.freeze(['큰 조합 노려보자냥!', '5칸 묶으면 보너스!']),
+  challengeCat: Object.freeze(['고양이 한 마리 찾아봐!', '숨은 고양이 챙겨보라냥!']),
+  challengeChain: Object.freeze(['연속 세 번 가보자냥!', '실수 없이 세 번, 할 수 있지?']),
   challengeComplete: Object.freeze(['보너스까지 챙겼다냥!', '이번 미션도 깔끔하게 성공!', '오, 보너스 인정.']),
   bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
   clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),

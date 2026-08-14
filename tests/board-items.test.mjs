@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageClearBonus, stageProgressGainForClear } from '../js/data.js';
+import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -47,8 +47,8 @@ test('background pause rebases game, freeze and combo deadlines together', () =>
 });
 
 test('only major board-size transitions refill time and held time stays capped', () => {
-  assert.equal(roundTimeBonusSeconds(1), 3);
-  assert.equal(roundTimeBonusSeconds(2), 7);
+  assert.equal(roundTimeBonusSeconds(1), 6);
+  assert.equal(roundTimeBonusSeconds(2), 10);
   assert.equal(roundTimeBonusSeconds(3), 0);
   assert.equal(roundTimeBonusSeconds(4), 10);
   assert.equal(roundTimeBonusSeconds(5), 0);
@@ -68,6 +68,11 @@ test('stage bonus and special tiles ramp in after the tutorial stages', () => {
   assert.deepEqual(specialTilePlanForStage(6, () => 0), ['clock', 'bomb']);
   assert.deepEqual(specialTilePlanForStage(7, () => 0), ['clock', 'bomb']);
   assert.deepEqual(specialTilePlanForStage(10, () => 0.9), []);
+  assert.deepEqual(
+    specialTilePlanForStage(6, () => 0, { timeBonusCapped: true }),
+    ['bomb'],
+    'time-capped runs replace the clock opportunity with the remaining valid special type',
+  );
 });
 
 test('combo grace tightens by stage and idle decay stays forgiving early', () => {
@@ -94,6 +99,10 @@ test('bomb and clock inventory unlock only when their teaching stages begin', ()
   assert.equal(itemUnlockGrantForStage(4), null);
   assert.deepEqual(itemUnlockGrantForStage(5), { clock: 1 });
   assert.equal(itemUnlockGrantForStage(6), null);
+  assert.equal(isItemUnlockedAtStage('bomb', 2), false);
+  assert.equal(isItemUnlockedAtStage('bomb', 3), true);
+  assert.equal(isItemUnlockedAtStage('clock', 4), false);
+  assert.equal(isItemUnlockedAtStage('clock', 5), true);
 });
 
 test('late stages rotate optional skill bonuses without replacing the main goal', () => {
@@ -108,6 +117,21 @@ test('late stages rotate optional skill bonuses without replacing the main goal'
   assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 2 }), false);
   assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 3 }), true);
   assert.ok(stageChallengeBonus(10) > stageChallengeBonus(6));
+});
+
+test('late-stage mission HUD exposes actionable progress and completion', () => {
+  const wide = stageChallengeForStage(6);
+  const chain = stageChallengeForStage(8);
+  assert.deepEqual(stageChallengeProgress(null), null);
+  assert.deepEqual(stageChallengeProgress(wide), {
+    kind: 'wide', label: '큰 조합', requirement: 5, progress: 0, target: 1, completed: false,
+  });
+  assert.deepEqual(stageChallengeProgress(chain, { stageStreak: 2 }), {
+    kind: 'chain', label: '연속 성공', requirement: 3, progress: 2, target: 3, completed: false,
+  });
+  assert.deepEqual(stageChallengeProgress(chain, { completed: true, stageStreak: 1 }), {
+    kind: 'chain', label: '연속 성공', requirement: 3, progress: 3, target: 3, completed: true,
+  });
 });
 
 test('a wrong rectangle trims combo by thirty percent instead of erasing it', () => {
@@ -145,6 +169,15 @@ test('board items appear only when a seven-combo boundary is crossed', () => {
   assert.equal(boardDropReward(13, 14, 2), 'milestone');
 });
 
+test('stage four previews exactly one rare item without changing the recurring pool', () => {
+  assert.equal(stageShowcaseBoardDrop(3, () => 0), null);
+  assert.equal(stageShowcaseBoardDrop(4, () => 0)?.id, 'megabomb');
+  assert.equal(stageShowcaseBoardDrop(4, () => 0.5)?.id, 'freeze');
+  assert.equal(stageShowcaseBoardDrop(4, () => 0.999)?.id, 'clover');
+  assert.equal(stageShowcaseBoardDrop(4, () => 0, true), null);
+  assert.equal(stageShowcaseBoardDrop(5, () => 0), null);
+});
+
 test('the reward countdown makes the sixth combo an explicit one-more moment', () => {
   assert.equal(itemRewardCountdown(6, 2), 0, 'tutorial stages do not tease locked rewards');
   assert.equal(itemRewardCountdown(0, 3), 7);
@@ -168,8 +201,12 @@ test('combo-seven rewards unlock variety gradually while board actions stay domi
   assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'clock');
+  assert.notEqual(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 5 })?.id, 'clover');
+  assert.notEqual(chooseBoardDrop(28, () => 0, {
+    pity: { clover: 99 }, rewardIndex: 4, stage: 5,
+  })?.id, 'clover', 'clover pity must stay locked before stage 6');
   assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'freeze');
-  assert.equal(chooseBoardDrop(21, () => 0.999, { rewardIndex: 3, stage: 7 }).id, 'clover');
+  assert.equal(chooseBoardDrop(21, () => 0.999, { rewardIndex: 3, stage: 6 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 8 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 5, stage: 8, cloverGiven: true }).id, 'freeze');
 
@@ -210,8 +247,11 @@ test('earned drops teach with a bomb without forcing a clock after it', () => {
 
 test('rare drop pity guarantees variety without chaining time effects', () => {
   assert.equal(chooseBoardDrop(21, () => 0, {
-    pity: { megabomb: 2, freeze: 0 }, previousType: 'bomb', rewardIndex: 3, stage: 7,
+    pity: { megabomb: 4, freeze: 0 }, previousType: 'bomb', rewardIndex: 3, stage: 7,
   }).id, 'megabomb');
+  assert.notEqual(chooseBoardDrop(21, () => 0, {
+    pity: { megabomb: 2 }, previousType: 'bomb', rewardIndex: 3, stage: 8,
+  }).id, 'megabomb', 'late stages use the longer megabomb pity limit');
   assert.equal(chooseBoardDrop(28, () => 0, {
     pity: { megabomb: 0, freeze: 3 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
   }).id, 'freeze');
@@ -219,8 +259,9 @@ test('rare drop pity guarantees variety without chaining time effects', () => {
     cloverGiven: false, pity: { megabomb: 0, clover: 3, freeze: 0 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
   }).id, 'clover');
   assert.equal(chooseBoardDrop(21, () => 0, {
-    cloverGiven: false, pity: { megabomb: 0, clover: 3, freeze: 0 }, previousType: 'bomb', rewardIndex: 4, stage: 7,
+    cloverGiven: false, pity: { megabomb: 0, clover: 3, freeze: 0 }, previousType: 'bomb', rewardIndex: 4, stage: 6,
   }).id, 'clover');
+  assert.equal(nextBoardDropPity({ clover: 2 }, 'bomb', { stage: 6, combo: 21 }).clover, 3);
   assert.notEqual(chooseBoardDrop(28, () => 0.999, {
     pity: { megabomb: 0, freeze: 3 }, previousType: 'clock', rewardIndex: 5, stage: 8,
   }).id, 'freeze', 'a clock must not be followed immediately by another time effect');
@@ -234,6 +275,42 @@ test('rare drop pity guarantees variety without chaining time effects', () => {
     clover: 1,
     freeze: 0,
   });
+});
+
+test('time-capped runs stop dropping clock and freeze without suppressing rewards', () => {
+  const stageFiveReplacement = chooseBoardDrop(7, () => 0.999, {
+    cloverGiven: true,
+    rewardIndex: 1,
+    stage: 5,
+    timeBonusCapped: true,
+  });
+  assert.equal(stageFiveReplacement.id, 'bomb');
+
+  const forcedFreezeReplacement = chooseBoardDrop(28, () => 0, {
+    cloverGiven: true,
+    pity: { megabomb: 0, freeze: 99 },
+    previousType: 'bomb',
+    rewardIndex: 5,
+    stage: 8,
+    timeBonusCapped: true,
+  });
+  assert.notEqual(forcedFreezeReplacement.id, 'freeze');
+  assert.ok(['bomb', 'megabomb'].includes(forcedFreezeReplacement.id));
+
+  const cappedDrops = Array.from({ length: 180 }, (_, index) => chooseBoardDrop(
+    35,
+    () => index / 180,
+    {
+      cloverGiven: false,
+      pity: { megabomb: 0, clover: 0, freeze: 99 },
+      previousType: 'bomb',
+      rewardIndex: 5,
+      stage: 9,
+      timeBonusCapped: true,
+    },
+  ).id);
+  assert.ok(cappedDrops.every((id) => !['clock', 'freeze'].includes(id)));
+  assert.ok(cappedDrops.every((id) => ['bomb', 'megabomb', 'clover'].includes(id)));
 });
 
 test('drops prefer empty cells next to playable numbers', () => {

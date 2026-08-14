@@ -93,3 +93,5 @@
 |---|---|---|---|
 | `assets/fonts/Jua-Korean-Game.woff2` | Google Fonts Jua | 제목·버튼·숫자 | 화면 문구 전체를 다시 스캔한 로컬 서브셋 |
 | `assets/fonts/Pretendard-OING.woff2` | Pretendard 1.3.9 | HUD·설명·고양이 멘트 | 외부 CDN 없이 동작하는 게임 전용 로컬 서브셋 |
+
+섞기 연출은 정지 이미지 대신 타일 이동과 CSS 기반 시럽 입자 모션을 사용한다.

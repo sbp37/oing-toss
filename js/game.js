@@ -30,7 +30,9 @@ import {
   specialTilePlanForStage,
   stageChallengeBonus,
   stageChallengeForStage,
+  stageChallengeProgress,
   stageProgressGainForClear,
+  stageShowcaseBoardDrop,
   stageIntroForStage,
   stageClearBonus,
   scoreForBomb,
@@ -108,6 +110,7 @@ import {
 } from './haptic.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 
 class OingGame {
   constructor() {
@@ -212,6 +215,7 @@ class OingGame {
 
   freshState(startStage = this.runtime?.forcedRound || 1, { recordEligible } = {}) {
     const stage = Math.max(1, Math.round(Number(startStage) || 1));
+    const rareShowcaseCount = storageAdapter.getRareShowcaseCount();
     const eligible = typeof recordEligible === 'boolean'
       ? recordEligible
       : recordEligibleForStartStage(stage);
@@ -242,6 +246,9 @@ class OingGame {
       boardDropPity: { megabomb: 0, clover: 0, freeze: 0 },
       lastBoardDropType: null,
       cloverDropped: false,
+      stageShowcaseGiven: false,
+      stageShowcaseEligible: this.runtime?.testMode || rareShowcaseCount < 3,
+      stageShowcaseIndex: this.runtime?.testMode ? 0 : rareShowcaseCount,
       stageChallengeComplete: false,
       stageChallengeStreak: 0,
       stageChallengeScore: 0,
@@ -262,7 +269,7 @@ class OingGame {
       button.addEventListener('focus', primePlay, { passive: true, once: true });
     });
     document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
-    document.querySelector('#retry-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
+    document.querySelector('#retry-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1, { quickCountdown: true }));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
@@ -366,7 +373,7 @@ class OingGame {
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
     this.ui.setFreezeActive(false);
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
     this.state.running = true;
     this.state.inputLocked = true;
     this.lowTimeSpoken = false;
@@ -384,9 +391,9 @@ class OingGame {
     this.ui.setOverlay('pause-overlay', false);
     this.buildRound();
     this.forceTestBoardItem();
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
     this.ui.showScreen('play');
-    this.ui.setPlayCharacter('idle');
+    this.ui.setPlayCharacter('peek');
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();
@@ -398,19 +405,20 @@ class OingGame {
       return;
     }
     if (this.settings.sound && !ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
-    await this.runStartCountdown(sequenceId);
+    await this.runStartCountdown(sequenceId, options.quickCountdown === true);
   }
 
-  async runStartCountdown(sequenceId) {
+  async runStartCountdown(sequenceId, quickCountdown = false) {
     this.startCountdownInProgress = true;
-    const completed = await this.ui.animateStartCountdown(START_COUNTDOWN_STEPS, (step) => {
+    const steps = quickCountdown ? RETRY_COUNTDOWN_STEPS : START_COUNTDOWN_STEPS;
+    const completed = await this.ui.animateStartCountdown(steps, (step) => {
       if (step === 'GO!') {
         playGoSound();
         playMusic({ restart: true });
       }
       else playReadyCountSound(step);
       readyCountHaptic(step);
-    });
+    }, { compact: quickCountdown });
     const isCurrentSequence = sequenceId === this.startSequenceId;
     if (isCurrentSequence) this.startCountdownInProgress = false;
     if (!completed || !isCurrentSequence || !this.state.running) return false;
@@ -463,7 +471,9 @@ class OingGame {
     this.itemTapCandidate = null;
     const config = getRoundConfig(this.state.round);
     this.generateBoard(config.size, config.rows);
-    this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round));
+    this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round, Math.random, {
+      timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
+    }));
     const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
     this.renderBoard();
     this.updateHUD();
@@ -589,6 +599,7 @@ class OingGame {
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
         stage: this.state.round,
+        timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
       });
       if (drop) {
         earnedDrop = drop;
@@ -614,7 +625,13 @@ class OingGame {
 
   announceBoardItems(items, { playSound = true } = {}) {
     this.ui.showBoardItemDrops(items);
-    this.showCatMessage('itemDrop');
+    const showcase = items.find((item) => item.showcase);
+    if (showcase) {
+      const label = BOARD_DROP_ITEMS[showcase.type]?.label || '희귀 아이템';
+      this.ui.showMessage(`${label} 등장이다냥! 톡 눌러봐.`, 2200, 'itemDrop');
+    } else {
+      this.showCatMessage('itemDrop');
+    }
     this.ui.setPlayCharacter('wave', 1000);
     if (playSound) {
       duckMusic(320, 0.68);
@@ -735,16 +752,13 @@ class OingGame {
     this.ui.pulseGoal(this.state.combo);
     this.speakForSuccess(catCount, comboGain);
     if (challengeCompleted) {
-      this.ui.toast(`${challenge.label} 보너스 +${challengeBonusPoints.toLocaleString('ko-KR')}`);
       this.ui.setPlayCharacter('success', 1000);
       this.showCatMessage('challengeComplete');
     }
     if (cloverBonusPoints > 0) {
-      this.ui.toast(`클로버 보너스 +${cloverBonusPoints.toLocaleString('ko-KR')}`);
       this.showCatMessage('cloverSuccess');
     }
     if (clutchBonusPoints > 0 && !challengeCompleted && cloverBonusPoints === 0) {
-      this.ui.toast(`막판 보너스 +${clutchBonusPoints.toLocaleString('ko-KR')}`);
       this.showCatMessage('clutch');
     }
     if (hasClockTile) this.addStageTime(5);
@@ -821,6 +835,7 @@ class OingGame {
     if (!shuffled) carried = this.buildRound();
     else this.renderBoard();
     await this.ui.animateShuffleIn();
+    itemHaptic();
     if (carried.length) this.announceBoardItems(carried, { playSound: false });
     this.inputGuardUntil = performance.now() + 140;
   }
@@ -932,6 +947,21 @@ class OingGame {
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
     const unlockGrant = itemUnlockGrantForStage(nextRound);
     if (unlockGrant) this.grantItems(unlockGrant, { source: 'earned' });
+    const showcaseDrop = this.state.stageShowcaseEligible
+      ? stageShowcaseBoardDrop(
+        nextRound,
+        () => (Math.min(2, this.state.stageShowcaseIndex) + 0.5) / 3,
+        this.state.stageShowcaseGiven,
+      )
+      : null;
+    if (showcaseDrop) {
+      this.boardItems.queue(showcaseDrop.id, { earnedAtCombo: this.state.combo, showcase: true });
+      this.state.stageShowcaseGiven = true;
+      if (!this.runtime.testMode) storageAdapter.markRareShowcaseSeen();
+      this.state.lastBoardDropType = showcaseDrop.id;
+      if (showcaseDrop.id === 'clover') this.state.cloverDropped = true;
+      this.telemetry?.itemEarned(showcaseDrop.id);
+    }
     this.state.timeLeft = cappedSessionTime(this.state.timeLeft, timeBonus);
     this.updateHUD();
     this.ui.showStageTimeBonus(awardedTimeBonus);
@@ -942,7 +972,7 @@ class OingGame {
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
     this.ui.setFreezeActive(false);
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
     let carriedItems = [];
     await this.ui.animateRoundTransition(nextRound, () => {
       carriedItems = this.buildRound();
@@ -1053,6 +1083,7 @@ class OingGame {
     await this.ui.animateShuffleOut();
     this.renderBoard();
     await this.ui.animateShuffleIn();
+    itemHaptic();
     await cast;
     this.inputGuardUntil = performance.now() + 280;
     this.state.inputLocked = false;
@@ -1311,7 +1342,7 @@ class OingGame {
 
   syncInventory() {
     this.state.items = this.inventory.snapshot();
-    this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
   }
 
   grantItems(grants, metadata = {}) {
@@ -1602,8 +1633,14 @@ class OingGame {
   updateHUD() {
     const config = getRoundConfig(this.state.round);
     const comboWindowMs = comboWindowMsForStage(this.state.round);
+    const stageChallenge = stageChallengeForStage(this.state.round);
     this.ui.updateHUD({
       ...this.state,
+      stageMission: stageChallengeProgress(stageChallenge, {
+        completed: this.state.stageChallengeComplete,
+        stageStreak: this.state.stageChallengeStreak,
+      }),
+      stageMissionBonus: stageChallenge ? stageChallengeBonus(this.state.round) : 0,
       rewardRemaining: itemRewardCountdown(this.state.combo, this.state.round),
       comboRemainingMs: this.state.combo > 0
         ? Math.max(0, this.state.comboExpiresAt - performance.now())

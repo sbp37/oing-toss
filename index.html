@@ -13,6 +13,7 @@
   <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/Pretendard-OING.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/ui-chrome.css">
 </head>
 <body>
   <audio id="bgm-audio" src="assets/sounds/oing-original-bgm.mp3" loop preload="none"></audio>
@@ -57,7 +58,8 @@
       </div>
     </section>
 
-    <section class="screen screen-play" id="play-screen" data-screen="play" aria-label="게임 플레이" aria-hidden="true">
+    <section class="screen screen-play play-ui-v4" id="play-screen" data-screen="play" aria-label="게임 플레이" aria-hidden="true">
+      <div class="ui-chrome-layer" aria-hidden="true"></div>
       <div class="start-countdown" id="start-countdown" aria-live="assertive" aria-hidden="true">
         <div class="start-countdown-burst" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         <div class="start-countdown-copy">
@@ -83,31 +85,38 @@
         </div>
         <div class="hud-secondline">
           <div class="score-readout">
-            <img src="assets/icons/hud/score.webp" width="277" height="279" loading="lazy" decoding="async" alt=""><span>점수</span><strong id="score-value">0</strong>
+            <span>점수</span><strong id="score-value">0</strong>
           </div>
           <div class="combo-readout" id="combo-chip">
-            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><span>COMBO</span><strong id="combo-value">0</strong>
+            <span>COMBO</span><strong id="combo-value">0</strong>
             <div class="combo-timer" aria-hidden="true"><i id="combo-timer-fill"></i></div>
           </div>
         </div>
         <div class="goal-status">
-          <span><b id="goal-value">0 / 3</b> <em id="goal-label">성공</em></span>
+          <div class="goal-meta">
+            <span class="goal-copy"><b id="goal-value">0 / 3</b> <em id="goal-label">성공</em></span>
+            <span class="stage-mission" id="stage-mission" hidden>
+              <img id="stage-mission-icon" src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+              <strong id="stage-mission-value">큰 조합 0/1</strong>
+            </span>
+          </div>
           <div class="goal-track" id="goal-track" aria-hidden="true"><i id="goal-fill"></i></div>
         </div>
-        <div class="play-feedback-rail" aria-hidden="true">
-          <div class="round-clear" id="round-clear">
-            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
-            <div><strong>STAGE CLEAR!</strong><span id="round-clear-reward">다음 판 가자!</span></div>
-            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
-          </div>
-          <div class="combo-celebration" id="combo-celebration">
-            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
-            <div><small id="combo-celebration-kicker">NICE!</small><strong>COMBO <b id="combo-celebration-value">3</b></strong></div>
-            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
-          </div>
-          <div class="tutorial-callout" id="tutorial-callout"><span>드래그해서 숫자를 묶어봐</span><strong>합이 10이면 성공!</strong></div>
-        </div>
       </header>
+
+      <div class="play-feedback-rail" aria-hidden="true">
+        <div class="round-clear" id="round-clear">
+          <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+          <div><strong>STAGE CLEAR!</strong><span id="round-clear-reward">다음 판 가자!</span></div>
+          <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+        </div>
+        <div class="combo-celebration" id="combo-celebration">
+          <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+          <div><small id="combo-celebration-kicker">NICE!</small><strong>COMBO <b id="combo-celebration-value">3</b></strong></div>
+          <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
+        </div>
+        <div class="tutorial-callout" id="tutorial-callout"><strong>슥 묶어서 10!</strong></div>
+      </div>
 
       <section class="board-zone" aria-label="숫자 보드">
         <div class="board-frame" id="board-frame">
@@ -144,7 +153,7 @@
         </div>
         <div class="cat-coach">
           <div class="character-stage play-character-stage">
-            <img id="play-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="lazy" decoding="async" alt="앉아 있는 블루 고양이">
+            <img id="play-cat" src="design/ui-chrome/cat_idle.png" width="359" height="306" loading="lazy" decoding="async" alt="보드 아래에서 빼꼼 보는 블루 고양이">
           </div>
           <div class="cat-message" id="cat-message">10을 찾아보자냥!</div>
         </div>

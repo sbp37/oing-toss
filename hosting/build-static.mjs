@@ -15,6 +15,15 @@ for (const entry of ["index.html", "css", "js", "assets"]) {
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
 
+// The play screen ships the approved fixed chrome and default character only.
+// Editable generation sources and builders stay out of the client bundle.
+const chromeSource = resolve(root, "design/ui-chrome");
+const chromeClient = resolve(client, "design/ui-chrome");
+await mkdir(chromeClient, { recursive: true });
+for (const entry of ["ui-chrome.png", "cat_idle.png"]) {
+  await cp(resolve(chromeSource, entry), resolve(chromeClient, entry));
+}
+
 // Keep editable source sheets and font candidates in the repository, but do not
 // ship them to players. Runtime assets remain untouched and at their source quality.
 for (const entry of [
