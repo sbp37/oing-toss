@@ -510,28 +510,20 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Board — a packed slab of square tiles, no panel of its own.
+   Board — a packed slab of square tiles on open sky.
 
-   The recess is 658 × 762 artwork px (h/w 1.158) so the tallest board, 6 × 7
-   (h/w 1.167), seats square tiles inside it with 0.7% to spare. Every other
-   stage — 4 × 4, 5 × 5, 6 × 6 — is width-bound, so the board (cell×cols by
-   cell×rows) is shorter than the recess and floats centred inside it.
+   There is no longer a painted tray behind the board: build-ui-chrome.py
+   erases it and refills those rows with the sky it interrupted. It had to go
+   in the bitmap, because it was drawn for one fixed 4 × 4 grid — on every
+   other stage, and behind every cleared cell, the parts of it the tiles did
+   not cover showed as stray beige blocks that no CSS here could hide.
 
-   That used to read as a mismatched panel: the board painted its own cream
-   background, border and grid lines, so a 4×4 board looked like a smaller
-   beige card pasted inside a bigger one, with a visible seam at its edge.
-   Stretching the grid to fill the recess with 1fr tracks "fixed" the seam but
-   broke tiles apart — the row height stayed 7-rows-tall regardless of how
-   many rows the stage had, so 4 rows sat pooled by huge transparent gaps, and
-   a cleared cell (already a flat cream square) fused with that gap into one
-   giant blank rectangle.
-
-   The actual fix is simpler: keep tiles packed edge to edge (cell×cols by
-   cell×rows, same pitch input.js expects) and give `.board` no surface at
-   all. With no border, background or grid lines of its own, the leftover
-   recess above and below a short board is just the painted floor showing
-   through — the same cream it always was — so there is no second panel to
-   look mismatched against it.
+   The board keeps the geometry the tray used to define: `.board-zone` is still
+   that 658 × 762 artwork box (h/w 1.158), which is what lets the tallest board,
+   6 × 7 (h/w 1.167), seat square tiles with 0.7% to spare. Tiles stay packed
+   edge to edge at cell×cols by cell×rows — the uniform pitch input.js assumes
+   when it divides the board rect by cols/rows — and `.board` itself paints
+   nothing, so a shorter board simply leaves more sky around it.
    ------------------------------------------------------------------------ */
 .play-ui-v4 .board-zone {
   position: absolute;
@@ -563,6 +555,16 @@
   border-radius: 12px;
   background: transparent;
   box-shadow: none;
+  outline: 0;
+}
+
+/* The stage-band theme rings the frame with a tinted outline and a white spread
+   shadow — a card edge for a card that no longer exists. Its selector outranks
+   the rule above, so the frame has to be cleared again here or a warm rounded
+   rectangle keeps floating a few px outside the tiles. */
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  outline: 0;
+  box-shadow: none;
 }
 
 .play-ui-v4 .board {
@@ -577,8 +579,7 @@
   aspect-ratio: auto;
   border: 0;
   border-radius: 0;
-  /* No panel of its own — the painted recess floor shows through both around
-     a short board and through the 1px inter-tile gap. */
+  /* No surface of its own — only the tiles are drawn. */
   background: transparent;
   box-shadow: none;
 }
@@ -600,15 +601,15 @@
   font-size: clamp(17px, calc(var(--cell) * 0.46), 42px);
 }
 
-/* A cleared cell has to read as a shallow recess in the board, never as an
-   image that failed to load. */
+/* A cleared cell used to be tinted like a shallow dent in the tray. With the
+   tray erased there is no surface left to dent, so that tint became a beige
+   block floating on the sky — the very thing the erase was for. A cleared cell
+   is now simply nothing. */
 .play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
-  border: 1px solid rgba(185, 151, 105, .24);
-  background: rgba(236, 218, 184, .34);
+  border: 0;
+  background: transparent;
   background-image: none;
-  box-shadow:
-    inset 0 3px 6px rgba(119, 83, 46, .16),
-    inset 0 -1px 0 rgba(255, 255, 255, .6);
+  box-shadow: none;
   filter: none;
   opacity: 1;
 }

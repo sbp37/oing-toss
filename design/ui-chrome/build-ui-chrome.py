@@ -25,15 +25,27 @@ by bands that contain no drawn objects:
 
 The recess grows from 723px to 762px (y 415..1177) so a 6x7 board of SQUARE
 tiles fits inside it; everything painted keeps the proportions it was drawn
-with. The faint 4x4 pencil grid on the recess floor never matched the live
-grid (the CSS board paints its own), so the floor is blurred clean before the
-bands are cut — the stages whose boards do not fill the recess show painted
-floor above and below the board, and that margin must not carry stale lines.
+with.
+
+The board recess is then ERASED. It was a painted cream tray with a golden
+rim, and the live board sits on top of it — but the tray is drawn for one
+fixed 4x4 grid, so on every other stage (and on any cleared cell) the parts of
+it the tiles do not cover read as stray beige blocks pasted behind the
+numbers. No CSS can hide it, because it is baked into this bitmap. So the
+whole tray, rim and drop shadow (x 18..760, y 398..1220) is painted out with
+the sky it interrupts: the strips beside it, x 1..10 and x 768..778, are clean
+gradient sky at every one of those rows, so each row is refilled by
+interpolating its own left and right sky across the gap. The tiles then float
+on open sky and nothing but the numbers shows.
+
+Erasing the tray also retires the old pencil-grid cleanup — the faint 4x4
+grid printed on the tray floor went out with the floor itself.
 
 Every CSS anchor in css/ui-chrome.css was re-derived through the same band
 map; run this script with --anchors to print the mapping used there.
 """
 
+import statistics
 import sys
 from pathlib import Path
 
@@ -60,15 +72,18 @@ BANDS = [
     (1195, 1686, 491),
 ]
 
-# The recess floor carries a faint painted pencil grid that never matched the
-# live board, so it is erased region by region (uniform-space boxes). The open
-# floor gets a synthetic smooth gradient (8x10 box-average of itself, so its
-# vignette survives while anything line-sized vanishes). The frame lips and the
-# side shadow bands each vary along one axis only, so a smear along that axis
-# removes the grid ticks crossing them without softening the painted edges.
-FLOOR_BOX = (96, 505, 684, 1140)
-LIP_BOXES = [(90, 450, 690, 512), (90, 1132, 690, 1184)]      # horizontal smear
-SIDE_BOXES = [(64, 505, 98, 1140), (682, 505, 716, 1140)]     # vertical smear
+# The painted board tray, measured on the assembled canvas: rim and drop shadow
+# together span x 18..760, y 398..1220. The erase box clears that with a margin
+# on every side so the feathered edge falls on sky, never on the golden rim; the
+# HUD shadow ends at y 390 and the dock panel starts at y 1236, so the box stays
+# clear of both.
+RECESS_ERASE = (12, 393, 767, 1230)
+# Sky strips beside the tray. Sampled outside the erase box and clear of the
+# tray's own shadow, which reaches x 15 on the left and x 764 on the right.
+SKY_LEFT = (1, 11)
+SKY_RIGHT = (768, 779)
+SKY_SMOOTH = 5      # rows either side, to keep per-row medians from banding
+ERASE_FEATHER = 1.5
 
 
 def old_to_uniform(y: float) -> float:
@@ -89,28 +104,55 @@ def uniform_to_new(y: float) -> float:
     return out
 
 
+def erase_recess(chrome: Image.Image) -> Image.Image:
+    """Paint the board tray out of the assembled canvas, restoring open sky.
+
+    Each erased row is refilled by interpolating between the sky still standing
+    on its own left and right — so the fill inherits the vertical gradient and
+    the slight left-to-right shift of the painted sky instead of inventing a
+    flat colour, and the seam lands on sky that already matches.
+    """
+    x0, y0, x1, y1 = RECESS_ERASE
+    px = chrome.load()
+
+    def strip_median(y, span):
+        cols = [px[x, y] for x in range(*span)]
+        return tuple(statistics.median(c[i] for c in cols) for i in range(3))
+
+    def smoothed(span):
+        raw = [strip_median(y, span) for y in range(y0, y1)]
+        out = []
+        for i in range(len(raw)):
+            lo = max(0, i - SKY_SMOOTH)
+            hi = min(len(raw), i + SKY_SMOOTH + 1)
+            window = raw[lo:hi]
+            out.append(tuple(sum(c[j] for c in window) / len(window) for j in range(3)))
+        return out
+
+    lefts, rights = smoothed(SKY_LEFT), smoothed(SKY_RIGHT)
+
+    fill = chrome.copy()
+    fp = fill.load()
+    span = x1 - x0 - 1
+    for i, y in enumerate(range(y0, y1)):
+        left, right = lefts[i], rights[i]
+        for x in range(x0, x1):
+            t = (x - x0) / span
+            fp[x, y] = tuple(
+                int(round(left[j] + (right[j] - left[j]) * t)) for j in range(3))
+
+    mask = Image.new("L", chrome.size, 0)
+    mask.paste(255, (x0, y0, x1, y1))
+    mask = mask.filter(ImageFilter.GaussianBlur(ERASE_FEATHER))
+    return Image.composite(fill, chrome, mask)
+
+
 def build() -> None:
     source = Image.open(SOURCE).convert("RGB")
     if source.size != (853, 1844):
         raise ValueError(f"Unexpected chrome source size: {source.size}")
 
     u = source.resize(UNIFORM, Image.Resampling.LANCZOS)
-
-    def patch(box, small_size, inset):
-        region = u.crop(box)
-        clean = region.resize(small_size, Image.Resampling.BOX).resize(
-            region.size, Image.Resampling.BICUBIC)
-        mask = Image.new("L", region.size, 0)
-        mask.paste(255, (inset[0], inset[1],
-                         region.size[0] - inset[0], region.size[1] - inset[1]))
-        mask = mask.filter(ImageFilter.GaussianBlur(6))
-        u.paste(Image.composite(clean, region, mask), box[:2])
-
-    patch(FLOOR_BOX, (8, 10), (16, 16))
-    for box in LIP_BOXES:
-        patch(box, (24, box[3] - box[1]), (14, 0))
-    for box in SIDE_BOXES:
-        patch(box, (box[2] - box[0], 24), (0, 14))
 
     chrome = Image.new("RGB", CANVAS)
     cursor = 0
@@ -121,6 +163,8 @@ def build() -> None:
         chrome.paste(band, (0, cursor))
         cursor += h
     assert cursor == CANVAS[1], cursor
+
+    chrome = erase_recess(chrome)
     chrome.save(OUTPUT, format="PNG", optimize=True)
 
     cat = Image.open(CAT_SOURCE).convert("RGBA")
