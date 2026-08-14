@@ -586,11 +586,24 @@
 
 /* Cells are square by construction (board width/height is cell×cols/cell×rows),
    so the tile just fills its cell — no extra gap to reveal the floor between
-   tiles. */
+   tiles.
+
+   The tile art was drawn to sit on cream, where its own pale edge carried the
+   contrast. On open sky it lost that: pale mint glass on pale blue read as
+   washed out and the grid went flat. Rather than put a panel back under the
+   board, the separation now comes from the tile itself — a white rim to cut it
+   out of the sky, a warm inner line to keep the drawn edge, and a real shadow
+   underneath so the tiles sit above the sky instead of dissolving into it. */
 .play-ui-v4 .tile {
   aspect-ratio: auto;
   width: 100%;
   height: 100%;
+  box-shadow:
+    inset 0 0 0 1px rgba(126, 100, 66, .28),
+    0 0 0 1.5px rgba(255, 255, 255, .92);
+  filter:
+    drop-shadow(0 2px 2px rgba(60, 94, 124, .20))
+    drop-shadow(0 5px 7px rgba(60, 94, 124, .13));
 }
 
 /* Numerals ride the square cell edge at a ~0.46 fill and meet the 42px cap on

@@ -82,8 +82,29 @@ RECESS_ERASE = (12, 393, 767, 1230)
 # tray's own shadow, which reaches x 15 on the left and x 764 on the right.
 SKY_LEFT = (1, 11)
 SKY_RIGHT = (768, 779)
-SKY_SMOOTH = 5      # rows either side, to keep per-row medians from banding
+# The side strips are honest sky, but sky with texture: cloud wisps and the
+# vignette cross them over runs of 20-40 rows, and any structure shorter than
+# the smoothing window survives as a horizontal stripe smeared across the whole
+# fill. ±32 rows, applied twice (≈ a triangular kernel 128 rows wide), is wider
+# than every wisp in the strips, so only the true vertical gradient remains.
+SKY_SMOOTH = 32     # rows either side, per pass
+SKY_SMOOTH_PASSES = 2
 ERASE_FEATHER = 1.5
+
+# The pause and music buttons are drawn as vertical ovals — 64 wide by 74 tall,
+# measured through their own centres — so the pair reads as squashed eggs next
+# to the perfectly round coin below them. Nothing in the band map caused it; the
+# source paints them that way. They sit alone on flat cream (the panel rim ends
+# at x 40, the stage arch starts at x 300, the score pill at y 238), so the rows
+# holding them can be squeezed to make them round and the flat cream above and
+# below stretched back by the same amount, leaving the box the height it was.
+HUD_BUTTON_BOX = (52, 96, 243, 197)
+HUD_BUTTON_BANDS = [          # (y0, y1, new height) in canvas rows
+    (96, 104, 13),            # flat cream    — absorbs what the circles give up
+    (104, 188, 73),           # the two ovals — 84 rows to 73 makes them round
+    (188, 197, 15),           # flat cream
+]
+HUD_BUTTON_FEATHER = 2
 
 
 def old_to_uniform(y: float) -> float:
@@ -104,6 +125,34 @@ def uniform_to_new(y: float) -> float:
     return out
 
 
+def round_hud_buttons(chrome: Image.Image) -> Image.Image:
+    """Squeeze the oval pause/music buttons back into circles.
+
+    Same trick as the band map, applied to one box instead of the canvas: the
+    rows carrying the ovals are compressed, the flat cream rows above and below
+    are stretched to match, and the box keeps its height — so the buttons round
+    out without moving their centres or shifting anything below them.
+    """
+    x0, y0, x1, y1 = HUD_BUTTON_BOX
+    region = chrome.crop((x0, y0, x1, y1))
+    out = Image.new("RGB", region.size)
+    cursor = 0
+    for a, b, h in HUD_BUTTON_BANDS:
+        band = region.crop((0, a - y0, region.width, b - y0))
+        if h != b - a:
+            band = band.resize((region.width, h), Image.Resampling.LANCZOS)
+        out.paste(band, (0, cursor))
+        cursor += h
+    assert cursor == region.height, cursor
+
+    patched = chrome.copy()
+    patched.paste(out, (x0, y0))
+    mask = Image.new("L", chrome.size, 0)
+    mask.paste(255, (x0 + 4, y0, x1 - 4, y1))
+    mask = mask.filter(ImageFilter.GaussianBlur(HUD_BUTTON_FEATHER))
+    return Image.composite(patched, chrome, mask)
+
+
 def erase_recess(chrome: Image.Image) -> Image.Image:
     """Paint the board tray out of the assembled canvas, restoring open sky.
 
@@ -120,14 +169,17 @@ def erase_recess(chrome: Image.Image) -> Image.Image:
         return tuple(statistics.median(c[i] for c in cols) for i in range(3))
 
     def smoothed(span):
-        raw = [strip_median(y, span) for y in range(y0, y1)]
-        out = []
-        for i in range(len(raw)):
-            lo = max(0, i - SKY_SMOOTH)
-            hi = min(len(raw), i + SKY_SMOOTH + 1)
-            window = raw[lo:hi]
-            out.append(tuple(sum(c[j] for c in window) / len(window) for j in range(3)))
-        return out
+        rows = [strip_median(y, span) for y in range(y0, y1)]
+        for _ in range(SKY_SMOOTH_PASSES):
+            out = []
+            for i in range(len(rows)):
+                lo = max(0, i - SKY_SMOOTH)
+                hi = min(len(rows), i + SKY_SMOOTH + 1)
+                window = rows[lo:hi]
+                out.append(tuple(
+                    sum(c[j] for c in window) / len(window) for j in range(3)))
+            rows = out
+        return rows
 
     lefts, rights = smoothed(SKY_LEFT), smoothed(SKY_RIGHT)
 
@@ -165,6 +217,7 @@ def build() -> None:
     assert cursor == CANVAS[1], cursor
 
     chrome = erase_recess(chrome)
+    chrome = round_hud_buttons(chrome)
     chrome.save(OUTPUT, format="PNG", optimize=True)
 
     cat = Image.open(CAT_SOURCE).convert("RGBA")
