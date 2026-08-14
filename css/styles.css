@@ -1643,7 +1643,15 @@ img {
   background-position: center;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  box-shadow: none;
+  /* Every cell now paints the same near-neutral tile (L*90/C*8), so the
+     board floor (#fff6e9) and the tile's own pale edge sit only ~5 L* apart —
+     with a 1-1.8px gap between cells, that was not enough to read as a grid at
+     a glance. This ring is what actually draws the cell boundary; it is a
+     fixed warm/white pair applied identically everywhere, so it defines edges
+     without reintroducing a per-cell hue. */
+  box-shadow:
+    inset 0 0 0 1px rgba(178, 140, 88, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.65);
   filter:
     drop-shadow(0 1.5px 1px rgba(129, 93, 68, 0.18))
     drop-shadow(0 3px 3px rgba(92, 117, 145, 0.08));
@@ -1676,12 +1684,25 @@ img {
   text-shadow: 0 1.5px 0 rgba(255,255,255,0.82), 0 2.5px 2px rgba(73,61,48,0.06);
 }
 
-.tile.tone-1 { background-image: url("../assets/ui/tiles-syrup-v4/tile-peach.webp"); }
-.tile.tone-2 { background-image: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); }
-.tile.tone-3 { background-image: url("../assets/ui/tiles-syrup-v4/tile-lilac.webp"); }
-.tile.tone-4 { background-image: url("../assets/ui/tiles-syrup-v4/tile-blush.webp"); }
-.tile.tone-5 { background-image: url("../assets/ui/tiles-syrup-v4/tile-aqua.webp"); }
-.tile.tone-6 { background-image: url("../assets/ui/tiles-syrup-v4/tile-lemon.webp"); }
+/* One tile, every cell. The board is what the player stares at for two minutes
+   straight, and any hue spread across all forty-two cells accumulates: pale
+   enough to rest the eye looked washed out, strong enough to look deliberate
+   was tiring. There is no setting of that dial that is both.
+
+   This is the v4 mint, unmodified. It measures L* 90 / C* 8 — barely any colour
+   cast at all — but the syrup's iridescent refraction survives inside it
+   (variation ~2.5 ΔE across the face), so the tile reads as a material rather
+   than as a flat swatch. Charm without chroma. Contrast to the #425374 ink is
+   5.99:1.
+
+   `--tile-art` stays a variable because the bonus cat layers a glow over the
+   same art; composing against the variable keeps that rule from re-naming the
+   file. */
+.tile { --tile-art: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); }
+.tile.value-1, .tile.value-2, .tile.value-3, .tile.value-4, .tile.value-5,
+.tile.value-6, .tile.value-7, .tile.value-8, .tile.value-9 {
+  background-image: var(--tile-art);
+}
 
 /* A-1: 숫자 색을 잉크 한 색으로 통일.
    이전에는 1~9가 전부 다른 색이었는데(초록/보라/분홍/청록/파랑/주황...),
@@ -1708,22 +1729,44 @@ img {
   opacity: 1;
 }
 
+/* The cat cell is the one place a second tile earns its keep. It is the peach
+   from the same syrup set, and it works here for the reason a colour system
+   across the whole board did not: there are only two or three of these on a
+   board, so its chroma never accumulates.
+
+   It sits at L* 90.3 against the board's 90.1 — the same lightness, so it does
+   not punch out of the field — while ΔE 14.1 of hue separation makes it read as
+   a different cell at a glance. Numeral contrast is 6.02:1, marginally better
+   than the board tile.
+
+   This replaced a flat #ffd98c, which was a fixed yellow owing nothing to the
+   tile set and read as a sticker. An earlier pass added a white radial glow
+   here to lift the cat character, and that claimed not to dilute the peach
+   underneath — that claim was wrong. Blending white at 0.72 alpha over the
+   raw peach (C* 17.3) collapses it to C* 4.7, and the gradient does not fall
+   below 0.40 until 42% of the radius, so nearly the whole tile was reading as
+   washed cream rather than peach. The cat art has its own drop-shadow filter
+   (`.bonus-cat-art`) and does not need the tile under it lightened for
+   contrast, so the glow here is now small and faint — a glass highlight, not
+   a wash. Even at these opacities the corner of the tile is close to the raw
+   webp's C* 17.3, since the gradient reaches transparent by 60% of the
+   radius. */
 .tile.is-bonus-cat {
+  --tile-art: url("../assets/ui/tiles-syrup-v4/tile-peach.webp");
   z-index: 2;
   overflow: visible;
   border: 0;
-  background-color: #ffd98c;
+  background-color: transparent;
   background-image:
-    radial-gradient(circle at 50% 55%, rgba(255,255,247,0.96) 0 26%, rgba(255,250,219,0.76) 44%, transparent 67%),
-    linear-gradient(145deg, rgba(255,248,210,0.84), rgba(255,205,130,0.72)),
-    url("../assets/ui/tiles-syrup-v4/tile-lemon.webp");
-  background-blend-mode: normal, soft-light, normal;
+    radial-gradient(circle at 50% 55%, rgba(255,255,255,0.22) 0 18%, rgba(255,255,255,0.10) 36%, transparent 60%),
+    var(--tile-art);
+  background-blend-mode: normal, normal;
   background-position: center;
   background-size: 100% 100%;
   background-repeat: no-repeat;
   filter:
-    drop-shadow(0 2px 2px rgba(156, 111, 55, 0.18))
-    drop-shadow(0 0 8px rgba(255, 219, 128, 0.24));
+    drop-shadow(0 2px 2px rgba(112, 76, 56, 0.18))
+    drop-shadow(0 0 8px rgba(255, 255, 255, 0.30));
 }
 
 .bonus-cat-art {

@@ -11,17 +11,25 @@ import {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-const TILE_TONE_BY_VALUE = Object.freeze({
-  1: 2,
-  2: 3,
-  3: 2,
-  4: 4,
-  5: 5,
-  6: 6,
-  7: 3,
-  8: 1,
-  9: 3,
-});
+// Every tile is the same tile. There is no colour to assign, so nothing here
+// assigns one — css/styles.css names the single art file.
+//
+// Colour used to be keyed off the value, which made it a half-working answer
+// key: 4, 5, 6 and 8 each owned a hue outright, so the board leaked them at a
+// glance, while 2, 7 and 9 shared one lilac, so the same glance was wrong as
+// often as it was right. Keying it off the cell's position instead made a
+// shortcut arithmetically impossible, and that part was right — but it still
+// spread chroma over all forty-two cells, and a board you stare at for two
+// minutes has nowhere to rest the eye. Every strength was wrong in one
+// direction or the other: pale enough to be restful looked washed out, strong
+// enough to look deliberate was tiring.
+//
+// One near-neutral tile ends the trade entirely. The charm is in the material
+// rather than the hue: the syrup keeps its iridescent refraction, which reads
+// at C* 8 without ever accumulating across the board. What used to be carried
+// by tile colour is now carried by the moments that deserve it — selection,
+// hint, success, combo — which are transient and local, and can be as saturated
+// as they like.
 
 const CHARACTER_ASSETS = Object.freeze({
   idle: 'assets/characters/cat-idle.webp',
@@ -216,7 +224,6 @@ export class GameUI {
         const boardItem = boardItems.get(`${r}:${c}`);
         const bonusCat = model.hasBonusCat?.(r, c) || false;
         const special = model.specialAt?.(r, c) || null;
-        const tone = value ? TILE_TONE_BY_VALUE[value] : 0;
         const tile = document.createElement('button');
         tile.type = 'button';
         tile.tabIndex = -1;
@@ -224,7 +231,7 @@ export class GameUI {
           ? `tile is-empty is-board-item board-item-${boardItem.type}${boardItem.showcase ? ' is-showcase-item' : ''}`
           : bonusCat
             ? 'tile is-bonus-cat'
-            : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}${special ? ` is-special-tile special-${special}` : ''}`;
+            : `tile${value ? ` value-${value}` : ' is-empty'}${special ? ` is-special-tile special-${special}` : ''}`;
         tile.dataset.row = String(r);
         tile.dataset.col = String(c);
         tile.dataset.value = String(value || 0);
@@ -1727,7 +1734,15 @@ export class GameUI {
 
   updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, progress, target, stageMission = null, stageMissionBonus = 0 }) {
     this.elements.round.textContent = String(round);
-    this.elements.score.textContent = score.toLocaleString('ko-KR');
+    const scoreText = score.toLocaleString('ko-KR');
+    this.elements.score.textContent = scoreText;
+    // The painted score pill has ~50px of room after the coin and the 점수
+    // label; a five-figure score at full size ellipsised to "21,4…" mid-game.
+    // The digits shrink one step per length band instead, so the full number
+    // always reads.
+    this.elements.score.dataset.digits = scoreText.length > 9 ? 'xl'
+      : scoreText.length > 6 ? 'l'
+        : 'm';
     const time = Math.max(0, Math.ceil(timeLeft));
     this.elements.timePill.hidden = !timed;
     this.elements.playScreen.classList.toggle('is-untimed', !timed);

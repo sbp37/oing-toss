@@ -30,26 +30,38 @@ export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
-// The board sits in a recess painted into design/ui-chrome/ui-chrome.png, so its
-// height is fixed and only `rows` can squeeze a cell. Tile type scales off the
-// short cell edge (css/ui-chrome.css: chrome-height * 0.2917 / rows), which put
-// STAGE 8~10 at 24.6px on a 390px screen — too small to read at a glance.
-// `cols` is not the lever: holding rows at 10 and dropping to six columns leaves
-// the type identical and only stretches the cell (ratio 1.37 -> 1.63).
-// So rows stops at 8 and difficulty keeps climbing through `target` and the
-// clock/bomb odds instead. Raising this past 8 shrinks the numerals again;
-// widening the recess needs the artwork redrawn first.
+// The board sits in a recess painted into design/ui-chrome/ui-chrome.png, so
+// both of its dimensions are fixed and the grid can only subdivide them. Tile
+// type scales off the short cell edge (css/ui-chrome.css:
+// min(chrome-width * 0.6074 / cols, chrome-height * 0.2917 / rows)).
+//
+// The board stops growing at 6x7, measured at 390px wide:
+//
+//   7x8  cell 47.0 x 42.7  ratio 1.099  numerals 30.8px   (previous cap)
+//   6x8  cell 54.8 x 42.7  ratio 1.283  numerals 30.8px
+//   6x7  cell 54.8 x 48.9  ratio 1.122  numerals 35.2px   (current cap)
+//
+// Seven columns read as visual clutter, but dropping cols alone flattens the
+// cell to 1.283 while the numerals stay put, because rows is what binds the
+// type size. The tile art is square, so that ratio visibly ovalises its rounded
+// corners. Dropping rows to 7 alongside holds the cell at 1.122 — within a
+// hair of the 1.099 the board already shipped — and hands back 14% of numeral
+// height for free.
+//
+// The cost is 42 cells instead of 56, so difficulty rides entirely on `target`
+// and the clock/bomb odds past STAGE 5. Widening either cap needs the artwork
+// redrawn first.
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0, bombChance: 0.08 },
-  { stage: 5, round: 5, size: 7, cols: 7, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
-  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
-  { stage: 7, round: 7, size: 7, cols: 7, rows: 8, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
-  { stage: 8, round: 8, size: 7, cols: 7, rows: 8, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
-  { stage: 9, round: 9, size: 7, cols: 7, rows: 8, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 7, cols: 7, rows: 8, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
+  { stage: 5, round: 5, size: 6, cols: 6, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
+  { stage: 6, round: 6, size: 6, cols: 6, rows: 7, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 6, cols: 6, rows: 7, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 6, cols: 6, rows: 7, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 6, cols: 6, rows: 7, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -349,13 +361,18 @@ export function availableItemTimeBonus(usedSeconds = 0, requestedSeconds = 0) {
   return Math.min(requested, Math.max(0, MAX_ITEM_TIME_BONUS_SECONDS - used));
 }
 
+// Refill time when the board actually gets bigger. This used to enumerate the
+// column steps (4->5, 5->6, 6->7), which silently paid nothing once `cols`
+// stopped at 6 — STAGE 4 grows into 6x7 by gaining a row, not a column, and
+// that transition lost its ten seconds. Comparing cell counts states the
+// intent directly and survives the next change to the board caps.
 export function roundTimeBonusSeconds(round = 1) {
   const current = getStageConfig(round);
   const next = getStageConfig(current.stage + 1);
-  if (current.cols === 4 && next.cols === 5) return 6;
-  if (current.cols === 5 && next.cols === 6) return 10;
-  if (current.cols === 6 && next.cols === 7) return 10;
-  return 0;
+  const grew = next.cols * next.rows > current.cols * current.rows;
+  if (!grew) return 0;
+  // The opening 4x4 -> 5x5 step is small and comes with plenty of clock left.
+  return current.stage === 1 ? 6 : 10;
 }
 
 export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {
