@@ -559,7 +559,7 @@ export class GameUI {
       icon.src = item.asset;
       icon.alt = '';
       const copy = document.createElement('span');
-      copy.textContent = `7 COMBO · ${item.label} GET!`;
+      copy.textContent = `7 COMBO · ${item.label} 획득`;
       pop.append(icon, copy, document.createElement('i'), document.createElement('i'));
       const chip = this.elements.comboChip.getBoundingClientRect();
       const screen = this.elements.playScreen.getBoundingClientRect();
@@ -614,6 +614,10 @@ export class GameUI {
   showMatchConfirmation(rect, combo = 1) {
     const bounds = this.selectionBounds(rect);
     if (!bounds) return;
+    // The live sum bubble belongs to the drag phase. Once the pointer is
+    // released, use one decisive confirmation instead of showing both
+    // "합 10!" and "딱 10!" over the same selection.
+    this.elements.sumBubble.classList.remove('is-visible', 'is-ten');
     this.boardFrame.querySelector('.match-confirmation')?.remove();
     const confirmation = document.createElement('div');
     confirmation.className = 'match-confirmation';
@@ -640,12 +644,15 @@ export class GameUI {
       });
     const source = specialTiles[0]?.tile?.getBoundingClientRect();
     const frame = this.boardFrame.getBoundingClientRect();
-    if (source) {
+    const popType = specialTiles.some(({ type }) => type === 'bomb') ? 'bomb' : specialTiles[0]?.type;
+    // Clock already flies to the timer with a single +5 SEC label. Repeating
+    // another +5 on the board made one reward read like two separate gains.
+    if (source && popType !== 'clock') {
       const pop = document.createElement('div');
-      pop.className = `special-trigger-pop special-trigger-${specialTiles[0].type}`;
+      pop.className = `special-trigger-pop special-trigger-${popType}`;
       pop.style.left = `${source.left + source.width / 2 - frame.left}px`;
       pop.style.top = `${source.top + source.height / 2 - frame.top}px`;
-      pop.textContent = specialTiles.some(({ type }) => type === 'clock') ? '+5초' : 'POP!';
+      pop.textContent = 'POP!';
       this.boardFrame.appendChild(pop);
       setTimeout(() => pop.remove(), 520);
     }
@@ -812,25 +819,33 @@ export class GameUI {
   }
 
   setShuffleVectors() {
-    const size = Number(this.board.dataset.size) || 4;
-    const center = (size - 1) / 2;
+    const cols = Number(this.board.dataset.cols) || Number(this.board.dataset.size) || 4;
+    const rows = Number(this.board.dataset.rows) || cols;
+    const centerCol = (cols - 1) / 2;
+    const centerRow = (rows - 1) / 2;
+    const maxRadius = Math.max(1, Math.hypot(centerRow, centerCol));
     this.board.querySelectorAll('.tile').forEach((tile, index) => {
       const row = Number(tile.dataset.row);
       const col = Number(tile.dataset.col);
-      const angle = Math.atan2(row - center, col - center) + (index % 2 ? 0.48 : -0.48);
-      const distance = 18 + ((index * 7) % 19);
-      const x = Math.cos(angle) * distance;
-      const y = Math.sin(angle) * distance;
-      const curveX = -Math.sin(angle) * (12 + (index % 4) * 3);
-      const curveY = Math.cos(angle) * (12 + (index % 4) * 3);
+      const dx = col - centerCol;
+      const dy = row - centerRow;
+      const radius = Math.hypot(dy, dx) / maxRadius;
+      const angle = Math.atan2(dy, dx);
+      const direction = 1;
+      const distance = 24 + radius * 15 + ((index * 5) % 7);
+      const tangent = 14 + radius * 12;
+      const x = Math.cos(angle) * distance - Math.sin(angle) * tangent * direction;
+      const y = Math.sin(angle) * distance + Math.cos(angle) * tangent * direction;
+      const curveX = -Math.sin(angle) * (15 + radius * 11) * direction;
+      const curveY = Math.cos(angle) * (15 + radius * 11) * direction;
       tile.style.setProperty('--shuffle-x', `${x}px`);
       tile.style.setProperty('--shuffle-y', `${y}px`);
-      const rotate = ((index % 5) - 2) * 5;
-      tile.style.setProperty('--shuffle-mid-x', `${x * 0.46 + curveX}px`);
-      tile.style.setProperty('--shuffle-mid-y', `${y * 0.46 + curveY}px`);
+      const rotate = direction * (9 + (index % 4) * 3);
+      tile.style.setProperty('--shuffle-mid-x', `${x * 0.38 + curveX}px`);
+      tile.style.setProperty('--shuffle-mid-y', `${y * 0.38 + curveY}px`);
       tile.style.setProperty('--shuffle-rotate', `${rotate}deg`);
-      tile.style.setProperty('--shuffle-mid-rotate', `${rotate * 0.45}deg`);
-      tile.style.setProperty('--shuffle-delay', `${(index % 5) * 16}ms`);
+      tile.style.setProperty('--shuffle-mid-rotate', `${rotate * 0.72}deg`);
+      tile.style.setProperty('--shuffle-delay', `${Math.min(48, Math.round(radius * 28) + (index % 4) * 5)}ms`);
     });
   }
 
@@ -839,27 +854,41 @@ export class GameUI {
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
     const effect = document.createElement('div');
     effect.className = 'shuffle-fx';
-    const icon = document.createElement('img');
-    icon.className = 'shuffle-core-icon';
-    icon.src = 'assets/icons/items/shuffle.webp';
-    icon.alt = '';
-    effect.appendChild(icon);
-    for (let index = 0; index < 5; index += 1) effect.appendChild(document.createElement('b'));
-    for (let index = 0; index < 2; index += 1) {
-      const paw = document.createElement('em');
-      paw.className = 'shuffle-paw';
-      effect.appendChild(paw);
+    const vortex = document.createElement('span');
+    vortex.className = 'shuffle-vortex';
+    effect.appendChild(vortex);
+    const dropColors = [
+      ['#ecfff9', '#78dbc7'],
+      ['#fff8e8', '#ffc797'],
+      ['#fff5fb', '#d9b9f1'],
+    ];
+    for (let index = 0; index < 5; index += 1) {
+      const drop = document.createElement('i');
+      drop.className = 'shuffle-drop';
+      const angle = -78 + index * 72;
+      const distance = 72 + (index % 3) * 17;
+      drop.style.setProperty('--drop-angle', `${angle}deg`);
+      drop.style.setProperty('--drop-mid', `${Math.round(distance * 0.56)}px`);
+      drop.style.setProperty('--drop-distance', `${distance}px`);
+      drop.style.setProperty('--drop-delay', `${index * 24}ms`);
+      drop.style.setProperty('--drop-light', dropColors[index % dropColors.length][0]);
+      drop.style.setProperty('--drop-color', dropColors[index % dropColors.length][1]);
+      effect.appendChild(drop);
     }
+    for (let index = 0; index < 3; index += 1) effect.appendChild(document.createElement('b'));
+    const paw = document.createElement('em');
+    paw.className = 'shuffle-paw';
+    effect.appendChild(paw);
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(360);
+    await delay(400);
     this.board.classList.remove('is-shuffling-out');
   }
 
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(380);
+    await delay(420);
     this.board.classList.remove('is-shuffling-in');
     this.boardFrame.classList.remove('is-shuffle-settled');
     void this.boardFrame.offsetWidth;
@@ -874,7 +903,7 @@ export class GameUI {
       tile.style.removeProperty('--shuffle-delay');
     });
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
-    window.setTimeout(() => this.boardFrame.classList.remove('is-shuffle-settled'), 240);
+    window.setTimeout(() => this.boardFrame.classList.remove('is-shuffle-settled'), 260);
   }
 
   async animateBomb(rect) {
@@ -1251,11 +1280,18 @@ export class GameUI {
     primary.textContent = isWide ? `WOW! +${points}` : `+${points}`;
     const detail = document.createElement('span');
     const labels = [];
+    const rewardLabels = [];
+    if (bonus.challengeBonusPoints > 0) rewardLabels.push(`미션 +${bonus.challengeBonusPoints}`);
+    if (bonus.cloverBonusPoints > 0) rewardLabels.push(`클로버 +${bonus.cloverBonusPoints}`);
+    if (bonus.clutchBonusPoints > 0) rewardLabels.push(`막판 +${bonus.clutchBonusPoints}`);
+    if (bonus.catBonusPoints > 0) rewardLabels.push(`고양이 +${bonus.catBonusPoints}`);
+    if (bonus.specialBonusPoints > 0) rewardLabels.push(`폭탄 +${bonus.specialBonusPoints}`);
+    if (bonus.wideBonusPoints > 0) rewardLabels.push(`큰 조합 +${bonus.wideBonusPoints}`);
     if (isWide) labels.push(`${cellCount}칸 · 콤보 +2`);
     else if (cellCount >= 3) labels.push(`${cellCount}칸 클리어`);
-    if (bonus.wideBonusPoints > 0) labels.push(`큰 조합 +${bonus.wideBonusPoints}`);
-    if (bonus.catBonusPoints > 0) labels.push(`고양이 +${bonus.catBonusPoints}`);
-    if (bonus.specialBonusPoints > 0) labels.push(`폭탄 +${bonus.specialBonusPoints}`);
+    // Keep the transient score line scannable on narrow boards. The total is
+    // already in the large number, so show only the two most relevant bonuses.
+    labels.push(...rewardLabels.slice(0, 2));
     if (combo > 1) labels.push(`배율 ×${comboMultiplier(combo).toFixed(2)}`);
     detail.textContent = labels.join(' · ');
     detail.hidden = labels.length === 0;
@@ -1775,7 +1811,7 @@ export class GameUI {
             ? '고양이 찾기'
             : `${stageMission.label} ${stageMission.progress}/${stageMission.target}`;
         this.elements.stageMissionValue.textContent = stageMission.completed
-          ? `${stageMission.label} +${Math.max(0, Math.round(stageMissionBonus)).toLocaleString('ko-KR')}`
+          ? `${stageMission.label} 완료`
           : activeCopy;
         mission.setAttribute('aria-label', stageMission.completed
           ? `${stageMission.label} 미션 완료, ${Math.max(0, Math.round(stageMissionBonus)).toLocaleString('ko-KR')}점 보너스`

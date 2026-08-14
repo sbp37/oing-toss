@@ -94,8 +94,4 @@
 | `assets/fonts/Jua-Korean-Game.woff2` | Google Fonts Jua | 제목·버튼·숫자 | 화면 문구 전체를 다시 스캔한 로컬 서브셋 |
 | `assets/fonts/Pretendard-OING.woff2` | Pretendard 1.3.9 | HUD·설명·고양이 멘트 | 외부 CDN 없이 동작하는 게임 전용 로컬 서브셋 |
 
-## 새로 생성한 효과 에셋
-
-| 실제 사용 파일 | 원본 | 사용 위치 | CSS 표시 크기 |
-|---|---|---|---|
-| `assets/effects/shuffle-syrup-swirl@2x.png` | Codex imagegen 1254×1254 투명 원본의 512×512 최적화본 | 섞기 중앙 시럽 소용돌이 | 약 150–190px |
+섞기 연출은 정지 이미지 대신 타일 이동과 CSS 기반 시럽 입자 모션을 사용한다.

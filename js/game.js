@@ -750,16 +750,13 @@ class OingGame {
     this.ui.pulseGoal(this.state.combo);
     this.speakForSuccess(catCount, comboGain);
     if (challengeCompleted) {
-      this.ui.toast(`${challenge.label} 보너스 +${challengeBonusPoints.toLocaleString('ko-KR')}`);
       this.ui.setPlayCharacter('success', 1000);
       this.showCatMessage('challengeComplete');
     }
     if (cloverBonusPoints > 0) {
-      this.ui.toast(`클로버 보너스 +${cloverBonusPoints.toLocaleString('ko-KR')}`);
       this.showCatMessage('cloverSuccess');
     }
     if (clutchBonusPoints > 0 && !challengeCompleted && cloverBonusPoints === 0) {
-      this.ui.toast(`막판 보너스 +${clutchBonusPoints.toLocaleString('ko-KR')}`);
       this.showCatMessage('clutch');
     }
     if (hasClockTile) this.addStageTime(5);
