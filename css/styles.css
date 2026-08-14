@@ -375,8 +375,8 @@ img {
   filter: drop-shadow(0 2px 2px rgba(105,85,71,0.13));
 }
 
-.home-mini-mint { background-image: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); color: #399366; }
-.home-mini-peach { background-image: url("../assets/ui/tiles-syrup-v4/tile-peach.webp"); color: #dc8126; }
+.home-mini-mint { background-image: url("../assets/ui/tiles-syrup-v5/tile-mint.webp"); color: #399366; }
+.home-mini-peach { background-image: url("../assets/ui/tiles-syrup-v5/tile-peach.webp"); color: #dc8126; }
 
 .home-equation strong {
   min-width: 42px;
@@ -1676,12 +1676,20 @@ img {
   text-shadow: 0 1.5px 0 rgba(255,255,255,0.82), 0 2.5px 2px rgba(73,61,48,0.06);
 }
 
-.tile.tone-1 { background-image: url("../assets/ui/tiles-syrup-v4/tile-peach.webp"); }
-.tile.tone-2 { background-image: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); }
-.tile.tone-3 { background-image: url("../assets/ui/tiles-syrup-v4/tile-lilac.webp"); }
-.tile.tone-4 { background-image: url("../assets/ui/tiles-syrup-v4/tile-blush.webp"); }
-.tile.tone-5 { background-image: url("../assets/ui/tiles-syrup-v4/tile-aqua.webp"); }
-.tile.tone-6 { background-image: url("../assets/ui/tiles-syrup-v4/tile-lemon.webp"); }
+/* Ordered by hue so tone-1..6 sweeps the palette once across the board's
+   diagonal. js/ui.js picks the tone from the cell's position, so this order is
+   the gradient itself — reshuffling these lines scrambles the sweep.
+
+   The v4 set is kept on disk but no longer loaded: its six tiles measured
+   7.9%–82.3% saturation, so half read as colour and half as grime, and blush,
+   peach and lemon sat within 33° of each other. v5 holds every tile at ~45%
+   saturation and ~88% lightness with the hues spread apart. */
+.tile.tone-1 { background-image: url("../assets/ui/tiles-syrup-v5/tile-blush.webp"); }
+.tile.tone-2 { background-image: url("../assets/ui/tiles-syrup-v5/tile-peach.webp"); }
+.tile.tone-3 { background-image: url("../assets/ui/tiles-syrup-v5/tile-lemon.webp"); }
+.tile.tone-4 { background-image: url("../assets/ui/tiles-syrup-v5/tile-mint.webp"); }
+.tile.tone-5 { background-image: url("../assets/ui/tiles-syrup-v5/tile-sky.webp"); }
+.tile.tone-6 { background-image: url("../assets/ui/tiles-syrup-v5/tile-lilac.webp"); }
 
 /* A-1: 숫자 색을 잉크 한 색으로 통일.
    이전에는 1~9가 전부 다른 색이었는데(초록/보라/분홍/청록/파랑/주황...),
@@ -1716,7 +1724,7 @@ img {
   background-image:
     radial-gradient(circle at 50% 55%, rgba(255,255,247,0.96) 0 26%, rgba(255,250,219,0.76) 44%, transparent 67%),
     linear-gradient(145deg, rgba(255,248,210,0.84), rgba(255,205,130,0.72)),
-    url("../assets/ui/tiles-syrup-v4/tile-lemon.webp");
+    url("../assets/ui/tiles-syrup-v5/tile-lemon.webp");
   background-blend-mode: normal, soft-light, normal;
   background-position: center;
   background-size: 100% 100%;

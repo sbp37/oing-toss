@@ -31,13 +31,15 @@ for (const entry of [
   "assets/fonts/candidates",
   "assets/ui/item-buttons-v1",
   "assets/ui/tiles-v3",
+  "assets/ui/tiles-syrup-v4",
   "assets/icons/items/megabomb.png",
 ]) {
   await rm(resolve(client, entry), { recursive: true, force: true });
 }
 
-for (const name of ["blush", "peach", "lemon", "mint", "aqua", "lilac"]) {
-  await rm(resolve(client, `assets/ui/tiles-syrup-v4/tile-${name}.png`), { force: true });
+// v5 ships the webp only; the v4 set is no longer loaded by the game at all.
+for (const name of ["blush", "peach", "lemon", "mint", "sky", "lilac"]) {
+  await rm(resolve(client, `assets/ui/tiles-syrup-v5/tile-${name}.png`), { force: true });
 }
 
 await cp(resolve(root, "hosting/worker.js"), resolve(server, "index.js"));

@@ -140,16 +140,17 @@ assert.deepEqual(
     const config = getRoundConfig(stage);
     return [config.cols, config.rows, config.target];
   }),
-  [[4, 4, 3], [5, 5, 5], [6, 6, 8], [6, 6, 9], [7, 7, 11]],
+  [[4, 4, 3], [5, 5, 5], [6, 6, 8], [6, 6, 9], [6, 7, 11]],
 );
-// Rows stop at 8 so the late-stage numerals stay readable; difficulty rides on
-// `target` from STAGE 6 on instead of a taller board.
+// The board stops growing at 6x7 so the late-stage numerals stay readable and
+// the cell keeps its near-square proportion; difficulty rides on `target` and
+// the clock/bomb odds from STAGE 6 on instead of a bigger board.
 assert.deepEqual(
   [6, 7, 8, 9, 10].map((stage) => {
     const config = getRoundConfig(stage);
     return [config.cols, config.rows, config.target];
   }),
-  [[7, 8, 12], [7, 8, 13], [7, 8, 14], [7, 8, 15], [7, 8, 17]],
+  [[6, 7, 12], [6, 7, 13], [6, 7, 14], [6, 7, 15], [6, 7, 17]],
 );
 {
   const targets = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1).target);
@@ -164,11 +165,14 @@ assert.deepEqual(
     if (index === 0) return;
     assert.ok(target >= targets[index - 1], `STAGE ${index + 1} target must not drop`);
   });
-  const rows = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1).rows);
-  assert.ok(rows.every((value) => value <= 8), 'no stage may exceed eight rows');
+  // Both caps guard the numerals: `rows` sets the type size, and `cols` past 6
+  // both clutters the board and flattens the square tile art.
+  const dimensions = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1));
+  assert.ok(dimensions.every((config) => config.rows <= 7), 'no stage may exceed seven rows');
+  assert.ok(dimensions.every((config) => config.cols <= 6), 'no stage may exceed six columns');
 }
-assert.equal(getRoundConfig(20).size, 7);
-assert.equal(getRoundConfig(20).rows, 8);
+assert.equal(getRoundConfig(20).size, 6);
+assert.equal(getRoundConfig(20).rows, 7);
 assert.equal(getRoundConfig(20).timeLimit, 120);
 assert.ok(getRoundConfig(20).target > getRoundConfig(10).target);
 assert.ok(getRoundConfig(20).clockChance < 0.07, 'late-stage clocks must stay rare');

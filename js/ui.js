@@ -11,17 +11,31 @@ import {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-const TILE_TONE_BY_VALUE = Object.freeze({
-  1: 2,
-  2: 3,
-  3: 2,
-  4: 4,
-  5: 5,
-  6: 6,
-  7: 3,
-  8: 1,
-  9: 3,
-});
+// Tile colour is a property of the cell, never of the number inside it.
+//
+// It used to be keyed off the value, which made colour a half-working answer
+// key: 4, 5, 6 and 8 each owned a hue outright, so the board leaked them at a
+// glance, while 2, 7 and 9 shared one lilac and 1 and 3 shared one mint, so the
+// same glance was wrong as often as it was right. The eye kept reaching for a
+// shortcut the game then refused to honour. Worse, none of the sum-10 pairs
+// (1+9, 2+8, 3+7, 4+6) shared a colour, so the mapping never once helped with
+// the thing the player is actually doing.
+//
+// Position decides it now, which makes a colour shortcut arithmetically
+// impossible rather than merely discouraged. Cells hold their colour for the
+// life of the board — clearing a rectangle empties cells, it does not move the
+// survivors — so the board reads as one painted surface instead of confetti
+// that reshuffles on every match.
+const TILE_TONE_COUNT = 6;
+
+// Neighbours land on the same or an adjacent hue, so the board sweeps across
+// the palette once instead of alternating hard between cells.
+function toneForCell(row, col, rows, cols) {
+  const span = (rows - 1) + (cols - 1);
+  if (span <= 0) return 1;
+  const position = (row + col) / span;
+  return Math.min(TILE_TONE_COUNT, Math.floor(position * TILE_TONE_COUNT) + 1);
+}
 
 const CHARACTER_ASSETS = Object.freeze({
   idle: 'assets/characters/cat-idle.webp',
@@ -216,7 +230,7 @@ export class GameUI {
         const boardItem = boardItems.get(`${r}:${c}`);
         const bonusCat = model.hasBonusCat?.(r, c) || false;
         const special = model.specialAt?.(r, c) || null;
-        const tone = value ? TILE_TONE_BY_VALUE[value] : 0;
+        const tone = value ? toneForCell(r, c, rows, cols) : 0;
         const tile = document.createElement('button');
         tile.type = 'button';
         tile.tabIndex = -1;
