@@ -557,11 +557,21 @@
    35.2px in a 47.3px-tall cell, a font/cell ratio of 0.744 — the numeral
    nearly touched the tile's rounded corners on every side, and a digit that
    fills its frame that tightly reads as more crowded, not more legible.
-   0.25 holds the ratio at ~0.64 across every board size (checked stage 3's
-   6x6 and stage 8's 6x7 at 320/390/430px), which is roughly the fill ratio
-   the original 7x8 board had before this session enlarged it. STAGE 1's 4x4
-   board is unaffected at every width tested — it was already pinned to the
-   43px cap, not to this coefficient. */
+   0.25 holds the ratio at ~0.64 for stage 3 (6x6) on up through stage 10.
+
+   That coefficient does nothing for STAGE 1-2 (4x4/5x5), because their
+   spacious cells push the row formula past the cap and the flat 43px ceiling
+   takes over instead — 43px on an 83.9px-tall STAGE 1 cell at 390px is only a
+   0.51 fill ratio, generous by that measure, but it is still a 43px glyph, and
+   large numerals cost more time to recognise per glance than the empty cell
+   around them saves. The cap is what STAGE 1-2 actually render at, so it is
+   what needed to come down, not the ratio.
+
+   30px keeps every stage within one glyph-size band: STAGE 1 sits at the cap
+   everywhere, STAGE 8 already lands here or below from the 0.25 formula alone
+   (30.1px at 390px, 33.2px at 430px), so the two limits meet instead of
+   fighting — a board never looks bigger just because its cells have more
+   spare room. */
 .play-ui-v4 .tile span {
   font-size: clamp(
     15px,
@@ -569,7 +579,7 @@
       calc(var(--chrome-width) * 0.6074 / var(--board-cols)),
       calc(var(--chrome-height) * 0.25 / var(--board-rows))
     ),
-    43px
+    30px
   );
 }
 
