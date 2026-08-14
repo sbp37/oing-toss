@@ -12,7 +12,6 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/ui/button-pause.webp',
   'assets/ui/tiles-syrup-v5/tile-blush.webp',
   'assets/ui/tiles-syrup-v5/tile-peach.webp',
-  'assets/ui/tiles-syrup-v5/tile-lemon.webp',
   'assets/ui/tiles-syrup-v5/tile-mint.webp',
   'assets/ui/tiles-syrup-v5/tile-aqua.webp',
   'assets/ui/tiles-syrup-v5/tile-lilac.webp',

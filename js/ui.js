@@ -26,7 +26,7 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 // life of the board — clearing a rectangle empties cells, it does not move the
 // survivors — so the board reads as one painted surface instead of confetti
 // that reshuffles on every match.
-const TILE_TONE_COUNT = 6;
+const TILE_TONE_COUNT = 5;
 
 // Neighbours land on the same or an adjacent hue, so the board sweeps across
 // the palette once instead of alternating hard between cells.

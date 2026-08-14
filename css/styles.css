@@ -1690,10 +1690,9 @@ img {
    its position gave it. */
 .tile.tone-1 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-blush.webp"); }
 .tile.tone-2 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-peach.webp"); }
-.tile.tone-3 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-lemon.webp"); }
-.tile.tone-4 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-mint.webp"); }
-.tile.tone-5 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-aqua.webp"); }
-.tile.tone-6 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-lilac.webp"); }
+.tile.tone-3 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-mint.webp"); }
+.tile.tone-4 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-aqua.webp"); }
+.tile.tone-5 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-lilac.webp"); }
 .tile[class*="tone-"] { background-image: var(--tile-art); }
 
 /* A-1: 숫자 색을 잉크 한 색으로 통일.
