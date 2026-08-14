@@ -20,7 +20,9 @@ for (const entry of ["index.html", "css", "js", "assets"]) {
 const chromeSource = resolve(root, "design/ui-chrome");
 const chromeClient = resolve(client, "design/ui-chrome");
 await mkdir(chromeClient, { recursive: true });
-for (const entry of ["ui-chrome.png", "cat_idle.png"]) {
+// The coach cat is served straight from assets/characters/cat-peek.webp now,
+// so the chrome painting is the only file this directory still ships.
+for (const entry of ["ui-chrome.webp"]) {
   await cp(resolve(chromeSource, entry), resolve(chromeClient, entry));
 }
 

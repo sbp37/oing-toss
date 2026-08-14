@@ -1,7 +1,7 @@
 /* ============================================================================
    OING play chrome — one coordinate system.
 
-   `design/ui-chrome/ui-chrome.png` is a fixed 780 × 1688 painting (390 × 844
+   `design/ui-chrome/ui-chrome.webp` is a fixed 780 × 1688 painting (390 × 844
    at 2x). Every live value stays HTML text; this file only decides *where*
    that text lands. To keep painted decoration and HTML from drifting apart,
    the artwork is measured once and every overlay is expressed as a percentage
@@ -93,7 +93,7 @@
   left: 50%;
   width: var(--chrome-width);
   height: var(--chrome-height);
-  background: url("../design/ui-chrome/ui-chrome.png") center / contain no-repeat;
+  background: url("../design/ui-chrome/ui-chrome.webp") center / contain no-repeat;
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -428,7 +428,7 @@
   display: block;
   flex: 0 0 auto;
   color: #7d8587;
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.0275), 12px);
+  font-size: clamp(10px, calc(var(--chrome-width) * 0.031), 13px);
   line-height: 1;
   white-space: nowrap;
 }
@@ -439,7 +439,7 @@
   max-width: 100%;
   overflow: hidden;
   color: #4f6473;
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
+  font-size: clamp(15px, calc(var(--chrome-width) * 0.047), 19px);
   line-height: 1;
   text-overflow: clip;
   white-space: nowrap;
@@ -449,11 +449,11 @@
    ("21,400") never ellipsises inside the painted pill — the digits give up a
    step of size instead and the whole number stays readable. */
 .play-ui-v4 .score-readout strong[data-digits="l"] {
-  font-size: clamp(11px, calc(var(--chrome-width) * 0.034), 14px);
+  font-size: clamp(13px, calc(var(--chrome-width) * 0.039), 16px);
 }
 
 .play-ui-v4 .score-readout strong[data-digits="xl"] {
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.028), 11.5px);
+  font-size: clamp(11px, calc(var(--chrome-width) * 0.032), 13.5px);
 }
 
 /* ---------------------------------------------------------------------------
@@ -479,14 +479,14 @@
 
 .play-ui-v4 .goal-copy {
   color: #4f5b64;
-  font-size: clamp(11px, calc(var(--chrome-width) * 0.0315), 14px);
+  font-size: clamp(12px, calc(var(--chrome-width) * 0.0355), 15px);
   line-height: 1;
   white-space: nowrap;
 }
 
 .play-ui-v4 .goal-copy b {
   color: #e85073;
-  font-size: clamp(17px, calc(var(--chrome-width) * 0.053), 23px);
+  font-size: clamp(19px, calc(var(--chrome-width) * 0.059), 25px);
   line-height: 1;
 }
 
@@ -510,25 +510,31 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Board — square cells, always.
+   Board — a packed slab of square tiles on open sky.
 
-   The recess was regrown to 658 × 762 artwork px (h/w 1.158) precisely so the
-   tallest board, 6 × 7 (h/w 1.167), seats square cells inside it with 0.7% to
-   spare. The grid no longer stretches to fill the recess: the cell edge is the
-   limiting direction's share, the board is cell×cols by cell×rows, and smaller
-   stages float centred on the painted floor (which the artwork build wipes
-   clean of its old pencil grid, so the exposed margin is plain cream).
+   There is no longer a painted tray behind the board: build-ui-chrome.py
+   erases it and refills those rows with the sky it interrupted. It had to go
+   in the bitmap, because it was drawn for one fixed 4 × 4 grid — on every
+   other stage, and behind every cleared cell, the parts of it the tiles did
+   not cover showed as stray beige blocks that no CSS here could hide.
 
-   A 6 × 7 board is height-bound and every other stage is width-bound; either
-   way rows stack DOWNWARD as squares instead of flattening the tiles the way
-   the old fill-the-recess sizing did from STAGE 5 on.
+   The board keeps the geometry the tray used to define: `.board-zone` is still
+   that 658 × 762 artwork box (h/w 1.158), which is what lets the tallest board,
+   6 × 7 (h/w 1.167), seat square tiles with 0.7% to spare. Tiles stay packed
+   edge to edge at cell×cols by cell×rows — the uniform pitch input.js assumes
+   when it divides the board rect by cols/rows — and `.board` itself paints
+   nothing, so a shorter board simply leaves more sky around it.
    ------------------------------------------------------------------------ */
+/* 0.90, not the erased tray's old 0.84359: there is no painted edge left to
+   stay inside, so the board takes the HUD panel's margin instead and every
+   width-bound stage (4×4 … 6×6) gets ~7% larger tiles — numerals scale with
+   --cell, so they grow with it. 6×7 is height-bound and unchanged. */
 .play-ui-v4 .board-zone {
   position: absolute;
   z-index: 5;
   top: calc(var(--chrome-top) + var(--chrome-height) * 0.24585);
   left: 50%;
-  width: calc(var(--chrome-width) * 0.84359);
+  width: calc(var(--chrome-width) * 0.90);
   height: calc(var(--chrome-height) * 0.45142);
   padding: 0;
   overflow: visible;
@@ -553,12 +559,22 @@
   border-radius: 12px;
   background: transparent;
   box-shadow: none;
+  outline: 0;
+}
+
+/* The stage-band theme rings the frame with a tinted outline and a white spread
+   shadow — a card edge for a card that no longer exists. Its selector outranks
+   the rule above, so the frame has to be cleared again here or a warm rounded
+   rectangle keeps floating a few px outside the tiles. */
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  outline: 0;
+  box-shadow: none;
 }
 
 .play-ui-v4 .board {
   /* the square cell edge: whichever axis runs out first decides it */
   --cell: min(
-    calc(var(--chrome-width) * 0.84359 / var(--board-cols)),
+    calc(var(--chrome-width) * 0.90 / var(--board-cols)),
     calc(var(--chrome-height) * 0.45142 / var(--board-rows))
   );
   width: calc(var(--cell) * var(--board-cols));
@@ -566,40 +582,51 @@
   max-height: none;
   aspect-ratio: auto;
   border: 0;
-  border-radius: 10px;
-  background-color: #fff9ed;
-  background-image:
-    linear-gradient(to right, rgba(191,159,111,.29) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(191,159,111,.29) 1px, transparent 1px);
-  box-shadow: inset 0 2px 4px rgba(119,83,46,.06);
+  border-radius: 0;
+  /* No surface of its own — only the tiles are drawn. */
+  background: transparent;
+  box-shadow: none;
 }
 
-/* Cells are square by construction now (the grid's own 1px gap and padding
-   skew width vs height by under 0.1px), so the tile just fills its cell. */
+/* Cells are square by construction (board width/height is cell×cols/cell×rows),
+   so the tile just fills its cell — no extra gap to reveal the floor between
+   tiles.
+
+   The tile art was drawn to sit on cream, where its own pale edge carried the
+   contrast. On open sky it lost that: pale mint glass on pale blue read as
+   washed out and the grid went flat. Rather than put a panel back under the
+   board, the separation now comes from the tile itself — a white rim to cut it
+   out of the sky, a warm inner line to keep the drawn edge, and a real shadow
+   underneath so the tiles sit above the sky instead of dissolving into it. */
 .play-ui-v4 .tile {
   aspect-ratio: auto;
   width: 100%;
   height: 100%;
-}
-
-/* Numerals ride the square cell edge at a ~0.55 fill and meet the 30px cap on
-   ordinary phones, so every stage reads at one glyph size — a board never
-   looks bigger just because its cells have more spare room. The cap is doing
-   the real work on STAGE 1-2, whose roomy cells would otherwise push type to
-   43px+, which measured slower to scan, not easier (see git history). */
-.play-ui-v4 .tile span {
-  font-size: clamp(15px, calc(var(--cell) * 0.55), 30px);
-}
-
-/* A cleared cell has to read as a shallow recess in the board, never as an
-   image that failed to load. */
-.play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
-  border: 1px solid rgba(185, 151, 105, .24);
-  background: rgba(236, 218, 184, .34);
-  background-image: none;
   box-shadow:
-    inset 0 3px 6px rgba(119, 83, 46, .16),
-    inset 0 -1px 0 rgba(255, 255, 255, .6);
+    inset 0 0 0 1px rgba(126, 100, 66, .28),
+    0 0 0 1.5px rgba(255, 255, 255, .92);
+  filter:
+    drop-shadow(0 2px 2px rgba(60, 94, 124, .20))
+    drop-shadow(0 5px 7px rgba(60, 94, 124, .13));
+}
+
+/* Numerals ride the square cell edge at a ~0.46 fill and meet the 42px cap on
+   ordinary phones. Raised from the old 0.55/30px pair, which let the 30px cap
+   bind on every board from STAGE 1 to 6×7 alike and read as undersized on the
+   roomy early stages. */
+.play-ui-v4 .tile span {
+  font-size: clamp(17px, calc(var(--cell) * 0.46), 46px);
+}
+
+/* A cleared cell used to be tinted like a shallow dent in the tray. With the
+   tray erased there is no surface left to dent, so that tint became a beige
+   block floating on the sky — the very thing the erase was for. A cleared cell
+   is now simply nothing. */
+.play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 0;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
   filter: none;
   opacity: 1;
 }
@@ -854,7 +881,7 @@
   left: 6%;
   right: 6%;
   bottom: 12%;
-  font-size: clamp(12px, calc(var(--chrome-width) * 0.037), 16px);
+  font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
   line-height: 1;
   text-align: center;
   white-space: nowrap;

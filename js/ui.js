@@ -11,6 +11,11 @@ import {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+// Shuffle flip wave: gap between neighbouring diagonals, and the ceiling on how
+// long the whole sweep may take to reach the far corner.
+const SHUFFLE_WAVE_MS = 26;
+const SHUFFLE_WAVE_SPAN_MS = 190;
+
 // Every tile is the same tile. There is no colour to assign, so nothing here
 // assigns one — css/styles.css names the single art file.
 //
@@ -824,70 +829,38 @@ export class GameUI {
     this.elements.playScreen.classList.remove('is-board-growth-clear', 'is-time-rescued', 'is-low-time-alerting');
   }
 
+  /* The flip runs as a diagonal wave: a tile's delay comes from row + col, so
+     the turn sweeps from the top-left corner to the bottom-right instead of
+     every tile moving at once. SHUFFLE_WAVE_MS is the gap between neighbouring
+     diagonals; the last one starts (cols-1 + rows-1) steps late, which is
+     ~180ms on the biggest board, so the wave stays readable without dragging
+     the shuffle out. */
   setShuffleVectors() {
     const cols = Number(this.board.dataset.cols) || Number(this.board.dataset.size) || 4;
     const rows = Number(this.board.dataset.rows) || cols;
-    const centerCol = (cols - 1) / 2;
-    const centerRow = (rows - 1) / 2;
-    const maxRadius = Math.max(1, Math.hypot(centerRow, centerCol));
-    this.board.querySelectorAll('.tile').forEach((tile, index) => {
-      const row = Number(tile.dataset.row);
-      const col = Number(tile.dataset.col);
-      const dx = col - centerCol;
-      const dy = row - centerRow;
-      const radius = Math.hypot(dy, dx) / maxRadius;
-      const angle = Math.atan2(dy, dx);
-      const direction = 1;
-      const distance = 24 + radius * 15 + ((index * 5) % 7);
-      const tangent = 14 + radius * 12;
-      const x = Math.cos(angle) * distance - Math.sin(angle) * tangent * direction;
-      const y = Math.sin(angle) * distance + Math.cos(angle) * tangent * direction;
-      const curveX = -Math.sin(angle) * (15 + radius * 11) * direction;
-      const curveY = Math.cos(angle) * (15 + radius * 11) * direction;
-      tile.style.setProperty('--shuffle-x', `${x}px`);
-      tile.style.setProperty('--shuffle-y', `${y}px`);
-      const rotate = direction * (9 + (index % 4) * 3);
-      tile.style.setProperty('--shuffle-mid-x', `${x * 0.38 + curveX}px`);
-      tile.style.setProperty('--shuffle-mid-y', `${y * 0.38 + curveY}px`);
-      tile.style.setProperty('--shuffle-rotate', `${rotate}deg`);
-      tile.style.setProperty('--shuffle-mid-rotate', `${rotate * 0.72}deg`);
-      tile.style.setProperty('--shuffle-delay', `${Math.min(48, Math.round(radius * 28) + (index % 4) * 5)}ms`);
+    const lastDiagonal = Math.max(1, cols + rows - 2);
+    const step = Math.min(SHUFFLE_WAVE_MS, SHUFFLE_WAVE_SPAN_MS / lastDiagonal);
+    this.board.querySelectorAll('.tile').forEach((tile) => {
+      const row = Number(tile.dataset.row) || 0;
+      const col = Number(tile.dataset.col) || 0;
+      tile.style.setProperty('--shuffle-delay', `${Math.round((row + col) * step)}ms`);
     });
   }
 
   async animateShuffleOut() {
     this.setShuffleVectors();
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
+    /* One element, one transform. The old overlay spawned a vortex, five
+       droplets, three lightning bolts, four sparkle stars and a paw — sixteen
+       animated nodes over the board, every one of them compositing at once on
+       the exact frames the tiles were already animating. The flip wave carries
+       the effect now, so all this has to add is a band of light travelling the
+       same diagonal. */
     const effect = document.createElement('div');
     effect.className = 'shuffle-fx';
-    const vortex = document.createElement('span');
-    vortex.className = 'shuffle-vortex';
-    effect.appendChild(vortex);
-    const dropColors = [
-      ['#ecfff9', '#78dbc7'],
-      ['#fff8e8', '#ffc797'],
-      ['#fff5fb', '#d9b9f1'],
-    ];
-    for (let index = 0; index < 5; index += 1) {
-      const drop = document.createElement('i');
-      drop.className = 'shuffle-drop';
-      const angle = -78 + index * 72;
-      const distance = 72 + (index % 3) * 17;
-      drop.style.setProperty('--drop-angle', `${angle}deg`);
-      drop.style.setProperty('--drop-mid', `${Math.round(distance * 0.56)}px`);
-      drop.style.setProperty('--drop-distance', `${distance}px`);
-      drop.style.setProperty('--drop-delay', `${index * 24}ms`);
-      drop.style.setProperty('--drop-light', dropColors[index % dropColors.length][0]);
-      drop.style.setProperty('--drop-color', dropColors[index % dropColors.length][1]);
-      effect.appendChild(drop);
-    }
-    for (let index = 0; index < 3; index += 1) effect.appendChild(document.createElement('b'));
-    const paw = document.createElement('em');
-    paw.className = 'shuffle-paw';
-    effect.appendChild(paw);
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(400);
+    await delay(320);
     this.board.classList.remove('is-shuffling-out');
   }
 
@@ -900,12 +873,6 @@ export class GameUI {
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-shuffle-settled');
     this.board.querySelectorAll('.tile').forEach((tile) => {
-      tile.style.removeProperty('--shuffle-x');
-      tile.style.removeProperty('--shuffle-y');
-      tile.style.removeProperty('--shuffle-mid-x');
-      tile.style.removeProperty('--shuffle-mid-y');
-      tile.style.removeProperty('--shuffle-rotate');
-      tile.style.removeProperty('--shuffle-mid-rotate');
       tile.style.removeProperty('--shuffle-delay');
     });
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
