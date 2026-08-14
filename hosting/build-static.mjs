@@ -38,7 +38,7 @@ for (const entry of [
 }
 
 // v5 ships the webp only; the v4 set is no longer loaded by the game at all.
-for (const name of ["blush", "peach", "lemon", "mint", "sky", "lilac"]) {
+for (const name of ["blush", "peach", "lemon", "mint", "aqua", "lilac"]) {
   await rm(resolve(client, `assets/ui/tiles-syrup-v5/tile-${name}.png`), { force: true });
 }
 

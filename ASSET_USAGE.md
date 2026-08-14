@@ -25,12 +25,12 @@
 | `assets/ui/logo.webp` | `oing-toss-assets-v1/assets/ui/logo.webp` | 홈 로고 | 142–212px |
 | `assets/ui/button-settings.webp` | `oing-toss-assets-v1/assets/ui/button-settings.webp` | 홈 설정 | 39–44px |
 | `assets/ui/button-pause.webp` | `oing-toss-assets-v1/assets/ui/button-pause.webp` | 플레이 일시정지 | 43–48px |
-| `assets/ui/tiles-syrup-v5/tile-blush.webp` | `assets/source/tile-syrup-v4-alpha.png`을 `tools/build-tiles-v5.py`로 재계조 | 보드 타일 350° | 256×256 원본, 셀 약 44–59px |
-| `assets/ui/tiles-syrup-v5/tile-peach.webp` | `assets/source/tile-syrup-v4-alpha.png`을 `tools/build-tiles-v5.py`로 재계조 | 보드 타일 30° | 256×256 원본, 셀 약 44–59px |
-| `assets/ui/tiles-syrup-v5/tile-lemon.webp` | `assets/source/tile-syrup-v4-alpha.png`을 `tools/build-tiles-v5.py`로 재계조 | 보드 타일 55° | 256×256 원본, 셀 약 44–59px |
-| `assets/ui/tiles-syrup-v5/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`을 `tools/build-tiles-v5.py`로 재계조 | 보드 타일 135° | 256×256 원본, 셀 약 44–59px |
-| `assets/ui/tiles-syrup-v5/tile-sky.webp` | `assets/source/tile-syrup-v4-alpha.png`을 `tools/build-tiles-v5.py`로 재계조 | 보드 타일 195° | 256×256 원본, 셀 약 44–59px |
-| `assets/ui/tiles-syrup-v5/tile-lilac.webp` | `assets/source/tile-syrup-v4-alpha.png`을 `tools/build-tiles-v5.py`로 재계조 | 보드 타일 272° | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v5/tile-blush.webp` | 컨셉보드 승인색 `#FF7BA8`를 `tools/build-tiles-v5.py`로 마스터에 재계조 | 보드 타일 350° | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v5/tile-peach.webp` | 컨셉보드 승인색 `#FFB766`를 `tools/build-tiles-v5.py`로 마스터에 재계조 | 보드 타일 31° | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v5/tile-lemon.webp` | 컨셉보드 승인색 `#E8EE72`를 `tools/build-tiles-v5.py`로 마스터에 재계조 | 보드 타일 55° | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v5/tile-mint.webp` | 컨셉보드 승인색 `#7FD6C2`를 `tools/build-tiles-v5.py`로 마스터에 재계조 | 보드 타일 146° | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v5/tile-aqua.webp` | 컨셉보드 승인색 `#8DB7FF`를 `tools/build-tiles-v5.py`로 마스터에 재계조 | 보드 타일 222° | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v5/tile-lilac.webp` | 컨셉보드 승인색 `#C9B0FF`를 `tools/build-tiles-v5.py`로 마스터에 재계조 | 보드 타일 286° | 256×256 원본, 셀 약 44–59px |
 | `assets/icons/navigation/trophy.webp` | `oing-toss-assets-v1/assets/icons/trophy.webp` | 홈·결과 랭킹 | 27px |
 | `assets/icons/navigation/home.webp` | `oing-toss-assets-v1/assets/icons/home.webp` | 결과 홈으로 | 24px |
 | `assets/icons/hud/score.webp` | `oing-toss-assets-v1/assets/icons/coin.webp` | 점수 HUD | 22px |
@@ -64,7 +64,7 @@
 | `assets/ui/tile-disabled.webp` | 보드에 disabled 타일 상태가 아직 없다. |
 | `assets/ui/tile-{normal,selected,success,hint,empty}.webp` | 독립 시럽 타일 세트로 교체해 보존만 한다. |
 | `assets/ui/tiles-v3/` 전체 | 이전 밀키 글라스 후보 세트다. 현재 게임은 `tiles-syrup-v5` 6종을 사용한다. |
-| `assets/ui/tiles-syrup-v4/` 전체 | 채도가 7.9%~82.3%로 흩어져 절반은 색, 절반은 때처럼 보였고 blush·peach·lemon이 33° 안에 몰려 있었다. `tiles-syrup-v5`가 같은 마스터에서 채도 45%·명도 88%로 통일해 대체한다. 원본만 보존한다. |
+| `assets/ui/tiles-syrup-v4/` 전체 | 채도가 7.9%~82.3%로 흩어져 절반은 색, 절반은 때처럼 보였고 blush·peach·lemon이 33° 안에 몰려 있었다. `tiles-syrup-v5`가 같은 컨셉보드 색을 같은 마스터에 다시 입히되 채도 60%·명도 86%로 통일해 대체한다. 원본만 보존한다. |
 | `assets/ui/item-buttons-v1/` 전체 | 긴 가로형 셸이라 4개 아이템을 한 줄에 배치하면 보드 공간을 압박한다. 정사각 시럽 슬롯으로 교체해 원본만 보존한다. |
 | `assets/decor/cloud.webp` | 배경 자체에 구름이 있어 중복 장식을 피했다. |
 | `assets/decor/flower.webp` | 배경 하단 꽃밭과 중복되어 사용하지 않았다. |

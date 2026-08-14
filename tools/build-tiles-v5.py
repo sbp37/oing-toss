@@ -29,21 +29,51 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "assets/source/tile-syrup-v4-alpha.png"
 OUT = ROOT / "assets/ui/tiles-syrup-v5"
 
-# Evenly spread around the wheel. Names keep the v4 flavour so the CSS reads the
-# same, except v4's "aqua" — which measured 7.9% saturation and was really a
-# grey-violet — is replaced by an honest "sky".
-HUES = {
-    "blush": 350,
-    "peach": 30,
-    "lemon": 55,
-    "mint": 135,
-    "sky": 195,
-    "lilac": 272,
+# The approved concept-board palette, carried over from
+# tools/build-syrup-tile-assets.py. These are the colours the project already
+# chose and liked; v4's failure was never the palette, it was that a fixed blend
+# strength rendered them at 7.9%-82.3% saturation so half the board looked like
+# grime. Keeping the hues and fixing only the rendering is the whole change.
+#
+# One correction. Measured on the wheel the original set is not a rainbow:
+#
+#   blush #FF7BA8  340°     peach #FFB766   32°
+#   lemon #FFDFA6   38°  <- six degrees from peach, so it read as a second
+#   mint  #7FD6C2  166°     orange and the set had no yellow at all
+#   aqua  #8DB7FF  218°     lilac #C9B0FF  259°
+#
+# `lemon` moves to a true yellow and keeps its light, buttery character. The
+# other five are untouched.
+#
+# Targets are aimed, not final: the master carries a warm cast of its own, so a
+# target lands a few degrees below where it is aimed and yellows drift hardest.
+# `lemon` is aimed at 63° to render at 55°, which is where it finally separates
+# from peach. The build prints both numbers, so re-aim against that table rather
+# than against the hex.
+CONCEPT_PALETTE = {
+    "blush": (255, 123, 168),
+    "peach": (255, 183, 102),
+    "lemon": (232, 238, 114),
+    "mint": (127, 214, 194),
+    "aqua": (141, 183, 255),
+    "lilac": (201, 176, 255),
 }
 
 # Measured on the tile face (centre 40%), matching how the v4 set was audited.
-TARGET_SATURATION = 0.45
-TARGET_LIGHTNESS = 0.88
+#
+# Saturation is capped by the numerals, not by taste. The ink is #425374, and
+# the tile has to stay light enough underneath it to clear WCAG AA (4.5:1).
+# Measured at hue 52° (yellow, the worst case of the six):
+#
+#   saturation 60% / lightness 86%   ->  5.07:1   ok
+#   saturation 70% / lightness 82%   ->  4.36:1   fails AA
+#   saturation 78% / lightness 78%   ->  3.74:1   fails AA
+#
+# So the board cannot get its contrast from deeper tiles. It gets it from
+# css/ui-chrome.css instead, which pushes the painted chrome behind the board
+# back so the tiles are the only saturated thing on screen.
+TARGET_SATURATION = 0.60
+TARGET_LIGHTNESS = 0.86
 
 
 def normalized_master() -> Image.Image:
@@ -80,12 +110,16 @@ def face_pixels(image: Image.Image) -> list[tuple[int, int, int, int]]:
     return [pixel for pixel in face.getdata() if pixel[3] > 200]
 
 
-def measure(image: Image.Image) -> tuple[float, float]:
+def mean_rgb(image: Image.Image) -> tuple[float, float, float]:
     pixels = face_pixels(image)
     count = len(pixels)
-    red = sum(p[0] for p in pixels) / count
-    green = sum(p[1] for p in pixels) / count
-    blue = sum(p[2] for p in pixels) / count
+    return (sum(p[0] for p in pixels) / count,
+            sum(p[1] for p in pixels) / count,
+            sum(p[2] for p in pixels) / count)
+
+
+def measure(image: Image.Image) -> tuple[float, float]:
+    red, green, blue = mean_rgb(image)
     _, lightness, saturation = colorsys.rgb_to_hls(red / 255, green / 255, blue / 255)
     return saturation, lightness
 
@@ -126,8 +160,7 @@ def normalize(image: Image.Image) -> Image.Image:
 GRADE_STRENGTH = 0.85
 
 
-def grade(master: Image.Image, hue: int) -> Image.Image:
-    target_rgb = tuple(round(c * 255) for c in colorsys.hls_to_rgb(hue / 360, 0.72, 0.85))
+def grade(master: Image.Image, target_rgb: tuple[int, int, int]) -> Image.Image:
     return normalize(tint_preserving_iridescence(master, target_rgb, GRADE_STRENGTH))
 
 
@@ -135,14 +168,16 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     master = normalized_master()
 
-    print(f"{'tile':8} {'saturation':>11} {'lightness':>10} {'hue':>6}")
-    print("-" * 38)
-    for name, hue in HUES.items():
-        compact = grade(master, hue).resize((256, 256), Image.Resampling.LANCZOS)
+    print(f"{'tile':8} {'target':9} {'saturation':>11} {'lightness':>10} {'hue':>6}")
+    print("-" * 50)
+    for name, target in CONCEPT_PALETTE.items():
+        compact = grade(master, target).resize((256, 256), Image.Resampling.LANCZOS)
         compact.save(OUT / f"tile-{name}.png", optimize=True)
         compact.save(OUT / f"tile-{name}.webp", format="WEBP", lossless=True, method=6)
         saturation, lightness = measure(compact)
-        print(f"{name:8} {saturation * 100:10.1f}% {lightness * 100:9.1f}% {hue:5}°")
+        hue = colorsys.rgb_to_hls(*[c / 255 for c in mean_rgb(compact)])[0] * 360
+        print(f"{name:8} #{target[0]:02X}{target[1]:02X}{target[2]:02X}  "
+              f"{saturation * 100:10.1f}% {lightness * 100:9.1f}% {hue:5.0f}°")
 
 
 if __name__ == "__main__":
