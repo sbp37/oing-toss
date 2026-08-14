@@ -30,17 +30,26 @@ export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
+// The board sits in a recess painted into design/ui-chrome/ui-chrome.png, so its
+// height is fixed and only `rows` can squeeze a cell. Tile type scales off the
+// short cell edge (css/ui-chrome.css: chrome-height * 0.2917 / rows), which put
+// STAGE 8~10 at 24.6px on a 390px screen — too small to read at a glance.
+// `cols` is not the lever: holding rows at 10 and dropping to six columns leaves
+// the type identical and only stretches the cell (ratio 1.37 -> 1.63).
+// So rows stops at 8 and difficulty keeps climbing through `target` and the
+// clock/bomb odds instead. Raising this past 8 shrinks the numerals again;
+// widening the recess needs the artwork redrawn first.
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0, bombChance: 0.08 },
   { stage: 5, round: 5, size: 7, cols: 7, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
-  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 10, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
-  { stage: 7, round: 7, size: 7, cols: 7, rows: 9, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
-  { stage: 8, round: 8, size: 7, cols: 7, rows: 10, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
-  { stage: 9, round: 9, size: 7, cols: 7, rows: 10, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 7, cols: 7, rows: 10, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
+  { stage: 6, round: 6, size: 7, cols: 7, rows: 8, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 7, cols: 7, rows: 8, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 7, cols: 7, rows: 8, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 7, cols: 7, rows: 8, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 7, cols: 7, rows: 8, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
