@@ -1859,8 +1859,8 @@ export class GameUI {
     markItem(this.elements.shuffleButton, shuffle, false, '잠금', true);
     const bombUnlocked = isItemUnlockedAtStage('bomb', stage);
     const clockUnlocked = isItemUnlockedAtStage('clock', stage) && clockAvailable;
-    markItem(this.elements.bombButton, bomb, !bombUnlocked, 'S3', bombUnlocked);
-    markItem(this.elements.clockButton, clock, !clockUnlocked, 'S5', clockUnlocked);
+    markItem(this.elements.bombButton, bomb, !bombUnlocked, '', bombUnlocked);
+    markItem(this.elements.clockButton, clock, !clockUnlocked, '', clockUnlocked);
     this.elements.hintButton.dataset.count = String(hint);
     this.elements.shuffleButton.dataset.count = String(shuffle);
     this.elements.bombButton.dataset.count = String(bomb);

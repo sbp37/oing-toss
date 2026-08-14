@@ -8316,3 +8316,139 @@ img {
   .shuffle-fx .shuffle-drop,
   .board-frame.is-shuffle-settled { animation-duration: 1ms !important; }
 }
+
+/* HUD hierarchy and breathing room pass. Keep the same information, but make
+   stage/time the anchor and prevent the board mat from visually touching the
+   panels above and below it. */
+.screen-play {
+  row-gap: clamp(10px, 1.25dvh, 12px);
+}
+
+.play-hud {
+  grid-template-rows: 34px 24px 18px;
+  gap: 3px;
+  padding: 7px 11px 8px;
+  border: 1px solid rgba(211, 181, 132, .42);
+  border-radius: 20px;
+  background: rgba(255, 253, 246, .94);
+  box-shadow: 0 5px 15px rgba(66, 103, 112, .085), inset 0 1px 0 #fff;
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+
+.hud-topline {
+  grid-template-columns: 64px minmax(74px, 1fr) 108px;
+  gap: 5px;
+}
+
+.hud-controls { gap: 3px; }
+.pause-button { width: 34px; height: 29px; }
+.hud-mini-button { width: 27px; height: 27px; }
+
+.round-mini {
+  min-height: 30px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+  padding: 3px 4px 0;
+}
+
+.round-mini span {
+  color: #738296;
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+
+.round-mini strong {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.time-readout {
+  min-width: 108px;
+  min-height: 34px;
+  padding: 4px 8px 6px;
+  border-radius: 15px;
+  background: rgba(239, 252, 255, .94);
+}
+
+.time-readout strong { font-size: 21px; }
+
+.hud-secondline {
+  min-height: 24px;
+  padding-inline: 4px;
+  gap: 14px;
+}
+
+.score-readout,
+.combo-readout {
+  min-height: 23px;
+  padding: 0;
+}
+
+.score-readout img,
+.combo-readout img { width: 14px; height: 14px; }
+.score-readout span,
+.combo-readout span { color: #84909e; font-size: 10px; }
+.score-readout strong { color: #3b526e; font-size: 17px; }
+.combo-readout strong { font-size: 18px; }
+
+/* The pulsing star already communicates that an item reward is close. The
+   floating "선물 +1" capsule competed with score and combo for the same row. */
+.combo-readout.is-reward-close::after { display: none; }
+
+.goal-status {
+  min-height: 18px;
+  grid-template-columns: max-content minmax(84px, 1fr);
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.goal-copy { gap: 4px; font-size: 10px; }
+.goal-copy b { font-size: 14px; }
+.goal-track { height: 5px; }
+
+.board-zone::before {
+  inset: -3px -4px -5px;
+}
+
+.play-footer { margin-top: 0; }
+
+/* Stage unlock timing stays in game logic and accessibility copy; the locked
+   tool itself no longer carries the cramped S3/S5 prototype badge. */
+.item-button[data-state="locked"][data-lock-copy=""]::after { display: none; }
+
+/* The local Jua subset is rebuilt from every current runtime phrase below;
+   these explicit rules prevent later utility typography from splitting the
+   result reaction and its primary action across font families. */
+.result-message,
+.result-actions .btn,
+.result-actions .btn > span,
+.result-home-button,
+.result-home-button > span {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@media (max-height: 815px) {
+  .screen-play { row-gap: 8px; }
+  .play-hud { padding: 6px 9px 7px; }
+  .hud-topline { grid-template-columns: 62px minmax(70px, 1fr) 104px; gap: 4px; }
+  .time-readout { min-width: 104px; }
+}
+
+@media (max-width: 340px) {
+  .play-hud { padding-inline: 7px; }
+  .hud-topline { grid-template-columns: 59px minmax(62px, 1fr) 94px; gap: 3px; }
+  .pause-button { width: 31px; height: 27px; }
+  .hud-mini-button { width: 25px; height: 25px; }
+  .round-mini { gap: 3px; padding-inline: 1px; }
+  .round-mini span { font-size: 9px; }
+  .round-mini strong { font-size: 19px; }
+  .time-readout { min-width: 94px; padding-inline: 5px; }
+  .time-readout strong { font-size: 18px; }
+  .hud-secondline { gap: 8px; }
+  .goal-status { gap: 7px; }
+}
