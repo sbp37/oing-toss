@@ -38,50 +38,19 @@
 .play-ui-v4 {
   --chrome-ratio: 2.164103;            /* 1688 / 780 */
   --chrome-inv-ratio: 0.4620853;       /*  780 / 1688 */
-  --chrome-base-width: min(100vw, 430px);
-
-  /* Only the decorative ground below the speech bubble may leave the screen —
-     that is the bottom 6.2% of the canvas. Past that the whole chrome scales
-     down (letterboxed by sky) instead of stretching, so the arch, the dock and
-     the bubble keep their drawn proportions on every phone ratio. */
-  --chrome-height: min(
-    calc(var(--chrome-base-width) * var(--chrome-ratio)),
-    calc(100dvh * 1.0663)
-  );
-  --chrome-width: min(
-    var(--chrome-base-width),
-    calc(var(--chrome-height) * var(--chrome-inv-ratio))
-  );
-  /* Taller viewports keep the ground on screen and show plain sky above, which
-     is the one band of the artwork that extends without a visible seam. */
-  --chrome-top: max(0px, calc(100dvh - var(--chrome-height)));
+  /* The chrome is authored at 390 × 844 and must follow the PHONE WIDTH.
+     Height-driven scaling made an in-app browser's short visible viewport
+     shrink the entire game, leaving blue side bars and tiny tiles. Keep the
+     artwork proportional at full width; short viewports may trim only the
+     decorative ground below the coach instead of shrinking HUD/gameplay. */
+  --chrome-width: min(100%, 430px);
+  --chrome-height: calc(var(--chrome-width) * var(--chrome-ratio));
+  --chrome-top: 0px;
 
   position: relative;
   padding: 0;
   overflow: hidden;
-  /* The band above the chrome is filled with the artwork's own top-row sky,
-     sampled left-to-right, so a taller phone shows more sky instead of a seam
-     (worst-case step across the join is 3/255). */
   background:
-    linear-gradient(90deg,
-      rgb(145, 206, 252) 0%,
-      rgb(137, 204, 252) 50%,
-      rgb(127, 199, 253) 82%,
-      rgb(134, 202, 253) 100%)
-      top center / 100% var(--chrome-top) no-repeat,
-    linear-gradient(180deg,
-      rgb(138, 204, 252) 0%,
-      rgb(170, 224, 253) 11.4%,
-      rgb(200, 238, 253) 23.7%,
-      rgb(225, 246, 254) 41.3%,
-      rgb(236, 250, 254) 60.2%,
-      rgb(211, 240, 253) 72.6%,
-      rgb(229, 245, 253) 84.5%,
-      rgb(210, 235, 248) 89.5%,
-      rgb(217, 231, 181) 93.2%,
-      rgb(195, 218, 167) 96.4%,
-      rgb(175, 209, 154) 100%)
-      center var(--chrome-top) / 100% var(--chrome-height) no-repeat,
     url("../assets/backgrounds/play-bg@2x.webp") center / cover no-repeat,
     #8dd7f2;
 }
@@ -556,15 +525,14 @@
 }
 
 .play-ui-v4 .board {
-  /* the square cell edge: whichever axis runs out first decides it */
-  --cell: min(
-    calc(var(--chrome-width) * 0.84359 / var(--board-cols)),
-    calc(var(--chrome-height) * 0.45142 / var(--board-rows))
-  );
-  width: calc(var(--cell) * var(--board-cols));
-  height: calc(var(--cell) * var(--board-rows));
-  max-height: none;
-  aspect-ratio: auto;
+  /* Fit the real board ratio inside the painted recess. Avoid dividing a CSS
+     length by a custom-property integer: that expression is invalid in the
+     mobile browsers we support and silently fell back to the old 306px board. */
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--board-cols) / var(--board-rows);
   border: 0;
   border-radius: 10px;
   background-color: #fff9ed;
@@ -572,6 +540,13 @@
     linear-gradient(to right, rgba(191,159,111,.29) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(191,159,111,.29) 1px, transparent 1px);
   box-shadow: inset 0 2px 4px rgba(119,83,46,.06);
+}
+
+/* Only the late 6 × 7 board uses the full recess height. Square stages stay
+   genuinely square instead of becoming tall rectangular tiles. */
+.play-ui-v4 .board[data-cols="6"][data-rows="7"] {
+  width: auto;
+  height: 100%;
 }
 
 /* Cells are square by construction now (the grid's own 1px gap and padding
@@ -582,13 +557,21 @@
   height: 100%;
 }
 
-/* Numerals ride the square cell edge at a ~0.55 fill and meet the 30px cap on
-   ordinary phones, so every stage reads at one glyph size — a board never
-   looks bigger just because its cells have more spare room. The cap is doing
-   the real work on STAGE 1-2, whose roomy cells would otherwise push type to
-   43px+, which measured slower to scan, not easier (see git history). */
+/* Let roomy early boards use the large, glanceable numerals that define OING.
+   Later 6–7 column boards still scale down from the actual square cell edge. */
 .play-ui-v4 .tile span {
-  font-size: clamp(15px, calc(var(--cell) * 0.55), 30px);
+  font-size: 43px;
+}
+
+.play-ui-v4 .board[data-cols="5"] .tile span { font-size: 38px; }
+.play-ui-v4 .board[data-cols="6"] .tile span { font-size: 31px; }
+.play-ui-v4 .board[data-cols="7"] .tile span { font-size: 26px; }
+
+@media (max-width: 359px) {
+  .play-ui-v4 .board[data-cols="4"] .tile span { font-size: 38px; }
+  .play-ui-v4 .board[data-cols="5"] .tile span { font-size: 34px; }
+  .play-ui-v4 .board[data-cols="6"] .tile span { font-size: 28px; }
+  .play-ui-v4 .board[data-cols="7"] .tile span { font-size: 23px; }
 }
 
 /* A cleared cell has to read as a shallow recess in the board, never as an
