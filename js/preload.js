@@ -8,6 +8,7 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/decor/star.webp',
   'assets/icons/items/hint.webp',
   'assets/icons/items/shuffle.webp',
+  'assets/effects/shuffle-syrup-swirl@2x.png',
   'assets/icons/items/bomb.webp',
   'assets/ui/button-pause.webp',
   'assets/ui/tiles-syrup-v4/tile-blush.webp',

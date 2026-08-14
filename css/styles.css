@@ -7332,7 +7332,7 @@ img {
   text-align: center;
 }
 
-.item-button[data-state="locked"]::after { content: "잠금"; }
+.item-button[data-state="locked"]::after { content: attr(data-lock-copy); }
 .item-button[data-state="depleted"]::after { content: "소진"; }
 
 .item-button.is-stocked {
@@ -7623,6 +7623,7 @@ img {
   font-style: normal;
   letter-spacing: -.03em;
   line-height: 1;
+  white-space: nowrap;
   pointer-events: none;
 }
 
@@ -7634,7 +7635,7 @@ img {
 
 @media (max-width: 340px) {
   .combo-reward-pop { max-width: 170px; font-size: 10px; }
-  .special-tile-label { right: 2px; bottom: 2px; min-width: 21px; padding-inline: 3px; font-size: 7px; }
+  .special-tile-label { right: 2px; bottom: 2px; min-width: 21px; padding-inline: 2px; font-size: 9px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -7829,4 +7830,319 @@ img {
   .screen-play.is-time-rescued::before,
   .screen-play.is-board-growth-clear .board-frame,
   .stage-growth-confetti { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Premium shuffle pass: the tiles remain the motion hero. Replace the former
+   thin orbit lines with three filled syrup shapes and the approved decor set. */
+.shuffle-fx {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255,255,244,.78) 0 8%, rgba(194,247,233,.38) 20%, rgba(255,237,205,.13) 42%, transparent 68%);
+}
+
+.shuffle-fx::before,
+.shuffle-fx::after {
+  border: 0;
+  opacity: 0;
+  background: radial-gradient(circle at 34% 28%, rgba(255,255,255,.94), rgba(151,232,215,.7) 48%, rgba(86,195,176,.25) 72%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.72), 0 8px 20px rgba(54,157,139,.14);
+  animation: shuffle-syrup-bloom 720ms cubic-bezier(.16,.76,.24,1.08) both;
+}
+
+.shuffle-fx::before {
+  width: 88px;
+  height: 74px;
+  border-radius: 44% 56% 51% 49% / 58% 44% 56% 42%;
+  transform: translate(-50%,-50%) scale(.42) rotate(-12deg);
+}
+
+.shuffle-fx::after {
+  width: 132px;
+  height: 108px;
+  border-radius: 58% 42% 48% 52% / 45% 60% 40% 55%;
+  background: radial-gradient(circle at 62% 32%, rgba(255,255,255,.86), rgba(255,225,182,.52) 52%, rgba(255,193,160,.18) 76%);
+  animation-delay: 80ms;
+  transform: translate(-50%,-50%) scale(.35) rotate(16deg);
+}
+
+.shuffle-fx img {
+  z-index: 5;
+  width: clamp(54px, 17%, 68px);
+  padding: 10px;
+  border: 2px solid rgba(255,255,255,.95);
+  background: radial-gradient(circle at 35% 26%, #fff 0 14%, #c8f4e9 52%, #75d2bf 100%);
+  box-shadow:
+    0 0 0 6px rgba(255,255,255,.3),
+    0 9px 20px rgba(48,149,132,.23),
+    inset 0 2px 3px rgba(255,255,255,.82);
+}
+
+.shuffle-syrup {
+  --syrup-x: -72px;
+  --syrup-y: -48px;
+  --syrup-rotate: -28deg;
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  width: 62px;
+  height: 43px;
+  border: 2px solid rgba(255,255,255,.74);
+  border-radius: 55% 45% 62% 38% / 48% 61% 39% 52%;
+  background: linear-gradient(145deg, rgba(245,255,251,.96), rgba(112,218,198,.86));
+  box-shadow: inset 0 2px 2px rgba(255,255,255,.76), 0 6px 13px rgba(52,153,136,.16);
+  opacity: 0;
+  animation: shuffle-syrup-swoop 720ms cubic-bezier(.18,.74,.25,1.06) both;
+}
+
+.shuffle-syrup:nth-of-type(2) {
+  --syrup-x: 76px;
+  --syrup-y: -35px;
+  --syrup-rotate: 34deg;
+  width: 56px;
+  height: 39px;
+  background: linear-gradient(145deg, rgba(255,255,247,.97), rgba(255,210,173,.82));
+  animation-delay: 55ms;
+}
+
+.shuffle-syrup:nth-of-type(3) {
+  --syrup-x: 14px;
+  --syrup-y: 72px;
+  --syrup-rotate: 82deg;
+  width: 50px;
+  height: 35px;
+  background: linear-gradient(145deg, rgba(255,251,255,.97), rgba(211,190,244,.72));
+  animation-delay: 105ms;
+}
+
+.shuffle-fx b:nth-of-type(5) {
+  --shuffle-star-x: 8px;
+  --shuffle-star-y: -92px;
+  width: 16px;
+  height: 16px;
+  animation-delay: 185ms;
+}
+
+.shuffle-paw {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 2px 4px rgba(70,153,140,.22));
+}
+
+.shuffle-paw:nth-of-type(1) { --paw-x: -82px; --paw-y: 52px; }
+.shuffle-paw:nth-of-type(2) { --paw-x: 84px; --paw-y: 44px; }
+
+@keyframes shuffle-syrup-bloom {
+  0% { opacity:0; transform:translate(-50%,-50%) scale(.25) rotate(-16deg); }
+  28% { opacity:.82; }
+  62% { opacity:.58; }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(1.28) rotate(24deg); }
+}
+
+@keyframes shuffle-syrup-swoop {
+  0%,10% { opacity:0; transform:translate(-50%,-50%) scale(.28) rotate(0); }
+  35% { opacity:.94; transform:translate(-50%,-50%) scale(.9) rotate(8deg); }
+  72% { opacity:.78; }
+  100% { opacity:0; transform:translate(calc(-50% + var(--syrup-x)),calc(-50% + var(--syrup-y))) scale(1.08) rotate(var(--syrup-rotate)); }
+}
+
+/* Labels stay readable on every supported board size. */
+.special-tile-label,
+.board-item-action {
+  min-width: 25px;
+  padding-inline: 3px;
+  font-size: clamp(9px, 2.2vw, 10px);
+  white-space: nowrap;
+}
+
+@media (max-width: 340px) {
+  .special-tile-label,
+  .board-item-action {
+    min-width: 23px;
+    padding-inline: 2px;
+    font-size: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shuffle-syrup,
+  .shuffle-fx::before,
+  .shuffle-fx::after { animation-duration: 1ms !important; }
+}
+
+/* Play polish pass: give the colorful board a quiet cream mat and make the
+   four tools read as a compact control shelf, not another row of number tiles. */
+.board-zone {
+  position: relative;
+  isolation: isolate;
+}
+
+.board-zone::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -7px -4px -10px;
+  border: 1px solid rgba(255,255,255,.78);
+  border-radius: 27px;
+  background: rgba(255,251,237,.72);
+  box-shadow: 0 9px 22px rgba(58,103,116,.08), inset 0 1px 0 rgba(255,255,255,.88);
+  pointer-events: none;
+}
+
+.board-zone .board-frame { z-index: 1; }
+
+.item-actions {
+  gap: clamp(5px,1.45vw,7px);
+  padding: 6px 7px 8px;
+  border-color: rgba(203,182,145,.58);
+  border-radius: 18px;
+  background: rgba(249,246,237,.96);
+  box-shadow: 0 3px 0 rgba(140,116,78,.08), 0 7px 14px rgba(53,88,97,.07), inset 0 1px 0 #fff;
+}
+
+.item-actions::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 10px;
+  bottom: 11px;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(transparent, rgba(169,155,131,.28) 24% 76%, transparent);
+  pointer-events: none;
+}
+
+.item-button {
+  z-index: 1;
+  height: clamp(51px,14.4vw,57px);
+  min-height: 44px;
+  border-width: 1px;
+  border-radius: 14px;
+  background: color-mix(in srgb,var(--item-accent) 10%,#fffdf7);
+  box-shadow: 0 2px 0 color-mix(in srgb,var(--item-accent) 25%,#cbbd9f), 0 4px 8px rgba(69,61,50,.07), inset 0 1px 0 #fff;
+}
+
+.item-button::before { display: none; }
+.item-icon { width: clamp(24px,7.2vw,29px); height: clamp(25px,7.5vw,30px); }
+.item-button > span { font-size: clamp(11px,3.1vw,13px); }
+
+.item-button[data-state="available"] {
+  box-shadow: 0 0 0 1px color-mix(in srgb,var(--item-accent) 30%,#d8c9aa), 0 2px 0 color-mix(in srgb,var(--item-accent) 29%,#bfad8c), 0 5px 9px rgba(86,69,50,.07), inset 0 1px 0 #fff;
+}
+
+.item-button[data-state="locked"] {
+  border-color: color-mix(in srgb,var(--item-accent) 23%,#d8d0c1);
+  background: color-mix(in srgb,var(--item-accent) 7%,#f5f2eb);
+  color: #817d75;
+}
+
+.item-button[data-state="locked"] .item-icon {
+  filter: saturate(.62) contrast(.94);
+  opacity: .68;
+}
+
+.cat-coach {
+  width: min(100%,350px);
+  height: clamp(102px,15dvh,118px);
+  grid-template-columns: clamp(94px,27vw,108px) minmax(0,1fr);
+  gap: 1px;
+}
+
+.play-character-stage {
+  width: clamp(92px,26vw,106px);
+  height: clamp(98px,14.5dvh,112px);
+}
+
+.cat-message {
+  min-height: 44px;
+  padding: 7px 13px 6px;
+  font-family: var(--font-display);
+  font-size: clamp(15px,4.25vw,17px);
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+/* Generated 640px transparent raster replaces the former wire-like curves.
+   The artwork blooms once while the actual tiles remain the motion hero. */
+.shuffle-fx {
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,244,.64), rgba(192,246,233,.2) 42%, transparent 70%);
+}
+
+.shuffle-fx::before {
+  width: clamp(150px,48%,190px);
+  height: clamp(150px,48%,190px);
+  border: 0;
+  border-radius: 0;
+  background: url("../assets/effects/shuffle-syrup-swirl@2x.png") center / contain no-repeat;
+  box-shadow: none;
+  opacity: 0;
+  transform: translate(-50%,-50%) scale(.34) rotate(-16deg);
+  animation: shuffle-art-bloom 760ms cubic-bezier(.16,.76,.24,1.08) both;
+}
+
+.shuffle-fx::after {
+  width: 118px;
+  height: 118px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,247,.9), rgba(143,226,209,.34) 48%, transparent 72%);
+  box-shadow: none;
+  opacity: 0;
+  animation: shuffle-soft-glow 680ms ease-out 60ms both;
+}
+
+.shuffle-fx .shuffle-core-icon {
+  z-index: 5;
+  width: clamp(48px,14%,58px);
+  padding: 9px;
+  border: 1.5px solid rgba(255,255,255,.94);
+  background: radial-gradient(circle at 36% 26%,#fff,#c5f4e9 58%,#74d2bf);
+  box-shadow: 0 0 0 6px rgba(255,255,255,.24),0 8px 18px rgba(43,149,132,.2),inset 0 2px 3px rgba(255,255,255,.78);
+}
+
+.shuffle-syrup { display: none; }
+
+.board-frame.is-shuffle-settled {
+  animation: shuffle-settle-frame 220ms ease-out both;
+}
+
+@keyframes shuffle-art-bloom {
+  0% { opacity:0; transform:translate(-50%,-50%) scale(.34) rotate(-18deg); }
+  28% { opacity:.92; }
+  68% { opacity:.78; transform:translate(-50%,-50%) scale(.98) rotate(7deg); }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(1.12) rotate(15deg); }
+}
+
+@keyframes shuffle-soft-glow {
+  0% { opacity:0; transform:translate(-50%,-50%) scale(.45); }
+  38% { opacity:.86; }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(1.24); }
+}
+
+@keyframes shuffle-settle-frame {
+  0%,100% { filter:none; }
+  45% { filter:brightness(1.055) saturate(1.04); box-shadow:0 4px 0 rgba(174,124,65,.14),0 12px 24px rgba(55,105,121,.14),0 0 0 5px rgba(125,221,202,.2),inset 0 2px 0 #fff; }
+}
+
+.special-tile-label {
+  min-width: 28px;
+  padding-inline: 3px;
+  font-size: clamp(9px,2.15vw,10px);
+}
+
+@media (max-height: 815px) {
+  .cat-coach { height: 84px; grid-template-columns: 82px minmax(0,1fr); }
+  .play-character-stage { width: 80px; height: 84px; }
+  .cat-message { font-size: clamp(14px,4vw,16px); }
+}
+
+@media (max-width: 340px) {
+  .item-actions { gap: 3px; padding-inline: 5px; }
+  .item-button { border-radius: 12px; }
+  .special-tile-label { min-width: 27px; padding-inline: 2px; font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shuffle-fx::before,
+  .shuffle-fx::after,
+  .board-frame.is-shuffle-settled { animation-duration: 1ms !important; }
 }

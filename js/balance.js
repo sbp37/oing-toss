@@ -31,6 +31,7 @@ import {
   stageChallengeBonus,
   stageChallengeForStage,
   stageProgressGainForClear,
+  stageShowcaseBoardDrop,
 } from './data.js';
 
 export const PLAYER_PROFILES = Object.freeze({
@@ -95,6 +96,8 @@ export function simulateRun({
   profile = 'regular',
   durationSeconds = GAME_DURATION_SECONDS,
   maximumElapsedSeconds = 300,
+  showcaseEligible = false,
+  showcaseIndex = 0,
 } = {}) {
   const settings = typeof profile === 'string' ? PLAYER_PROFILES[profile] : profile;
   if (!settings) throw new Error(`Unknown player profile: ${profile}`);
@@ -142,6 +145,7 @@ export function simulateRun({
     let previousDropType = null;
     let dropsEarned = 0;
     let cloverGiven = false;
+    let stageShowcaseGiven = false;
     let dropPity = { megabomb: 0, clover: 0, freeze: 0 };
     let cloverBoost = false;
     let comboExpiresAtSeconds = 0;
@@ -212,6 +216,16 @@ export function simulateRun({
       state.stageChallengeStreak = 0;
       refreshComboDeadline();
       buildBoard();
+      const showcaseDrop = showcaseEligible
+        ? stageShowcaseBoardDrop(state.round, () => (Math.min(2, showcaseIndex) + 0.5) / 3, stageShowcaseGiven)
+        : null;
+      if (showcaseDrop) {
+        stageShowcaseGiven = true;
+        previousDropType = showcaseDrop.id;
+        if (showcaseDrop.id === 'clover') cloverGiven = true;
+        state.itemsEarned[showcaseDrop.id] = (state.itemsEarned[showcaseDrop.id] || 0) + 1;
+        useDrop(showcaseDrop);
+      }
     };
     const useDrop = (drop) => {
       if (!drop || random() > settings.itemUseRate) return;
@@ -314,6 +328,7 @@ export function simulateRun({
           previousType: previousDropType,
           rewardIndex: dropsEarned,
           stage: state.round,
+          timeBonusCapped: availableItemTimeBonus(state.itemTimeBonus, 1) <= 0,
         });
         if (drop) {
           dropsEarned += 1;
@@ -378,6 +393,8 @@ export function simulateBalanceSuite({ runsPerProfile = 40, seed = 20260808 } = 
     const runs = Array.from({ length: runsPerProfile }, (_, index) => simulateRun({
       profile,
       seed: seed + profileIndex * 100000 + index,
+      showcaseEligible: index < 3,
+      showcaseIndex: index,
     }));
     return [profile, summarizeRuns(runs)];
   }));

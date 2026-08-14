@@ -31,6 +31,7 @@ import {
   stageChallengeBonus,
   stageChallengeForStage,
   stageProgressGainForClear,
+  stageShowcaseBoardDrop,
   stageIntroForStage,
   stageClearBonus,
   scoreForBomb,
@@ -212,6 +213,7 @@ class OingGame {
 
   freshState(startStage = this.runtime?.forcedRound || 1, { recordEligible } = {}) {
     const stage = Math.max(1, Math.round(Number(startStage) || 1));
+    const rareShowcaseCount = storageAdapter.getRareShowcaseCount();
     const eligible = typeof recordEligible === 'boolean'
       ? recordEligible
       : recordEligibleForStartStage(stage);
@@ -242,6 +244,9 @@ class OingGame {
       boardDropPity: { megabomb: 0, clover: 0, freeze: 0 },
       lastBoardDropType: null,
       cloverDropped: false,
+      stageShowcaseGiven: false,
+      stageShowcaseEligible: this.runtime?.testMode || rareShowcaseCount < 3,
+      stageShowcaseIndex: this.runtime?.testMode ? 0 : rareShowcaseCount,
       stageChallengeComplete: false,
       stageChallengeStreak: 0,
       stageChallengeScore: 0,
@@ -386,7 +391,7 @@ class OingGame {
     this.forceTestBoardItem();
     this.ui.updateItems({ ...this.state.items, clockAvailable: this.stageDuration > 0 });
     this.ui.showScreen('play');
-    this.ui.setPlayCharacter('idle');
+    this.ui.setPlayCharacter('peek');
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();
@@ -463,7 +468,9 @@ class OingGame {
     this.itemTapCandidate = null;
     const config = getRoundConfig(this.state.round);
     this.generateBoard(config.size, config.rows);
-    this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round));
+    this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round, Math.random, {
+      timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
+    }));
     const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
     this.renderBoard();
     this.updateHUD();
@@ -589,6 +596,7 @@ class OingGame {
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
         stage: this.state.round,
+        timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
       });
       if (drop) {
         earnedDrop = drop;
@@ -614,7 +622,13 @@ class OingGame {
 
   announceBoardItems(items, { playSound = true } = {}) {
     this.ui.showBoardItemDrops(items);
-    this.showCatMessage('itemDrop');
+    const showcase = items.find((item) => item.showcase);
+    if (showcase) {
+      const label = BOARD_DROP_ITEMS[showcase.type]?.label || '희귀 아이템';
+      this.ui.showMessage(`${label} 등장이다냥! 톡 눌러봐.`, 2200, 'itemDrop');
+    } else {
+      this.showCatMessage('itemDrop');
+    }
     this.ui.setPlayCharacter('wave', 1000);
     if (playSound) {
       duckMusic(320, 0.68);
@@ -821,6 +835,7 @@ class OingGame {
     if (!shuffled) carried = this.buildRound();
     else this.renderBoard();
     await this.ui.animateShuffleIn();
+    itemHaptic();
     if (carried.length) this.announceBoardItems(carried, { playSound: false });
     this.inputGuardUntil = performance.now() + 140;
   }
@@ -932,6 +947,21 @@ class OingGame {
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
     const unlockGrant = itemUnlockGrantForStage(nextRound);
     if (unlockGrant) this.grantItems(unlockGrant, { source: 'earned' });
+    const showcaseDrop = this.state.stageShowcaseEligible
+      ? stageShowcaseBoardDrop(
+        nextRound,
+        () => (Math.min(2, this.state.stageShowcaseIndex) + 0.5) / 3,
+        this.state.stageShowcaseGiven,
+      )
+      : null;
+    if (showcaseDrop) {
+      this.boardItems.queue(showcaseDrop.id, { earnedAtCombo: this.state.combo, showcase: true });
+      this.state.stageShowcaseGiven = true;
+      if (!this.runtime.testMode) storageAdapter.markRareShowcaseSeen();
+      this.state.lastBoardDropType = showcaseDrop.id;
+      if (showcaseDrop.id === 'clover') this.state.cloverDropped = true;
+      this.telemetry?.itemEarned(showcaseDrop.id);
+    }
     this.state.timeLeft = cappedSessionTime(this.state.timeLeft, timeBonus);
     this.updateHUD();
     this.ui.showStageTimeBonus(awardedTimeBonus);
@@ -1053,6 +1083,7 @@ class OingGame {
     await this.ui.animateShuffleOut();
     this.renderBoard();
     await this.ui.animateShuffleIn();
+    itemHaptic();
     await cast;
     this.inputGuardUntil = performance.now() + 280;
     this.state.inputLocked = false;

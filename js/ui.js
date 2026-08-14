@@ -217,7 +217,7 @@ export class GameUI {
         tile.type = 'button';
         tile.tabIndex = -1;
         tile.className = boardItem
-          ? `tile is-empty is-board-item board-item-${boardItem.type}`
+          ? `tile is-empty is-board-item board-item-${boardItem.type}${boardItem.showcase ? ' is-showcase-item' : ''}`
           : bonusCat
             ? 'tile is-bonus-cat'
             : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}${special ? ` is-special-tile special-${special}` : ''}`;
@@ -275,7 +275,7 @@ export class GameUI {
               badge.alt = '';
               const actionLabel = document.createElement('small');
               actionLabel.className = 'special-tile-label';
-              actionLabel.textContent = special === 'clock' ? '+5s' : 'POP';
+              actionLabel.textContent = special === 'clock' ? '+5초' : '펑!';
               tile.append(badge, actionLabel);
             }
           }
@@ -835,19 +835,12 @@ export class GameUI {
     const effect = document.createElement('div');
     effect.className = 'shuffle-fx';
     const icon = document.createElement('img');
+    icon.className = 'shuffle-core-icon';
     icon.src = 'assets/icons/items/shuffle.webp';
     icon.alt = '';
-    effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
-    const label = document.createElement('strong');
-    label.textContent = 'MIX!';
-    effect.appendChild(label);
-    for (let index = 0; index < 5; index += 1) {
-      const trail = document.createElement('span');
-      trail.className = 'shuffle-curve';
-      effect.appendChild(trail);
-    }
-    for (let index = 0; index < 4; index += 1) effect.appendChild(document.createElement('b'));
-    for (let index = 0; index < 3; index += 1) {
+    effect.appendChild(icon);
+    for (let index = 0; index < 5; index += 1) effect.appendChild(document.createElement('b'));
+    for (let index = 0; index < 2; index += 1) {
       const paw = document.createElement('em');
       paw.className = 'shuffle-paw';
       effect.appendChild(paw);
@@ -863,6 +856,9 @@ export class GameUI {
     this.board.classList.add('is-shuffling-in');
     await delay(380);
     this.board.classList.remove('is-shuffling-in');
+    this.boardFrame.classList.remove('is-shuffle-settled');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-shuffle-settled');
     this.board.querySelectorAll('.tile').forEach((tile) => {
       tile.style.removeProperty('--shuffle-x');
       tile.style.removeProperty('--shuffle-y');
@@ -873,6 +869,7 @@ export class GameUI {
       tile.style.removeProperty('--shuffle-delay');
     });
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
+    window.setTimeout(() => this.boardFrame.classList.remove('is-shuffle-settled'), 240);
   }
 
   async animateBomb(rect) {
@@ -939,7 +936,7 @@ export class GameUI {
 
   showBoardItemDrops(items) {
     this.boardFrame.querySelector('.item-tease')?.remove();
-    items.forEach(({ row, col, type }, index) => {
+    items.forEach(({ row, col, type, showcase = false }, index) => {
       const tile = this.tileAt(row, col);
       if (!tile) return;
       const landingDelay = 300 + index * 80;
@@ -975,7 +972,9 @@ export class GameUI {
       icon.src = definition?.asset || '';
       icon.alt = '';
       const label = document.createElement('span');
-      label.textContent = ITEM_DROP_COPY[type] || `${definition?.label || '아이템'} 등장!`;
+      label.textContent = showcase
+        ? `첫 등장! ${definition?.label || '희귀 아이템'}`
+        : ITEM_DROP_COPY[type] || `${definition?.label || '아이템'} 등장!`;
       effect.append(icon, label);
       for (let sparkle = 0; sparkle < 4; sparkle += 1) effect.appendChild(document.createElement('i'));
       for (let pawIndex = 0; pawIndex < 2; pawIndex += 1) {
@@ -1607,7 +1606,7 @@ export class GameUI {
   }
 
   setPlayCharacter(pose, duration = 0) {
-    const next = CHARACTER_ASSETS[pose] ? pose : 'idle';
+    const next = CHARACTER_ASSETS[pose] ? pose : 'peek';
     const token = ++this.characterToken;
     clearTimeout(this.characterTimer);
     const image = this.elements.playCat;
@@ -1622,9 +1621,9 @@ export class GameUI {
       image.dataset.pose = next;
       void image.offsetWidth;
       image.classList.add('is-switching');
-      if (duration > 0 && next !== 'idle') {
+      if (duration > 0 && next !== 'peek') {
         this.characterTimer = setTimeout(() => {
-          if (token === this.characterToken) this.setPlayCharacter('idle');
+          if (token === this.characterToken) this.setPlayCharacter('peek');
         }, duration);
       }
     };
@@ -1765,7 +1764,7 @@ export class GameUI {
     // 0개일 때 무조건 "소진"을 붙이면, 아직 한 번도 얻은 적 없는 아이템까지
     // "다 써버렸다"로 보인다(폭탄은 1스테이지부터 0이라 첫 화면부터 그렇게 보였다).
     // 한 번이라도 가졌던 적이 있을 때만 소진으로 표시하고, 그 전에는 잠금으로 둔다.
-    const markItem = (button, count, locked = false) => {
+    const markItem = (button, count, locked = false, lockCopy = '잠금') => {
       if (!button) return;
       if (count > 0) button.dataset.everHeld = '1';
       const everHeld = button.dataset.everHeld === '1';
@@ -1775,11 +1774,12 @@ export class GameUI {
       button.classList.toggle('is-depleted', depleted);
       button.classList.toggle('is-stage-locked', stageLocked);
       button.dataset.state = stageLocked ? 'locked' : depleted ? 'depleted' : 'available';
+      button.dataset.lockCopy = lockCopy;
     };
     markItem(this.elements.hintButton, hint);
     markItem(this.elements.shuffleButton, shuffle);
-    markItem(this.elements.bombButton, bomb);
-    markItem(this.elements.clockButton, clock, !clockAvailable);
+    markItem(this.elements.bombButton, bomb, false, 'S3');
+    markItem(this.elements.clockButton, clock, !clockAvailable, 'S5');
     this.elements.hintButton.dataset.count = String(hint);
     this.elements.shuffleButton.dataset.count = String(shuffle);
     this.elements.bombButton.dataset.count = String(bomb);
