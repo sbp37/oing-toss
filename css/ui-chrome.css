@@ -43,8 +43,11 @@
      shrink the entire game, leaving blue side bars and tiny tiles. Keep the
      artwork proportional at full width; short viewports may trim only the
      decorative ground below the coach instead of shrinking HUD/gameplay. */
-  --chrome-width: min(100%, 430px);
-  --chrome-height: calc(var(--chrome-width) * var(--chrome-ratio));
+  /* Use precomputed viewport lengths rather than CSS multiplication. Several
+     Android in-app browsers reject `length * number`; when that happened the
+     artwork fell back to an old box while HTML overlays kept their anchors. */
+  --chrome-width: min(100vw, 430px);
+  --chrome-height: min(216.4103vw, 930.564px);
   --chrome-top: 0px;
 
   position: relative;
@@ -165,12 +168,12 @@
 /* widths are relative to the HUD canvas, not to the zero-width .hud-controls */
 .play-ui-v4 .pause-button {
   left: 0;
-  width: calc(var(--chrome-width) * 0.15128);   /* x 28..146  */
+  width: min(15.128vw, 65.05px);   /* x 28..146  */
 }
 
 .play-ui-v4 .hud-mini-button {
-  left: calc(var(--chrome-width) * 0.15128);
-  width: calc(var(--chrome-width) * 0.17179);   /* x 146..280 */
+  left: min(15.128vw, 65.05px);
+  width: min(17.179vw, 73.87px);   /* x 146..280 */
 }
 
 .play-ui-v4 .pause-button::before,
@@ -188,12 +191,12 @@
   position: absolute;
   left: 64.83%;
   top: 49.55%;
-  width: clamp(3px, calc(var(--chrome-width) * 0.0095), 4.5px);
-  height: clamp(13px, calc(var(--chrome-width) * 0.04), 18px);
+  width: clamp(3px, .95vw, 4.5px);
+  height: clamp(13px, 4vw, 18px);
   border-radius: 2px;
   background: #ce6a7e;
-  box-shadow: clamp(7px, calc(var(--chrome-width) * 0.0215), 10px) 0 0 #ce6a7e;
-  transform: translate(calc(-50% - clamp(3.5px, calc(var(--chrome-width) * 0.0108), 5px)), -50%);
+  box-shadow: clamp(7px, 2.15vw, 10px) 0 0 #ce6a7e;
+  transform: translate(calc(-50% - clamp(3.5px, 1.08vw, 5px)), -50%);
 }
 
 /* speaker glyph: its drawn mass is ~8px right and 5px below the <i> origin */
@@ -258,7 +261,7 @@
   background: transparent;
   box-shadow: none;
   color: #fffdf7;
-  font-size: clamp(10px, calc(var(--chrome-width) * 0.03), 13px);
+  font-size: clamp(10px, 3vw, 13px);
   letter-spacing: .05em;
   line-height: 1;
   white-space: nowrap;
@@ -272,7 +275,7 @@
   left: 50%;
   min-width: 0;
   color: #e98f36;
-  font-size: clamp(22px, calc(var(--chrome-width) * 0.072), 30px);
+  font-size: clamp(22px, 7.2vw, 30px);
   line-height: 1;
   transform: translate(-50%, -50%);
   text-shadow: 0 2px 0 rgba(255,255,255,.86);
@@ -291,7 +294,7 @@
   min-height: 0;
   margin: 0;
   padding: 0;
-  gap: clamp(3px, calc(var(--chrome-width) * 0.01), 5px);
+  gap: clamp(3px, 1vw, 5px);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -301,8 +304,8 @@
 }
 
 .play-ui-v4 .time-readout img {
-  width: clamp(19px, calc(var(--chrome-width) * 0.06), 26px);
-  height: clamp(21px, calc(var(--chrome-width) * 0.066), 28px);
+  width: clamp(19px, 6vw, 26px);
+  height: clamp(21px, 6.6vw, 28px);
   flex: 0 0 auto;
 }
 
@@ -310,7 +313,7 @@
   color: #24506f;
   /* 0.08 put "02:00" at 117px in a 111px slot at 390px wide — the painted
      slot, icon and gap leave ~88px, which 0.072 fits at every tested width. */
-  font-size: clamp(21px, calc(var(--chrome-width) * 0.072), 28px);
+  font-size: clamp(21px, 7.2vw, 28px);
   font-weight: 800;
   line-height: 1;
 }
@@ -343,7 +346,7 @@
   min-width: 0;
   min-height: 0;
   padding: 0;
-  gap: clamp(3px, calc(var(--chrome-width) * 0.01), 5px);
+  gap: clamp(3px, 1vw, 5px);
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -397,7 +400,7 @@
   display: block;
   flex: 0 0 auto;
   color: #7d8587;
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.0275), 12px);
+  font-size: clamp(9px, 2.75vw, 12px);
   line-height: 1;
   white-space: nowrap;
 }
@@ -408,7 +411,7 @@
   max-width: 100%;
   overflow: hidden;
   color: #4f6473;
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
+  font-size: clamp(13px, 4.1vw, 17px);
   line-height: 1;
   text-overflow: clip;
   white-space: nowrap;
@@ -418,11 +421,11 @@
    ("21,400") never ellipsises inside the painted pill — the digits give up a
    step of size instead and the whole number stays readable. */
 .play-ui-v4 .score-readout strong[data-digits="l"] {
-  font-size: clamp(11px, calc(var(--chrome-width) * 0.034), 14px);
+  font-size: clamp(11px, 3.4vw, 14px);
 }
 
 .play-ui-v4 .score-readout strong[data-digits="xl"] {
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.028), 11.5px);
+  font-size: clamp(9px, 2.8vw, 11.5px);
 }
 
 /* ---------------------------------------------------------------------------
@@ -437,7 +440,7 @@
   width: 81.410%;
   height: 3.910%;
   min-height: 0;
-  gap: clamp(6px, calc(var(--chrome-width) * 0.024), 11px);
+  gap: clamp(6px, 2.4vw, 11px);
   padding: 0;
   align-items: center;
   pointer-events: none;
@@ -448,14 +451,14 @@
 
 .play-ui-v4 .goal-copy {
   color: #4f5b64;
-  font-size: clamp(11px, calc(var(--chrome-width) * 0.0315), 14px);
+  font-size: clamp(11px, 3.15vw, 14px);
   line-height: 1;
   white-space: nowrap;
 }
 
 .play-ui-v4 .goal-copy b {
   color: #e85073;
-  font-size: clamp(17px, calc(var(--chrome-width) * 0.053), 23px);
+  font-size: clamp(17px, 5.3vw, 23px);
   line-height: 1;
 }
 
@@ -474,7 +477,7 @@
 }
 
 .play-ui-v4 .stage-mission {
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.027), 11px);
+  font-size: clamp(9px, 2.7vw, 11px);
   white-space: nowrap;
 }
 
@@ -495,10 +498,10 @@
 .play-ui-v4 .board-zone {
   position: absolute;
   z-index: 5;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.24585);
+  top: min(53.2045vw, 228.779px);
   left: 50%;
-  width: calc(var(--chrome-width) * 0.84359);
-  height: calc(var(--chrome-height) * 0.45142);
+  width: min(84.359vw, 362.744px);
+  height: min(97.6919vw, 420.075px);
   padding: 0;
   overflow: visible;
   align-items: center;
@@ -611,10 +614,10 @@
    ------------------------------------------------------------------------ */
 .play-ui-v4 .play-feedback-rail {
   z-index: 25;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.22347);
+  top: min(48.3612vw, 207.953px);
   left: 50%;
   bottom: auto;
-  width: min(calc(var(--chrome-width) * 0.76), 296px);
+  width: min(76vw, 296px);
   height: 28px;
   transform: translateX(-50%);
 }
@@ -627,12 +630,12 @@
 }
 
 .play-ui-v4 .tutorial-callout strong {
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.037), 15px);
+  font-size: clamp(13px, 3.7vw, 15px);
 }
 
 .play-ui-v4.is-stage-clearing .play-feedback-rail {
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.42394);
-  width: min(calc(var(--chrome-width) * 0.82), 320px);
+  top: min(91.745vw, 394.503px);
+  width: min(82vw, 320px);
   height: 48px;
 }
 
@@ -776,7 +779,7 @@
   box-shadow: 0 1px 2px rgba(78, 71, 62, .12);
   color: #fff;
   font-family: var(--font-sans);
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.026), 11px);
+  font-size: clamp(9px, 2.6vw, 11px);
   font-weight: 800;
   line-height: 1.25;
   width: auto;
@@ -837,7 +840,7 @@
   left: 6%;
   right: 6%;
   bottom: 12%;
-  font-size: clamp(12px, calc(var(--chrome-width) * 0.037), 16px);
+  font-size: clamp(12px, 3.7vw, 16px);
   line-height: 1;
   text-align: center;
   white-space: nowrap;
@@ -848,9 +851,9 @@
 .play-ui-v4 .item-button b {
   right: 5%;
   top: 4%;
-  width: clamp(20px, calc(var(--chrome-width) * 0.058), 25px);
-  height: clamp(20px, calc(var(--chrome-width) * 0.058), 25px);
-  font-size: clamp(12px, calc(var(--chrome-width) * 0.035), 15px);
+  width: clamp(20px, 5.8vw, 25px);
+  height: clamp(20px, 5.8vw, 25px);
+  font-size: clamp(12px, 3.5vw, 15px);
 }
 
 .play-ui-v4 .item-button[data-state="locked"] b { display: none; }
@@ -913,7 +916,7 @@
   background: transparent;
   box-shadow: none;
   color: #6b5447;
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.039), 16px);
+  font-size: clamp(13px, 3.9vw, 16px);
   line-height: 1.26;
   text-align: center;
   text-wrap: balance;
@@ -927,7 +930,7 @@
    is 25 units and lands on exactly two lines at this size. */
 .play-ui-v4 .cat-message.is-long,
 .play-ui-v4.is-tall-board .cat-message.is-long {
-  font-size: clamp(10.5px, calc(var(--chrome-width) * 0.0335), 14px);
+  font-size: clamp(10.5px, 3.35vw, 14px);
   line-height: 1.24;
 }
 
