@@ -1643,7 +1643,15 @@ img {
   background-position: center;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  box-shadow: none;
+  /* Every cell now paints the same near-neutral tile (L*90/C*8), so the
+     board floor (#fff6e9) and the tile's own pale edge sit only ~5 L* apart —
+     with a 1-1.8px gap between cells, that was not enough to read as a grid at
+     a glance. This ring is what actually draws the cell boundary; it is a
+     fixed warm/white pair applied identically everywhere, so it defines edges
+     without reintroducing a per-cell hue. */
+  box-shadow:
+    inset 0 0 0 1px rgba(178, 140, 88, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.65);
   filter:
     drop-shadow(0 1.5px 1px rgba(129, 93, 68, 0.18))
     drop-shadow(0 3px 3px rgba(92, 117, 145, 0.08));
@@ -1732,8 +1740,17 @@ img {
    than the board tile.
 
    This replaced a flat #ffd98c, which was a fixed yellow owing nothing to the
-   tile set and read as a sticker. The glow behind the cat stays neutral white
-   so it lifts the character without muddying the peach underneath. */
+   tile set and read as a sticker. An earlier pass added a white radial glow
+   here to lift the cat character, and that claimed not to dilute the peach
+   underneath — that claim was wrong. Blending white at 0.72 alpha over the
+   raw peach (C* 17.3) collapses it to C* 4.7, and the gradient does not fall
+   below 0.40 until 42% of the radius, so nearly the whole tile was reading as
+   washed cream rather than peach. The cat art has its own drop-shadow filter
+   (`.bonus-cat-art`) and does not need the tile under it lightened for
+   contrast, so the glow here is now small and faint — a glass highlight, not
+   a wash. Even at these opacities the corner of the tile is close to the raw
+   webp's C* 17.3, since the gradient reaches transparent by 60% of the
+   radius. */
 .tile.is-bonus-cat {
   --tile-art: url("../assets/ui/tiles-syrup-v4/tile-peach.webp");
   z-index: 2;
@@ -1741,7 +1758,7 @@ img {
   border: 0;
   background-color: transparent;
   background-image:
-    radial-gradient(circle at 50% 55%, rgba(255,255,255,0.72) 0 24%, rgba(255,255,255,0.40) 42%, transparent 66%),
+    radial-gradient(circle at 50% 55%, rgba(255,255,255,0.22) 0 18%, rgba(255,255,255,0.10) 36%, transparent 60%),
     var(--tile-art);
   background-blend-mode: normal, normal;
   background-position: center;

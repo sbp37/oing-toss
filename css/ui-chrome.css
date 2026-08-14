@@ -551,13 +551,23 @@
 }
 
 /* Type scales off the smaller cell edge instead of the column count alone, so
-   the number stays inside a short row on the tall late-stage boards. */
+   the number stays inside a short row on the tall late-stage boards.
+
+   0.2917 filled the cell too far: at 390px on a 6x7 board the glyph was
+   35.2px in a 47.3px-tall cell, a font/cell ratio of 0.744 — the numeral
+   nearly touched the tile's rounded corners on every side, and a digit that
+   fills its frame that tightly reads as more crowded, not more legible.
+   0.25 holds the ratio at ~0.64 across every board size (checked stage 3's
+   6x6 and stage 8's 6x7 at 320/390/430px), which is roughly the fill ratio
+   the original 7x8 board had before this session enlarged it. STAGE 1's 4x4
+   board is unaffected at every width tested — it was already pinned to the
+   43px cap, not to this coefficient. */
 .play-ui-v4 .tile span {
   font-size: clamp(
     15px,
     min(
       calc(var(--chrome-width) * 0.6074 / var(--board-cols)),
-      calc(var(--chrome-height) * 0.2917 / var(--board-rows))
+      calc(var(--chrome-height) * 0.25 / var(--board-rows))
     ),
     43px
   );
