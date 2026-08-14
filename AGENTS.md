@@ -9,6 +9,45 @@
 - Do not deploy, publish, merge, or connect Firebase / Apps in Toss SDK.
 
 
+## 에이전트 역할 분담 (Claude Code ↔ Codex)
+
+이 프로젝트는 두 에이전트가 같은 브랜치를 공유한다. 역할을 나눠 서로의 파일을 건드리지 않는 것이 유일한 충돌 방지 수단이다.
+
+- **Claude Code — 메인 개발.** 게임 로직, UI, CSS, 레이아웃, 밸런스, 테스트, 문서를 담당한다. 이미지 파일은 만들지 않는다.
+- **Codex — 이미지 에셋 생성 전담.** 요청서에 적힌 이미지만 만들어 지정된 경로에 넣는다. 코드는 읽기만 하고 고치지 않는다.
+
+### 파일 소유권
+
+| 경로 | 소유 |
+|---|---|
+| `js/`, `css/`, `index.html`, `tests/`, `scripts/`, `hosting/`, `docs/`, `serve.mjs` | Claude 전용 |
+| `assets/**`, `design/**/source/**` | Codex 전용 |
+| `design/asset-requests/*.md` | Claude가 작성, Codex가 상태만 갱신 |
+| `ASSET_USAGE.md` | Codex는 표에 행 추가만, 나머지 서술은 Claude |
+| `AGENTS.md`, `PROJECT.md`, `DECISIONS.md` | 사용자 승인 후 Claude |
+
+소유가 아닌 파일을 고쳐야 할 상황이면 고치지 말고 요청서나 결과 보고에 남긴다.
+
+### 작업 흐름
+
+1. Claude가 새 이미지가 필요하면 `design/asset-requests/<날짜>-<이름>.md`에 스펙을 쓰고 커밋·푸시한다. 코드에는 최종 경로를 미리 참조해두되, 파일이 없어도 화면이 깨지지 않게 폴백을 둔다.
+2. 사용자가 Codex에 "`oing-toss`의 `<브랜치>` 최신 받아서 `design/asset-requests`의 열린 요청 처리해"라고 지시한다.
+3. Codex는 해당 브랜치를 fetch·checkout → 요청서에 적힌 **정확한 경로와 파일명**으로 에셋 생성 → `ASSET_USAGE.md` 표에 행 추가 → 요청서 `status`를 `done`으로 바꾸고 실제 산출 파일 목록 기입 → **같은 브랜치**에 커밋·푸시한다.
+4. Claude가 pull 후 코드에 연결하고 360×780 / 390×844 / 430×932에서 검수한다.
+
+### Codex 금지 사항
+
+- `js`, `css`, `html`, `tests` 수정 금지. 코드가 잘못돼 보이면 요청서에 적어 Claude에게 넘긴다.
+- 공유 브랜치에서 rebase, force push, reset 금지. 에셋은 바이너리라 복구가 어렵다.
+- 기존 에셋 덮어쓰기 금지. 새 버전은 새 파일명으로 만든다 (`tiles-syrup-v4` → `tiles-syrup-v5`).
+- 콘셉트 보드를 잘라 배포 에셋으로 쓰지 않는다.
+- 요청서에 없는 에셋을 임의로 추가하지 않는다.
+
+### 에셋 요청서 형식
+
+`design/asset-requests/README.md`의 템플릿을 그대로 복사해 쓴다. 경로, 픽셀 크기, 포맷, 배경 처리, 스타일 레퍼런스, 사용 위치와 표시 크기를 반드시 채운다.
+
+
 ## User Working Style / 작업 방식
 
 ### 사용자 작업 방식 — 최우선 원칙
