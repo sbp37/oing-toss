@@ -230,14 +230,17 @@ export class GameUI {
         const boardItem = boardItems.get(`${r}:${c}`);
         const bonusCat = model.hasBonusCat?.(r, c) || false;
         const special = model.specialAt?.(r, c) || null;
-        const tone = value ? toneForCell(r, c, rows, cols) : 0;
+        // The cat cell takes the gradient too — it is a cell like any other, and
+        // painting it one fixed yellow made it the only tile fighting the sweep.
+        const cellTone = toneForCell(r, c, rows, cols);
+        const tone = value ? cellTone : 0;
         const tile = document.createElement('button');
         tile.type = 'button';
         tile.tabIndex = -1;
         tile.className = boardItem
           ? `tile is-empty is-board-item board-item-${boardItem.type}${boardItem.showcase ? ' is-showcase-item' : ''}`
           : bonusCat
-            ? 'tile is-bonus-cat'
+            ? `tile is-bonus-cat tone-${cellTone}`
             : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}${special ? ` is-special-tile special-${special}` : ''}`;
         tile.dataset.row = String(r);
         tile.dataset.col = String(c);
