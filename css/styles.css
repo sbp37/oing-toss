@@ -375,8 +375,8 @@ img {
   filter: drop-shadow(0 2px 2px rgba(105,85,71,0.13));
 }
 
-.home-mini-mint { background-image: url("../assets/ui/tiles-syrup-v5/tile-mint.webp"); color: #399366; }
-.home-mini-peach { background-image: url("../assets/ui/tiles-syrup-v5/tile-peach.webp"); color: #dc8126; }
+.home-mini-mint { background-image: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); color: #399366; }
+.home-mini-peach { background-image: url("../assets/ui/tiles-syrup-v4/tile-peach.webp"); color: #dc8126; }
 
 .home-equation strong {
   min-width: 42px;
@@ -1676,24 +1676,25 @@ img {
   text-shadow: 0 1.5px 0 rgba(255,255,255,0.82), 0 2.5px 2px rgba(73,61,48,0.06);
 }
 
-/* Ordered by hue so tone-1..6 sweeps the palette once across the board's
-   diagonal. js/ui.js picks the tone from the cell's position, so this order is
-   the gradient itself — reshuffling these lines scrambles the sweep.
+/* One tile, every cell. The board is what the player stares at for two minutes
+   straight, and any hue spread across all forty-two cells accumulates: pale
+   enough to rest the eye looked washed out, strong enough to look deliberate
+   was tiring. There is no setting of that dial that is both.
 
-   The v4 set is kept on disk but no longer loaded: its six tiles measured
-   7.9%–82.3% saturation, so half read as colour and half as grime, and blush,
-   peach and lemon sat within 33° of each other. v5 holds every tile at ~45%
-   saturation and ~88% lightness with the hues spread apart. */
-/* `--tile-art` is what the tone actually decides. Rules that need to layer
-   something over the tile — the bonus cat's glow — compose against that
-   variable instead of hard-coding one file, so every such cell keeps the colour
-   its position gave it. */
-.tile.tone-1 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-blush.webp"); }
-.tile.tone-2 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-peach.webp"); }
-.tile.tone-3 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-mint.webp"); }
-.tile.tone-4 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-aqua.webp"); }
-.tile.tone-5 { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-lilac.webp"); }
-.tile[class*="tone-"] { background-image: var(--tile-art); }
+   This is the v4 mint, unmodified. It measures L* 90 / C* 8 — barely any colour
+   cast at all — but the syrup's iridescent refraction survives inside it
+   (variation ~2.5 ΔE across the face), so the tile reads as a material rather
+   than as a flat swatch. Charm without chroma. Contrast to the #425374 ink is
+   5.99:1.
+
+   `--tile-art` stays a variable because the bonus cat layers a glow over the
+   same art; composing against the variable keeps that rule from re-naming the
+   file. */
+.tile { --tile-art: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); }
+.tile.value-1, .tile.value-2, .tile.value-3, .tile.value-4, .tile.value-5,
+.tile.value-6, .tile.value-7, .tile.value-8, .tile.value-9 {
+  background-image: var(--tile-art);
+}
 
 /* A-1: 숫자 색을 잉크 한 색으로 통일.
    이전에는 1~9가 전부 다른 색이었는데(초록/보라/분홍/청록/파랑/주황...),
@@ -1720,12 +1721,12 @@ img {
   opacity: 1;
 }
 
-/* The cat sits on the cell's own gradient colour. It used to force one warm
-   yellow, which made it the single tile ignoring the sweep — the board read as
-   a gradient with a few stickers on it. The glow behind the cat is neutral
-   white so it lifts the character equally on all six hues, and `--tile-art`
-   carries whichever tile the position assigned. `.bonus-cat-mark` is what
-   actually flags the bonus, so the tile no longer has to shout. */
+/* The cat sits on the same tile as everything else. It used to force one warm
+   yellow, which made it the only cell not matching the board — a field of
+   tiles with a few stickers on it. The glow behind the cat is neutral white,
+   so it lifts the character without tinting the tile under it.
+   `.bonus-cat-mark` is what actually flags the bonus, so the tile itself does
+   not have to shout. */
 .tile.is-bonus-cat {
   z-index: 2;
   overflow: visible;

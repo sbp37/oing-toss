@@ -11,31 +11,25 @@ import {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-// Tile colour is a property of the cell, never of the number inside it.
+// Every tile is the same tile. There is no colour to assign, so nothing here
+// assigns one — css/styles.css names the single art file.
 //
-// It used to be keyed off the value, which made colour a half-working answer
+// Colour used to be keyed off the value, which made it a half-working answer
 // key: 4, 5, 6 and 8 each owned a hue outright, so the board leaked them at a
-// glance, while 2, 7 and 9 shared one lilac and 1 and 3 shared one mint, so the
-// same glance was wrong as often as it was right. The eye kept reaching for a
-// shortcut the game then refused to honour. Worse, none of the sum-10 pairs
-// (1+9, 2+8, 3+7, 4+6) shared a colour, so the mapping never once helped with
-// the thing the player is actually doing.
+// glance, while 2, 7 and 9 shared one lilac, so the same glance was wrong as
+// often as it was right. Keying it off the cell's position instead made a
+// shortcut arithmetically impossible, and that part was right — but it still
+// spread chroma over all forty-two cells, and a board you stare at for two
+// minutes has nowhere to rest the eye. Every strength was wrong in one
+// direction or the other: pale enough to be restful looked washed out, strong
+// enough to look deliberate was tiring.
 //
-// Position decides it now, which makes a colour shortcut arithmetically
-// impossible rather than merely discouraged. Cells hold their colour for the
-// life of the board — clearing a rectangle empties cells, it does not move the
-// survivors — so the board reads as one painted surface instead of confetti
-// that reshuffles on every match.
-const TILE_TONE_COUNT = 5;
-
-// Neighbours land on the same or an adjacent hue, so the board sweeps across
-// the palette once instead of alternating hard between cells.
-function toneForCell(row, col, rows, cols) {
-  const span = (rows - 1) + (cols - 1);
-  if (span <= 0) return 1;
-  const position = (row + col) / span;
-  return Math.min(TILE_TONE_COUNT, Math.floor(position * TILE_TONE_COUNT) + 1);
-}
+// One near-neutral tile ends the trade entirely. The charm is in the material
+// rather than the hue: the syrup keeps its iridescent refraction, which reads
+// at C* 8 without ever accumulating across the board. What used to be carried
+// by tile colour is now carried by the moments that deserve it — selection,
+// hint, success, combo — which are transient and local, and can be as saturated
+// as they like.
 
 const CHARACTER_ASSETS = Object.freeze({
   idle: 'assets/characters/cat-idle.webp',
@@ -230,18 +224,14 @@ export class GameUI {
         const boardItem = boardItems.get(`${r}:${c}`);
         const bonusCat = model.hasBonusCat?.(r, c) || false;
         const special = model.specialAt?.(r, c) || null;
-        // The cat cell takes the gradient too — it is a cell like any other, and
-        // painting it one fixed yellow made it the only tile fighting the sweep.
-        const cellTone = toneForCell(r, c, rows, cols);
-        const tone = value ? cellTone : 0;
         const tile = document.createElement('button');
         tile.type = 'button';
         tile.tabIndex = -1;
         tile.className = boardItem
           ? `tile is-empty is-board-item board-item-${boardItem.type}${boardItem.showcase ? ' is-showcase-item' : ''}`
           : bonusCat
-            ? `tile is-bonus-cat tone-${cellTone}`
-            : `tile tone-${tone}${value ? ` value-${value}` : ' is-empty'}${special ? ` is-special-tile special-${special}` : ''}`;
+            ? 'tile is-bonus-cat'
+            : `tile${value ? ` value-${value}` : ' is-empty'}${special ? ` is-special-tile special-${special}` : ''}`;
         tile.dataset.row = String(r);
         tile.dataset.col = String(c);
         tile.dataset.value = String(value || 0);

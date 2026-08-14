@@ -10,11 +10,7 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/icons/items/shuffle.webp',
   'assets/icons/items/bomb.webp',
   'assets/ui/button-pause.webp',
-  'assets/ui/tiles-syrup-v5/tile-blush.webp',
-  'assets/ui/tiles-syrup-v5/tile-peach.webp',
-  'assets/ui/tiles-syrup-v5/tile-mint.webp',
-  'assets/ui/tiles-syrup-v5/tile-aqua.webp',
-  'assets/ui/tiles-syrup-v5/tile-lilac.webp',
+  'assets/ui/tiles-syrup-v4/tile-mint.webp',
 ]);
 
 const PLAY_DEFERRED_ASSETS = Object.freeze([

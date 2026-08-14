@@ -31,15 +31,19 @@ for (const entry of [
   "assets/fonts/candidates",
   "assets/ui/item-buttons-v1",
   "assets/ui/tiles-v3",
-  "assets/ui/tiles-syrup-v4",
   "assets/icons/items/megabomb.png",
 ]) {
   await rm(resolve(client, entry), { recursive: true, force: true });
 }
 
-// v5 ships the webp only; the v4 set is no longer loaded by the game at all.
-for (const name of ["blush", "peach", "mint", "aqua", "lilac"]) {
-  await rm(resolve(client, `assets/ui/tiles-syrup-v5/tile-${name}.png`), { force: true });
+// The board is one tile now, so only `mint` ships; `peach` stays for the home
+// screen's sum-ten equation. The rest of the set, and every PNG twin of the
+// webp actually loaded, is repository-only.
+for (const name of ["blush", "peach", "lemon", "mint", "aqua", "lilac"]) {
+  await rm(resolve(client, `assets/ui/tiles-syrup-v4/tile-${name}.png`), { force: true });
+  if (name !== "mint" && name !== "peach") {
+    await rm(resolve(client, `assets/ui/tiles-syrup-v4/tile-${name}.webp`), { force: true });
+  }
 }
 
 await cp(resolve(root, "hosting/worker.js"), resolve(server, "index.js"));
