@@ -1,5 +1,8 @@
 /* Fixed 390×844 play chrome. All live values and controls remain HTML. */
 .play-ui-v4 {
+  --chrome-width: min(100%, calc(100dvh * 0.462085));
+  --chrome-height: min(100dvh, calc(100vw * 2.164103));
+  --chrome-top: calc((100dvh - var(--chrome-height)) / 2);
   position: relative;
   padding: 0;
   overflow: hidden;
@@ -9,8 +12,12 @@
 .play-ui-v4 .ui-chrome-layer {
   position: absolute;
   z-index: 0;
-  inset: 0;
-  background: url("../design/ui-chrome/ui-chrome.png") center / 100% 100% no-repeat;
+  top: 50%;
+  left: 50%;
+  width: var(--chrome-width);
+  height: var(--chrome-height);
+  background: url("../design/ui-chrome/ui-chrome.png") center / contain no-repeat;
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
@@ -25,10 +32,10 @@
 .play-ui-v4 .play-hud {
   position: absolute;
   z-index: 5;
-  top: 4.45%;
-  left: 3.25%;
-  width: 93.5%;
-  height: 19.25%;
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.0445);
+  left: 50%;
+  width: calc(var(--chrome-width) * 0.935);
+  height: calc(var(--chrome-height) * 0.1925);
   min-height: 0;
   margin: 0;
   padding: 0;
@@ -37,6 +44,7 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  transform: translateX(-50%);
 }
 
 .play-ui-v4 .hud-topline {
@@ -156,7 +164,8 @@
 
 .play-ui-v4 .time-readout strong {
   color: #31597a;
-  font-size: clamp(23px, 6.7vw, 29px);
+  font-size: clamp(24px, 7vw, 30px);
+  font-weight: 800;
 }
 
 .play-ui-v4 .time-readout::before,
@@ -192,9 +201,15 @@
 .play-ui-v4 .score-readout { left: 8%; }
 .play-ui-v4 .combo-readout { right: 0; }
 .play-ui-v4 .score-readout span,
-.play-ui-v4 .combo-readout span { font-size: clamp(11px, 3.15vw, 14px); }
+.play-ui-v4 .combo-readout span {
+  color: #7d8587;
+  font-size: clamp(10px, 2.9vw, 13px);
+}
 .play-ui-v4 .score-readout strong,
-.play-ui-v4 .combo-readout strong { font-size: clamp(19px, 5.25vw, 23px); }
+.play-ui-v4 .combo-readout strong {
+  color: #596b78;
+  font-size: clamp(17px, 4.8vw, 21px);
+}
 
 .play-ui-v4 .goal-status {
   position: absolute;
@@ -209,22 +224,23 @@
   padding: 0;
 }
 
-.play-ui-v4 .goal-copy { font-size: clamp(11px, 3.05vw, 13px); }
-.play-ui-v4 .goal-copy b { font-size: clamp(18px, 5vw, 22px); }
+.play-ui-v4 .goal-copy { color: #535f68; font-size: clamp(12px, 3.25vw, 14px); }
+.play-ui-v4 .goal-copy b { color: #e85073; font-size: clamp(20px, 5.45vw, 24px); }
 .play-ui-v4 .goal-track { height: clamp(7px, 2vw, 9px); }
 
 /* The live board sits inside the fixed thick frame. */
 .play-ui-v4 .board-zone {
   position: absolute;
   z-index: 5;
-  top: 26.9%;
-  left: 7.15%;
-  width: 85.7%;
-  height: 42.1%;
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.269);
+  left: 50%;
+  width: calc(var(--chrome-width) * 0.857);
+  height: calc(var(--chrome-height) * 0.421);
   padding: 0;
   overflow: visible;
   align-items: center;
   justify-content: center;
+  transform: translateX(-50%);
 }
 
 .play-ui-v4 .board-zone::before { display: none; }
@@ -260,7 +276,7 @@
 
 .play-ui-v4 .play-feedback-rail {
   z-index: 25;
-  top: 23.9%;
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.239);
   left: 50%;
   bottom: auto;
   width: min(76%, 296px);
@@ -280,7 +296,7 @@
 }
 
 .play-ui-v4.is-stage-clearing .play-feedback-rail {
-  top: 43%;
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.43);
   width: min(82%, 320px);
   height: 48px;
 }
@@ -315,14 +331,16 @@
 .play-ui-v4 .play-footer {
   position: absolute;
   z-index: 6;
-  inset: 0;
+  top: 50%;
+  left: 50%;
   display: block;
-  width: 100%;
-  height: 100%;
+  width: var(--chrome-width);
+  height: var(--chrome-height);
   min-height: 0;
   margin: 0;
   padding: 0;
   pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
 .play-ui-v4 .play-footer::before,
@@ -330,14 +348,14 @@
 
 .play-ui-v4 .item-actions {
   position: absolute;
-  top: 72.25%;
-  left: 6.3%;
+  top: 73.7%;
+  left: 7.75%;
   display: grid;
-  width: 87.4%;
-  height: 12.9%;
-  gap: 2.4%;
+  width: 84.6%;
+  height: 9.7%;
+  gap: 2.25%;
   margin: 0;
-  padding: 1.5% 1.7% 2%;
+  padding: 0;
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -357,6 +375,7 @@
   border-radius: 19px;
   background: transparent;
   box-shadow: none;
+  touch-action: manipulation;
 }
 
 .play-ui-v4 .item-button::before {
@@ -452,8 +471,15 @@
   background: transparent;
   box-shadow: none;
   font-size: clamp(14px, 4vw, 17px);
+  line-height: 1.25;
   text-align: center;
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  overflow: hidden;
 }
+
+.play-ui-v4 .cat-message.is-long { font-size: clamp(12px, 3.45vw, 15px); }
 
 .play-ui-v4 .cat-message::before,
 .play-ui-v4 .cat-message::after { display: none; }

@@ -156,7 +156,7 @@ export class GameUI {
     });
   }
 
-  async animateStartCountdown(steps, onStep = () => {}) {
+  async animateStartCountdown(steps, onStep = () => {}, { compact = false } = {}) {
     const token = ++this.startCountdownToken;
     const overlay = this.elements.startCountdown;
     overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
@@ -175,12 +175,12 @@ export class GameUI {
       void this.elements.startCountdownValue.offsetWidth;
       this.elements.startCountdownValue.classList.add('is-popping');
       onStep(step);
-      await delay(isGo ? 560 : 640);
+      await delay(compact ? (isGo ? 340 : 330) : (isGo ? 560 : 640));
     }
 
     if (token !== this.startCountdownToken) return false;
     overlay.classList.add('is-leaving');
-    await delay(170);
+    await delay(compact ? 110 : 170);
     overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
     overlay.setAttribute('aria-hidden', 'true');
     return true;
@@ -1705,7 +1705,8 @@ export class GameUI {
     clearTimeout(this.messageTimer);
     const bubble = this.elements.catMessage;
     bubble.dataset.tone = tone;
-    bubble.classList.remove('is-changing');
+    bubble.classList.remove('is-changing', 'is-long');
+    bubble.classList.toggle('is-long', String(message).length >= 18);
     void bubble.offsetWidth;
     const emphasis = /(오잉|합 ?10|콤보|아이템|메가폭탄|폭탄|클로버|시간|정답|보너스|다음 판|좋다냥)/g;
     const parts = String(message).split(emphasis);

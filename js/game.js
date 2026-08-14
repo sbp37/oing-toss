@@ -110,6 +110,7 @@ import {
 } from './haptic.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 
 class OingGame {
   constructor() {
@@ -268,7 +269,7 @@ class OingGame {
       button.addEventListener('focus', primePlay, { passive: true, once: true });
     });
     document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
-    document.querySelector('#retry-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
+    document.querySelector('#retry-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1, { quickCountdown: true }));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
@@ -404,19 +405,20 @@ class OingGame {
       return;
     }
     if (this.settings.sound && !ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
-    await this.runStartCountdown(sequenceId);
+    await this.runStartCountdown(sequenceId, options.quickCountdown === true);
   }
 
-  async runStartCountdown(sequenceId) {
+  async runStartCountdown(sequenceId, quickCountdown = false) {
     this.startCountdownInProgress = true;
-    const completed = await this.ui.animateStartCountdown(START_COUNTDOWN_STEPS, (step) => {
+    const steps = quickCountdown ? RETRY_COUNTDOWN_STEPS : START_COUNTDOWN_STEPS;
+    const completed = await this.ui.animateStartCountdown(steps, (step) => {
       if (step === 'GO!') {
         playGoSound();
         playMusic({ restart: true });
       }
       else playReadyCountSound(step);
       readyCountHaptic(step);
-    });
+    }, { compact: quickCountdown });
     const isCurrentSequence = sequenceId === this.startSequenceId;
     if (isCurrentSequence) this.startCountdownInProgress = false;
     if (!completed || !isCurrentSequence || !this.state.running) return false;
