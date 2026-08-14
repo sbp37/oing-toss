@@ -803,6 +803,13 @@
     linear-gradient(180deg, rgba(255,253,245,.72), rgba(255,251,240,.68)),
     url("../assets/backgrounds/board-secret-garden-v1.webp");
 }
+.play-ui-v4 .board.is-tutorial-active {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,253,247,.91), rgba(255,252,245,.89)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+}
 
 @keyframes oing-shuffle-gather {
   0% { opacity: 1; transform: none; filter: brightness(1); }
