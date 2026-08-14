@@ -30,7 +30,7 @@ export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
-// The board sits in a recess painted into design/ui-chrome/ui-chrome.png, so
+// The board sits in a recess painted into design/ui-chrome/ui-chrome.webp, so
 // both of its dimensions are fixed and the grid can only subdivide them. Tile
 // type scales off the short cell edge (css/ui-chrome.css:
 // min(chrome-width * 0.6074 / cols, chrome-height * 0.2917 / rows)).

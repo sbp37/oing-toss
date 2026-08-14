@@ -1,7 +1,7 @@
 /* ============================================================================
    OING play chrome — one coordinate system.
 
-   `design/ui-chrome/ui-chrome.png` is a fixed 780 × 1688 painting (390 × 844
+   `design/ui-chrome/ui-chrome.webp` is a fixed 780 × 1688 painting (390 × 844
    at 2x). Every live value stays HTML text; this file only decides *where*
    that text lands. To keep painted decoration and HTML from drifting apart,
    the artwork is measured once and every overlay is expressed as a percentage
@@ -93,7 +93,7 @@
   left: 50%;
   width: var(--chrome-width);
   height: var(--chrome-height);
-  background: url("../design/ui-chrome/ui-chrome.png") center / contain no-repeat;
+  background: url("../design/ui-chrome/ui-chrome.webp") center / contain no-repeat;
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -525,12 +525,16 @@
    when it divides the board rect by cols/rows — and `.board` itself paints
    nothing, so a shorter board simply leaves more sky around it.
    ------------------------------------------------------------------------ */
+/* 0.90, not the erased tray's old 0.84359: there is no painted edge left to
+   stay inside, so the board takes the HUD panel's margin instead and every
+   width-bound stage (4×4 … 6×6) gets ~7% larger tiles — numerals scale with
+   --cell, so they grow with it. 6×7 is height-bound and unchanged. */
 .play-ui-v4 .board-zone {
   position: absolute;
   z-index: 5;
   top: calc(var(--chrome-top) + var(--chrome-height) * 0.24585);
   left: 50%;
-  width: calc(var(--chrome-width) * 0.84359);
+  width: calc(var(--chrome-width) * 0.90);
   height: calc(var(--chrome-height) * 0.45142);
   padding: 0;
   overflow: visible;
@@ -570,7 +574,7 @@
 .play-ui-v4 .board {
   /* the square cell edge: whichever axis runs out first decides it */
   --cell: min(
-    calc(var(--chrome-width) * 0.84359 / var(--board-cols)),
+    calc(var(--chrome-width) * 0.90 / var(--board-cols)),
     calc(var(--chrome-height) * 0.45142 / var(--board-rows))
   );
   width: calc(var(--cell) * var(--board-cols));
@@ -611,7 +615,7 @@
    bind on every board from STAGE 1 to 6×7 alike and read as undersized on the
    roomy early stages. */
 .play-ui-v4 .tile span {
-  font-size: clamp(17px, calc(var(--cell) * 0.46), 42px);
+  font-size: clamp(17px, calc(var(--cell) * 0.46), 46px);
 }
 
 /* A cleared cell used to be tinted like a shallow dent in the tray. With the

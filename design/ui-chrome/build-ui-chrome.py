@@ -53,9 +53,11 @@ from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "source" / "ui-chrome-generated.png"
-OUTPUT = ROOT / "ui-chrome.png"
-CAT_SOURCE = ROOT.parent.parent / "assets" / "characters" / "cat-peek.webp"
-CAT_OUTPUT = ROOT / "cat_idle.png"
+# WebP, not PNG: this is a soft-gradient painting, so lossless costs 629KB
+# while q92 costs 50KB for a mean error near 1/255 — and it was 40% of every
+# byte the play screen downloaded. The lossless master stays in source/.
+OUTPUT = ROOT / "ui-chrome.webp"
+OUTPUT_QUALITY = 92
 
 CANVAS = (780, 1688)
 UNIFORM = (780, 1686)  # 1844 * 780 / 853
@@ -82,13 +84,13 @@ RECESS_ERASE = (12, 393, 767, 1230)
 # tray's own shadow, which reaches x 15 on the left and x 764 on the right.
 SKY_LEFT = (1, 11)
 SKY_RIGHT = (768, 779)
-# The side strips are honest sky, but sky with texture: cloud wisps and the
-# vignette cross them over runs of 20-40 rows, and any structure shorter than
-# the smoothing window survives as a horizontal stripe smeared across the whole
-# fill. ±32 rows, applied twice (≈ a triangular kernel 128 rows wide), is wider
-# than every wisp in the strips, so only the true vertical gradient remains.
-SKY_SMOOTH = 32     # rows either side, per pass
-SKY_SMOOTH_PASSES = 2
+# Keep this window short. It smooths per-row median noise, but the cloud wisps
+# crossing the side strips are real painted sky and they carry through the fill
+# as soft horizontal drift — which is what makes the erased band read as sky
+# with clouds in it rather than a flat gradient. Widening the window flattens
+# them out and the band goes dead.
+SKY_SMOOTH = 5      # rows either side, per pass
+SKY_SMOOTH_PASSES = 1
 ERASE_FEATHER = 1.5
 
 # The pause and music buttons are drawn as vertical ovals — 64 wide by 74 tall,
@@ -218,13 +220,12 @@ def build() -> None:
 
     chrome = erase_recess(chrome)
     chrome = round_hud_buttons(chrome)
-    chrome.save(OUTPUT, format="PNG", optimize=True)
+    chrome.save(OUTPUT, format="WEBP", quality=OUTPUT_QUALITY, method=6)
 
-    cat = Image.open(CAT_SOURCE).convert("RGBA")
-    cat.save(CAT_OUTPUT, format="PNG", optimize=True)
-
+    # The coach cat used to be re-encoded to PNG here, which only inflated
+    # assets/characters/cat-peek.webp from 61KB to 87KB. index.html points at
+    # that original now, so there is nothing left to copy.
     print(f"Wrote {OUTPUT} {chrome.size}")
-    print(f"Wrote {CAT_OUTPUT} {cat.size}")
 
 
 def anchors() -> None:
