@@ -6,6 +6,8 @@
 
 이 타일은 L*90 · C*8로 색조가 거의 없지만 시럽의 무지갯빛 굴절이 안에 살아 있어(면 전체 산포 약 2.5 ΔE) 평평한 색판이 아니라 재질로 읽힌다. 매력을 색이 아니라 재질에서 얻는 방식이고, 채도가 낮으므로 42칸에 깔려도 누적되지 않는다. 화려함은 선택·힌트·성공·콤보처럼 짧고 국소적인 순간이 맡는다.
 
+예외는 보너스 고양이 칸 하나다. 같은 시럽 세트의 peach를 쓰는데, 판당 두세 칸뿐이라 채도가 누적되지 않는다. 보드와 명도가 같아(L*90.1 대 90.3) 화면에서 튀지 않으면서 ΔE 14.1의 색상 차이로 다른 칸임이 한눈에 읽힌다.
+
 색이 답을 알려줄 여지도 함께 사라졌다. 숫자는 계속 HTML 텍스트로 렌더링한다.
 
 하단 아이템은 숫자 타일 에셋과 분리한 4개의 작은 토이 버튼으로 통일했다. 버튼 셸은 CSS로 크림·민트·코랄·하늘색의 도톰한 표면과 눌림 깊이를 만들고, 아이콘·이름·남은 횟수는 독립 이미지와 HTML 텍스트로 렌더링한다.
@@ -30,7 +32,7 @@
 | `assets/ui/button-settings.webp` | `oing-toss-assets-v1/assets/ui/button-settings.webp` | 홈 설정 | 39–44px |
 | `assets/ui/button-pause.webp` | `oing-toss-assets-v1/assets/ui/button-pause.webp` | 플레이 일시정지 | 43–48px |
 | `assets/ui/tiles-syrup-v4/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 보드 전 칸의 유일한 타일 (L*90 C*8, 숫자 대비 5.99:1) | 256×256 원본, 셀 약 44–59px |
-| `assets/ui/tiles-syrup-v4/tile-peach.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 홈 화면 합10 예시 미니 타일 | 44px |
+| `assets/ui/tiles-syrup-v4/tile-peach.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 보너스 고양이 칸 (L*90 C*17, 보드와 명도 동일·ΔE 14.1)·홈 화면 합10 예시 미니 타일 | 셀 약 44–59px, 홈 44px |
 | `assets/icons/navigation/trophy.webp` | `oing-toss-assets-v1/assets/icons/trophy.webp` | 홈·결과 랭킹 | 27px |
 | `assets/icons/navigation/home.webp` | `oing-toss-assets-v1/assets/icons/home.webp` | 결과 홈으로 | 24px |
 | `assets/icons/hud/score.webp` | `oing-toss-assets-v1/assets/icons/coin.webp` | 점수 HUD | 22px |
@@ -64,7 +66,7 @@
 | `assets/ui/tile-disabled.webp` | 보드에 disabled 타일 상태가 아직 없다. |
 | `assets/ui/tile-{normal,selected,success,hint,empty}.webp` | 독립 시럽 타일 세트로 교체해 보존만 한다. |
 | `assets/ui/tiles-v3/` 전체 | 이전 밀키 글라스 후보 세트다. 내부 굴절 무늬가 거의 없어(산포 0.2) 재질감이 죽는다. |
-| `assets/ui/tiles-syrup-v4/tile-{blush,lemon,aqua,lilac}.webp` | 보드가 단일 타일로 바뀌어 색상별 세트가 필요 없다. 원본만 보존한다. |
+| `assets/ui/tiles-syrup-v4/tile-{blush,lemon,aqua,lilac}.webp` | 보드가 단일 타일로 바뀌어 색상별 세트가 필요 없다. 실제로 쓰는 것은 보드용 mint와 고양이 칸용 peach 두 장뿐이다. 나머지는 원본만 보존한다. |
 | `assets/ui/item-buttons-v1/` 전체 | 긴 가로형 셸이라 4개 아이템을 한 줄에 배치하면 보드 공간을 압박한다. 정사각 시럽 슬롯으로 교체해 원본만 보존한다. |
 | `assets/decor/cloud.webp` | 배경 자체에 구름이 있어 중복 장식을 피했다. |
 | `assets/decor/flower.webp` | 배경 하단 꽃밭과 중복되어 사용하지 않았다. |

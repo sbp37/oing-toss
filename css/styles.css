@@ -1721,19 +1721,27 @@ img {
   opacity: 1;
 }
 
-/* The cat sits on the same tile as everything else. It used to force one warm
-   yellow, which made it the only cell not matching the board — a field of
-   tiles with a few stickers on it. The glow behind the cat is neutral white,
-   so it lifts the character without tinting the tile under it.
-   `.bonus-cat-mark` is what actually flags the bonus, so the tile itself does
-   not have to shout. */
+/* The cat cell is the one place a second tile earns its keep. It is the peach
+   from the same syrup set, and it works here for the reason a colour system
+   across the whole board did not: there are only two or three of these on a
+   board, so its chroma never accumulates.
+
+   It sits at L* 90.3 against the board's 90.1 — the same lightness, so it does
+   not punch out of the field — while ΔE 14.1 of hue separation makes it read as
+   a different cell at a glance. Numeral contrast is 6.02:1, marginally better
+   than the board tile.
+
+   This replaced a flat #ffd98c, which was a fixed yellow owing nothing to the
+   tile set and read as a sticker. The glow behind the cat stays neutral white
+   so it lifts the character without muddying the peach underneath. */
 .tile.is-bonus-cat {
+  --tile-art: url("../assets/ui/tiles-syrup-v4/tile-peach.webp");
   z-index: 2;
   overflow: visible;
   border: 0;
   background-color: transparent;
   background-image:
-    radial-gradient(circle at 50% 55%, rgba(255,255,255,0.90) 0 24%, rgba(255,255,255,0.52) 42%, transparent 66%),
+    radial-gradient(circle at 50% 55%, rgba(255,255,255,0.72) 0 24%, rgba(255,255,255,0.40) 42%, transparent 66%),
     var(--tile-art);
   background-blend-mode: normal, normal;
   background-position: center;
