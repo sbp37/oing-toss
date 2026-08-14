@@ -1,0 +1,415 @@
+/* Fixed 390×844 play chrome. All live values and controls remain HTML. */
+.play-ui-v4 {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  background: #8dd7f2;
+}
+
+.play-ui-v4 .ui-chrome-layer {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: url("../design/ui-chrome/ui-chrome.png") center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+.play-ui-v4 .start-countdown,
+.play-ui-v4 .play-feedback-rail,
+.play-ui-v4 .time-up,
+.play-ui-v4 .score-burst {
+  z-index: 30;
+}
+
+/* HUD overlays the large fixed cream panel and tall stage arch. */
+.play-ui-v4 .play-hud {
+  position: absolute;
+  z-index: 5;
+  top: 4.45%;
+  left: 3.25%;
+  width: 93.5%;
+  height: 19.25%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .hud-topline {
+  position: absolute;
+  inset: 0;
+  display: block;
+  min-height: 0;
+}
+
+.play-ui-v4 .hud-controls {
+  position: absolute;
+  top: 18%;
+  left: 5%;
+  display: flex;
+  gap: clamp(7px, 2vw, 9px);
+  padding: 0;
+}
+
+.play-ui-v4 .pause-button,
+.play-ui-v4 .hud-mini-button {
+  width: clamp(38px, 10.4vw, 45px);
+  height: clamp(38px, 10.4vw, 45px);
+  min-width: clamp(38px, 10.4vw, 45px);
+  min-height: clamp(38px, 10.4vw, 45px);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.play-ui-v4 .pause-button:active,
+.play-ui-v4 .hud-mini-button:active {
+  transform: translateY(2px) scale(.96);
+  box-shadow: none;
+}
+
+.play-ui-v4 .pause-button::after {
+  left: 13px;
+  top: 12px;
+  width: 4px;
+  height: 16px;
+  box-shadow: 9px 0 0 #925364;
+}
+
+.play-ui-v4 .music-button i {
+  left: 12px;
+  top: 14px;
+}
+
+.play-ui-v4 .round-mini {
+  position: absolute;
+  top: -1%;
+  left: 34%;
+  width: 32%;
+  height: 74%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .round-mini::before,
+.play-ui-v4 .round-mini::after {
+  display: none;
+}
+
+.play-ui-v4 .round-mini span {
+  top: 16%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #fffdf7;
+  font-size: clamp(11px, 3.15vw, 14px);
+  letter-spacing: .05em;
+  text-shadow: 0 1px 1px rgba(155, 59, 76, .28);
+}
+
+.play-ui-v4 .round-mini strong {
+  position: absolute;
+  top: 43%;
+  left: 50%;
+  min-width: 0;
+  color: #ef9231;
+  font-size: clamp(44px, 13vw, 56px);
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 2px 0 rgba(255,255,255,.9), 0 3px 0 rgba(188,106,38,.12);
+}
+
+.play-ui-v4 .time-readout {
+  position: absolute;
+  top: 24%;
+  right: 3.4%;
+  display: flex;
+  width: 31%;
+  min-width: 0;
+  min-height: 0;
+  height: 31%;
+  margin: 0;
+  padding: 0 7% 0 5%;
+  gap: 5px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .time-readout img {
+  width: clamp(23px, 6.6vw, 29px);
+  height: clamp(25px, 7.2vw, 31px);
+}
+
+.play-ui-v4 .time-readout strong {
+  color: #31597a;
+  font-size: clamp(23px, 6.7vw, 29px);
+}
+
+.play-ui-v4 .time-readout::before,
+.play-ui-v4 .time-readout::after {
+  left: 10%;
+  right: 10%;
+  bottom: -4px;
+  height: 4px;
+}
+
+.play-ui-v4 .hud-secondline {
+  position: absolute;
+  top: 53%;
+  left: 8%;
+  right: 8%;
+  display: block;
+  min-height: 0;
+  height: 18%;
+  padding: 0;
+  border: 0;
+}
+
+.play-ui-v4 .score-readout,
+.play-ui-v4 .combo-readout {
+  position: absolute;
+  top: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  gap: 5px;
+}
+
+.play-ui-v4 .score-readout { left: 8%; }
+.play-ui-v4 .combo-readout { right: 0; }
+.play-ui-v4 .score-readout span,
+.play-ui-v4 .combo-readout span { font-size: clamp(11px, 3.15vw, 14px); }
+.play-ui-v4 .score-readout strong,
+.play-ui-v4 .combo-readout strong { font-size: clamp(19px, 5.25vw, 23px); }
+
+.play-ui-v4 .goal-status {
+  position: absolute;
+  top: 76%;
+  left: 6.5%;
+  right: 6.5%;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  min-height: 0;
+  height: 17%;
+  gap: 12px;
+  padding: 0;
+}
+
+.play-ui-v4 .goal-copy { font-size: clamp(11px, 3.05vw, 13px); }
+.play-ui-v4 .goal-copy b { font-size: clamp(18px, 5vw, 22px); }
+.play-ui-v4 .goal-track { height: clamp(7px, 2vw, 9px); }
+
+/* The live board sits inside the fixed thick frame. */
+.play-ui-v4 .board-zone {
+  position: absolute;
+  z-index: 5;
+  top: 26.9%;
+  left: 7.15%;
+  width: 85.7%;
+  height: 42.1%;
+  padding: 0;
+  overflow: visible;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-ui-v4 .board-zone::before { display: none; }
+
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round] {
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .board {
+  width: 100%;
+  max-height: 100%;
+  border: 0;
+  border-radius: 10px;
+  background-color: #fff9ed;
+  background-image:
+    linear-gradient(to right, rgba(191,159,111,.29) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(191,159,111,.29) 1px, transparent 1px);
+  box-shadow: inset 0 2px 4px rgba(119,83,46,.06);
+}
+
+.play-ui-v4 .play-feedback-rail {
+  top: 101%;
+  bottom: auto;
+  width: min(84%, 306px);
+  height: 30px;
+}
+
+.play-ui-v4 .tutorial-callout {
+  top: 0;
+  padding: 4px 10px 3px;
+  box-shadow: 0 3px 7px rgba(102,75,54,.09), inset 0 1px 0 #fff;
+}
+
+/* The footer becomes a transparent hit layer over the fixed dock and bubble. */
+.play-ui-v4 .play-footer {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.play-ui-v4 .play-footer::before,
+.play-ui-v4 .play-footer::after { display: none; }
+
+.play-ui-v4 .item-actions {
+  position: absolute;
+  top: 72.25%;
+  left: 6.3%;
+  display: grid;
+  width: 87.4%;
+  height: 12.9%;
+  gap: 2.4%;
+  margin: 0;
+  padding: 1.5% 1.7% 2%;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+.play-ui-v4 .item-actions::before,
+.play-ui-v4 .item-actions::after { display: none; }
+
+.play-ui-v4 .item-button {
+  height: 100%;
+  margin: 0;
+  grid-template-rows: minmax(37px, 1fr) 20px;
+  border: 0;
+  border-radius: 19px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-button::before {
+  display: block;
+  inset: 7% 9% auto;
+  height: 17%;
+  background: linear-gradient(180deg, rgba(255,255,255,.42), transparent);
+}
+
+.play-ui-v4 .item-button:active,
+.play-ui-v4 .item-button.is-pressed {
+  transform: translateY(4px) scale(.975);
+  box-shadow: inset 0 3px 5px rgba(74,64,51,.12);
+}
+
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  background: rgba(235, 239, 235, .48);
+  box-shadow: inset 0 2px 4px rgba(77,88,88,.08);
+}
+
+.play-ui-v4 .item-icon {
+  width: clamp(34px, 10vw, 42px);
+  height: clamp(34px, 10vw, 42px);
+  padding: 0;
+  filter: drop-shadow(0 2px 2px rgba(93,74,49,.13));
+}
+
+.play-ui-v4 .item-button > span {
+  font-size: clamp(14px, 3.9vw, 17px);
+}
+
+.play-ui-v4 .item-button b {
+  right: -3px;
+  top: -5px;
+  width: clamp(23px, 6.3vw, 27px);
+  height: clamp(23px, 6.3vw, 27px);
+  font-size: clamp(13px, 3.7vw, 16px);
+}
+
+.play-ui-v4 .cat-coach {
+  position: absolute;
+  top: 85.6%;
+  left: 2%;
+  display: grid;
+  width: 78%;
+  height: 10.7%;
+  grid-template-columns: 28% minmax(0, 1fr);
+  gap: 2%;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.play-ui-v4 .play-character-stage {
+  align-self: end;
+  width: 100%;
+  height: 92%;
+}
+
+.play-ui-v4 .play-character-stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .cat-message {
+  align-self: center;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  height: 67%;
+  padding: 0 8% 0 13%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: clamp(14px, 4vw, 17px);
+  text-align: center;
+}
+
+.play-ui-v4 .cat-message::before,
+.play-ui-v4 .cat-message::after { display: none; }
+
+.play-ui-v4.is-tall-board .play-footer,
+.play-ui-v4.is-tall-board .cat-coach,
+.play-ui-v4.is-tall-board .play-character-stage,
+.play-ui-v4.is-tall-board .cat-message {
+  transform: none;
+}
+
+@media (max-height: 815px), (max-width: 360px) {
+  .play-ui-v4 .item-button { grid-template-rows: minmax(33px, 1fr) 18px; }
+  .play-ui-v4 .item-icon { width: 34px; height: 34px; }
+  .play-ui-v4 .cat-message { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .item-button,
+  .play-ui-v4 .pause-button,
+  .play-ui-v4 .hud-mini-button { transition: none; }
+}
