@@ -1,16 +1,82 @@
-/* Fixed 390×844 play chrome. All live values and controls remain HTML. */
+/* ============================================================================
+   OING play chrome — one coordinate system.
+
+   `design/ui-chrome/ui-chrome.png` is a fixed 780 × 1688 painting (390 × 844
+   at 2x). Every live value stays HTML text; this file only decides *where*
+   that text lands. To keep painted decoration and HTML from drifting apart,
+   the artwork is measured once and every overlay is expressed as a percentage
+   of that same 780 × 1688 canvas.
+
+   Measured anchors (artwork pixels → canvas %):
+
+     hud panel      x  28  751   y   82   370    3.590% 4.858% 92.692% 17.062%
+     pause circle   cx 104.5     cy 154.5
+     music circle   cx 187.5     cy 154.5
+     stage ribbon   x 305  475   y   78   120    label centre  y  5.865%
+     stage dome     x 300  480   y  124   238    numeral centre y 10.723%
+     time slot      x 507  729   y  122   201   64.999% 7.227% 28.462% 4.680%
+     score pill     x  60  252   y  248   286    coin painted at x 62..106
+     combo pill     x 520  722   y  248   286    star painted at x 520..562
+     goal groove    x  72  707   y  326   352    9.231% 19.313% 81.410% 1.540%
+     board recess   x  60  718   y  456  1140    7.692% 27.014% 84.359% 40.521%
+     dock slots     x  60.7 726.5 y 1230 1396    7.786% 72.867% 85.359%  9.834%
+                    slot pitch 169.26, slot width 158 (regression over the four
+                    painted slots; the artwork is hand-drawn and not perfectly
+                    uniform, worst-case residual is 1.8 artwork px ≈ 0.9 CSS px)
+     speech bubble  x 220  582   y 1451  1583   28.205% 85.960% 46.410%  7.820%
+
+   Anything that needs a box on this canvas is positioned inside a full-canvas
+   layer (`.play-hud`, `.play-footer`, `.cat-coach`) so a child can use plain
+   percentages instead of nested calc() chains.
+   ========================================================================= */
+
 .play-ui-v4 {
-  /* The artwork always follows the app width. On shorter phones only the
-     non-interactive ground at the bottom may crop; the chrome itself never
-     narrows or stretches to chase the viewport ratio. */
-  --chrome-width: 100%;
-  --chrome-height: calc(min(100vw, 430px) * 2.164103);
-  --chrome-top: 0px;
+  --chrome-ratio: 2.164103;            /* 1688 / 780 */
+  --chrome-inv-ratio: 0.4620853;       /*  780 / 1688 */
+  --chrome-base-width: min(100vw, 430px);
+
+  /* Only the decorative ground below the speech bubble may leave the screen —
+     that is the bottom 6.2% of the canvas. Past that the whole chrome scales
+     down (letterboxed by sky) instead of stretching, so the arch, the dock and
+     the bubble keep their drawn proportions on every phone ratio. */
+  --chrome-height: min(
+    calc(var(--chrome-base-width) * var(--chrome-ratio)),
+    calc(100dvh * 1.0663)
+  );
+  --chrome-width: min(
+    var(--chrome-base-width),
+    calc(var(--chrome-height) * var(--chrome-inv-ratio))
+  );
+  /* Taller viewports keep the ground on screen and show plain sky above, which
+     is the one band of the artwork that extends without a visible seam. */
+  --chrome-top: max(0px, calc(100dvh - var(--chrome-height)));
+
   position: relative;
   padding: 0;
   overflow: hidden;
+  /* The band above the chrome is filled with the artwork's own top-row sky,
+     sampled left-to-right, so a taller phone shows more sky instead of a seam
+     (worst-case step across the join is 3/255). */
   background:
-    linear-gradient(180deg, rgba(141,215,242,.18), rgba(255,250,232,.34)),
+    linear-gradient(90deg,
+      rgb(145, 206, 252) 0%,
+      rgb(137, 204, 252) 50%,
+      rgb(127, 199, 253) 82%,
+      rgb(134, 202, 253) 100%)
+      top center / 100% var(--chrome-top) no-repeat,
+    linear-gradient(180deg,
+      rgb(138, 204, 252) 0%,
+      rgb(170, 224, 253) 12%,
+      rgb(200, 238, 253) 25%,
+      rgb(225, 246, 254) 42%,
+      rgb(236, 250, 254) 59%,
+      rgb(211, 240, 253) 70%,
+      rgb(229, 245, 253) 83%,
+      rgb(210, 235, 248) 88.5%,
+      rgb(217, 231, 181) 92.5%,
+      rgb(195, 218, 167) 96%,
+      rgb(175, 209, 154) 100%)
+      center var(--chrome-top) / 100% var(--chrome-height) no-repeat,
     url("../assets/backgrounds/play-bg@2x.webp") center / cover no-repeat,
     #8dd7f2;
 }
@@ -18,7 +84,7 @@
 .play-ui-v4 .ui-chrome-layer {
   position: absolute;
   z-index: 0;
-  top: 0;
+  top: var(--chrome-top);
   left: 50%;
   width: var(--chrome-width);
   height: var(--chrome-height);
@@ -27,6 +93,57 @@
   pointer-events: none;
 }
 
+/* ---------------------------------------------------------------------------
+   Full-canvas overlay layers. They cover the whole artwork so their children
+   can be placed in artwork percentages, and they never swallow board input.
+   ------------------------------------------------------------------------ */
+.play-ui-v4 .play-hud,
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  position: absolute;
+  top: var(--chrome-top);
+  left: 50%;
+  display: block;
+  width: var(--chrome-width);
+  height: var(--chrome-height);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.play-ui-v4 .play-hud { z-index: 6; }
+.play-ui-v4 .play-footer { z-index: 6; }
+
+/* The stage-band tint in styles.css draws a 1px ring around the HUD. On the
+   painted panel that ring reads as a stray rectangle floating over the sky. */
+.play-ui-v4 .play-hud,
+.screen-play.play-ui-v4[data-stage-band] .play-hud {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .hud-topline,
+.play-ui-v4 .hud-secondline {
+  position: absolute;
+  inset: 0;
+  display: block;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  pointer-events: none;
+}
+
+.play-ui-v4 .play-footer::before,
+.play-ui-v4 .play-footer::after { display: none; }
+
 .play-ui-v4 .start-countdown,
 .play-ui-v4 .play-feedback-rail,
 .play-ui-v4 .time-up,
@@ -34,79 +151,98 @@
   z-index: 30;
 }
 
-/* HUD overlays the large fixed cream panel and tall stage arch. */
-.play-ui-v4 .play-hud {
-  position: absolute;
-  z-index: 5;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.0445);
-  left: 50%;
-  width: calc(var(--chrome-width) * 0.935);
-  height: calc(var(--chrome-height) * 0.1925);
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  transform: translateX(-50%);
-}
+/* ---------------------------------------------------------------------------
+   HUD row 1 — pause / music, stage arch, time.
+   ------------------------------------------------------------------------ */
 
-.play-ui-v4 .hud-topline {
-  position: absolute;
-  inset: 0;
-  display: block;
-  min-height: 0;
-}
-
+/* The two painted circles sit only 83 artwork px apart, so 44 px targets cannot
+   both be centred on them. Each hit area instead claims the empty cream panel
+   beside its circle: the pair tiles x 28..146..280 with no overlap, and the
+   glyphs stay pinned to the painted circles. */
 .play-ui-v4 .hud-controls {
   position: absolute;
-  top: 18%;
-  left: 5%;
-  display: flex;
-  gap: clamp(7px, 2vw, 9px);
+  top: 5.924%;
+  left: 3.590%;
+  display: block;
+  width: 0;
+  height: 6.517%;
+  gap: 0;
   padding: 0;
-  align-items: center;
 }
 
 .play-ui-v4 .pause-button,
 .play-ui-v4 .hud-mini-button {
-  width: clamp(38px, 10.4vw, 45px);
-  height: clamp(38px, 10.4vw, 45px);
-  min-width: clamp(38px, 10.4vw, 45px);
-  min-height: clamp(38px, 10.4vw, 45px);
+  position: absolute;
+  top: 0;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
   border: 0;
+  border-radius: 14px;
   background: transparent;
   box-shadow: none;
   overflow: visible;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
+
+/* widths are relative to the HUD canvas, not to the zero-width .hud-controls */
+.play-ui-v4 .pause-button {
+  left: 0;
+  width: calc(var(--chrome-width) * 0.15128);   /* x 28..146  */
+}
+
+.play-ui-v4 .hud-mini-button {
+  left: calc(var(--chrome-width) * 0.15128);
+  width: calc(var(--chrome-width) * 0.17179);   /* x 146..280 */
+}
+
+.play-ui-v4 .pause-button::before,
+.play-ui-v4 .hud-mini-button::before { display: none; }
 
 .play-ui-v4 .pause-button:active,
 .play-ui-v4 .hud-mini-button:active {
-  transform: translateY(2px) scale(.96);
+  transform: translateY(1px) scale(.97);
   box-shadow: none;
 }
 
+/* pause bars, centred on the painted circle at 64.83% / 49.55% of its hit box */
 .play-ui-v4 .pause-button::after {
-  left: 13px;
-  top: 12px;
-  width: 4px;
-  height: 16px;
-  box-shadow: 9px 0 0 #925364;
+  content: "";
+  position: absolute;
+  left: 64.83%;
+  top: 49.55%;
+  width: clamp(3px, calc(var(--chrome-width) * 0.0095), 4.5px);
+  height: clamp(13px, calc(var(--chrome-width) * 0.04), 18px);
+  border-radius: 2px;
+  background: #ce6a7e;
+  box-shadow: clamp(7px, calc(var(--chrome-width) * 0.0215), 10px) 0 0 #ce6a7e;
+  transform: translate(calc(-50% - clamp(3.5px, calc(var(--chrome-width) * 0.0108), 5px)), -50%);
 }
 
+/* speaker glyph: its drawn mass is ~8px right and 5px below the <i> origin */
 .play-ui-v4 .music-button i {
-  left: calc(50% - 11px);
-  top: calc(50% - 5px);
+  left: 30.97%;
+  top: 49.55%;
+  margin: 0;
+  transform: translate(-8px, -5px);
+  transform-origin: 8px 5px;
 }
 
+@media (min-width: 400px) {
+  .play-ui-v4 .music-button i { transform: translate(-8px, -5px) scale(1.14); }
+}
+
+/* Stage arch: the ribbon carries the word, the dome carries the number. The
+   arch stays the centrepiece but no longer outweighs TIME and the goal. */
 .play-ui-v4 .round-mini {
   position: absolute;
-  top: -1%;
-  left: 34%;
-  width: 32%;
-  height: 74%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   margin: 0;
   padding: 0;
@@ -114,16 +250,15 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  pointer-events: none;
 }
 
 .play-ui-v4 .round-mini::before,
-.play-ui-v4 .round-mini::after {
-  display: none;
-}
+.play-ui-v4 .round-mini::after { display: none; }
 
 .play-ui-v4 .round-mini span {
   position: absolute;
-  top: 14%;
+  top: 5.865%;
   left: 50%;
   display: block;
   min-width: 0;
@@ -132,38 +267,40 @@
   background: transparent;
   box-shadow: none;
   color: #fffdf7;
-  font-size: clamp(11px, 3.15vw, 14px);
+  font-size: clamp(10px, calc(var(--chrome-width) * 0.03), 13px);
   letter-spacing: .05em;
   line-height: 1;
   white-space: nowrap;
-  transform: translateX(-50%);
-  text-shadow: 0 1px 1px rgba(155, 59, 76, .28);
+  transform: translate(-50%, -50%);
+  text-shadow: 0 1px 1px rgba(155, 59, 76, .34);
 }
 
 .play-ui-v4 .round-mini strong {
   position: absolute;
-  top: 43%;
+  top: 10.723%;
   left: 50%;
   min-width: 0;
-  color: #ef9231;
-  font-size: clamp(40px, 11.5vw, 49px);
+  color: #e98f36;
+  font-size: clamp(22px, calc(var(--chrome-width) * 0.072), 30px);
   line-height: 1;
   transform: translate(-50%, -50%);
-  text-shadow: 0 2px 0 rgba(255,255,255,.9), 0 3px 0 rgba(188,106,38,.12);
+  text-shadow: 0 2px 0 rgba(255,255,255,.86);
 }
 
+/* TIME is the first thing to read, so it fills its painted slot and keeps the
+   darkest ink in the HUD. */
 .play-ui-v4 .time-readout {
   position: absolute;
-  top: 24%;
-  right: 3.4%;
+  top: 7.227%;
+  left: 64.999%;
   display: flex;
-  width: 31%;
+  width: 28.462%;
+  height: 4.680%;
   min-width: 0;
   min-height: 0;
-  height: 31%;
   margin: 0;
-  padding: 0 7% 0 5%;
-  gap: 5px;
+  padding: 0;
+  gap: clamp(3px, calc(var(--chrome-width) * 0.01), 5px);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -173,93 +310,181 @@
 }
 
 .play-ui-v4 .time-readout img {
-  width: clamp(23px, 6.6vw, 29px);
-  height: clamp(25px, 7.2vw, 31px);
+  width: clamp(19px, calc(var(--chrome-width) * 0.06), 26px);
+  height: clamp(21px, calc(var(--chrome-width) * 0.066), 28px);
+  flex: 0 0 auto;
 }
 
 .play-ui-v4 .time-readout strong {
-  color: #31597a;
-  font-size: clamp(24px, 7vw, 30px);
+  color: #24506f;
+  font-size: clamp(23px, calc(var(--chrome-width) * 0.08), 32px);
   font-weight: 800;
   line-height: 1;
 }
 
 .play-ui-v4 .time-readout::before,
-.play-ui-v4 .time-readout::after {
-  left: 10%;
-  right: 10%;
-  bottom: -4px;
-  height: 4px;
+.play-ui-v4 .time-readout::after { display: none; }
+
+/* The painted slot replaces the old pill, so the running-out and frozen cues
+   have to live in the numerals themselves instead of in a chip background. */
+.play-ui-v4 .time-readout.is-warning strong,
+.play-ui-v4 .time-readout.is-low-time strong {
+  color: #e0435f;
+  text-shadow: 0 0 10px rgba(255, 118, 145, .3);
 }
 
-.play-ui-v4 .hud-secondline {
-  position: absolute;
-  top: 53%;
-  left: 8%;
-  right: 8%;
-  display: block;
-  min-height: 0;
-  height: 18%;
-  padding: 0;
-  border: 0;
+.play-ui-v4 .time-readout.is-frozen strong {
+  color: #2a8fbe;
+  text-shadow: 0 0 10px rgba(120, 205, 240, .38);
 }
 
+/* ---------------------------------------------------------------------------
+   HUD row 2 — score and combo, each seated on its painted pill.
+   ------------------------------------------------------------------------ */
 .play-ui-v4 .score-readout,
 .play-ui-v4 .combo-readout {
   position: absolute;
-  top: -5%;
+  top: 14.158%;
+  display: flex;
+  height: 3.318%;
+  min-width: 0;
   min-height: 0;
-  height: 100%;
   padding: 0;
-  gap: 5px;
+  gap: clamp(3px, calc(var(--chrome-width) * 0.01), 5px);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   align-items: center;
   line-height: 1;
+  pointer-events: none;
 }
 
-.play-ui-v4 .score-readout { left: 3.5%; }
-.play-ui-v4 .combo-readout { right: 0; }
+.play-ui-v4 .score-readout {                 /* right of the painted coin */
+  left: 13.846%;
+  width: 19.231%;
+  justify-content: flex-start;
+}
+
+.play-ui-v4 .combo-readout {                 /* right of the painted star */
+  left: 72.051%;
+  width: 18.462%;                            /* stops 16 artwork px short of
+                                                the pill's rounded right end */
+  justify-content: flex-end;
+}
+
+/* The score and combo plates are painted. Every live state that used to draw
+   its own chip (combo fever, "reward close") would otherwise float a second
+   box over — and past — the painted pill, so the state now lives in the type. */
+.play-ui-v4 .hud-secondline .score-readout,
+.play-ui-v4 .hud-secondline .combo-readout {
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.play-ui-v4 .hud-secondline .combo-readout::before,
+.play-ui-v4 .hud-secondline .combo-readout::after,
+.play-ui-v4 .hud-secondline .score-readout::before,
+.play-ui-v4 .hud-secondline .score-readout::after { display: none; }
+
+.play-ui-v4 .combo-readout.is-reward-close strong { color: #e2892c; }
+.play-ui-v4 .combo-readout.is-active strong { color: #e06079; }
+
+/* the combo window bar belongs inside the pill, not on its bottom rim */
+.play-ui-v4 .combo-timer {
+  left: auto;
+  right: 0;
+  bottom: -14%;
+  width: 62%;
+  height: 3px;
+}
+
 .play-ui-v4 .score-readout span,
 .play-ui-v4 .combo-readout span {
+  display: block;
+  flex: 0 0 auto;
   color: #7d8587;
-  font-size: clamp(10px, 2.9vw, 13px);
+  font-size: clamp(9px, calc(var(--chrome-width) * 0.0275), 12px);
   line-height: 1;
-}
-.play-ui-v4 .score-readout strong,
-.play-ui-v4 .combo-readout strong {
-  color: #596b78;
-  font-size: clamp(17px, 4.8vw, 21px);
-  line-height: 1;
+  white-space: nowrap;
 }
 
+.play-ui-v4 .score-readout strong,
+.play-ui-v4 .combo-readout strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: #4f6473;
+  font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   HUD row 3 — the painted groove is the goal track.
+   ------------------------------------------------------------------------ */
 .play-ui-v4 .goal-status {
   position: absolute;
-  top: 76%;
-  left: 6.5%;
-  right: 6.5%;
+  top: 18.128%;
+  left: 9.231%;
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: max-content minmax(38%, 1fr);
+  width: 81.410%;
+  height: 3.910%;
   min-height: 0;
-  height: 17%;
-  gap: 12px;
+  gap: clamp(6px, calc(var(--chrome-width) * 0.024), 11px);
   padding: 0;
   align-items: center;
+  pointer-events: none;
 }
 
 .play-ui-v4 .goal-meta,
 .play-ui-v4 .goal-copy { align-items: center; }
-.play-ui-v4 .goal-copy { color: #535f68; font-size: clamp(12px, 3.25vw, 14px); line-height: 1; }
-.play-ui-v4 .goal-copy b { color: #e85073; font-size: clamp(20px, 5.45vw, 24px); line-height: 1; }
-.play-ui-v4 .goal-copy em { line-height: 1; transform: translateY(1px); }
-.play-ui-v4 .goal-track { height: clamp(7px, 2vw, 9px); }
 
-/* The live board sits inside the fixed thick frame. */
+.play-ui-v4 .goal-copy {
+  color: #4f5b64;
+  font-size: clamp(11px, calc(var(--chrome-width) * 0.0315), 14px);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .goal-copy b {
+  color: #e85073;
+  font-size: clamp(17px, calc(var(--chrome-width) * 0.053), 23px);
+  line-height: 1;
+}
+
+.play-ui-v4 .goal-copy em { line-height: 1; transform: translateY(1px); }
+
+/* 26 artwork px of groove ÷ 66 artwork px of row. The painted groove already
+   reads as the empty half of the bar, so the HTML track only contributes the
+   fill and the two blend into one continuous bar. */
+.play-ui-v4 .goal-track {
+  height: 39.4%;
+  min-height: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: inset 0 1px 2px rgba(119, 83, 46, .07);
+}
+
+.play-ui-v4 .stage-mission {
+  font-size: clamp(9px, calc(var(--chrome-width) * 0.027), 11px);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Board — fills the painted recess exactly so the artwork's faint 4×4 guide
+   lines never show through beside a live 5×5 … 7×10 grid.
+   ------------------------------------------------------------------------ */
 .play-ui-v4 .board-zone {
   position: absolute;
   z-index: 5;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.269);
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.27014);
   left: 50%;
-  width: calc(var(--chrome-width) * 0.857);
-  height: calc(var(--chrome-height) * 0.421);
+  width: calc(var(--chrome-width) * 0.84359);
+  height: calc(var(--chrome-height) * 0.40521);
   padding: 0;
   overflow: visible;
   align-items: center;
@@ -286,7 +511,7 @@
 
 .play-ui-v4 .board {
   width: 100%;
-  height: 94%;
+  height: 100%;
   max-height: none;
   aspect-ratio: auto;
   border: 0;
@@ -298,29 +523,70 @@
   box-shadow: inset 0 2px 4px rgba(119,83,46,.06);
 }
 
-/* A cleared cell remains readable as a shallow board recess, not as a broken
-   or unloaded tile. Dynamic grid sizing still comes from --board-cols/rows. */
+/* The recess is 658 × 684 artwork px, so a 7 × 10 grid has wider cells than it
+   has tall ones. Letting the tile keep `aspect-ratio: 1` made every tile
+   overflow its row by ~14 px from STAGE 6 on: neighbouring tiles overlapped and
+   a column read as one long capsule. Tiles now fill their cell. */
+.play-ui-v4 .tile {
+  aspect-ratio: auto;
+  width: 100%;
+  height: 100%;
+}
+
+/* Type scales off the smaller cell edge instead of the column count alone, so
+   the number stays inside a short row on the tall late-stage boards. */
+.play-ui-v4 .tile span {
+  font-size: clamp(
+    15px,
+    min(
+      calc(var(--chrome-width) * 0.6074 / var(--board-cols)),
+      calc(var(--chrome-height) * 0.2917 / var(--board-rows))
+    ),
+    43px
+  );
+}
+
+/* A cleared cell has to read as a shallow recess in the board, never as an
+   image that failed to load. */
 .play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
-  border: 1px solid rgba(185, 151, 105, .18);
-  background: rgba(240, 224, 194, .18);
+  border: 1px solid rgba(185, 151, 105, .2);
+  background: rgba(238, 221, 189, .26);
+  background-image: none;
   box-shadow:
-    inset 0 2px 5px rgba(119, 83, 46, .075),
-    inset 0 0 0 1px rgba(255,255,255,.28);
+    inset 0 2px 5px rgba(119, 83, 46, .09),
+    inset 0 0 0 1px rgba(255,255,255,.34);
+  filter: none;
   opacity: 1;
 }
 
-.play-ui-v4 .bonus-cat-art {
-  bottom: 14%;
-  width: 66%;
-  height: 66%;
+/* The rescue cat is the only bonus square on the board and should look picked
+   out rather than like a faded sticker. */
+.play-ui-v4 .tile.is-bonus-cat {
+  background-color: #ffd076;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, .9),
+    0 0 0 1.5px rgba(240, 168, 52, .55);
+  filter:
+    drop-shadow(0 2px 2px rgba(156, 111, 55, .2))
+    drop-shadow(0 0 9px rgba(255, 199, 92, .42));
 }
 
+.play-ui-v4 .bonus-cat-art {
+  bottom: 12%;
+  width: 72%;
+  height: 72%;
+  filter: saturate(1.12) drop-shadow(0 2px 2px rgba(55, 78, 104, .28));
+}
+
+/* ---------------------------------------------------------------------------
+   Feedback rail — floats in the sky gap between the HUD panel and the frame.
+   ------------------------------------------------------------------------ */
 .play-ui-v4 .play-feedback-rail {
   z-index: 25;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.239);
+  top: calc(var(--chrome-top) + var(--chrome-height) * 0.2295);
   left: 50%;
   bottom: auto;
-  width: min(76%, 296px);
+  width: min(calc(var(--chrome-width) * 0.76), 296px);
   height: 28px;
   transform: translateX(-50%);
 }
@@ -333,12 +599,12 @@
 }
 
 .play-ui-v4 .tutorial-callout strong {
-  font-size: clamp(13px, 3.7vw, 15px);
+  font-size: clamp(13px, calc(var(--chrome-width) * 0.037), 15px);
 }
 
 .play-ui-v4.is-stage-clearing .play-feedback-rail {
   top: calc(var(--chrome-top) + var(--chrome-height) * 0.43);
-  width: min(82%, 320px);
+  width: min(calc(var(--chrome-width) * 0.82), 320px);
   height: 48px;
 }
 
@@ -368,33 +634,22 @@
   white-space: nowrap;
 }
 
-/* The footer becomes a transparent hit layer over the fixed dock and bubble. */
-.play-ui-v4 .play-footer {
-  position: absolute;
-  z-index: 6;
-  top: 0;
-  left: 50%;
-  display: block;
-  width: var(--chrome-width);
-  height: var(--chrome-height);
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  pointer-events: none;
-  transform: translateX(-50%);
-}
+/* "TIME UP!" broke over two lines inside its 210px minimum width. */
+.play-ui-v4 .time-up strong,
+.play-ui-v4 .time-up small { white-space: nowrap; }
 
-.play-ui-v4 .play-footer::before,
-.play-ui-v4 .play-footer::after { display: none; }
-
+/* ---------------------------------------------------------------------------
+   Dock — the four painted slots are the buttons.
+   ------------------------------------------------------------------------ */
 .play-ui-v4 .item-actions {
   position: absolute;
-  top: 73.7%;
-  left: 7.75%;
+  top: 72.867%;
+  left: 7.786%;
   display: grid;
-  width: 84.6%;
-  height: 9.7%;
-  gap: 2.25%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 85.359%;
+  height: 9.834%;
+  gap: 1.691%;                        /* 11.26 artwork px between slots */
   margin: 0;
   padding: 0;
   overflow: visible;
@@ -409,11 +664,13 @@
 .play-ui-v4 .item-actions::after { display: none; }
 
 .play-ui-v4 .item-button {
+  position: relative;
   height: 100%;
+  min-height: 44px;
   margin: 0;
   display: block;
   border: 0;
-  border-radius: 19px;
+  border-radius: 17px;
   background: transparent;
   box-shadow: none;
   touch-action: manipulation;
@@ -423,114 +680,229 @@
   display: block;
   inset: 7% 9% auto;
   height: 17%;
+  border-radius: 12px 12px 0 0;
   background: linear-gradient(180deg, rgba(255,255,255,.42), transparent);
 }
 
 .play-ui-v4 .item-button:active,
 .play-ui-v4 .item-button.is-pressed {
-  transform: translateY(4px) scale(.975);
+  transform: translateY(3px) scale(.98);
   box-shadow: inset 0 3px 5px rgba(74,64,51,.12);
-}
-
-.play-ui-v4 .item-button[data-state="locked"],
-.play-ui-v4 .item-button[data-state="depleted"] {
-  background: rgba(243, 242, 236, .62);
-  box-shadow: inset 0 2px 4px rgba(77,88,88,.08);
-}
-
-.play-ui-v4 .item-button[data-state="locked"] .item-icon,
-.play-ui-v4 .item-button[data-state="depleted"] .item-icon {
-  filter: grayscale(.72) saturate(.34);
-  opacity: .42;
 }
 
 .play-ui-v4 .item-button::after {
   display: none !important;
 }
 
+/* Three states have to be told apart at a glance:
+   available — painted slot at full colour, coral count badge
+   depleted  — used up this run: slot drained toward cream, grey "0" badge
+   locked    — never owned yet: cool grey slot, no badge, padlock            */
+.play-ui-v4 .item-button[data-state="depleted"] {
+  background: rgba(255, 251, 240, .74);
+  box-shadow: inset 0 2px 5px rgba(120, 100, 72, .12);
+}
+
+.play-ui-v4 .item-button[data-state="locked"] {
+  background: rgba(226, 231, 234, .82);
+  box-shadow: inset 0 2px 5px rgba(77, 88, 88, .15);
+}
+
+.play-ui-v4 .item-button[data-state="depleted"] .item-icon {
+  filter: saturate(.32) drop-shadow(0 1px 1px rgba(93,74,49,.08));
+  opacity: .46;
+}
+
+.play-ui-v4 .item-button[data-state="locked"] .item-icon {
+  filter: grayscale(1) brightness(1.08) drop-shadow(0 1px 1px rgba(93,74,49,.06));
+  opacity: .3;
+}
+
+.play-ui-v4 .item-button[data-state="depleted"] > span { color: #a4988a; }
+.play-ui-v4 .item-button[data-state="locked"] > span { color: #98a2a7; }
+
+/* "소진" already exists in the stylesheet as a ::after chip; the fixed chrome
+   just has to let it through and give it slot-relative insets. Without it a
+   used-up item was indistinguishable from one that was never unlocked. */
+.play-ui-v4 .item-button[data-state="depleted"]::after {
+  content: "소진" !important;
+  display: block !important;
+  position: absolute;
+  right: 6%;
+  bottom: auto;
+  top: 7%;
+  left: auto;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,.92);
+  border-radius: 999px;
+  background: rgba(150, 141, 128, .86);
+  box-shadow: 0 1px 2px rgba(78, 71, 62, .12);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, calc(var(--chrome-width) * 0.026), 11px);
+  font-weight: 800;
+  line-height: 1.25;
+  width: auto;
+  height: auto;
+}
+
+/* Padlock, built from the button's own pseudo-elements so no placeholder or
+   emoji stands in for missing art. ::before is the body, ::after the shackle. */
+.play-ui-v4 .item-button[data-state="locked"]::before {
+  content: "";
+  display: block;
+  inset: auto;
+  top: 15.5%;
+  right: 8%;
+  bottom: auto;
+  left: auto;
+  width: 15%;
+  height: 11%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #d3dade, #a7b2b8);
+  box-shadow: 0 1px 0 rgba(255,255,255,.8), inset 0 1px 0 rgba(255,255,255,.72);
+}
+
+.play-ui-v4 .item-button[data-state="locked"]::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  top: 8.6%;
+  right: 11.6%;
+  bottom: auto;
+  left: auto;
+  min-width: 0;
+  width: 7.8%;
+  height: 7.4%;
+  padding: 0;
+  border: 2px solid #aab5bb;
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0;
+}
+
 .play-ui-v4 .item-icon {
   position: absolute;
-  top: 10%;
+  top: 12%;
   left: 50%;
-  width: clamp(34px, 10vw, 42px);
-  height: clamp(34px, 10vw, 42px);
+  width: 46%;
+  height: 44%;
   padding: 0;
+  object-fit: contain;
   filter: drop-shadow(0 2px 2px rgba(93,74,49,.13));
   transform: translateX(-50%);
 }
 
 .play-ui-v4 .item-button > span {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 11%;
-  font-size: clamp(14px, 3.9vw, 17px);
+  left: 6%;
+  right: 6%;
+  bottom: 12%;
+  font-size: clamp(12px, calc(var(--chrome-width) * 0.037), 16px);
   line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
+/* The badge belongs to its own slot: inset far enough that it never sits on the
+   gap between two painted buttons. */
 .play-ui-v4 .item-button b {
-  right: 1px;
-  top: 1px;
-  width: clamp(23px, 6.3vw, 27px);
-  height: clamp(23px, 6.3vw, 27px);
-  font-size: clamp(13px, 3.7vw, 16px);
+  right: 5%;
+  top: 4%;
+  width: clamp(20px, calc(var(--chrome-width) * 0.058), 25px);
+  height: clamp(20px, calc(var(--chrome-width) * 0.058), 25px);
+  font-size: clamp(12px, calc(var(--chrome-width) * 0.035), 15px);
 }
 
-.play-ui-v4 .cat-coach {
+.play-ui-v4 .item-button[data-state="locked"] b { display: none; }
+
+/* ---------------------------------------------------------------------------
+   Coach — cat and speech bubble, both on the canvas.
+   ------------------------------------------------------------------------ */
+/* already inside .play-footer, which is the canvas — so plain inset, not a
+   second --chrome-top offset */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
   position: absolute;
-  top: 85.6%;
-  left: 0;
+  inset: 0;
   display: block;
   width: 100%;
-  height: 10.7%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
   padding: 0;
-  pointer-events: auto;
+  pointer-events: none;
+  transform: none;
 }
 
-.play-ui-v4 .play-character-stage {
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
   position: absolute;
+  top: 84.9%;
   left: 1.5%;
-  bottom: -2%;
+  bottom: auto;
   width: 27%;
-  height: 108%;
+  height: 11.6%;
 }
 
 .play-ui-v4 .play-character-stage img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center bottom;
 }
 
-.play-ui-v4 .cat-message {
+/* Two lines, always, centred on the painted bubble. Before this the bubble was
+   a fixed-height flex box with `overflow: hidden`, so a long line grew upward
+   and was sliced through the middle of a glyph. */
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
   position: absolute;
-  top: 16.5%;
-  left: 25.5%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 50.5%;
+  top: 89.87%;
+  left: 30.385%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  width: 42.051%;
   max-width: none;
+  height: auto;
   min-height: 0;
-  height: 67%;
-  padding: 0 8% 0 13%;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  font-size: clamp(14px, 4vw, 17px);
-  line-height: 1.25;
+  color: #6b5447;
+  font-size: clamp(13px, calc(var(--chrome-width) * 0.039), 16px);
+  line-height: 1.26;
   text-align: center;
   text-wrap: balance;
   word-break: keep-all;
   overflow-wrap: break-word;
   overflow: hidden;
+  transform: translateY(-50%);
 }
 
-.play-ui-v4 .cat-message.is-long { font-size: clamp(12px, 3.45vw, 15px); }
+/* `.is-long` is set by ui.js at 18+ characters; the longest line the game ships
+   is 25 units and lands on exactly two lines at this size. */
+.play-ui-v4 .cat-message.is-long,
+.play-ui-v4.is-tall-board .cat-message.is-long {
+  font-size: clamp(10.5px, calc(var(--chrome-width) * 0.0335), 14px);
+  line-height: 1.24;
+}
+
+.play-ui-v4 .cat-message strong { font-size: inherit; }
 
 .play-ui-v4 .cat-message::before,
 .play-ui-v4 .cat-message::after { display: none; }
 
+/* ---------------------------------------------------------------------------
+   Feedback animation.
+   ------------------------------------------------------------------------ */
 .play-ui-v4 .score-burst.is-visible {
   animation: chrome-score-feedback 900ms cubic-bezier(.16,.76,.24,1) both;
 }
@@ -540,66 +912,6 @@
   16% { opacity: 1; transform: translate(-50%, -9px) scale(1.06); }
   70% { opacity: 1; transform: translate(-50%, -24px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -38px) scale(.96); }
-}
-
-.play-ui-v4.is-tall-board .play-footer,
-.play-ui-v4.is-tall-board .cat-coach,
-.play-ui-v4.is-tall-board .play-character-stage,
-.play-ui-v4.is-tall-board .cat-message {
-  transform: none;
-}
-
-/* Keep the footer registered to the same centered chrome canvas after the
-   board grows taller. The generic tall-board reset above is only for its
-   children and must not release the footer's horizontal anchor. */
-.play-ui-v4.is-tall-board .play-footer {
-  width: var(--chrome-width);
-  height: var(--chrome-height);
-  min-height: 0;
-  transform: translateX(-50%);
-}
-
-.play-ui-v4.is-tall-board .cat-coach {
-  top: 85.6%;
-  left: 0;
-  width: 100%;
-  height: 10.7%;
-  padding: 0;
-}
-
-.play-ui-v4.is-tall-board .play-character-stage {
-  left: 1.5%;
-  bottom: -2%;
-  width: 27%;
-  height: 108%;
-}
-
-.play-ui-v4.is-tall-board .cat-message {
-  top: 16.5%;
-  left: 25.5%;
-  width: 50.5%;
-  max-width: none;
-  min-height: 0;
-  height: 67%;
-  padding: 0 8% 0 13%;
-  font-size: clamp(14px, 4vw, 17px);
-}
-
-@media (max-height: 815px), (max-width: 360px) {
-  .play-ui-v4 .item-icon { width: 34px; height: 34px; }
-  .play-ui-v4 .cat-message { font-size: 14px; }
-  .play-ui-v4 .cat-coach,
-  .play-ui-v4.is-tall-board .cat-coach {
-    top: 83.5%;
-    height: 9%;
-  }
-}
-
-/* Short browser viewports crop only decorative ground. Lift the coach enough
-   to keep the cat and the full two-line bubble inside the interactive area. */
-@media (min-aspect-ratio: 195 / 422) {
-  .play-ui-v4 .cat-coach,
-  .play-ui-v4.is-tall-board .cat-coach { top: 83.5%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
