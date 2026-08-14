@@ -510,21 +510,28 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Board — square tiles spread over the whole recess.
+   Board — a packed slab of square tiles, no panel of its own.
 
    The recess is 658 × 762 artwork px (h/w 1.158) so the tallest board, 6 × 7
-   (h/w 1.167), seats square tiles inside it. Sizing the *board* to cell×cols by
-   cell×rows made every other stage — 4 × 4, 5 × 5, 6 × 6, all width-bound —
-   float as a square slab on a taller floor, leaving a bare cream band about 27
-   CSS px deep above AND below the tiles. That band read as a broken panel.
+   (h/w 1.167), seats square tiles inside it with 0.7% to spare. Every other
+   stage — 4 × 4, 5 × 5, 6 × 6 — is width-bound, so the board (cell×cols by
+   cell×rows) is shorter than the recess and floats centred inside it.
 
-   So the grid now always fills the recess and the leftover is spent *between*
-   rows instead of pooling at the two ends: the track is `1fr`, so the cells
-   share the recess evenly, and the tile is a square of `--cell` centred in its
-   cell by auto margins. Tiles stay square at every stage, the pitch stays
-   perfectly uniform (input.js divides the board rect by cols/rows and must keep
-   landing on the right cell), and the painted floor never shows a dead end
-   band — a 4 × 4 board just breathes ~7 CSS px above and below each row.
+   That used to read as a mismatched panel: the board painted its own cream
+   background, border and grid lines, so a 4×4 board looked like a smaller
+   beige card pasted inside a bigger one, with a visible seam at its edge.
+   Stretching the grid to fill the recess with 1fr tracks "fixed" the seam but
+   broke tiles apart — the row height stayed 7-rows-tall regardless of how
+   many rows the stage had, so 4 rows sat pooled by huge transparent gaps, and
+   a cleared cell (already a flat cream square) fused with that gap into one
+   giant blank rectangle.
+
+   The actual fix is simpler: keep tiles packed edge to edge (cell×cols by
+   cell×rows, same pitch input.js expects) and give `.board` no surface at
+   all. With no border, background or grid lines of its own, the leftover
+   recess above and below a short board is just the painted floor showing
+   through — the same cream it always was — so there is no second panel to
+   look mismatched against it.
    ------------------------------------------------------------------------ */
 .play-ui-v4 .board-zone {
   position: absolute;
@@ -559,43 +566,36 @@
 }
 
 .play-ui-v4 .board {
-  /* the square tile edge: whichever axis runs out first decides it */
+  /* the square cell edge: whichever axis runs out first decides it */
   --cell: min(
     calc(var(--chrome-width) * 0.84359 / var(--board-cols)),
     calc(var(--chrome-height) * 0.45142 / var(--board-rows))
   );
-  width: 100%;
-  height: 100%;
+  width: calc(var(--cell) * var(--board-cols));
+  height: calc(var(--cell) * var(--board-rows));
   max-height: none;
   aspect-ratio: auto;
-  gap: 0;
-  padding: 0;
   border: 0;
   border-radius: 0;
-  /* The painted floor is already a clean cream with its own vignette, and a
-     drawn grid would only fit if every tile filled its cell edge to edge —
-     which is exactly what stopped being true. Tiles carry their own ring, so
-     the board contributes no surface of its own. */
+  /* No panel of its own — the painted recess floor shows through both around
+     a short board and through the 1px inter-tile gap. */
   background: transparent;
   box-shadow: none;
 }
 
-/* Square tile, centred in a cell that may be taller (4×4 … 6×6) or wider
-   (6×7) than it is. */
+/* Cells are square by construction (board width/height is cell×cols/cell×rows),
+   so the tile just fills its cell — no extra gap to reveal the floor between
+   tiles. */
 .play-ui-v4 .tile {
-  aspect-ratio: 1;
-  width: var(--cell);
-  height: var(--cell);
-  max-width: 100%;
-  max-height: 100%;
-  margin: auto;
+  aspect-ratio: auto;
+  width: 100%;
+  height: 100%;
 }
 
-/* Numerals ride the square tile edge. The old 0.55/30px pair let the cap bind
-   on every board from STAGE 1 to 6×7 alike, so a roomy 85px STAGE 1 tile
-   carried the same 30px glyph as a cramped 57px one and read as undersized.
-   0.46 with a 42px cap keeps the cap off the common stages: STAGE 1 lands at
-   39-40px, 5×5 at 32px, 6×6 at 27px, 6×7 at 26px. */
+/* Numerals ride the square cell edge at a ~0.46 fill and meet the 42px cap on
+   ordinary phones. Raised from the old 0.55/30px pair, which let the 30px cap
+   bind on every board from STAGE 1 to 6×7 alike and read as undersized on the
+   roomy early stages. */
 .play-ui-v4 .tile span {
   font-size: clamp(17px, calc(var(--cell) * 0.46), 42px);
 }
