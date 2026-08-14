@@ -2,7 +2,6 @@ import { cellsInRect } from './board.js';
 import {
   BOARD_DROP_ITEMS,
   buildScoreComparisons,
-  comboMultiplier,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
@@ -1279,7 +1278,6 @@ export class GameUI {
     const isWide = bonus.comboGain > 1;
     primary.textContent = isWide ? `WOW! +${points}` : `+${points}`;
     const detail = document.createElement('span');
-    const labels = [];
     const rewardLabels = [];
     if (bonus.challengeBonusPoints > 0) rewardLabels.push(`미션 +${bonus.challengeBonusPoints}`);
     if (bonus.cloverBonusPoints > 0) rewardLabels.push(`클로버 +${bonus.cloverBonusPoints}`);
@@ -1287,14 +1285,11 @@ export class GameUI {
     if (bonus.catBonusPoints > 0) rewardLabels.push(`고양이 +${bonus.catBonusPoints}`);
     if (bonus.specialBonusPoints > 0) rewardLabels.push(`폭탄 +${bonus.specialBonusPoints}`);
     if (bonus.wideBonusPoints > 0) rewardLabels.push(`큰 조합 +${bonus.wideBonusPoints}`);
-    if (isWide) labels.push(`${cellCount}칸 · 콤보 +2`);
-    else if (cellCount >= 3) labels.push(`${cellCount}칸 클리어`);
-    // Keep the transient score line scannable on narrow boards. The total is
-    // already in the large number, so show only the two most relevant bonuses.
-    labels.push(...rewardLabels.slice(0, 2));
-    if (combo > 1) labels.push(`배율 ×${comboMultiplier(combo).toFixed(2)}`);
-    detail.textContent = labels.join(' · ');
-    detail.hidden = labels.length === 0;
+    // The total is the only information needed on every clear. Show at most
+    // one exceptional reward label; cell counts and multipliers remain in the
+    // underlying score calculation instead of racing past as transient copy.
+    detail.textContent = rewardLabels[0] || (isWide ? '큰 조합!' : '');
+    detail.hidden = !detail.textContent;
     burst.replaceChildren(primary, detail);
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     burst.dataset.wide = String(isWide);
@@ -1314,7 +1309,7 @@ export class GameUI {
     this.scoreBurstTimer = window.setTimeout(() => {
       burst.classList.remove('is-visible');
       delete burst.dataset.wide;
-    }, 660);
+    }, 900);
   }
 
   showCatBonus(points, rect, catCount = 1) {
@@ -1465,9 +1460,8 @@ export class GameUI {
     if (label) label.textContent = `STAGE ${stage} CLEAR!`;
     const details = [];
     if (boardGrew && rows > 0 && cols > 0) details.push(`${cols}×${rows} OPEN`);
-    if (timeBonus > 0) details.push(`+${timeBonus} SEC`);
-    if (scoreBonus > 0) details.push(`+${scoreBonus.toLocaleString('ko-KR')}점`);
-    if (reward) reward.textContent = details.join(' · ') || `STAGE ${nextStage} GO!`;
+    if (timeBonus > 0) details.push(`+${timeBonus}초`);
+    if (reward) reward.textContent = details.slice(0, 2).join(' · ') || `STAGE ${nextStage} GO!`;
     clear.dataset.stage = String(stage);
     clear.dataset.nextStage = String(nextStage);
     clear.classList.toggle('is-milestone', timeBonus > 0 || boardGrew);
