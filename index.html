@@ -13,6 +13,8 @@
   <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/Pretendard-OING.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="design/ui-atlas/oing-ui-atlas.css">
+  <link rel="stylesheet" href="css/atlas-integration.css">
 </head>
 <body>
   <audio id="bgm-audio" src="assets/sounds/oing-original-bgm.mp3" loop preload="none"></audio>
@@ -74,7 +76,13 @@
             </button>
             <button class="hud-mini-button music-button is-on" id="hud-music-button" type="button" aria-label="배경음악 끄기" aria-pressed="true"><i></i></button>
           </div>
-          <div class="round-mini"><span>STAGE</span><strong id="round-value">1</strong></div>
+          <div class="round-mini">
+            <i class="stage-arch-atlas oing-atlas-sprite oing-atlas--stage-arch-panel-deco" aria-hidden="true"></i>
+            <i class="stage-cloud-atlas stage-cloud-left oing-atlas-sprite oing-atlas--cloud-left" aria-hidden="true"></i>
+            <i class="stage-cloud-atlas stage-cloud-right oing-atlas-sprite oing-atlas--cloud-right" aria-hidden="true"></i>
+            <i class="stage-ribbon-atlas oing-atlas-sprite oing-atlas--stage-ribbon" aria-hidden="true"></i>
+            <span>STAGE</span><strong id="round-value">1</strong>
+          </div>
           <div class="time-readout" id="time-pill" hidden>
             <img class="time-clock-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt="">
             <img class="time-freeze-icon" src="assets/icons/items/freeze.webp" width="512" height="512" loading="lazy" decoding="async" alt="">
@@ -83,10 +91,10 @@
         </div>
         <div class="hud-secondline">
           <div class="score-readout">
-            <img src="assets/icons/hud/score.webp" width="277" height="279" loading="lazy" decoding="async" alt=""><span>점수</span><strong id="score-value">0</strong>
+            <i class="hud-atlas-icon oing-atlas-sprite oing-atlas--coin-icon" aria-hidden="true"></i><span>점수</span><strong id="score-value">0</strong>
           </div>
           <div class="combo-readout" id="combo-chip">
-            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><span>COMBO</span><strong id="combo-value">0</strong>
+            <i class="hud-atlas-icon oing-atlas-sprite oing-atlas--star-icon" aria-hidden="true"></i><span>COMBO</span><strong id="combo-value">0</strong>
             <div class="combo-timer" aria-hidden="true"><i id="combo-timer-fill"></i></div>
           </div>
         </div>
@@ -134,26 +142,27 @@
       </section>
 
       <footer class="play-footer">
-        <div class="item-actions">
+        <div class="item-actions oing-atlas-sprite oing-atlas--item-dock-base-deco">
           <button class="item-button hint-button" id="hint-button" type="button">
-            <img class="item-icon" src="assets/icons/items/hint.webp" width="243" height="314" loading="lazy" decoding="async" alt=""><span>힌트</span><b id="hint-count">3</b>
+            <i class="item-icon oing-atlas-sprite oing-atlas--hint-icon" aria-hidden="true"></i><span>힌트</span><b class="oing-atlas-sprite oing-atlas--badge-circle-deco" id="hint-count">3</b>
           </button>
           <button class="item-button shuffle-button" id="shuffle-button" type="button">
-            <img class="item-icon" src="assets/icons/items/shuffle.webp" width="286" height="256" loading="lazy" decoding="async" alt=""><span>섞기</span><b id="shuffle-count">2</b>
+            <i class="item-icon oing-atlas-sprite oing-atlas--shuffle-icon" aria-hidden="true"></i><span>섞기</span><b class="oing-atlas-sprite oing-atlas--badge-circle-deco" id="shuffle-count">2</b>
           </button>
           <button class="item-button bomb-button" id="bomb-button" type="button">
-            <img class="item-icon" src="assets/icons/items/bomb.webp" width="286" height="312" loading="lazy" decoding="async" alt=""><span>폭탄</span><b id="bomb-count">1</b>
+            <i class="item-icon oing-atlas-sprite oing-atlas--bomb-icon" aria-hidden="true"></i><span>폭탄</span><b class="oing-atlas-sprite oing-atlas--badge-circle-deco" id="bomb-count">1</b>
           </button>
           <button class="item-button clock-button" id="clock-button" type="button">
-            <img class="item-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt=""><span>시계</span><b id="clock-count">1</b>
+            <i class="item-icon oing-atlas-sprite oing-atlas--clock-icon" aria-hidden="true"></i><span>시계</span><b class="oing-atlas-sprite oing-atlas--badge-circle-deco" id="clock-count">1</b>
           </button>
         </div>
         <div class="cat-coach">
           <div class="character-stage play-character-stage">
             <img id="play-cat" src="assets/characters/cat-peek.webp" width="359" height="306" loading="lazy" decoding="async" alt="보드 아래에서 빼꼼 보는 블루 고양이">
           </div>
-          <div class="cat-message" id="cat-message">10을 찾아보자냥!</div>
+          <div class="cat-message oing-atlas-sprite oing-atlas--speech-bubble-frame" id="cat-message">10을 찾아보자냥!</div>
         </div>
+        <i class="bottom-ground-atlas oing-atlas-sprite oing-atlas--bottom-flower-ground-deco" aria-hidden="true"></i>
       </footer>
     </section>
 

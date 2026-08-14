@@ -1,0 +1,236 @@
+/* OING UI atlas integration. Dynamic labels remain live HTML above these raster decorations. */
+.play-ui-v4 .oing-atlas-sprite {
+  background-image: url("../design/ui-atlas/oing-ui-atlas.png");
+  background-repeat: no-repeat;
+  image-rendering: auto;
+}
+
+.play-ui-v4 .oing-atlas--badge-circle-deco {
+  background-size: 1706.666667% 1706.666667%;
+  background-position: 70.539419% 1.659751%;
+}
+
+.play-ui-v4 .oing-atlas--coin-icon {
+  background-size: 1462.857143% 1462.857143%;
+  background-position: 79.140461% 1.257862%;
+}
+
+.play-ui-v4 .oing-atlas--star-icon {
+  background-size: 1462.857143% 1462.857143%;
+  background-position: 95.911950% 1.257862%;
+}
+
+.play-ui-v4 .oing-atlas--item-dock-base-deco {
+  background-size: 170.666667% 787.692308%;
+  background-position: 3.773585% 16.778523%;
+}
+
+.play-ui-v4 .oing-atlas--speech-bubble-frame {
+  background-size: 330.322581% 1137.777778%;
+  background-position: 88.235294% 15.417559%;
+}
+
+.play-ui-v4 .oing-atlas--bottom-flower-ground-deco {
+  background-size: 330.322581% 1077.894737%;
+  background-position: 88.235294% 27.556512%;
+}
+
+.play-ui-v4 .oing-atlas--hint-icon,
+.play-ui-v4 .oing-atlas--shuffle-icon,
+.play-ui-v4 .oing-atlas--bomb-icon,
+.play-ui-v4 .oing-atlas--clock-icon {
+  background-size: 1280% 1280%;
+}
+
+.play-ui-v4 .oing-atlas--hint-icon { background-position: 1.694915% 40.254237%; }
+.play-ui-v4 .oing-atlas--shuffle-icon { background-position: 11.864407% 40.254237%; }
+.play-ui-v4 .oing-atlas--bomb-icon { background-position: 22.033898% 40.254237%; }
+.play-ui-v4 .oing-atlas--clock-icon { background-position: 32.203390% 40.254237%; }
+
+.play-ui-v4 .round-mini {
+  overflow: visible;
+  isolation: isolate;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .round-mini::before,
+.play-ui-v4 .round-mini::after {
+  display: none;
+}
+
+.play-ui-v4 .stage-arch-atlas,
+.play-ui-v4 .stage-ribbon-atlas,
+.play-ui-v4 .stage-cloud-atlas {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.play-ui-v4 .stage-arch-atlas {
+  z-index: -1;
+  left: 50%;
+  bottom: -10px;
+  width: 148px;
+  height: 81px;
+  transform: translateX(-50%);
+}
+
+.play-ui-v4 .stage-ribbon-atlas {
+  z-index: 1;
+  top: -5px;
+  left: 50%;
+  width: 84px;
+  height: 24px;
+  transform: translateX(-50%);
+}
+
+.play-ui-v4 .stage-cloud-atlas {
+  z-index: 0;
+  bottom: -2px;
+  width: 38px;
+  height: 20px;
+  opacity: .94;
+}
+
+.play-ui-v4 .stage-cloud-left { left: -11px; }
+.play-ui-v4 .stage-cloud-right { right: -11px; }
+
+.play-ui-v4 .round-mini span {
+  z-index: 2;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #fffdf7;
+  text-shadow: 0 1px 1px rgba(176, 72, 93, .3);
+}
+
+.play-ui-v4 .round-mini strong {
+  z-index: 2;
+  margin-top: 7px;
+  color: #f19b2d;
+  text-shadow: 0 2px 0 #fff8dd, 0 3px 5px rgba(192, 122, 41, .15);
+}
+
+.play-ui-v4 .hud-atlas-icon {
+  display: block;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+}
+
+.play-ui-v4 .item-actions {
+  aspect-ratio: auto;
+  overflow: visible;
+  border: 0;
+  background-color: transparent;
+  box-shadow: 0 8px 16px rgba(114, 112, 91, .14);
+}
+
+.play-ui-v4 .item-actions::before,
+.play-ui-v4 .item-actions::after {
+  display: none;
+}
+
+.play-ui-v4 .item-button {
+  margin-block: 7px 9px;
+}
+
+.play-ui-v4 .item-icon {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: initial;
+  filter: none;
+}
+
+.play-ui-v4 .item-button b {
+  aspect-ratio: 1;
+  border: 0;
+  background-color: transparent;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(137, 55, 71, .26);
+  box-shadow: 0 2px 5px rgba(166, 73, 91, .17);
+}
+
+.play-ui-v4 .cat-message {
+  aspect-ratio: auto;
+  min-height: 54px;
+  padding: 10px 22px 9px 28px;
+  border: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .cat-message::before,
+.play-ui-v4 .cat-message::after {
+  display: none;
+}
+
+.play-ui-v4 .play-footer {
+  isolation: isolate;
+}
+
+.play-ui-v4 .item-actions,
+.play-ui-v4 .cat-coach {
+  position: relative;
+  z-index: 2;
+}
+
+.play-ui-v4 .bottom-ground-atlas {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: -12px;
+  display: block;
+  width: min(310px, 88vw);
+  height: 95px;
+  transform: translateX(-50%);
+  opacity: .54;
+  pointer-events: none;
+}
+
+.play-ui-v4 .play-footer::after {
+  display: none;
+}
+
+@media (max-width: 360px), (max-height: 800px) {
+  .play-ui-v4 .stage-arch-atlas {
+    width: 136px;
+    height: 74px;
+  }
+
+  .play-ui-v4 .stage-ribbon-atlas {
+    width: 77px;
+    height: 22px;
+  }
+
+  .play-ui-v4 .stage-cloud-atlas {
+    width: 34px;
+    height: 18px;
+  }
+
+  .play-ui-v4 .item-button {
+    margin-block: 5px 7px;
+  }
+
+  .play-ui-v4 .item-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .play-ui-v4 .cat-message {
+    min-height: 49px;
+    padding: 8px 18px 7px 25px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .bottom-ground-atlas,
+  .play-ui-v4 .stage-cloud-atlas {
+    animation: none !important;
+  }
+}
