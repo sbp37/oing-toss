@@ -69,6 +69,7 @@
         <div class="start-countdown-cat" aria-hidden="true"><img src="assets/characters/cat-wave.webp" width="430" height="481" loading="lazy" decoding="async" alt=""></div>
       </div>
       <header class="play-hud">
+        <img class="play-hud-chrome" src="assets/ui/play-hud-chrome-v1.webp" width="1536" height="595" decoding="async" fetchpriority="high" alt="">
         <div class="hud-topline">
           <div class="hud-controls">
             <button class="asset-icon-button pause-button" id="pause-button" type="button" aria-label="일시정지">
@@ -85,22 +86,24 @@
         </div>
         <div class="hud-secondline">
           <div class="score-readout">
+            <img src="assets/icons/hud/score.webp" width="294" height="296" decoding="async" alt="">
             <span>점수</span><strong id="score-value">0</strong>
           </div>
+          <div class="goal-status">
+            <div class="goal-meta">
+              <span class="goal-copy"><b id="goal-value">0 / 3</b> <em id="goal-label">성공</em></span>
+              <span class="stage-mission" id="stage-mission" hidden>
+                <img id="stage-mission-icon" src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
+                <strong id="stage-mission-value">큰 조합 0/1</strong>
+              </span>
+            </div>
+            <div class="goal-track" id="goal-track" aria-hidden="true"><i id="goal-fill"></i></div>
+          </div>
           <div class="combo-readout" id="combo-chip">
+            <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
             <span>COMBO</span><strong id="combo-value">0</strong>
             <div class="combo-timer" aria-hidden="true"><i id="combo-timer-fill"></i></div>
           </div>
-        </div>
-        <div class="goal-status">
-          <div class="goal-meta">
-            <span class="goal-copy"><b id="goal-value">0 / 3</b> <em id="goal-label">성공</em></span>
-            <span class="stage-mission" id="stage-mission" hidden>
-              <img id="stage-mission-icon" src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
-              <strong id="stage-mission-value">큰 조합 0/1</strong>
-            </span>
-          </div>
-          <div class="goal-track" id="goal-track" aria-hidden="true"><i id="goal-fill"></i></div>
         </div>
       </header>
 
@@ -137,6 +140,7 @@
       </section>
 
       <footer class="play-footer">
+        <img class="play-footer-chrome" src="assets/ui/play-footer-chrome-v1.webp" width="1536" height="530" decoding="async" fetchpriority="high" alt="">
         <div class="item-actions">
           <button class="item-button hint-button" id="hint-button" type="button">
             <img class="item-icon" src="assets/icons/items/hint.webp" width="243" height="314" loading="lazy" decoding="async" alt=""><span>힌트</span><b id="hint-count">3</b>
@@ -153,7 +157,7 @@
         </div>
         <div class="cat-coach">
           <div class="character-stage play-character-stage">
-            <img id="play-cat" src="design/ui-chrome/cat_idle.png" width="359" height="306" loading="lazy" decoding="async" alt="보드 아래에서 빼꼼 보는 블루 고양이">
+            <img id="play-cat" src="assets/characters/cat-wave.webp" width="430" height="481" loading="lazy" decoding="async" alt="손을 흔드는 블루 고양이">
           </div>
           <div class="cat-message" id="cat-message">10을 찾아보자냥!</div>
         </div>

@@ -393,7 +393,7 @@ class OingGame {
     this.forceTestBoardItem();
     this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
     this.ui.showScreen('play');
-    this.ui.setPlayCharacter('peek');
+    this.ui.setPlayCharacter('wave');
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();

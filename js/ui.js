@@ -1659,7 +1659,7 @@ export class GameUI {
   }
 
   setPlayCharacter(pose, duration = 0) {
-    const next = CHARACTER_ASSETS[pose] ? pose : 'peek';
+    const next = CHARACTER_ASSETS[pose] ? pose : 'wave';
     const token = ++this.characterToken;
     clearTimeout(this.characterTimer);
     const image = this.elements.playCat;
@@ -1674,9 +1674,9 @@ export class GameUI {
       image.dataset.pose = next;
       void image.offsetWidth;
       image.classList.add('is-switching');
-      if (duration > 0 && next !== 'peek') {
+      if (duration > 0 && next !== 'wave') {
         this.characterTimer = setTimeout(() => {
-          if (token === this.characterToken) this.setPlayCharacter('peek');
+          if (token === this.characterToken) this.setPlayCharacter('wave');
         }, duration);
       }
     };

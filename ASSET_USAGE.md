@@ -1,6 +1,6 @@
 # OING Toss v2 asset usage
 
-배포 에셋은 `oing-toss-assets-v1/` 원본을 기준으로 사용했다. 캐릭터·아이콘·UI는 lossless WebP 원본을 유지하고, 배경 두 장만 실제 화면 비교 후 WebP quality 86으로 재압축했다. 콘셉트 보드나 마스터 시트의 일부는 다시 크롭하지 않았다.
+배포 에셋은 `oing-toss-assets-v1/` 원본을 기준으로 사용했다. 기존 캐릭터·아이콘·UI는 lossless WebP 원본을 유지하고, 배경 두 장만 실제 화면 비교 후 WebP quality 86으로 재압축했다. 신규 상·하단 크롬은 1536px 투명 PNG를 원본으로 보관하고, 모바일 첫 로딩을 위해 눈에 띄는 손실이 없는 WebP quality 92 배포본을 사용한다. 콘셉트 보드나 마스터 시트의 일부는 다시 크롭하지 않았다.
 
 플레이 보드는 모든 칸이 같은 타일 하나(`tiles-syrup-v4/tile-mint.webp`)를 쓴다. 색을 칸마다 다르게 주는 방향은 여러 번 시도했지만, 보드는 한 판에 2분을 계속 쳐다보는 화면이라 42칸에 깔린 채도가 누적된다. 눈이 편할 만큼 옅으면 흐려 보이고 의도가 읽힐 만큼 진하면 피로해서, 그 사이에 성립하는 값이 없었다.
 
@@ -23,6 +23,8 @@
 | `assets/backgrounds/home-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/home-bg@2x.webp` | 홈·결과 배경 | 최대 430×932 |
 | `assets/backgrounds/play-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/play-bg@2x.webp` | 플레이 배경 | 최대 430×932 |
 | `assets/backgrounds/board-secret-garden-v1.webp` | imagegen으로 신규 제작한 `assets/source/board-secret-garden-v1.png` | 숫자 제거 후 빈칸을 통해 드러나는 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/ui/play-hud-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 상단의 빈 버튼·STAGE 휘장·타이머·점수/목표/콤보 셸 | 화면 폭 296–406px, 고유 비율 유지 |
+| `assets/ui/play-footer-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 하단의 빈 말풍선·4색 아이템 도크 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/characters/cat-idle.webp` | `oing-toss-assets-v1/assets/cat/cat-idle.webp` | 홈 중심 캐릭터 | 홈 약 188–270px |
 | `assets/characters/cat-wave.webp` | `oing-toss-assets-v1/assets/cat/cat-wave.webp` | 힌트 반응 | 플레이 stage 62–96px |
 | `assets/characters/cat-cheer.webp` | `oing-toss-assets-v1/assets/cat/cat-cheer.webp` | 콤보 3·라운드·10초 경고·일반 결과 | 플레이 stage 62–80px, 결과 102–142px |
