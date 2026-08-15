@@ -662,25 +662,29 @@
   top: auto;
   left: auto;
   bottom: auto;
-  grid-row: 3;
   justify-self: center;
   align-self: center;
   width: min(92%, 360px);
-  height: clamp(24px, 3.6dvh, 32px);
+  height: clamp(21px, 2.9dvh, 27px);
   transform: none;
 }
 
+/* The alert shares the rail's cell and is capped to the rail's height, so
+   showing it can never grow the row and nudge the whole cluster. */
 .play-ui-v4 .low-time-alert {
   position: relative;
+  /* The shared rule positions this absolutely at left:50%/top:42px; as a
+     relative box those offsets would survive as a nudge, so clear them. */
+  inset: auto;
   z-index: 40;
-  grid-row: 3;
   justify-self: center;
   align-self: center;
   display: grid;
   place-items: center;
-  min-width: 142px;
-  min-height: 34px;
-  padding: 6px 17px;
+  min-width: 0;
+  min-height: 0;
+  height: clamp(21px, 2.9dvh, 27px);
+  padding: 0 14px;
   border: 1px solid rgba(211,177,128,.58);
   border-radius: 999px;
   background: rgba(255,249,233,.97);
@@ -691,10 +695,28 @@
 .play-ui-v4 .low-time-alert strong {
   color: #6a5548;
   font-family: var(--font-display);
-  font-size: clamp(13px, 3.7vw, 16px);
+  font-size: clamp(12px, 3.3vw, 14px);
   font-weight: 400;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* The shared keyframes carry a translate(-50%) written for the old
+   absolutely centred pill; here the grid already centres it, so this
+   layout needs its own pop that only scales and lifts. */
+.play-ui-v4 .low-time-alert {
+  animation: low-time-alert-rail 980ms cubic-bezier(.16,.82,.24,1.12) both;
+}
+
+@keyframes low-time-alert-rail {
+  0% { opacity: 0; transform: translateY(6px) scale(.74); }
+  18% { opacity: 1; transform: translateY(0) scale(1.07); }
+  34%, 76% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-6px) scale(.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .low-time-alert { animation-duration: 1ms; }
 }
 
 .screen-play.play-ui-v4.is-low-time-alerting .hud-secondline {
@@ -702,16 +724,9 @@
   transform: none;
 }
 
-/* The low-time alert shares row 3 with the (usually empty) feedback rail
-   spacer, so the packed six-row rhythm is unchanged while it shows. */
-.screen-play.play-ui-v4.is-low-time-alerting {
-  grid-template-rows: repeat(6, auto);
-  align-content: center;
-}
-
-.screen-play.play-ui-v4.is-low-time-alerting .board-zone { grid-row: 4; }
-.screen-play.play-ui-v4.is-low-time-alerting .cat-coach { grid-row: 5; }
-.screen-play.play-ui-v4.is-low-time-alerting .item-dock { grid-row: 6; }
+/* Row assignments are unconditional (see the packed-cluster block), so the
+   alert needs no special-case grid geometry — it just occupies the rail's
+   cell while it shows. */
 
 /* Short browser viewports: preserve square cells and reduce non-board rows
    in the requested order. */
@@ -755,8 +770,6 @@
 @media (max-width: 340px) {
   .screen-play.play-ui-v4 {
     --flow-inline: 5px;
-    grid-template-rows: auto auto auto auto auto;
-    align-content: space-between;
   }
   .play-ui-v4 .play-top-controls,
   .screen-play.play-ui-v4[data-stage-band] .play-top-controls { width: 100%; }
@@ -768,11 +781,6 @@
   .play-ui-v4 .item-actions { gap: 3.4%; }
   .play-ui-v4 .item-button { min-width: 44px; }
   .play-ui-v4 .cat-message { font-size: 11px; }
-
-  .screen-play.play-ui-v4.is-low-time-alerting {
-    grid-template-rows: auto auto 32px auto auto auto;
-    align-content: space-between;
-  }
 
   /* Fold-class screens often have spare vertical room after the board becomes
      width-limited. Distribute that room between all five flow regions instead
@@ -795,12 +803,7 @@
    four identical gaps. Square boards stay as one compact game cluster; tall
    boards continue to consume the available board row. */
 .screen-play.play-ui-v4 {
-  --flow-gap: clamp(5px, .85dvh, 8px);
-}
-
-.screen-play.play-ui-v4:not(.is-tall-board) {
-  grid-template-rows: auto auto auto auto auto;
-  align-content: center;
+  --flow-gap: clamp(4px, .62dvh, 6px);
 }
 
 .play-ui-v4 .play-top-controls,
@@ -857,11 +860,11 @@
 
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="4"],
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="5"] {
-  width: min(88cqw, calc(100dvh - 370px), 344px);
+  width: min(93cqw, calc(100dvh - 370px), 366px);
 }
 
 .play-ui-v4 .board-frame[data-cols="6"][data-rows="6"] {
-  width: min(91cqw, calc(100dvh - 370px), 396px);
+  width: min(94cqw, calc(100dvh - 370px), 402px);
 }
 
 .play-ui-v4 .board-frame[data-cols="6"][data-rows="7"] {
@@ -891,15 +894,18 @@
 
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach {
-  grid-template-columns: minmax(64px, 22%) minmax(0, 1fr);
+  grid-template-columns: minmax(84px, 28%) minmax(0, 1fr);
   width: min(96%, 400px);
   height: clamp(54px, 7.6dvh, 68px);
 }
 
+/* The cat is drawn larger than its row and spills down across the dock
+   row, so it reads as a full-body character sitting on the meadow rather
+   than a small icon beside the bubble. */
 .play-ui-v4 .play-character-stage,
 .play-ui-v4.is-tall-board .play-character-stage {
-  height: 200%;
-  transform: translateY(50%);
+  height: 265%;
+  transform: translateY(47%);
 }
 
 .play-ui-v4 .play-footer,
@@ -1224,7 +1230,7 @@
 }
 
 @media (max-height: 780px) {
-  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: center; }
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
 
   .play-ui-v4 .cat-coach,
   .play-ui-v4.is-tall-board .cat-coach {
@@ -1234,7 +1240,7 @@
 }
 
 @media (max-height: 710px) {
-  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: center; }
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
 
   .play-ui-v4 .cat-coach,
   .play-ui-v4.is-tall-board .cat-coach {
@@ -1253,17 +1259,30 @@
    its own painted asset (pause, sound, winged shield, timer pill) placed
    at reference scale: buttons hug the left edge, the shield sits centred
    and dips below the row, the timer pill hugs the right edge. */
-/* Packed cluster: every region is an auto row (the feedback rail included,
-   as a fixed-height spacer row) and the whole stack centres vertically.
-   On tall screens (folds) the surplus goes to the screen edges as sky and
-   meadow, instead of opening voids between the board and the bars. */
+/* Packed cluster, biased upward. The six regions are auto rows pinned to
+   explicit row numbers — never auto-placed, because an element injected
+   mid-game (the low-time alert) would otherwise be flowed into a new
+   implicit column and collapse the board's column width. Two flexible
+   spacers wrap the stack and split surplus height 1 : 2.5, so the cluster
+   sits above centre and the extra room falls to the meadow. Both spacers
+   collapse to 0 when there is no surplus, so short viewports pack tight
+   instead of overflowing. */
 .screen-play.play-ui-v4,
 .screen-play.play-ui-v4:not(.is-tall-board),
 .screen-play.play-ui-v4.is-tall-board {
-  align-content: center;
-  grid-template-rows: repeat(6, auto);
-  padding-top: calc(var(--safe-top) + clamp(12px, 2dvh, 18px));
+  align-content: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto auto auto auto auto 2fr;
+  padding-top: calc(var(--safe-top) + clamp(8px, 1.4dvh, 13px));
 }
+
+.play-ui-v4 .play-top-controls { grid-area: 2 / 1; }
+.play-ui-v4 .play-status-bar { grid-area: 3 / 1; }
+.play-ui-v4 .play-feedback-rail { grid-area: 4 / 1; }
+.play-ui-v4 .low-time-alert { grid-area: 4 / 1; }
+.play-ui-v4 .board-zone { grid-area: 5 / 1; }
+.play-ui-v4 .cat-coach { grid-area: 6 / 1; }
+.play-ui-v4 .play-footer { grid-area: 7 / 1; }
 
 .play-ui-v4 .play-top-controls,
 .screen-play.play-ui-v4[data-stage-band] .play-top-controls {
@@ -1312,8 +1331,8 @@
 .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
   position: absolute;
   left: 50%;
-  top: 0;
-  width: clamp(96px, 28%, 114px);
+  top: -9%;
+  width: clamp(112px, 33%, 134px);
   height: auto;
   aspect-ratio: 623 / 427;
   transform: translateX(-50%);
@@ -1330,7 +1349,7 @@
   width: 100%;
   color: #244f7b;
   font-family: var(--font-display);
-  font-size: clamp(23px, 6.8vw, 29px);
+  font-size: clamp(27px, 8vw, 34px);
   font-weight: 400;
   line-height: 1;
   text-align: center;
@@ -1405,7 +1424,7 @@
 
 .play-ui-v4 .play-status-bar .score-readout span,
 .play-ui-v4 .play-status-bar .combo-readout span {
-  top: 16%;
+  top: 22%;
   color: #554b49;
   font-family: var(--font-sans);
   font-size: clamp(9px, 2.5vw, 11px);
@@ -1418,7 +1437,7 @@
 .play-ui-v4 .play-status-bar .score-readout strong,
 .play-ui-v4 .play-status-bar .combo-readout strong,
 .screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
-  top: 45%;
+  top: 49%;
   font-family: var(--font-display);
   font-size: clamp(19px, 5.6vw, 25px);
   font-weight: 400;
@@ -1447,7 +1466,7 @@
   position: absolute;
   left: 6%;
   right: 55%;
-  top: 16%;
+  top: 22%;
   color: #554b49;
   font-family: var(--font-sans);
   font-size: clamp(9px, 2.5vw, 11px);
@@ -1462,7 +1481,7 @@
   position: absolute;
   left: 6%;
   right: 55%;
-  top: 45%;
+  top: 49%;
   font-family: var(--font-display);
   font-size: clamp(19px, 5.6vw, 25px);
   font-weight: 400;
@@ -1475,18 +1494,18 @@
 .screen-play.play-ui-v4 .play-status-bar .goal-track {
   left: 49%;
   right: 6%;
-  top: 49%;
+  top: 53%;
   bottom: auto;
   height: 25%;
 }
 
 @media (max-height: 780px) {
-  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: center; }
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
 }
 
 @media (max-height: 710px) {
   .screen-play.play-ui-v4:not(.is-tall-board) {
-    align-content: center;
+    align-content: stretch;
     padding-top: calc(var(--safe-top) + 10px);
   }
 }
