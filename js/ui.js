@@ -213,10 +213,15 @@ export class GameUI {
     this.board.dataset.cols = String(cols);
     this.board.dataset.rows = String(rows);
     this.boardFrame.dataset.size = String(cols);
+    this.boardFrame.dataset.cols = String(cols);
     this.boardFrame.dataset.rows = String(rows);
     this.elements.playScreen.classList.toggle('is-tall-board', rows > cols);
     this.board.style.setProperty('--board-cols', cols);
     this.board.style.setProperty('--board-rows', rows);
+    this.boardFrame.style.setProperty('--board-cols', cols);
+    this.boardFrame.style.setProperty('--board-rows', rows);
+    this.elements.playScreen.style.setProperty('--board-cols', cols);
+    this.elements.playScreen.style.setProperty('--board-rows', rows);
     const fragment = document.createDocumentFragment();
     for (let r = 0; r < rows; r += 1) {
       for (let c = 0; c < cols; c += 1) {
@@ -1378,17 +1383,12 @@ export class GameUI {
     this.elements.playScreen.classList.add('is-low-time-alerting');
     const alert = document.createElement('div');
     alert.className = 'low-time-alert';
-    const clock = document.createElement('img');
-    clock.src = 'assets/icons/hud/time.webp';
-    clock.alt = '';
-    const copy = document.createElement('div');
-    const kicker = document.createElement('small');
-    kicker.textContent = 'HURRY UP!';
     const value = document.createElement('strong');
-    value.textContent = `${Math.max(1, Math.round(Number(seconds) || 10))} SEC`;
-    copy.append(kicker, value);
-    alert.append(clock, copy, document.createElement('i'), document.createElement('i'));
-    this.elements.playScreen.appendChild(alert);
+    value.textContent = `딱 ${Math.max(1, Math.round(Number(seconds) || 10))}초 남았다냥!`;
+    alert.append(value);
+    const boardZone = this.elements.playScreen.querySelector('.board-zone');
+    if (boardZone) boardZone.before(alert);
+    else this.elements.playScreen.appendChild(alert);
     window.setTimeout(() => {
       alert.remove();
       this.elements.playScreen.classList.remove('is-low-time-alerting');

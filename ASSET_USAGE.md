@@ -26,9 +26,16 @@
 | `assets/ui/play-hud-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 상단의 빈 버튼·STAGE 휘장·타이머·점수/목표/콤보 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/ui/play-footer-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 하단의 빈 말풍선·4색 아이템 도크 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/backgrounds/play-bg-v4.webp` | 첨부 플레이 레퍼런스는 색감·구도만 참고하고 imagegen으로 새로 제작한 `assets/source/play-bg-v4.png` | 플레이 화면의 선명한 푸른 하늘과 하단 꽃밭 | 모바일 전체 화면, cover |
+| `assets/backgrounds/play-bg-clear-sky-v5.webp` | 첨부 목표 시안은 무드·구도만 참고하고 imagegen으로 새로 제작한 `design/play-layout-v1/source/play-bg-clear-sky-v1.png` | 구조 개편 플레이 화면의 선명한 하늘과 얇은 하단 꽃밭 | 모바일 전체 화면, cover |
 | `assets/ui/play-hud-chrome-v2.webp` | imagegen 신규 제작 `assets/source/play-hud-chrome-v2-chroma.png`에서 외곽 연결 크로마키만 제거 | 독립 일시정지·사운드 버튼, STAGE 배지, 타이머, 기록 패널 | 화면 폭 300–400px, 고유 비율 유지 |
+| `assets/ui/play-control-pause-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 일시정지 버튼 | 44–55px, 1:1 유지 |
+| `assets/ui/play-control-sound-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 사운드 버튼 | 44–55px, 1:1 유지 |
+| `assets/ui/play-stage-badge-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 분리하고 기존 리본에 STAGE 라벨만 정리 | 플레이 중앙 독립 STAGE 배지 | 86–142px, 고유 비율 유지 |
+| `assets/ui/play-timer-pill-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 우측 타이머 셸 | 98–145px, 고유 비율 유지 |
+| `assets/ui/play-status-bar-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 기록 패널만 분리하고 샘플 게이지를 제거 | 점수·성공 진행·콤보 공용 상태 패널 | 화면 폭 255–412px, 고유 비율 유지 |
 | `assets/ui/item-dock-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 하단 4색 아이템 도크 셸 | 화면 폭 282–370px, 고유 비율 유지 |
 | `assets/ui/speech-bubble-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 플레이 고양이 말풍선 프레임 | 화면 폭 168–230px, 고유 비율 유지 |
+| `assets/ui/speech-bubble-wide-v3.webp` | 프로젝트 소유 `speech-bubble-v2.png`를 `design/play-layout-v1/build-assets.py`에서 9-slice 확장 | 고양이 옆 가로형 2줄 말풍선 | 화면 폭 176–302px, 고유 비율 유지 |
 | `assets/ui/shuffle-poof-v2.webp` | imagegen으로 신규 제작한 `assets/source/shuffle-poof-v2.png` | 선형 효과를 대체하는 젤리 구름 셔플 팝 | 보드 중앙 118–170px |
 | `assets/characters/cat-idle.webp` | `oing-toss-assets-v1/assets/cat/cat-idle.webp` | 홈 중심 캐릭터 | 홈 약 188–270px |
 | `assets/characters/cat-wave.webp` | `oing-toss-assets-v1/assets/cat/cat-wave.webp` | 힌트 반응 | 플레이 stage 62–96px |

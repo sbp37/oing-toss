@@ -1,0 +1,765 @@
+/* Play layout v1: five independent flow regions.
+   Painted assets provide the chrome; CSS owns only responsive layout,
+   live-value placement, hit targets and interaction states. */
+
+.screen-play.play-ui-v4 {
+  --flow-gap: clamp(3px, .6dvh, 6px);
+  --flow-inline: clamp(7px, 2.2vw, 11px);
+  --board-cols: 4;
+  --board-rows: 4;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  align-content: stretch;
+  gap: var(--flow-gap);
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 8px) var(--flow-inline) calc(var(--safe-bottom) + 6px);
+  overflow: hidden;
+  background: #1fb4ed url("../assets/backgrounds/play-bg-clear-sky-v5.webp") center bottom / cover no-repeat;
+}
+
+.screen-play.play-ui-v4:not(.is-active) { display: none; }
+.screen-play.play-ui-v4.is-active { display: grid; }
+
+/* 1. Top controls -------------------------------------------------------- */
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  position: relative;
+  z-index: 12;
+  display: block;
+  justify-self: center;
+  width: min(94%, 410px);
+  height: clamp(72px, 11.2dvh, 96px);
+  min-height: 0;
+  aspect-ratio: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-top-controls .hud-topline {
+  position: static;
+  display: grid;
+  grid-template-columns: 28% 37% 35%;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.play-ui-v4 .play-top-controls .hud-controls {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(44px, 1fr));
+  align-items: center;
+  justify-self: start;
+  width: min(100%, 104px);
+  height: auto;
+  gap: clamp(3px, 1vw, 6px);
+  padding: 0;
+}
+
+.play-ui-v4 .play-top-controls .pause-button,
+.play-ui-v4 .play-top-controls .hud-mini-button {
+  position: relative;
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-top-controls .pause-button img,
+.play-ui-v4 .play-top-controls .music-button img {
+  display: block;
+  opacity: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .pause-button::before,
+.play-ui-v4 .play-top-controls .pause-button::after,
+.play-ui-v4 .play-top-controls .music-button i,
+.play-ui-v4 .play-top-controls .music-button i::before,
+.play-ui-v4 .play-top-controls .music-button i::after { display: none; }
+
+.play-ui-v4 .play-top-controls .music-button:not(.is-on)::after {
+  content: "";
+  position: absolute;
+  left: 23%;
+  top: 48%;
+  display: block;
+  width: 54%;
+  height: 3px;
+  border-radius: 999px;
+  background: #e85f79;
+  box-shadow: 0 1px 0 rgba(255,255,255,.8);
+  transform: rotate(-43deg);
+}
+
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  position: relative;
+  left: auto;
+  top: auto;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: min(100%, 142px);
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  transform: none;
+}
+
+.play-ui-v4 .play-top-controls .round-mini img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  position: relative;
+  left: auto;
+  top: 11%;
+  z-index: 2;
+  min-width: 0;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(29px, 8.3vw, 40px);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 2px 0 #fff8e7;
+  transform: none;
+}
+
+.play-ui-v4 .play-top-controls .time-readout {
+  position: relative;
+  left: auto;
+  top: auto;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  width: min(100%, 145px);
+  height: auto;
+  min-width: 0;
+  min-height: 44px;
+  aspect-ratio: 534 / 249;
+  margin: 0;
+  padding: 0 5% 0 28%;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-top-controls .time-pill-chrome {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .time-clock-icon { display: none; }
+.play-ui-v4 .play-top-controls .time-freeze-icon {
+  position: absolute;
+  z-index: 2;
+  left: 12%;
+  width: 25%;
+  height: 58%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .time-readout strong {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(18px, 5.55vw, 25px);
+  font-weight: 900;
+  letter-spacing: -.055em;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 2. Status bar --------------------------------------------------------- */
+.play-ui-v4 .play-status-bar {
+  position: relative;
+  z-index: 11;
+  justify-self: center;
+  width: min(96%, 420px);
+  height: auto;
+  aspect-ratio: 1799 / 249;
+  min-height: 0;
+}
+
+.play-ui-v4 .play-status-chrome {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-status-bar .hud-secondline {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 31% 42% 27%;
+  width: 100%;
+  height: 100%;
+  gap: 0;
+  padding: 0;
+}
+
+.play-ui-v4 .play-status-bar .score-readout,
+.play-ui-v4 .play-status-bar .combo-readout {
+  position: relative;
+  display: grid;
+  grid-template-rows: 42% 58%;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 8% 4% 8% 26%;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout {
+  grid-column: 3;
+  padding: 8% 25% 8% 4%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout img,
+.play-ui-v4 .play-status-bar .combo-readout img { display: none; }
+
+.play-ui-v4 .play-status-bar .score-readout span,
+.play-ui-v4 .play-status-bar .combo-readout span {
+  align-self: end;
+  color: #665f5a;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.2vw, 10px);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
+  align-self: start;
+  max-width: 100%;
+  overflow: visible;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(14px, 4.35vw, 19px);
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout strong { color: #ef5477; }
+.play-ui-v4 .play-status-bar .combo-timer { display: none; }
+
+.play-ui-v4 .play-status-bar .goal-status,
+.screen-play.play-ui-v4 .play-status-bar .goal-status {
+  position: relative;
+  inset: auto;
+  grid-column: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  transform: none;
+}
+
+.play-ui-v4 .play-status-bar .goal-meta {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  top: 12%;
+  display: flex;
+  justify-content: center;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #665f5a;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.2vw, 10px);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy b {
+  color: #ef5477;
+  font-size: clamp(14px, 4.25vw, 19px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.play-ui-v4 .play-status-bar .goal-track,
+.screen-play.play-ui-v4 .play-status-bar .goal-track {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 18%;
+  width: auto;
+  height: 20%;
+  min-height: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(197, 167, 123, .46);
+  border-radius: 999px;
+  background: #f1e7d5;
+  box-shadow: inset 0 1px 2px rgba(93, 69, 43, .09);
+}
+
+.play-ui-v4 .play-status-bar .goal-track i {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #72ddc8, #20bea5);
+}
+
+.play-ui-v4 .play-status-bar .stage-mission:not([hidden]) {
+  position: absolute;
+  right: -2%;
+  top: -2px;
+  display: flex;
+  max-width: 57%;
+  font-size: 8px;
+}
+
+/* 3. Board -------------------------------------------------------------- */
+.play-ui-v4 .board-zone {
+  container-type: size;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) {
+  grid-template-rows: auto auto auto auto auto;
+  align-content: space-between;
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) .board-zone {
+  container-type: inline-size;
+  align-self: auto;
+  height: auto;
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame,
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-round] {
+  width: min(100cqw, 420px);
+}
+
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round],
+.play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100cqw, calc(100cqh * var(--board-cols) / var(--board-rows)));
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--board-cols) / var(--board-rows);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: clamp(15px, 4vw, 22px);
+  background: rgba(244, 252, 255, .1);
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.72),
+    0 0 0 6px rgba(169,224,246,.36),
+    0 8px 18px rgba(25,111,156,.15),
+    inset 0 0 12px rgba(255,255,255,.38);
+}
+
+.play-ui-v4 .board {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--board-cols) / var(--board-rows);
+  gap: clamp(1px, .38vw, 1.8px);
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background-color: rgba(238, 250, 255, .06);
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.2) 1px, transparent 1px);
+  background-size:
+    calc(100% / var(--board-cols)) calc(100% / var(--board-rows)),
+    calc(100% / var(--board-cols)) calc(100% / var(--board-rows));
+  background-position: 0 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .tile {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
+}
+
+.play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(255,255,255,.17);
+  background: rgba(245,253,255,.055);
+  background-image: none;
+  box-shadow: inset 0 0 0 1px rgba(177,220,237,.08);
+  filter: none;
+  opacity: 1;
+}
+
+/* 4. Cat and speech ----------------------------------------------------- */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  position: relative;
+  z-index: 8;
+  inset: auto;
+  display: grid;
+  grid-template-columns: minmax(58px, 24%) minmax(0, 1fr);
+  align-items: end;
+  justify-self: center;
+  width: min(92%, 390px);
+  height: clamp(52px, 7.8dvh, 68px);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  position: relative;
+  z-index: 2;
+  left: auto;
+  top: auto;
+  align-self: end;
+  width: 100%;
+  height: 118%;
+  min-height: 0;
+  transform: translateY(7%);
+}
+
+.play-ui-v4 .play-character-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.play-ui-v4 .cat-speech {
+  position: relative;
+  align-self: center;
+  width: 100%;
+  aspect-ratio: 900 / 230;
+  min-width: 0;
+}
+
+.play-ui-v4 .speech-bubble-chrome {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  position: absolute;
+  z-index: 2;
+  left: 10%;
+  top: 9%;
+  display: grid;
+  place-items: center;
+  width: 82%;
+  height: 72%;
+  min-height: 0;
+  margin: 0;
+  padding: 0 4%;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: #665247;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 3.45vw, 15px);
+  line-height: 1.18;
+  text-align: center;
+  text-wrap: balance;
+  word-break: keep-all;
+}
+
+.play-ui-v4 .cat-message.is-long,
+.play-ui-v4.is-tall-board .cat-message.is-long { font-size: clamp(10px, 3vw, 13px); }
+.play-ui-v4 .cat-message::before,
+.play-ui-v4 .cat-message::after { display: none; }
+
+/* 5. Item dock ---------------------------------------------------------- */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  position: relative;
+  z-index: 9;
+  display: block;
+  justify-self: center;
+  width: min(94%, 390px);
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 883 / 302;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.play-ui-v4 .play-footer-chrome {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 883 / 302;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.play-ui-v4 .item-actions {
+  position: absolute;
+  z-index: 4;
+  inset: 10% 6% 12%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  gap: 4.3%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  position: relative;
+  display: grid;
+  grid-template-rows: 66% 34%;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4% 2% 1%;
+  overflow: visible;
+  border: 0;
+  border-radius: 17%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-button:active,
+.play-ui-v4 .item-button.is-pressed { transform: translateY(2px) scale(.975); }
+
+.play-ui-v4 .item-icon {
+  align-self: end;
+  width: clamp(25px, 7.5vw, 34px);
+  height: clamp(26px, 7.8vw, 35px);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px rgba(91,69,47,.13));
+}
+
+.play-ui-v4 .item-button > span {
+  align-self: center;
+  color: #65564d;
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3.1vw, 14px);
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,.92);
+}
+
+.play-ui-v4 .item-button b {
+  top: -7%;
+  right: -4%;
+  width: clamp(19px, 5.5vw, 24px);
+  height: clamp(19px, 5.5vw, 24px);
+  border: 2px solid #fff7ed;
+  font-size: clamp(11px, 3.15vw, 14px);
+}
+
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] { opacity: .42; }
+
+/* Feedback rails stay between status and board without covering HUD. */
+.play-ui-v4 .play-feedback-rail,
+.play-ui-v4.is-stage-clearing .play-feedback-rail {
+  top: clamp(132px, 19dvh, 164px);
+}
+
+.play-ui-v4 .low-time-alert {
+  position: relative;
+  z-index: 40;
+  grid-row: 3;
+  justify-self: center;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  min-width: 142px;
+  min-height: 34px;
+  padding: 6px 17px;
+  border: 1px solid rgba(211,177,128,.58);
+  border-radius: 999px;
+  background: rgba(255,249,233,.97);
+  box-shadow: 0 4px 9px rgba(63,105,128,.15), inset 0 1px 0 #fff;
+  pointer-events: none;
+}
+
+.play-ui-v4 .low-time-alert strong {
+  color: #6a5548;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 3.7vw, 16px);
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.screen-play.play-ui-v4.is-low-time-alerting .hud-secondline {
+  opacity: 1;
+  transform: none;
+}
+
+.screen-play.play-ui-v4.is-low-time-alerting {
+  grid-template-rows: auto auto 34px minmax(0, 1fr) auto auto;
+  align-content: stretch;
+}
+
+.screen-play.play-ui-v4.is-low-time-alerting .board-zone { grid-row: 4; }
+.screen-play.play-ui-v4.is-low-time-alerting .cat-coach { grid-row: 5; }
+.screen-play.play-ui-v4.is-low-time-alerting .item-dock { grid-row: 6; }
+
+/* Short browser viewports: preserve square cells and reduce non-board rows
+   in the requested order. */
+@media (max-height: 780px) {
+  .screen-play.play-ui-v4 {
+    --flow-gap: 3px;
+    padding-top: calc(var(--safe-top) + 5px);
+    padding-bottom: calc(var(--safe-bottom) + 4px);
+  }
+
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+    width: min(91%, 380px);
+    height: clamp(68px, 10.8dvh, 84px);
+  }
+
+  .play-ui-v4 .play-status-bar { width: min(93%, 390px); }
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach {
+    width: min(88%, 360px);
+    height: clamp(46px, 7.2dvh, 56px);
+  }
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer { width: min(87%, 360px); }
+}
+
+@media (max-height: 710px) {
+  .screen-play.play-ui-v4 { --flow-gap: 2px; }
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+    width: min(89%, 360px);
+    height: clamp(64px, 10.2dvh, 72px);
+  }
+  .play-ui-v4 .play-status-bar { width: min(91%, 370px); }
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach { width: min(84%, 340px); height: 44px; }
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer { width: min(83%, 340px); }
+}
+
+@media (max-width: 340px) {
+  .screen-play.play-ui-v4 {
+    --flow-inline: 5px;
+    grid-template-rows: auto auto auto auto auto;
+    align-content: space-between;
+  }
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls { width: 100%; }
+  .play-ui-v4 .play-top-controls .hud-topline { grid-template-columns: 34% 33% 33%; }
+  .play-ui-v4 .play-top-controls .hud-controls { gap: 2px; }
+  .play-ui-v4 .play-top-controls .round-mini { width: min(100%, 104px); }
+  .play-ui-v4 .play-top-controls .time-readout { width: min(100%, 98px); }
+  .play-ui-v4 .play-top-controls .time-readout strong { font-size: clamp(16px, 5.6vw, 18px); }
+  .play-ui-v4 .item-actions { gap: 3.4%; }
+  .play-ui-v4 .item-button { min-width: 44px; }
+  .play-ui-v4 .cat-message { font-size: 11px; }
+
+  .screen-play.play-ui-v4.is-low-time-alerting {
+    grid-template-rows: auto auto 32px auto auto auto;
+    align-content: space-between;
+  }
+
+  /* Fold-class screens often have spare vertical room after the board becomes
+     width-limited. Distribute that room between all five flow regions instead
+     of leaving two large bands around the board. */
+  .play-ui-v4 .board-zone {
+    container-type: inline-size;
+    align-self: auto;
+    height: auto;
+  }
+
+  .play-ui-v4 .board-frame,
+  .play-ui-v4 .board-frame[data-round],
+  .play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+    width: min(100cqw, 420px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .low-time-alert { animation-duration: 1ms !important; }
+}

@@ -30,27 +30,11 @@ export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
-// The board sits in a recess painted into design/ui-chrome/ui-chrome.png, so
-// both of its dimensions are fixed and the grid can only subdivide them. Tile
-// type scales off the short cell edge (css/ui-chrome.css:
-// min(chrome-width * 0.6074 / cols, chrome-height * 0.2917 / rows)).
-//
-// The board stops growing at 6x7, measured at 390px wide:
-//
-//   7x8  cell 47.0 x 42.7  ratio 1.099  numerals 30.8px   (previous cap)
-//   6x8  cell 54.8 x 42.7  ratio 1.283  numerals 30.8px
-//   6x7  cell 54.8 x 48.9  ratio 1.122  numerals 35.2px   (current cap)
-//
-// Seven columns read as visual clutter, but dropping cols alone flattens the
-// cell to 1.283 while the numerals stay put, because rows is what binds the
-// type size. The tile art is square, so that ratio visibly ovalises its rounded
-// corners. Dropping rows to 7 alongside holds the cell at 1.122 — within a
-// hair of the 1.099 the board already shipped — and hands back 14% of numeral
-// height for free.
-//
-// The cost is 42 cells instead of 56, so difficulty rides entirely on `target`
-// and the clock/bomb odds past STAGE 5. Widening either cap needs the artwork
-// redrawn first.
+// Main-mode board growth is intentionally capped at 6x7. The play layout
+// derives its frame from cols/rows instead of subdividing a fixed artwork
+// recess, so every stage keeps square cells while the board itself grows:
+// 4x4 -> 5x5 -> 6x6 -> 6x7. Later difficulty comes from targets, challenges,
+// time and drop pressure; 7x7+ remains reserved for a future hard mode.
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
   { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },

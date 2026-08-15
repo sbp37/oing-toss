@@ -1,9 +1,12 @@
 const PLAY_CRITICAL_ASSETS = Object.freeze([
-  'assets/backgrounds/play-bg-v4.webp',
-  'assets/backgrounds/board-secret-garden-v1.webp',
-  'assets/ui/play-hud-chrome-v2.webp',
+  'assets/backgrounds/play-bg-clear-sky-v5.webp',
+  'assets/ui/play-control-pause-v3.webp',
+  'assets/ui/play-control-sound-v3.webp',
+  'assets/ui/play-stage-badge-v3.webp',
+  'assets/ui/play-timer-pill-v3.webp',
+  'assets/ui/play-status-bar-v3.webp',
   'assets/ui/item-dock-v2.webp',
-  'assets/ui/speech-bubble-v2.webp',
+  'assets/ui/speech-bubble-wide-v3.webp',
   'assets/ui/shuffle-poof-v2.webp',
   'assets/characters/cat-peek.webp',
   'assets/characters/cat-wave.webp',
@@ -14,7 +17,6 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/icons/items/hint.webp',
   'assets/icons/items/shuffle.webp',
   'assets/icons/items/bomb.webp',
-  'assets/ui/button-pause.webp',
   'assets/ui/tiles-syrup-v4/tile-mint.webp',
 ]);
 
