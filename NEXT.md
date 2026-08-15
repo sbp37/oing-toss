@@ -3,31 +3,55 @@
 브랜치: `codex/play-layout-structure-v1`
 프리뷰: https://oing-toss-git-codex-play-layout-structure-v1-sbp37s-projects.vercel.app
 
+## 완료 (이번 세션)
+
+### 1. 스테이지 전환 시 숨은 그림 노출 — 수정 완료
+원인: 라운드를 클리어하면 보드가 전부 `is-empty`가 되고, `updateHUD`가
+`data-stage-band`를 다음 스테이지 값으로 먼저 바꿔버린 뒤에야
+`animateRoundTransition`이 새 타일을 채운다. 그 사이(`is-round-leaving`
+~140ms + `is-round-arriving`)에는 보드가 텅 빈 채로 정원 배경이 그대로
+드러났다.
+수정: `css/play-layout-v1.css`에 `.board-frame.is-round-leaving` /
+`.is-round-arriving` 전용 규칙을 추가해 그 구간에는 정원 레이어
+(`board-secret-garden-v1.webp`)를 빼고 원래 그라디언트만 남기도록 했다.
+`animateRoundTransition`의 타이밍 자체는 건드리지 않음.
+검증: MutationObserver로 `is-round-leaving` 프레임을 직접 캡처해
+`hasGardenUrl: false` 확인 (스테이지 2→3 클리어 반복 재현).
+
+### 2. 폭탄 아이템 연출 겹침 — 수정 완료
+원인: `.item-drop-fx > span`(등장 라벨)의 `top: 28px`가 아이콘의 착지
+애니메이션(`item-drop-icon`, translateY 최종 -46%)이 실제로 차지하는
+영역보다 얕게 잡혀 있었다. 기본 아이템은 이미지 바닥과 라벨 상단이
+최대 3.5px 겹쳤고, 메가폭탄(48px 아이콘)은 9.9px까지 겹쳤다.
+`.bomb-fx`(터질 때)는 측정해보니 실제로는 겹치지 않았음 — 관련 요소로
+같이 지목됐던 `.special-trigger-pop`(텍스트만 있음), `.item-impact-fx`
+(이미지 없음)도 마찬가지로 문제 없었음.
+수정: `css/styles.css`에서 `.item-drop-fx > span`의 `top`을 28px→36px로,
+메가폭탄 전용으로 `top: 46px` 오버라이드를 추가.
+검증: Playwright로 아이콘/라벨의 `getBoundingClientRect()`를 프레임마다
+샘플링해 겹침을 측정 — 수정 전 겹침(+3.5~+9.9px) → 수정 후 여유
+(-4.5~-8.1px, 겹치지 않음) 확인. 스크린샷으로도 재확인.
+
+### 3. 배경음악 기본 ON — 이미 정상 동작 확인, 코드 변경 없음
+`js/adapters.js`의 `getSettings()` 기본값이 이미
+`{ sound: true, music: true, musicVolume: 0.4 }`이고,
+`tests/storage.test.mjs`에 "new players start with music on" 테스트로
+고정돼 있다. 실제 시작 플로우(`시작하기` 클릭 → 카운트다운 GO!)를
+Playwright로 재생해 `#bgm-audio`가 `paused:false`로 재생되는 것도 확인.
+추가로 겪는 문제가 있다면 실기기(특히 iOS Safari)의 자동재생 정책 쪽을
+의심할 것 — 이 세션에서는 재현 실패.
+
+### 4. 앱을 벗어났을 때 배경음악 정지 — 이미 정상 동작 확인, 코드 변경 없음
+`js/game.js`에 `visibilitychange`(hidden) / `pagehide` 핸들러가 이미
+`this.pause('background')`를 호출하고, `pause()`는 `pauseMusic()`을
+호출한다. Playwright로 게임 진행 중 `document.visibilityState`를
+`hidden`으로 바꿔 디스패치했더니 `#bgm-audio.paused`가 즉시 `true`로
+전환됨을 확인. 복귀 시엔 일시정지 오버레이의 "재개" 버튼을 눌러야
+음악도 다시 재생됨(의도된 동작으로 보임 — 자동 재개는 하지 않음).
+실기기에서 여전히 재현된다면 iOS의 visibilitychange 지연/PWA 특이
+동작을 의심할 것.
+
 ## 남은 할 일
-
-### 1. 스테이지 2→3 넘어갈 때 숨은 그림이 먼저 보이는 버그
-STAGE 3부터 `board-secret-garden-v1.webp`가 보드 뒤에 깔린다
-(`css/play-layout-v1.css`, `data-stage-band`가 `warmup`이 아닐 때).
-스테이지가 넘어가는 순간 그림이 잠깐 그대로 노출된다는 제보.
-`js/ui.js`에서 `dataset.stageBand`를 바꾸는 시점과 보드를 다시 그리는
-시점의 순서를 확인할 것 — 밴드가 먼저 바뀌고 타일이 나중에 채워지면
-그 사이 프레임에 그림이 드러난다.
-
-### 2. 폭탄 아이템 연출 겹침
-소환될 때와 터질 때 폭탄 그림과 글씨가 위아래로 겹쳐 보인다.
-관련 요소: `.item-drop-fx`, `.special-trigger-pop`, `.item-impact-fx`,
-`.bomb-fx` (js/ui.js `animateSpecialTiles`, `animateBomb`).
-콤보 보상 팝업에서 이미 같은 종류의 문제를 고쳤다 — 상태바의
-`combo-readout img` 같은 넓은 선택자가 연출용 이미지까지 잡는 패턴을
-의심할 것.
-
-### 3. 배경음악 기본 ON
-무음 모드가 아닌 이상 효과음과 배경음악이 둘 다 나오는 것이 기본이어야
-한다. `js/music.js`, `js/audio.js`, 설정 초기값 확인.
-
-### 4. 앱을 벗어났을 때 배경음악 정지
-모바일에서 다른 화면으로 전환해도 배경음악이 계속 흘러나온다.
-`visibilitychange` / `pagehide`로 일시정지하고 복귀 시 재개할 것.
 
 ### 5. (보류) 결과 화면 완성도
 정렬은 맞췄지만 "에셋 같다"는 피드백이 남아 있다. 점수 큰 숫자,

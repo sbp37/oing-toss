@@ -2135,7 +2135,7 @@ img {
   position: absolute;
   z-index: 5;
   left: 0;
-  top: 28px;
+  top: 36px;
   padding: 4px 8px;
   border: 1px solid rgba(255,255,255,0.94);
   border-radius: 999px;
@@ -2176,6 +2176,13 @@ img {
   width: 48px;
   height: 48px;
   filter: drop-shadow(0 4px 7px rgba(170,65,50,0.3));
+}
+
+/* The bigger megabomb icon reaches further past the default label offset
+   above, so it needs its own clearance to keep the label from sitting under
+   the art during the landing bounce. */
+.item-drop-fx.item-drop-megabomb > span {
+  top: 46px;
 }
 
 .item-drop-fx i {

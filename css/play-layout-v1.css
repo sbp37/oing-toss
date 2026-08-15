@@ -1618,6 +1618,22 @@
   background-repeat: no-repeat;
 }
 
+/* A cleared board is entirely empty tiles, so the reveal logic above shows
+   the whole picture at once for the instant between "round cleared" and the
+   next board's tiles landing. `updateHUD` can also flip `data-stage-band` to
+   a non-warmup value before that next board exists (e.g. clearing STAGE 2),
+   which would otherwise turn a still-warmup board into a full reveal too.
+   `animateRoundTransition` brackets that whole window with
+   is-round-leaving → swapBoard() → is-round-arriving, so dropping the garden
+   layer for as long as either class is present covers both cases without
+   touching the timing itself. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board-frame.is-round-leaving,
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board-frame.is-round-arriving {
+  background-image:
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,245,247,.1)),
+    linear-gradient(rgba(255,252,250,.2), rgba(255,250,248,.2));
+}
+
 /* Over the garden the board keeps only its grid lines and a light haze —
    the opaque wash that suits the plain floor would erase the picture. */
 .screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board {
