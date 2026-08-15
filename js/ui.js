@@ -570,18 +570,16 @@ export class GameUI {
       icon.src = item.asset;
       icon.alt = '';
       const copy = document.createElement('span');
-      copy.textContent = `7 COMBO · ${item.label} 획득`;
+      copy.textContent = `+${item.label}`;
       pop.append(icon, copy, document.createElement('i'), document.createElement('i'));
-      const chip = this.elements.comboChip.getBoundingClientRect();
-      const screen = this.elements.playScreen.getBoundingClientRect();
-      pop.style.left = `${chip.right - screen.left - 4}px`;
-      pop.style.top = `${chip.top - screen.top - 2}px`;
-      this.elements.playScreen.appendChild(pop);
+      this.elements.comboChip.appendChild(pop);
+      this.elements.comboChip.classList.add('is-inline-feedback');
       this.elements.comboChip.classList.remove('is-reward-earned');
       void this.elements.comboChip.offsetWidth;
       this.elements.comboChip.classList.add('is-reward-earned');
       window.setTimeout(() => {
         pop.remove();
+        this.elements.comboChip.classList.remove('is-inline-feedback');
         this.elements.comboChip.classList.remove('is-reward-earned');
       }, 1050);
     }, Math.max(0, delayMs));
@@ -593,13 +591,13 @@ export class GameUI {
     this.elements.playScreen.querySelector('.combo-loss-pop')?.remove();
     const pop = document.createElement('div');
     pop.className = 'combo-loss-pop';
-    pop.textContent = `COMBO -${loss}`;
-    const chip = this.elements.comboChip.getBoundingClientRect();
-    const screen = this.elements.playScreen.getBoundingClientRect();
-    pop.style.left = `${chip.right - screen.left - 4}px`;
-    pop.style.top = `${chip.top - screen.top}px`;
-    this.elements.playScreen.appendChild(pop);
-    this.comboLossTimer = window.setTimeout(() => pop.remove(), 720);
+    pop.textContent = `−${loss}`;
+    this.elements.comboChip.appendChild(pop);
+    this.elements.comboChip.classList.add('is-inline-feedback');
+    this.comboLossTimer = window.setTimeout(() => {
+      pop.remove();
+      this.elements.comboChip.classList.remove('is-inline-feedback');
+    }, 720);
   }
 
   async animateSuccess(rect, combo = 1) {
@@ -826,6 +824,7 @@ export class GameUI {
     this.elements.playScreen.querySelector('.time-rescue-label')?.remove();
     this.elements.playScreen.querySelector('.low-time-alert')?.remove();
     this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop').forEach((element) => element.remove());
+    this.elements.comboChip.classList.remove('is-inline-feedback');
     this.elements.playScreen.classList.remove('is-board-growth-clear', 'is-time-rescued', 'is-low-time-alerting');
   }
 

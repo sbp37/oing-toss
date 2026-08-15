@@ -447,6 +447,28 @@
   opacity: 1;
 }
 
+.play-ui-v4 .tile.is-selected::after,
+.play-ui-v4 .board.is-dragging .tile.is-selected::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 4%;
+  border: 1px solid rgba(255,239,157,.82);
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255,255,231,.86), transparent 24%),
+    linear-gradient(145deg, rgba(255,239,153,.7), rgba(255,204,76,.5));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.72), 0 0 9px rgba(255,204,67,.42);
+  pointer-events: none;
+}
+
+.play-ui-v4 .board.is-perfect .tile.is-selected::after {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255,255,235,.94), transparent 25%),
+    linear-gradient(145deg, rgba(255,231,112,.84), rgba(255,186,55,.66));
+  box-shadow: inset 0 1px 2px #fff, 0 0 13px rgba(255,191,45,.58);
+}
+
 /* 4. Cat and speech ----------------------------------------------------- */
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach {
@@ -757,6 +779,206 @@
   .play-ui-v4 .board-frame[data-round],
   .play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
     width: min(100cqw, 420px);
+  }
+}
+
+/* Visual-density pass ---------------------------------------------------
+   Keep the five structural regions, but stop distributing spare height as
+   four identical gaps. Square boards stay as one compact game cluster; tall
+   boards continue to consume the available board row. */
+.screen-play.play-ui-v4 {
+  --flow-gap: clamp(5px, .85dvh, 8px);
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) {
+  grid-template-rows: auto auto auto auto auto;
+  align-content: center;
+}
+
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  width: min(96%, 410px);
+}
+
+.play-ui-v4 .play-status-bar {
+  width: min(98%, 420px);
+  aspect-ratio: 1799 / 300;
+}
+
+.play-ui-v4 .play-status-bar .score-readout,
+.play-ui-v4 .play-status-bar .combo-readout {
+  grid-template-rows: 44% 56%;
+  padding-top: 10%;
+  padding-bottom: 10%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span,
+.play-ui-v4 .play-status-bar .combo-readout span,
+.play-ui-v4 .play-status-bar .goal-copy {
+  font-size: clamp(10px, 2.7vw, 12px);
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .goal-copy b {
+  font-size: clamp(18px, 5.15vw, 22px);
+}
+
+.play-ui-v4 .play-status-bar .goal-meta { top: 14%; }
+.play-ui-v4 .play-status-bar .goal-track,
+.screen-play.play-ui-v4 .play-status-bar .goal-track {
+  bottom: 16%;
+  height: 18%;
+}
+
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round] {
+  box-sizing: border-box;
+  padding: clamp(3px, .9vw, 5px);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.31), rgba(220,245,255,.2)),
+    rgba(225,246,253,.24);
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,.88),
+    0 0 0 5px rgba(164,220,243,.46),
+    0 8px 18px rgba(25,111,156,.15),
+    inset 0 0 0 1px rgba(141,205,231,.28),
+    inset 0 0 14px rgba(255,255,255,.5);
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="4"],
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="5"] {
+  width: min(96cqw, 360px);
+}
+
+.play-ui-v4 .board-frame[data-cols="6"][data-rows="6"] {
+  width: min(96cqw, 96cqh, 410px);
+}
+
+.play-ui-v4 .board-frame[data-cols="6"][data-rows="7"] {
+  width: min(96cqw, calc(96cqh * 6 / 7), 410px);
+}
+
+.play-ui-v4 .board {
+  border-radius: calc(clamp(15px, 4vw, 22px) - 4px);
+  background-color: rgba(225,246,252,.34);
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.3) 1px, transparent 1px);
+  box-shadow:
+    inset 0 0 12px rgba(91,174,211,.1),
+    inset 0 0 0 1px rgba(255,255,255,.26);
+}
+
+.play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(224,244,250,.72);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.43), rgba(215,241,249,.26)),
+    rgba(235,249,253,.4);
+  box-shadow:
+    inset 1px 1px 3px rgba(255,255,255,.58),
+    inset -1px -1px 3px rgba(105,181,211,.11);
+}
+
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  grid-template-columns: minmax(72px, 26%) minmax(0, 1fr);
+  width: min(98%, 400px);
+  height: clamp(70px, 9.8dvh, 86px);
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  height: 126%;
+  transform: translateY(5%);
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  width: min(90%, 360px);
+}
+
+/* Combo deltas are compact, local feedback inside the combo segment. They no
+   longer become a second pill floating across the status bar. */
+.play-ui-v4 .combo-readout .combo-loss-pop,
+.play-ui-v4 .combo-readout .combo-reward-pop {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 61%;
+  right: auto;
+  bottom: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 19px;
+  max-width: 78%;
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.9);
+  border-radius: 999px;
+  background: rgba(255,249,235,.97);
+  box-shadow: 0 3px 7px rgba(103,77,58,.13);
+  color: #df5f77;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.play-ui-v4 .combo-readout .combo-loss-pop {
+  animation: combo-inline-loss 720ms ease-out both;
+}
+
+.play-ui-v4 .combo-readout .combo-reward-pop {
+  gap: 2px;
+  color: #b66b40;
+  animation: combo-inline-reward 1050ms cubic-bezier(.18,.8,.24,1.1) both;
+}
+
+.play-ui-v4 .combo-readout .combo-reward-pop img {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.play-ui-v4 .combo-readout .combo-reward-pop i { display: none; }
+
+.play-ui-v4 .combo-readout.is-inline-feedback > strong { opacity: .12; }
+
+@keyframes combo-inline-loss {
+  0% { opacity: 0; transform: translate(-50%, -35%) scale(.84); }
+  22%, 68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -68%) scale(.96); }
+}
+
+@keyframes combo-inline-reward {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(.78); }
+  20%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -72%) scale(.96); }
+}
+
+@media (max-height: 780px) {
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: center; }
+
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach {
+    grid-template-columns: minmax(62px, 24%) minmax(0, 1fr);
+    height: clamp(52px, 7.8dvh, 64px);
+  }
+}
+
+@media (max-height: 710px) {
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: center; }
+
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach {
+    grid-template-columns: minmax(56px, 23%) minmax(0, 1fr);
+    height: 46px;
   }
 }
 

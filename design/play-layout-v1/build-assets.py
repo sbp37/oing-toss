@@ -34,6 +34,28 @@ def save_pair(image: Image.Image, stem: str) -> None:
     image.save(webp_path, format="WEBP", lossless=True, method=6)
 
 
+def expand_vertical_nine_slice(
+    source: Image.Image,
+    target_height: int,
+    top_cap: int,
+    bottom_cap: int,
+) -> Image.Image:
+    """Increase panel breathing room without stretching its painted corners."""
+    if target_height <= source.height:
+        raise ValueError("target_height must be larger than source height")
+    middle_source = source.crop((0, top_cap, source.width, source.height - bottom_cap))
+    middle_height = target_height - top_cap - bottom_cap
+    middle = middle_source.resize((source.width, middle_height), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (source.width, target_height))
+    canvas.alpha_composite(source.crop((0, 0, source.width, top_cap)), (0, 0))
+    canvas.alpha_composite(middle, (0, top_cap))
+    canvas.alpha_composite(
+        source.crop((0, source.height - bottom_cap, source.width, source.height)),
+        (0, target_height - bottom_cap),
+    )
+    return canvas
+
+
 def build_hud_parts() -> None:
     source = Image.open(HUD_SOURCE).convert("RGBA")
     parts = {
@@ -71,6 +93,8 @@ def build_hud_parts() -> None:
                 width=3,
             )
         save_pair(part, name)
+        if name == "play-status-bar-v3":
+            save_pair(expand_vertical_nine_slice(part, 300, 92, 92), "play-status-bar-v4")
 
 
 def build_wide_speech_bubble() -> None:
