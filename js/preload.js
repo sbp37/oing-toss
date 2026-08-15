@@ -1,5 +1,5 @@
 const PLAY_CRITICAL_ASSETS = Object.freeze([
-  'assets/backgrounds/play-bg-clear-sky-v5.webp',
+  'assets/backgrounds/play-bg-rose-morning-v2.webp',
   'assets/ui/play-control-pause-v3.webp',
   'assets/ui/play-control-sound-v3.webp',
   'assets/ui/play-stage-badge-v3.webp',
@@ -22,6 +22,7 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
 ]);
 
 const PLAY_DEFERRED_ASSETS = Object.freeze([
+  'assets/backgrounds/board-secret-garden-v1.webp',
   'assets/characters/cat-cheer.webp',
   'assets/characters/cat-success.webp',
   'assets/characters/cat-fail.webp',

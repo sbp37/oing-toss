@@ -16,7 +16,7 @@
   min-height: 100dvh;
   padding: calc(var(--safe-top) + 8px) var(--flow-inline) calc(var(--safe-bottom) + 6px);
   overflow: hidden;
-  background: #1fb4ed url("../assets/backgrounds/play-bg-clear-sky-v5.webp") center bottom / cover no-repeat;
+  background: #f3d9df url("../assets/backgrounds/play-bg-rose-morning-v2.webp") center bottom / cover no-repeat;
 }
 
 .screen-play.play-ui-v4:not(.is-active) { display: none; }
@@ -1565,4 +1565,57 @@
 
 @media (max-width: 375px) {
   .play-ui-v4 .play-status-bar .stage-mission:not([hidden]) { max-width: 68%; }
+}
+
+/* Hidden garden -----------------------------------------------------------
+   From STAGE 3 the secret garden sits behind the board and is read only
+   through cells that have been cleared: filled tiles keep their opaque
+   syrup art, so the picture is uncovered as the player empties the board.
+   STAGE 1-2 (data-stage-band="warmup") keep the plain glass floor, so the
+   first two boards stay a clean tutorial surface.
+
+   The garden is painted on .board-frame, one layer below .board, so the
+   board's own translucent fill plus the empty tile's veil together hold it
+   to a whisper rather than competing with the numerals. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-image:
+    linear-gradient(145deg, rgba(255,255,255,.31), rgba(255,245,247,.2)),
+    linear-gradient(rgba(255,252,250,.5), rgba(255,250,248,.5)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+  background-size: auto, auto, cover;
+  background-position: center, center, center;
+  background-repeat: no-repeat;
+}
+
+/* Over the garden the board keeps only its grid lines and a light haze —
+   the opaque wash that suits the plain floor would erase the picture. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board {
+  background-color: rgba(255,252,252,.12);
+}
+
+/* The syrup tile art is translucent, so without an opaque bed under it the
+   garden bled through *filled* cells too and sat behind the numerals. This
+   backdrop paints below the art (background-color renders under
+   background-image), keeping the syrup surface intact while closing the
+   cell: the picture is then legible only where a cell is actually empty. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile.is-bonus-cat,
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile.is-board-item {
+  background-color: rgba(252,253,250,.93);
+}
+
+/* Cleared cells become the windows: a thin veil that keeps the numerals of
+   neighbouring tiles legible while letting the flowers read through. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(255,255,255,.6);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.3), rgba(255,246,248,.16)),
+    rgba(255,252,252,.14);
+  box-shadow:
+    inset 1px 1px 3px rgba(255,255,255,.5),
+    inset -1px -1px 3px rgba(196,150,160,.09);
 }

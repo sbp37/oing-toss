@@ -22,12 +22,12 @@
 | `assets/sounds/oing-original-bgm.mp3` | 원조 OING `https://sbp37.github.io/oing/bgm.mp3` | 플레이 배경음악(사용자가 음악 ON 시에만 로드) | 기본 슬라이더 40%, 제곱 게인 0.16 |
 | `assets/backgrounds/home-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/home-bg@2x.webp` | 홈·결과 배경 | 최대 430×932 |
 | `assets/backgrounds/play-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/play-bg@2x.webp` | 플레이 배경 | 최대 430×932 |
-| `assets/backgrounds/board-secret-garden-v1.webp` | imagegen으로 신규 제작한 `assets/source/board-secret-garden-v1.png` | 숫자 제거 후 빈칸을 통해 드러나는 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/board-secret-garden-v1.webp` | imagegen으로 신규 제작한 `assets/source/board-secret-garden-v1.png` | STAGE 3부터 보드 뒤에 깔려 빈칸을 통해서만 드러나는 하부 일러스트 (STAGE 1–2는 기존 유리 바닥 유지) | 보드 내부 320–400px, cover |
 | `assets/ui/play-hud-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 상단의 빈 버튼·STAGE 휘장·타이머·점수/목표/콤보 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/ui/play-footer-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 하단의 빈 말풍선·4색 아이템 도크 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/backgrounds/play-bg-v4.webp` | 첨부 플레이 레퍼런스는 색감·구도만 참고하고 imagegen으로 새로 제작한 `assets/source/play-bg-v4.png` | 플레이 화면의 선명한 푸른 하늘과 하단 꽃밭 | 모바일 전체 화면, cover |
-| `assets/backgrounds/play-bg-clear-sky-v5.webp` | 첨부 목표 시안은 무드·구도만 참고하고 imagegen으로 새로 제작한 `design/play-layout-v1/source/play-bg-clear-sky-v1.png` | 구조 개편 플레이 화면의 선명한 하늘과 얇은 하단 꽃밭 | 모바일 전체 화면, cover |
-| `assets/backgrounds/play-bg-rose-morning-v2.webp` | 현재 플레이 배경의 구도만 참고해 imagegen으로 신규 제작한 `design/play-layout-v1/source/play-bg-rose-morning-v2.png` | 플레이 화면 후보: 채도를 낮춘 핑크빛 하늘과 고양이 배치용으로 높인 하단 꽃밭 | 모바일 전체 화면, center bottom / cover |
+| `assets/backgrounds/play-bg-clear-sky-v5.webp` | 첨부 목표 시안은 무드·구도만 참고하고 imagegen으로 새로 제작한 `design/play-layout-v1/source/play-bg-clear-sky-v1.png` | 이전 플레이 배경. `play-bg-rose-morning-v2`로 교체되어 현재 런타임에서 로드하지 않는다 | — |
+| `assets/backgrounds/play-bg-rose-morning-v2.webp` | 현재 플레이 배경의 구도만 참고해 imagegen으로 신규 제작한 `design/play-layout-v1/source/play-bg-rose-morning-v2.png` | 플레이 화면 배경: 채도를 낮춘 핑크빛 하늘과 고양이 배치용으로 높인 하단 꽃밭 | 모바일 전체 화면, center bottom / cover |
 | `assets/ui/play-hud-chrome-v2.webp` | imagegen 신규 제작 `assets/source/play-hud-chrome-v2-chroma.png`에서 외곽 연결 크로마키만 제거 | 독립 일시정지·사운드 버튼, STAGE 배지, 타이머, 기록 패널 | 화면 폭 300–400px, 고유 비율 유지 |
 | `assets/ui/play-control-pause-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 일시정지 버튼 | 44–55px, 1:1 유지 |
 | `assets/ui/play-control-sound-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 사운드 버튼 | 44–55px, 1:1 유지 |
