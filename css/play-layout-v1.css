@@ -205,7 +205,9 @@
 /* 2. Status bar --------------------------------------------------------- */
 .play-ui-v4 .play-status-bar {
   position: relative;
-  z-index: 11;
+  /* Above .play-top-controls (12) so the stage-mission pill, which rides
+     in the gap under the shield tip, is not painted behind the shield. */
+  z-index: 13;
   justify-self: center;
   width: min(96%, 420px);
   height: auto;
@@ -383,7 +385,7 @@
 
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame,
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-round] {
-  width: min(100cqw, 420px);
+  width: min(91cqw, 400px);
 }
 
 .play-ui-v4 .board-frame,
@@ -392,7 +394,7 @@
   position: relative;
   z-index: 1;
   display: block;
-  width: min(100cqw, calc(100cqh * var(--board-cols) / var(--board-rows)));
+  width: min(91cqw, calc(97cqh * var(--board-cols) / var(--board-rows)));
   height: auto;
   max-width: 100%;
   max-height: 100%;
@@ -510,10 +512,12 @@
 
 .play-ui-v4 .cat-speech {
   position: relative;
-  align-self: center;
-  width: 100%;
+  align-self: end;
+  justify-self: start;
+  width: min(82%, 225px);
   aspect-ratio: 900 / 230;
   min-width: 0;
+  margin-bottom: 2%;
 }
 
 .play-ui-v4 .speech-bubble-chrome {
@@ -658,10 +662,11 @@
 .play-ui-v4 .item-button[data-state="locked"],
 .play-ui-v4 .item-button[data-state="depleted"] { opacity: .42; }
 
-/* Feedback rails stay between status and board without covering HUD. */
+/* Feedback rails sit in the gap below the status bar, above the board:
+   safe-top pad (~16) + top controls (≤72) + gap + status bar (~63). */
 .play-ui-v4 .play-feedback-rail,
 .play-ui-v4.is-stage-clearing .play-feedback-rail {
-  top: clamp(132px, 19dvh, 164px);
+  top: calc(var(--safe-top) + clamp(148px, 20dvh, 166px));
 }
 
 .play-ui-v4 .low-time-alert {
@@ -849,15 +854,15 @@
 
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="4"],
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="5"] {
-  width: min(96cqw, 360px);
+  width: min(88cqw, 344px);
 }
 
 .play-ui-v4 .board-frame[data-cols="6"][data-rows="6"] {
-  width: min(96cqw, 96cqh, 410px);
+  width: min(91cqw, 91cqh, 396px);
 }
 
 .play-ui-v4 .board-frame[data-cols="6"][data-rows="7"] {
-  width: min(96cqw, calc(96cqh * 6 / 7), 410px);
+  width: min(91cqw, calc(97cqh * 6 / 7), 396px);
 }
 
 .play-ui-v4 .board {
@@ -883,15 +888,15 @@
 
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach {
-  grid-template-columns: minmax(72px, 26%) minmax(0, 1fr);
-  width: min(98%, 400px);
-  height: clamp(70px, 9.8dvh, 86px);
+  grid-template-columns: minmax(64px, 22%) minmax(0, 1fr);
+  width: min(96%, 400px);
+  height: clamp(54px, 7.6dvh, 68px);
 }
 
 .play-ui-v4 .play-character-stage,
 .play-ui-v4.is-tall-board .play-character-stage {
-  height: 126%;
-  transform: translateY(5%);
+  height: 200%;
+  transform: translateY(50%);
 }
 
 .play-ui-v4 .play-footer,
@@ -1130,10 +1135,10 @@
 .play-ui-v4 .play-footer,
 .play-ui-v4.is-tall-board .play-footer {
   justify-self: end;
-  width: min(78%, 340px);
+  width: min(74%, 308px);
   aspect-ratio: 1600 / 423;
   margin-top: 0;
-  margin-right: clamp(6px, 2.4vw, 11px);
+  margin-right: clamp(8px, 2.8vw, 14px);
 }
 
 .play-ui-v4 .play-footer-chrome {
@@ -1192,10 +1197,6 @@
 }
 
 .screen-play.play-ui-v4:not(.is-tall-board) .cat-coach { z-index: 10; }
-.screen-play.play-ui-v4:not(.is-tall-board) .play-character-stage {
-  height: 155%;
-  transform: translateY(30%);
-}
 
 @media (max-width: 340px) {
   .play-ui-v4 .play-footer,
@@ -1243,37 +1244,30 @@
   .play-ui-v4 .low-time-alert { animation-duration: 1ms !important; }
 }
 
-/* Top chrome v4 ---------------------------------------------------------
-   The three top-control clusters are one painted asset, so their scale,
-   colour and baseline remain identical at every board size. Only live
-   values and semantic hit targets are HTML overlays. */
+/* Top chrome v5 ---------------------------------------------------------
+   The combined top bitmap made the whole cluster scale as one 3:1 block,
+   so the shield and timer grew far past the reference. Each cluster is now
+   its own painted asset (pause, sound, winged shield, timer pill) placed
+   at reference scale: buttons hug the left edge, the shield sits centred
+   and dips below the row, the timer pill hugs the right edge. */
 .screen-play.play-ui-v4,
 .screen-play.play-ui-v4:not(.is-tall-board),
 .screen-play.play-ui-v4.is-tall-board {
   align-content: stretch;
   grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-  padding-top: calc(var(--safe-top) + clamp(18px, 3dvh, 26px));
+  padding-top: calc(var(--safe-top) + clamp(12px, 2dvh, 18px));
 }
 
 .play-ui-v4 .play-top-controls,
 .screen-play.play-ui-v4[data-stage-band] .play-top-controls {
-  width: min(94%, 410px);
-  height: auto;
-  aspect-ratio: 2172 / 724;
+  width: min(94%, 400px);
+  height: clamp(58px, 8.6dvh, 72px);
+  aspect-ratio: auto;
   margin: 0;
+  overflow: visible;
 }
 
-.play-ui-v4 .play-top-controls-chrome {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
-  image-rendering: auto;
-}
+.play-ui-v4 .play-top-controls-chrome { display: none; }
 
 .play-ui-v4 .play-top-controls .hud-topline {
   position: absolute;
@@ -1284,13 +1278,13 @@
 
 .play-ui-v4 .play-top-controls .hud-controls {
   position: absolute;
-  left: .3%;
-  top: 16%;
+  left: 0;
+  top: 8%;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  width: 26.2%;
-  height: 68%;
-  gap: 10.5%;
+  width: 25.5%;
+  height: 84%;
+  gap: 8%;
 }
 
 .play-ui-v4 .play-top-controls .pause-button,
@@ -1305,29 +1299,31 @@
 }
 
 .play-ui-v4 .play-top-controls .pause-button img,
-.play-ui-v4 .play-top-controls .music-button img { opacity: 0; }
+.play-ui-v4 .play-top-controls .music-button img { opacity: 1; }
 
 .play-ui-v4 .play-top-controls .round-mini,
 .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
   position: absolute;
-  left: 31.1%;
+  left: 50%;
   top: 0;
-  width: 33.1%;
-  height: 100%;
+  width: clamp(96px, 28%, 114px);
+  height: auto;
+  aspect-ratio: 623 / 427;
+  transform: translateX(-50%);
 }
 
-.play-ui-v4 .play-top-controls .round-mini img { opacity: 0; }
+.play-ui-v4 .play-top-controls .round-mini img { opacity: 1; }
 
 .play-ui-v4 .play-top-controls .round-mini strong,
 .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
   position: absolute;
   left: 0;
-  top: 55%;
+  top: 58%;
   display: block;
   width: 100%;
   color: #244f7b;
   font-family: var(--font-display);
-  font-size: clamp(32px, 9.4vw, 42px);
+  font-size: clamp(23px, 6.8vw, 29px);
   font-weight: 400;
   line-height: 1;
   text-align: center;
@@ -1337,28 +1333,28 @@
 
 .play-ui-v4 .play-top-controls .time-readout {
   position: absolute;
-  left: 67.8%;
-  top: 20.5%;
+  left: auto;
+  right: 0;
+  top: 10%;
   display: block;
-  width: 31.8%;
-  height: 59%;
+  width: clamp(100px, 28.5%, 116px);
+  height: auto;
   min-height: 44px;
-  aspect-ratio: auto;
+  aspect-ratio: 534 / 249;
   padding: 0;
 }
 
-.play-ui-v4 .play-top-controls .time-pill-chrome,
-.play-ui-v4 .play-top-controls .time-freeze-icon { opacity: 0; }
+.play-ui-v4 .play-top-controls .time-pill-chrome { opacity: 1; }
 
 .play-ui-v4 .play-top-controls .time-readout strong {
   position: absolute;
-  left: 31%;
-  right: 5%;
+  left: 32%;
+  right: 6%;
   top: 50%;
   display: block;
   color: #183f6e;
   font-family: var(--font-display);
-  font-size: clamp(22px, 6.4vw, 29px);
+  font-size: clamp(17px, 5vw, 21px);
   font-weight: 400;
   letter-spacing: -.025em;
   line-height: 1;
@@ -1366,14 +1362,16 @@
   transform: translateY(-50%);
 }
 
-/* Status chrome v5: use the artwork's real ratio, then lock every live
-   label/value to its corresponding painted compartment. */
+/* Status chrome v6: one shared vertical rhythm for all three painted
+   compartments — every label top sits at 16%, every value top at 45% —
+   so 점수/성공/콤보 read as a single aligned row. The goal progress track
+   sits on the value line, to the right of the count, as in the reference. */
 .play-ui-v4 .play-status-bar {
   width: min(94%, 410px);
   aspect-ratio: 1800 / 312;
 }
 
-.play-ui-v4 .board-zone { align-items: start; }
+.play-ui-v4 .board-zone { align-items: center; }
 
 .play-ui-v4 .play-status-bar .score-readout,
 .play-ui-v4 .play-status-bar .combo-readout {
@@ -1386,61 +1384,93 @@
 
 .play-ui-v4 .play-status-bar .score-readout img {
   left: 6%;
-  top: 25%;
-  width: 26%;
-  height: 51%;
+  top: 26%;
+  width: 24%;
+  height: 50%;
 }
 
 .play-ui-v4 .play-status-bar .combo-readout img {
-  right: 8%;
+  right: 7%;
   top: 26%;
-  width: 27%;
-  height: 49%;
+  width: 25%;
+  height: 50%;
 }
 
 .play-ui-v4 .play-status-bar .score-readout span,
 .play-ui-v4 .play-status-bar .combo-readout span {
-  top: 18%;
+  top: 16%;
   color: #554b49;
   font-family: var(--font-sans);
   font-size: clamp(9px, 2.5vw, 11px);
   font-weight: 800;
 }
 
+.play-ui-v4 .play-status-bar .score-readout span { left: 31%; right: 6%; }
+.play-ui-v4 .play-status-bar .combo-readout span { left: 6%; right: 32%; }
+
 .play-ui-v4 .play-status-bar .score-readout strong,
 .play-ui-v4 .play-status-bar .combo-readout strong,
 .screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
-  top: 47%;
+  top: 45%;
   font-family: var(--font-display);
-  font-size: clamp(20px, 5.8vw, 26px);
+  font-size: clamp(19px, 5.6vw, 25px);
   font-weight: 400;
   line-height: 1;
 }
 
+.play-ui-v4 .play-status-bar .score-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong { left: 30%; right: 5%; }
+.play-ui-v4 .play-status-bar .combo-readout strong { left: 5%; right: 31%; }
+
 .play-ui-v4 .play-status-bar .goal-meta {
-  left: 6%;
-  right: 53%;
-  top: 14%;
-  bottom: 10%;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: block;
 }
 
 .play-ui-v4 .play-status-bar .goal-copy {
-  gap: 3px;
+  position: static;
+  display: contents;
+  gap: 0;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy em {
+  position: absolute;
+  left: 6%;
+  right: 55%;
+  top: 16%;
+  color: #554b49;
+  font-family: var(--font-sans);
   font-size: clamp(9px, 2.5vw, 11px);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .play-ui-v4 .play-status-bar .goal-copy b {
+  position: absolute;
+  left: 6%;
+  right: 55%;
+  top: 42%;
   font-family: var(--font-display);
-  font-size: clamp(19px, 5.5vw, 25px);
+  font-size: clamp(18px, 5.3vw, 24px);
   font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .play-ui-v4 .play-status-bar .goal-track,
 .screen-play.play-ui-v4 .play-status-bar .goal-track {
-  left: 44%;
-  right: 8%;
-  bottom: 28%;
-  height: 31%;
+  left: 49%;
+  right: 6%;
+  top: 47%;
+  bottom: auto;
+  height: 25%;
 }
 
 @media (max-height: 780px) {
@@ -1452,4 +1482,61 @@
     align-content: stretch;
     padding-top: calc(var(--safe-top) + 10px);
   }
+}
+
+/* Long scores step down one font band per length instead of clipping.
+   (These re-assert the ui-chrome.css bands, which this later file would
+   otherwise override at equal specificity.) */
+.play-ui-v4 .play-status-bar .score-readout strong[data-digits="l"],
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong[data-digits="l"] {
+  font-size: clamp(14px, 4.1vw, 18px);
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong[data-digits="xl"],
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong[data-digits="xl"] {
+  font-size: clamp(12px, 3.5vw, 15px);
+}
+
+/* Fold-class widths: the three top clusters must share one 270px row
+   without overlapping, so the buttons drop below the 44px ideal and the
+   shield and timer shrink to their painted minimums. */
+@media (max-width: 340px) {
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls { width: 100%; }
+
+  .play-ui-v4 .play-top-controls .hud-controls {
+    grid-template-columns: repeat(2, minmax(38px, 1fr));
+    width: 30%;
+    gap: 6%;
+  }
+
+  .play-ui-v4 .play-top-controls .pause-button,
+  .play-ui-v4 .play-top-controls .hud-mini-button {
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .play-ui-v4 .play-top-controls .round-mini,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+    width: clamp(82px, 30%, 96px);
+  }
+
+  .play-ui-v4 .play-top-controls .time-readout {
+    width: clamp(84px, 30%, 100px);
+    min-height: 38px;
+  }
+
+  .play-ui-v4 .play-top-controls .time-readout strong { font-size: 15px; }
+  .play-ui-v4 .play-top-controls .round-mini strong,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong { font-size: 21px; }
+
+  .play-ui-v4 .board-frame,
+  .play-ui-v4 .board-frame[data-round],
+  .play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+    width: min(96cqw, 420px);
+  }
+}
+
+@media (max-width: 375px) {
+  .play-ui-v4 .play-status-bar .stage-mission:not([hidden]) { max-width: 68%; }
 }
