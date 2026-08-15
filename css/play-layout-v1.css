@@ -1392,7 +1392,14 @@
   position: absolute;
   left: auto;
   right: 0;
-  top: 10%;
+  /* The pause/sound pair is grid-centred in the row, but the pill's old
+     top: 10% anchored it to the container's top — and the container's
+     height is in dvh, so on taller phones the pill drifted up to ~5px off
+     the buttons' shared centre line. Centring uses the standalone
+     `translate` property (not transform) so the is-counting /
+     is-bonus-awarded scale keyframes still compose without a jump. */
+  top: 50%;
+  translate: 0 -50%;
   display: block;
   width: clamp(100px, 28.5%, 116px);
   height: auto;
