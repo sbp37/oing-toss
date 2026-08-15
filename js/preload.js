@@ -1,8 +1,10 @@
 const PLAY_CRITICAL_ASSETS = Object.freeze([
-  'assets/backgrounds/play-bg@2x.webp',
+  'assets/backgrounds/play-bg-v4.webp',
   'assets/backgrounds/board-secret-garden-v1.webp',
-  'assets/ui/play-hud-chrome-v1.webp',
-  'assets/ui/play-footer-chrome-v1.webp',
+  'assets/ui/play-hud-chrome-v2.webp',
+  'assets/ui/item-dock-v2.webp',
+  'assets/ui/speech-bubble-v2.webp',
+  'assets/ui/shuffle-poof-v2.webp',
   'assets/characters/cat-peek.webp',
   'assets/characters/cat-wave.webp',
   'assets/characters/cat-idle.webp',

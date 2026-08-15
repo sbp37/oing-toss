@@ -25,6 +25,11 @@
 | `assets/backgrounds/board-secret-garden-v1.webp` | imagegen으로 신규 제작한 `assets/source/board-secret-garden-v1.png` | 숫자 제거 후 빈칸을 통해 드러나는 보드 하부 일러스트 | 보드 내부 320–400px, cover |
 | `assets/ui/play-hud-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 상단의 빈 버튼·STAGE 휘장·타이머·점수/목표/콤보 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/ui/play-footer-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 하단의 빈 말풍선·4색 아이템 도크 셸 | 화면 폭 296–406px, 고유 비율 유지 |
+| `assets/backgrounds/play-bg-v4.webp` | 첨부 플레이 레퍼런스는 색감·구도만 참고하고 imagegen으로 새로 제작한 `assets/source/play-bg-v4.png` | 플레이 화면의 선명한 푸른 하늘과 하단 꽃밭 | 모바일 전체 화면, cover |
+| `assets/ui/play-hud-chrome-v2.webp` | imagegen 신규 제작 `assets/source/play-hud-chrome-v2-chroma.png`에서 외곽 연결 크로마키만 제거 | 독립 일시정지·사운드 버튼, STAGE 배지, 타이머, 기록 패널 | 화면 폭 300–400px, 고유 비율 유지 |
+| `assets/ui/item-dock-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 하단 4색 아이템 도크 셸 | 화면 폭 282–370px, 고유 비율 유지 |
+| `assets/ui/speech-bubble-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 플레이 고양이 말풍선 프레임 | 화면 폭 168–230px, 고유 비율 유지 |
+| `assets/ui/shuffle-poof-v2.webp` | imagegen으로 신규 제작한 `assets/source/shuffle-poof-v2.png` | 선형 효과를 대체하는 젤리 구름 셔플 팝 | 보드 중앙 118–170px |
 | `assets/characters/cat-idle.webp` | `oing-toss-assets-v1/assets/cat/cat-idle.webp` | 홈 중심 캐릭터 | 홈 약 188–270px |
 | `assets/characters/cat-wave.webp` | `oing-toss-assets-v1/assets/cat/cat-wave.webp` | 힌트 반응 | 플레이 stage 62–96px |
 | `assets/characters/cat-cheer.webp` | `oing-toss-assets-v1/assets/cat/cat-cheer.webp` | 콤보 3·라운드·10초 경고·일반 결과 | 플레이 stage 62–80px, 결과 102–142px |
@@ -100,4 +105,4 @@
 | `assets/fonts/Jua-Korean-Game.woff2` | Google Fonts Jua | 제목·버튼·숫자 | 화면 문구 전체를 다시 스캔한 로컬 서브셋 |
 | `assets/fonts/Pretendard-OING.woff2` | Pretendard 1.3.9 | HUD·설명·고양이 멘트 | 외부 CDN 없이 동작하는 게임 전용 로컬 서브셋 |
 
-섞기 연출은 정지 이미지 대신 타일 이동과 CSS 기반 시럽 입자 모션을 사용한다.
+섞기 연출은 타일 이동과 단일 젤리 구름 에셋의 transform/opacity 모션을 조합하며 선형 CSS 장식은 사용하지 않는다.

@@ -838,15 +838,15 @@ export class GameUI {
       const radius = Math.hypot(dy, dx) / maxRadius;
       const angle = Math.atan2(dy, dx);
       const direction = 1;
-      const distance = 24 + radius * 15 + ((index * 5) % 7);
-      const tangent = 14 + radius * 12;
+      const distance = 10 + radius * 7 + ((index * 2) % 4);
+      const tangent = 4 + radius * 4;
       const x = Math.cos(angle) * distance - Math.sin(angle) * tangent * direction;
       const y = Math.sin(angle) * distance + Math.cos(angle) * tangent * direction;
-      const curveX = -Math.sin(angle) * (15 + radius * 11) * direction;
-      const curveY = Math.cos(angle) * (15 + radius * 11) * direction;
+      const curveX = -Math.sin(angle) * (5 + radius * 4) * direction;
+      const curveY = Math.cos(angle) * (5 + radius * 4) * direction;
       tile.style.setProperty('--shuffle-x', `${x}px`);
       tile.style.setProperty('--shuffle-y', `${y}px`);
-      const rotate = direction * (9 + (index % 4) * 3);
+      const rotate = direction * (2 + (index % 3));
       tile.style.setProperty('--shuffle-mid-x', `${x * 0.38 + curveX}px`);
       tile.style.setProperty('--shuffle-mid-y', `${y * 0.38 + curveY}px`);
       tile.style.setProperty('--shuffle-rotate', `${rotate}deg`);
@@ -860,42 +860,13 @@ export class GameUI {
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
     const effect = document.createElement('div');
     effect.className = 'shuffle-fx';
-    const vortex = document.createElement('span');
-    vortex.className = 'shuffle-vortex';
-    effect.appendChild(vortex);
-    const dropColors = [
-      ['#ecfff9', '#78dbc7'],
-      ['#fff8e8', '#ffc797'],
-      ['#fff5fb', '#d9b9f1'],
-    ];
-    for (let index = 0; index < 5; index += 1) {
-      const drop = document.createElement('i');
-      drop.className = 'shuffle-drop';
-      const angle = -78 + index * 72;
-      const distance = 72 + (index % 3) * 17;
-      drop.style.setProperty('--drop-angle', `${angle}deg`);
-      drop.style.setProperty('--drop-mid', `${Math.round(distance * 0.56)}px`);
-      drop.style.setProperty('--drop-distance', `${distance}px`);
-      drop.style.setProperty('--drop-delay', `${index * 24}ms`);
-      drop.style.setProperty('--drop-light', dropColors[index % dropColors.length][0]);
-      drop.style.setProperty('--drop-color', dropColors[index % dropColors.length][1]);
-      effect.appendChild(drop);
-    }
-    for (let index = 0; index < 3; index += 1) effect.appendChild(document.createElement('b'));
-    const paw = document.createElement('em');
-    paw.className = 'shuffle-paw';
-    effect.appendChild(paw);
-    const mintRibbon = document.createElement('span');
-    mintRibbon.className = 'shuffle-ribbon shuffle-ribbon-mint';
-    const coralRibbon = document.createElement('span');
-    coralRibbon.className = 'shuffle-ribbon shuffle-ribbon-coral';
-    const cat = document.createElement('img');
-    cat.className = 'shuffle-cat-swipe';
-    cat.src = CHARACTER_ASSETS.wave;
-    cat.width = 430;
-    cat.height = 481;
-    cat.alt = '';
-    effect.append(mintRibbon, coralRibbon, cat);
+    const poof = document.createElement('img');
+    poof.className = 'shuffle-poof';
+    poof.src = 'assets/ui/shuffle-poof-v2.webp';
+    poof.width = 1236;
+    poof.height = 1217;
+    poof.alt = '';
+    effect.appendChild(poof);
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
     await delay(400);
