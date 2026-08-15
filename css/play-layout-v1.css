@@ -505,10 +505,10 @@
   position: relative;
   align-self: end;
   justify-self: start;
-  width: min(82%, 225px);
+  width: min(77%, 208px);
   aspect-ratio: 900 / 230;
   min-width: 0;
-  margin-bottom: 2%;
+  margin-bottom: -5%;
 }
 
 .play-ui-v4 .speech-bubble-chrome {
@@ -521,16 +521,22 @@
   object-fit: contain;
 }
 
+/* showMessage() splits the line into <strong> highlights plus bare text
+   nodes. Under `display: grid` each of those became its own grid item and
+   was forced onto its own row, which is what produced breaks like
+   "오잉" / ", 클리어!". This is a plain block so the parts stay one run of
+   inline text and wrap normally; it is centred vertically by its own
+   half-height offset, which stays exact at one line or two. */
 .play-ui-v4 .cat-message,
 .play-ui-v4.is-tall-board .cat-message {
   position: absolute;
   z-index: 2;
   left: 10%;
-  top: 9%;
-  display: grid;
-  place-items: center;
+  top: 47%;
+  display: block;
   width: 82%;
-  height: 72%;
+  height: auto;
+  max-height: 84%;
   min-height: 0;
   margin: 0;
   padding: 0 4%;
@@ -545,6 +551,7 @@
   text-align: center;
   text-wrap: balance;
   word-break: keep-all;
+  transform: translateY(-50%);
 }
 
 .play-ui-v4 .cat-message.is-long,
@@ -894,18 +901,19 @@
 
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach {
-  grid-template-columns: minmax(84px, 28%) minmax(0, 1fr);
-  width: min(96%, 400px);
+  grid-template-columns: minmax(98px, 33%) minmax(0, 1fr);
+  width: min(99%, 412px);
   height: clamp(54px, 7.6dvh, 68px);
 }
 
 /* The cat is drawn larger than its row and spills down across the dock
    row, so it reads as a full-body character sitting on the meadow rather
-   than a small icon beside the bubble. */
+   than a small icon beside the bubble. The negative inline offset lets it
+   sit against the screen edge, past the coach row's own inset. */
 .play-ui-v4 .play-character-stage,
 .play-ui-v4.is-tall-board .play-character-stage {
-  height: 265%;
-  transform: translateY(47%);
+  height: 320%;
+  transform: translate(-11%, 58%);
 }
 
 .play-ui-v4 .play-footer,
@@ -1437,7 +1445,7 @@
 .play-ui-v4 .play-status-bar .score-readout strong,
 .play-ui-v4 .play-status-bar .combo-readout strong,
 .screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
-  top: 49%;
+  top: 45.5%;
   font-family: var(--font-display);
   font-size: clamp(19px, 5.6vw, 25px);
   font-weight: 400;
@@ -1481,7 +1489,7 @@
   position: absolute;
   left: 6%;
   right: 55%;
-  top: 49%;
+  top: 45.5%;
   font-family: var(--font-display);
   font-size: clamp(19px, 5.6vw, 25px);
   font-weight: 400;
@@ -1494,7 +1502,7 @@
 .screen-play.play-ui-v4 .play-status-bar .goal-track {
   left: 49%;
   right: 6%;
-  top: 53%;
+  top: 49.5%;
   bottom: auto;
   height: 25%;
 }
@@ -1579,8 +1587,8 @@
    to a whisper rather than competing with the numerals. */
 .screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
   background-image:
-    linear-gradient(145deg, rgba(255,255,255,.31), rgba(255,245,247,.2)),
-    linear-gradient(rgba(255,252,250,.5), rgba(255,250,248,.5)),
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,245,247,.1)),
+    linear-gradient(rgba(255,252,250,.2), rgba(255,250,248,.2)),
     url("../assets/backgrounds/board-secret-garden-v1.webp");
   background-size: auto, auto, cover;
   background-position: center, center, center;
@@ -1604,17 +1612,17 @@
   .tile.is-bonus-cat,
 .screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
   .tile.is-board-item {
-  background-color: rgba(252,253,250,.93);
+  background-color: rgba(252,253,250,.97);
 }
 
 /* Cleared cells become the windows: a thin veil that keeps the numerals of
    neighbouring tiles legible while letting the flowers read through. */
 .screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
   .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
-  border: 1px solid rgba(255,255,255,.6);
+  border: 1px solid rgba(255,255,255,.5);
   background:
-    linear-gradient(145deg, rgba(255,255,255,.3), rgba(255,246,248,.16)),
-    rgba(255,252,252,.14);
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,246,248,.07)),
+    rgba(255,252,252,.05);
   box-shadow:
     inset 1px 1px 3px rgba(255,255,255,.5),
     inset -1px -1px 3px rgba(196,150,160,.09);
