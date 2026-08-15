@@ -1131,21 +1131,21 @@
 .play-ui-v4.is-tall-board .play-footer {
   justify-self: end;
   width: min(78%, 340px);
-  aspect-ratio: 4 / 1;
-  margin-top: clamp(-24px, -2.7dvh, -18px);
+  aspect-ratio: 1600 / 423;
+  margin-top: 0;
   margin-right: clamp(6px, 2.4vw, 11px);
 }
 
 .play-ui-v4 .play-footer-chrome {
-  aspect-ratio: 4 / 1;
+  aspect-ratio: 1600 / 423;
   object-fit: contain;
 }
 
 .play-ui-v4 .item-actions {
-  inset: 10.5% 7.3% 12.5%;
+  inset: 13.8% 5.8% 15.6%;
   grid-template-columns: repeat(4, minmax(44px, 1fr));
   align-items: center;
-  gap: 3%;
+  gap: 4.8%;
 }
 
 .play-ui-v4 .item-button,
@@ -1194,7 +1194,7 @@
 .screen-play.play-ui-v4:not(.is-tall-board) .cat-coach { z-index: 10; }
 .screen-play.play-ui-v4:not(.is-tall-board) .play-character-stage {
   height: 155%;
-  transform: translateY(15%);
+  transform: translateY(30%);
 }
 
 @media (max-width: 340px) {
