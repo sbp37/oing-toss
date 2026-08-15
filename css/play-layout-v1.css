@@ -1650,3 +1650,310 @@
     inset 1px 1px 3px rgba(255,255,255,.5),
     inset -1px -1px 3px rgba(196,150,160,.09);
 }
+
+/* ==========================================================================
+   Moment polish pass
+   Everything below animates transform / opacity only (no filter or
+   box-shadow animation), so the whole set stays on the compositor and adds
+   no per-frame paint cost on a phone.
+   ========================================================================== */
+
+/* Countdown: 3-2-1 each get their own colour, then GO! ---------------------
+   The digits used to be one colour and the last beat read "뿅!", which is the
+   same word the game uses for a successful match — so the start of a round
+   and the reward for clearing one looked alike. */
+.play-ui-v4 ~ .start-countdown strong,
+.screen-play.play-ui-v4 .start-countdown strong {
+  transition: color 120ms linear;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="3"] strong {
+  color: #ff7fa6;
+  text-shadow: 0 5px 0 #e0537f, 0 11px 20px rgba(214,74,116,.24);
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="2"] strong {
+  color: #4fc7bd;
+  text-shadow: 0 5px 0 #2b9c94, 0 11px 20px rgba(46,150,142,.24);
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="1"] strong {
+  color: #ffb340;
+  text-shadow: 0 5px 0 #dd8b1c, 0 11px 20px rgba(199,126,26,.24);
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-go strong {
+  color: #6ad36b;
+  font-size: clamp(58px, 17vw, 74px);
+  letter-spacing: .01em;
+  text-shadow: 0 6px 0 #3ea94a, 0 13px 24px rgba(56,153,71,.26);
+}
+
+/* Selection: glossy candy instead of a flat yellow wash -------------------
+   Same warm hue family as before (the board's cool mint needs a warm
+   counterpart), but built like a boiled sweet: one bright specular cap, a
+   soft light bounce off the bottom edge, and a saturated core. */
+.play-ui-v4 .tile.is-selected::after,
+.play-ui-v4 .board.is-dragging .tile.is-selected::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 3.5%;
+  border: 1px solid rgba(255,226,170,.92);
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 58% 36% at 34% 18%, rgba(255,255,255,.96), rgba(255,255,255,0) 64%),
+    radial-gradient(ellipse 88% 52% at 50% 112%, rgba(255,236,190,.72), rgba(255,236,190,0) 62%),
+    linear-gradient(154deg, rgba(255,222,140,.9) 0%, rgba(255,196,104,.86) 46%, rgba(255,171,96,.8) 100%);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.96),
+    inset 0 -3px 7px rgba(206,124,44,.24),
+    0 0 12px rgba(255,178,86,.5);
+  pointer-events: none;
+}
+
+/* Sum is exactly ten: the same sweet, turned up — brighter core, wider
+   glow. It reads as "this one counts" without switching hue mid-drag. */
+.play-ui-v4 .board.is-perfect .tile.is-selected::after {
+  border-color: rgba(255,244,206,.98);
+  background:
+    radial-gradient(ellipse 58% 36% at 34% 18%, #fff, rgba(255,255,255,0) 64%),
+    radial-gradient(ellipse 88% 52% at 50% 112%, rgba(255,247,214,.86), rgba(255,247,214,0) 62%),
+    linear-gradient(154deg, rgba(255,238,158,.96) 0%, rgba(255,206,92,.94) 46%, rgba(255,176,70,.9) 100%);
+  box-shadow:
+    inset 0 1.5px 0 #fff,
+    inset 0 -3px 8px rgba(198,116,32,.26),
+    0 0 18px rgba(255,190,72,.66);
+}
+
+/* End-of-round answers: the shared rule only recolours `border-color` and
+   `box-shadow`, both of which this layout re-declares later — so the reveal
+   landed on white tiles and was invisible. This paints the whole cell. */
+.play-ui-v4 .tile.is-end-answer:not(.is-empty),
+.play-ui-v4 .tile.is-end-answer[class*="value-"] {
+  z-index: 5;
+  border: 1px solid rgba(90,196,168,.9);
+  background-color: rgba(190,245,228,.97);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.9),
+    0 0 0 2px rgba(64,183,152,.55),
+    0 4px 12px rgba(38,140,116,.28);
+}
+
+.play-ui-v4 .tile.is-end-answer span { color: #14705c; }
+
+/* Shuffle: tiles flip like cards ------------------------------------------
+   The old version threw every tile outward along its own radius, which at a
+   glance read as the whole board sliding sideways rather than the numbers
+   changing. A flip says exactly one thing — "this card's face is new" — and
+   the row/column stagger makes it travel across the board as a wave. */
+.play-ui-v4 .board.is-shuffling-out .tile,
+.play-ui-v4 .board.is-shuffling-in .tile {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.play-ui-v4 .board.is-shuffling-out .tile {
+  animation: tile-flip-away 300ms var(--shuffle-delay, 0ms) cubic-bezier(.55,.02,.72,.36) both;
+}
+
+.play-ui-v4 .board.is-shuffling-in .tile {
+  animation: tile-flip-back 380ms var(--shuffle-delay, 0ms) cubic-bezier(.2,.86,.3,1.18) both;
+}
+
+/* The flip stops well short of edge-on. Taken all the way to 90deg every
+   tile becomes a sliver at the same moment and the board vanishes, which
+   on the garden stages means the hidden picture is suddenly fully exposed
+   — a much louder event than the shuffle itself. Tilting to 58deg still
+   reads as a card turning while the cell stays a cell. */
+@keyframes tile-flip-away {
+  0% { opacity: 1; transform: perspective(560px) rotateY(0) scale(1); }
+  100% { opacity: .5; transform: perspective(560px) rotateY(58deg) scale(.86); }
+}
+
+@keyframes tile-flip-back {
+  0% { opacity: .5; transform: perspective(560px) rotateY(-58deg) scale(.86); }
+  58% { opacity: 1; transform: perspective(560px) rotateY(7deg) scale(1.05); }
+  80% { transform: perspective(560px) rotateY(-3deg) scale(.985); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* The poof bitmap is gone; what is left is a soft sheen that rides across
+   the board with the flip wave. One element, transform-only. */
+.play-ui-v4 .shuffle-fx {
+  position: absolute;
+  z-index: 15;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: none;
+  pointer-events: none;
+}
+
+.play-ui-v4 .shuffle-fx::before {
+  content: "";
+  position: absolute;
+  left: -40%;
+  top: -20%;
+  width: 42%;
+  height: 140%;
+  background: linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,.5) 46%, rgba(255,255,255,0));
+  animation: shuffle-sheen 620ms ease-out both;
+}
+
+.play-ui-v4 .shuffle-fx::after { content: none; }
+.play-ui-v4 .shuffle-fx img,
+.play-ui-v4 .shuffle-fx i,
+.play-ui-v4 .shuffle-fx b,
+.play-ui-v4 .shuffle-fx strong { display: none; }
+
+@keyframes shuffle-sheen {
+  0% { opacity: 0; transform: translateX(0) skewX(-12deg); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(340%) skewX(-12deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .board.is-shuffling-out .tile,
+  .play-ui-v4 .board.is-shuffling-in .tile,
+  .play-ui-v4 .shuffle-fx::before { animation-duration: 1ms !important; }
+}
+
+/* One selection, one highlight ------------------------------------------
+   The marquee used to paint its own tinted fill plus a white blob that
+   tracked the pointer, on top of tiles that are already lit. Two coats of
+   the same message, and the blob sat directly under the fingertip — it
+   washed out the very numeral being pointed at. The tiles now carry the
+   colour and the marquee is reduced to the outline that groups them. */
+.play-ui-v4 .selection-marquee {
+  border-color: rgba(255,206,110,.95);
+  background: none;
+  box-shadow:
+    0 0 0 2px rgba(255,251,232,.7),
+    0 0 14px rgba(255,190,80,.4);
+}
+
+.play-ui-v4 .selection-marquee.is-ten {
+  border-color: #ffc44a;
+  background: none;
+  box-shadow:
+    0 0 0 2px rgba(255,255,238,.86),
+    0 0 20px rgba(255,192,54,.6);
+}
+
+/* ==========================================================================
+   Result screen alignment pass
+   The card's contents each used their own rhythm — the three stat tiles put
+   the icon in a side column with the label and value stacked beside it, the
+   record meter was left-aligned inside an otherwise centred card, and the
+   cat and its message sat on different centre lines. Nothing here changes
+   what the screen says; it lines the pieces up on one grid.
+   ========================================================================== */
+
+/* Stat tiles: icon centred over a label and value that share one baseline,
+   so the three read as a row of matching cards rather than three small
+   left-aligned lists. */
+.screen-result .result-grid {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.screen-result .result-grid > div {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 20px auto auto;
+  justify-items: center;
+  align-content: center;
+  row-gap: 3px;
+  column-gap: 0;
+  padding: 9px 6px 8px;
+  text-align: center;
+}
+
+.screen-result .result-grid img {
+  grid-row: 1;
+  width: 19px;
+  height: 19px;
+}
+
+.screen-result .result-grid span {
+  grid-row: 2;
+  color: #8d7867;
+  font-size: 10.5px;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+
+.screen-result .result-grid b {
+  grid-row: 3;
+  font-size: 19px;
+  line-height: 1.05;
+}
+
+/* The record meter is the one element that has a label and a bar; centre
+   the label over the bar so it sits on the card's axis like everything else. */
+.screen-result .result-record-meter {
+  gap: 5px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.screen-result .result-record-meter > i {
+  height: 9px;
+  background: rgba(236, 221, 190, .55);
+}
+
+/* Cat and message: bottom-aligned so the cat stands on the same line the
+   bubble points at, instead of both being centred against each other. */
+.screen-result .result-cat-row {
+  align-items: end;
+  gap: 2px;
+  padding-bottom: 4px;
+}
+
+.screen-result .result-message {
+  align-self: end;
+  margin-bottom: 14px;
+}
+
+/* The kicker was a small pill drifting above the card with nothing tying it
+   down. Tucking it against the card reads as a card title. */
+.screen-result .result-kicker {
+  margin-bottom: 2px;
+  letter-spacing: .02em;
+}
+
+/* Live readouts stay on top of flying feedback -------------------------
+   Score flights and item drops animate at z-index 28, above the status bar
+   at 13, so an item on its way to the dock could park itself over the combo
+   figure and hide it. Reward animations should read as landing *into* the
+   HUD, so the HUD now sits above them. */
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls { z-index: 60; }
+.play-ui-v4 .play-status-bar { z-index: 61; }
+
+/* The combo segment's icon rules were written for the painted star and used
+   a bare descendant selector, so they also caught the reward pop's item
+   icon — blowing it up to a quarter of the segment and parking it, absolutely
+   positioned, on top of the combo figure. The pop is an inline badge; give it
+   back its own size and flow. */
+.play-ui-v4 .play-status-bar .combo-readout .combo-reward-pop img,
+.play-ui-v4 .play-status-bar .combo-readout .combo-loss-pop img {
+  position: static;
+  left: auto;
+  right: auto;
+  top: auto;
+  width: 13px;
+  height: 13px;
+  filter: none;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout .combo-reward-pop {
+  gap: 3px;
+  min-height: 0;
+  padding: 2px 7px;
+  border-width: 1px;
+}
+
+/* Fading the figure to 12% while the pop sits over it made the segment look
+   broken for half a second. The pop is small now, so the number can stay. */
+.play-ui-v4 .combo-readout.is-inline-feedback > strong { opacity: .5; }

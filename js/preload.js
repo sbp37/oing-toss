@@ -8,7 +8,6 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/ui/play-top-controls-v4.webp',
   'assets/ui/item-dock-v4.webp',
   'assets/ui/speech-bubble-wide-v3.webp',
-  'assets/ui/shuffle-poof-v2.webp',
   'assets/characters/cat-peek.webp',
   'assets/characters/cat-wave.webp',
   'assets/characters/cat-idle.webp',

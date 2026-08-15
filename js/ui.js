@@ -176,7 +176,7 @@ export class GameUI {
       if (token !== this.startCountdownToken) return false;
       const isGo = step === 'GO!';
       this.elements.startCountdownKicker.textContent = isGo ? '합이 10이면' : '준비!';
-      this.elements.startCountdownValue.textContent = isGo ? '뿅!' : String(step);
+      this.elements.startCountdownValue.textContent = isGo ? 'GO!' : String(step);
       overlay.classList.toggle('is-go', isGo);
       overlay.dataset.step = String(step);
       this.elements.startCountdownValue.classList.remove('is-popping');
@@ -829,33 +829,16 @@ export class GameUI {
   }
 
   setShuffleVectors() {
+    // The flip animation needs only a per-tile delay. Staggering by
+    // (row + col) sends one diagonal wave across the board, so the shuffle
+    // reads as a sweep of cards turning over rather than 42 separate pops.
     const cols = Number(this.board.dataset.cols) || Number(this.board.dataset.size) || 4;
     const rows = Number(this.board.dataset.rows) || cols;
-    const centerCol = (cols - 1) / 2;
-    const centerRow = (rows - 1) / 2;
-    const maxRadius = Math.max(1, Math.hypot(centerRow, centerCol));
-    this.board.querySelectorAll('.tile').forEach((tile, index) => {
-      const row = Number(tile.dataset.row);
-      const col = Number(tile.dataset.col);
-      const dx = col - centerCol;
-      const dy = row - centerRow;
-      const radius = Math.hypot(dy, dx) / maxRadius;
-      const angle = Math.atan2(dy, dx);
-      const direction = 1;
-      const distance = 10 + radius * 7 + ((index * 2) % 4);
-      const tangent = 4 + radius * 4;
-      const x = Math.cos(angle) * distance - Math.sin(angle) * tangent * direction;
-      const y = Math.sin(angle) * distance + Math.cos(angle) * tangent * direction;
-      const curveX = -Math.sin(angle) * (5 + radius * 4) * direction;
-      const curveY = Math.cos(angle) * (5 + radius * 4) * direction;
-      tile.style.setProperty('--shuffle-x', `${x}px`);
-      tile.style.setProperty('--shuffle-y', `${y}px`);
-      const rotate = direction * (2 + (index % 3));
-      tile.style.setProperty('--shuffle-mid-x', `${x * 0.38 + curveX}px`);
-      tile.style.setProperty('--shuffle-mid-y', `${y * 0.38 + curveY}px`);
-      tile.style.setProperty('--shuffle-rotate', `${rotate}deg`);
-      tile.style.setProperty('--shuffle-mid-rotate', `${rotate * 0.72}deg`);
-      tile.style.setProperty('--shuffle-delay', `${Math.min(48, Math.round(radius * 28) + (index % 4) * 5)}ms`);
+    const span = Math.max(1, cols + rows - 2);
+    this.board.querySelectorAll('.tile').forEach((tile) => {
+      const row = Number(tile.dataset.row) || 0;
+      const col = Number(tile.dataset.col) || 0;
+      tile.style.setProperty('--shuffle-delay', `${Math.round(((row + col) / span) * 200)}ms`);
     });
   }
 
@@ -864,13 +847,6 @@ export class GameUI {
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
     const effect = document.createElement('div');
     effect.className = 'shuffle-fx';
-    const poof = document.createElement('img');
-    poof.className = 'shuffle-poof';
-    poof.src = 'assets/ui/shuffle-poof-v2.webp';
-    poof.width = 1236;
-    poof.height = 1217;
-    poof.alt = '';
-    effect.appendChild(poof);
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
     await delay(400);
@@ -880,18 +856,12 @@ export class GameUI {
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(420);
+    await delay(480);
     this.board.classList.remove('is-shuffling-in');
     this.boardFrame.classList.remove('is-shuffle-settled');
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-shuffle-settled');
     this.board.querySelectorAll('.tile').forEach((tile) => {
-      tile.style.removeProperty('--shuffle-x');
-      tile.style.removeProperty('--shuffle-y');
-      tile.style.removeProperty('--shuffle-mid-x');
-      tile.style.removeProperty('--shuffle-mid-y');
-      tile.style.removeProperty('--shuffle-rotate');
-      tile.style.removeProperty('--shuffle-mid-rotate');
       tile.style.removeProperty('--shuffle-delay');
     });
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
