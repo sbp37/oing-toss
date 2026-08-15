@@ -950,6 +950,180 @@
 
 .play-ui-v4 .combo-readout.is-inline-feedback > strong { opacity: .12; }
 
+/* Status bar v5 ---------------------------------------------------------
+   The bitmap is only the clean cream shell. Every live value is positioned
+   once in HTML so the reference hierarchy stays stable at every width. */
+.play-ui-v4 .play-status-bar {
+  width: min(94%, 404px);
+  aspect-ratio: 1800 / 312;
+}
+
+.play-ui-v4 .play-status-bar .hud-secondline {
+  grid-template-columns: 31% 42% 27%;
+  padding: 0 1.7%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout,
+.play-ui-v4 .play-status-bar .combo-readout {
+  display: block;
+  align-self: stretch;
+  justify-self: stretch;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.play-ui-v4 .play-status-bar .score-readout img,
+.play-ui-v4 .play-status-bar .combo-readout img {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.play-ui-v4 .play-status-bar .score-readout img {
+  left: 5%;
+  top: 21%;
+  width: 29%;
+  height: 60%;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout img {
+  right: 6%;
+  top: 23%;
+  width: 30%;
+  height: 54%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span,
+.play-ui-v4 .play-status-bar .combo-readout span {
+  position: absolute;
+  top: 20%;
+  margin: 0;
+  color: #625651;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.55vw, 11px);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span {
+  left: 35%;
+  right: 4%;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout span {
+  left: 5%;
+  right: 35%;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
+  position: absolute;
+  top: 43%;
+  margin: 0;
+  overflow: visible;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 5.7vw, 25px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
+  left: 34%;
+  right: 3%;
+  color: #173f70;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout strong {
+  left: 6%;
+  right: 34%;
+  color: #ef456d;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .goal-status,
+.screen-play.play-ui-v4 .play-status-bar .goal-status {
+  display: block;
+  padding: 0;
+}
+
+.play-ui-v4 .play-status-bar .goal-meta {
+  left: 8%;
+  right: 54%;
+  top: 18%;
+  bottom: 13%;
+  display: block;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4%;
+  color: #625651;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.55vw, 11px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy b {
+  color: #ef456d;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 5vw, 23px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .goal-track,
+.screen-play.play-ui-v4 .play-status-bar .goal-track {
+  left: 43%;
+  right: 8%;
+  bottom: 29%;
+  width: auto;
+  height: 30%;
+  min-height: 8px;
+  border: 1px solid rgba(181, 158, 131, .48);
+  background: #eadfce;
+  box-shadow: inset 0 2px 3px rgba(91, 67, 42, .11), 0 1px 0 rgba(255,255,255,.86);
+}
+
+.play-ui-v4 .play-status-bar .goal-track i {
+  background: linear-gradient(90deg, #63d8bf, #17b99f);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45);
+}
+
+.play-ui-v4 .play-status-bar .stage-mission:not([hidden]) {
+  right: 2%;
+  top: 2%;
+  max-width: 52%;
+  transform: translateY(-115%);
+}
+
+@media (max-width: 340px) {
+  .play-ui-v4 .play-status-bar { width: 96%; }
+  .play-ui-v4 .play-status-bar .score-readout span,
+  .play-ui-v4 .play-status-bar .combo-readout span,
+  .play-ui-v4 .play-status-bar .goal-copy { font-size: 9px; }
+  .play-ui-v4 .play-status-bar .score-readout strong,
+  .play-ui-v4 .play-status-bar .combo-readout strong,
+  .screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong,
+  .play-ui-v4 .play-status-bar .goal-copy b { font-size: 18px; }
+}
+
 @keyframes combo-inline-loss {
   0% { opacity: 0; transform: translate(-50%, -35%) scale(.84); }
   22%, 68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }

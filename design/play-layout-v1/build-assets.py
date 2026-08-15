@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,6 +54,40 @@ def expand_vertical_nine_slice(
         (0, target_height - bottom_cap),
     )
     return canvas
+
+
+def build_status_bar_v5() -> None:
+    """Draw a clean text-free status frame with stable transparent edges."""
+    width, height = 1800, 312
+    scale = 2
+    canvas = Image.new("RGBA", (width * scale, height * scale))
+    shadow = Image.new("RGBA", canvas.size)
+    shadow_draw = ImageDraw.Draw(shadow)
+    panel = (30 * scale, 18 * scale, 1770 * scale, 282 * scale)
+    radius = 86 * scale
+    shadow_draw.rounded_rectangle(
+        (panel[0], panel[1] + 15 * scale, panel[2], panel[3] + 15 * scale),
+        radius=radius,
+        fill=(72, 107, 121, 66),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(14 * scale))
+    canvas.alpha_composite(shadow)
+
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle(panel, radius=radius, fill=(255, 252, 242, 255))
+    inner = (42 * scale, 29 * scale, 1758 * scale, 270 * scale)
+    draw.rounded_rectangle(inner, radius=72 * scale, outline=(224, 206, 175, 245), width=5 * scale)
+    highlight = (50 * scale, 37 * scale, 1750 * scale, 260 * scale)
+    draw.rounded_rectangle(highlight, radius=66 * scale, outline=(255, 255, 255, 230), width=4 * scale)
+    for x in (558, 1314):
+        draw.line(
+            (x * scale, 70 * scale, x * scale, 232 * scale),
+            fill=(205, 186, 159, 112),
+            width=3 * scale,
+        )
+
+    canvas = canvas.resize((width, height), Image.Resampling.LANCZOS)
+    save_pair(canvas, "play-status-bar-v5")
 
 
 def build_hud_parts() -> None:
@@ -133,6 +167,7 @@ def main() -> None:
     UI_OUT.mkdir(parents=True, exist_ok=True)
     BG_OUT.mkdir(parents=True, exist_ok=True)
     build_hud_parts()
+    build_status_bar_v5()
     build_wide_speech_bubble()
     build_background()
 

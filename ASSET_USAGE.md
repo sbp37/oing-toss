@@ -34,6 +34,7 @@
 | `assets/ui/play-timer-pill-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 우측 타이머 셸 | 98–145px, 고유 비율 유지 |
 | `assets/ui/play-status-bar-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 기록 패널만 분리하고 샘플 게이지를 제거 | 점수·성공 진행·콤보 공용 상태 패널 | 화면 폭 255–412px, 고유 비율 유지 |
 | `assets/ui/play-status-bar-v4.webp` | `play-status-bar-v3.png`의 모서리를 보존한 세로 9-slice 확장 | 플레이 상태바의 라벨·수치·진행바 정렬 공간 | 화면 폭 255–412px, 1799×300 고유 비율 유지 |
+| `assets/ui/play-status-bar-v5.png/.webp` | 프로젝트 전용 신규 렌더(동적 정보 없는 3분할 크림 프레임) | 플레이 점수·성공·콤보 상태바 | 화면 폭 약 338–404px, 1800×312 고유 비율 유지 |
 | `assets/ui/item-dock-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 하단 4색 아이템 도크 셸 | 화면 폭 282–370px, 고유 비율 유지 |
 | `assets/ui/speech-bubble-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 플레이 고양이 말풍선 프레임 | 화면 폭 168–230px, 고유 비율 유지 |
 | `assets/ui/speech-bubble-wide-v3.webp` | 프로젝트 소유 `speech-bubble-v2.png`를 `design/play-layout-v1/build-assets.py`에서 9-slice 확장 | 고양이 옆 가로형 2줄 말풍선 | 화면 폭 176–302px, 고유 비율 유지 |
