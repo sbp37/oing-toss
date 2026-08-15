@@ -1124,6 +1124,89 @@
   .play-ui-v4 .play-status-bar .goal-copy b { font-size: 18px; }
 }
 
+/* Item dock v3 ----------------------------------------------------------
+   A compact 4:1 illustrated dock sits to the cat's right. The painted
+   buttons are complete squares; live counts remain independent HTML badges. */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  justify-self: end;
+  width: min(78%, 340px);
+  aspect-ratio: 4 / 1;
+  margin-top: clamp(-24px, -2.7dvh, -18px);
+  margin-right: clamp(6px, 2.4vw, 11px);
+}
+
+.play-ui-v4 .play-footer-chrome {
+  aspect-ratio: 4 / 1;
+  object-fit: contain;
+}
+
+.play-ui-v4 .item-actions {
+  inset: 10.5% 7.3% 12.5%;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  align-items: center;
+  gap: 3%;
+}
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  align-self: center;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  aspect-ratio: 1;
+  grid-template-rows: 67% 33%;
+  padding: 5% 2% 2%;
+  border-radius: 20%;
+}
+
+.play-ui-v4 .item-icon {
+  width: clamp(28px, 8vw, 35px);
+  height: clamp(29px, 8.2vw, 36px);
+}
+
+.play-ui-v4 .item-button > span {
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3vw, 13px);
+  font-weight: 400;
+}
+
+.play-ui-v4 .item-button b {
+  z-index: 8;
+  top: -9px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: clamp(21px, 5.8vw, 25px);
+  height: clamp(21px, 5.8vw, 25px);
+  border: 2px solid #fffaf2;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ff7693, #ed4169);
+  box-shadow: 0 2px 0 #c9365a, 0 4px 8px rgba(174, 51, 85, .23);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 3.3vw, 15px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) .cat-coach { z-index: 10; }
+.screen-play.play-ui-v4:not(.is-tall-board) .play-character-stage {
+  height: 155%;
+  transform: translateY(15%);
+}
+
+@media (max-width: 340px) {
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer {
+    width: 84%;
+    margin-right: 4px;
+  }
+  .play-ui-v4 .item-actions { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+  .play-ui-v4 .item-button b { top: -7px; right: -6px; }
+}
+
 @keyframes combo-inline-loss {
   0% { opacity: 0; transform: translate(-50%, -35%) scale(.84); }
   22%, 68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }

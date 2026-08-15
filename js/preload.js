@@ -5,7 +5,7 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/ui/play-stage-badge-v3.webp',
   'assets/ui/play-timer-pill-v3.webp',
   'assets/ui/play-status-bar-v5.webp',
-  'assets/ui/item-dock-v2.webp',
+  'assets/ui/item-dock-v3.webp',
   'assets/ui/speech-bubble-wide-v3.webp',
   'assets/ui/shuffle-poof-v2.webp',
   'assets/characters/cat-peek.webp',

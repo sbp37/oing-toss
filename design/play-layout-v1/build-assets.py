@@ -90,6 +90,109 @@ def build_status_bar_v5() -> None:
     save_pair(canvas, "play-status-bar-v5")
 
 
+def rounded_gradient(
+    canvas: Image.Image,
+    bounds: tuple[int, int, int, int],
+    radius: int,
+    top: tuple[int, int, int, int],
+    bottom: tuple[int, int, int, int],
+) -> None:
+    left, y1, right, y2 = bounds
+    layer = Image.new("RGBA", canvas.size)
+    pixels = ImageDraw.Draw(layer)
+    height = max(1, y2 - y1)
+    for y in range(y1, y2 + 1):
+        mix = (y - y1) / height
+        color = tuple(round(top[i] * (1 - mix) + bottom[i] * mix) for i in range(4))
+        pixels.line((left, y, right, y), fill=color)
+    mask = Image.new("L", canvas.size)
+    ImageDraw.Draw(mask).rounded_rectangle(bounds, radius=radius, fill=255)
+    canvas.alpha_composite(Image.composite(layer, Image.new("RGBA", canvas.size), mask))
+
+
+def build_item_dock_v3() -> None:
+    """Build a clean 4:1 dock with four complete square buttons and no badge holes."""
+    width, height = 1200, 300
+    scale = 2
+    canvas = Image.new("RGBA", (width * scale, height * scale))
+
+    shadow = Image.new("RGBA", canvas.size)
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle(
+        (12 * scale, 24 * scale, 1188 * scale, 276 * scale),
+        radius=72 * scale,
+        fill=(72, 101, 105, 58),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(13 * scale))
+    canvas.alpha_composite(shadow)
+
+    rounded_gradient(
+        canvas,
+        (10 * scale, 12 * scale, 1190 * scale, 272 * scale),
+        76 * scale,
+        (255, 253, 244, 255),
+        (247, 232, 204, 255),
+    )
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle(
+        (24 * scale, 24 * scale, 1176 * scale, 260 * scale),
+        radius=64 * scale,
+        outline=(222, 199, 163, 232),
+        width=5 * scale,
+    )
+    draw.rounded_rectangle(
+        (32 * scale, 31 * scale, 1168 * scale, 250 * scale),
+        radius=58 * scale,
+        outline=(255, 255, 255, 225),
+        width=4 * scale,
+    )
+
+    palettes = (
+        ((255, 252, 221, 255), (255, 218, 112, 255), (225, 168, 51, 210)),
+        ((238, 255, 249, 255), (164, 230, 211, 255), (52, 173, 146, 210)),
+        ((255, 246, 247, 255), (247, 174, 188, 255), (214, 92, 119, 205)),
+        ((241, 251, 255, 255), (165, 216, 240, 255), (68, 155, 202, 205)),
+    )
+    button_size = 230
+    gap = 35
+    start_x = 88
+    y1 = 31
+    for index, (top, bottom, edge) in enumerate(palettes):
+        x1 = start_x + index * (button_size + gap)
+        x2 = x1 + button_size
+        y2 = y1 + button_size
+        # Soft grounded shadow and bottom lip make the squares feel pressable.
+        draw.rounded_rectangle(
+            (x1 * scale, (y1 + 10) * scale, x2 * scale, (y2 + 10) * scale),
+            radius=48 * scale,
+            fill=edge,
+        )
+        rounded_gradient(
+            canvas,
+            (x1 * scale, y1 * scale, x2 * scale, y2 * scale),
+            48 * scale,
+            top,
+            bottom,
+        )
+        draw = ImageDraw.Draw(canvas)
+        draw.rounded_rectangle(
+            ((x1 + 5) * scale, (y1 + 5) * scale, (x2 - 5) * scale, (y2 - 5) * scale),
+            radius=43 * scale,
+            outline=(255, 255, 255, 225),
+            width=4 * scale,
+        )
+        draw.arc(
+            ((x1 + 10) * scale, (y1 + 10) * scale, (x2 - 10) * scale, (y2 - 10) * scale),
+            200,
+            335,
+            fill=(255, 255, 255, 165),
+            width=4 * scale,
+        )
+
+    canvas = canvas.resize((width, height), Image.Resampling.LANCZOS)
+    save_pair(canvas, "item-dock-v3")
+
+
 def build_hud_parts() -> None:
     source = Image.open(HUD_SOURCE).convert("RGBA")
     parts = {
@@ -168,6 +271,7 @@ def main() -> None:
     BG_OUT.mkdir(parents=True, exist_ok=True)
     build_hud_parts()
     build_status_bar_v5()
+    build_item_dock_v3()
     build_wide_speech_bubble()
     build_background()
 
