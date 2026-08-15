@@ -505,9 +505,16 @@
   position: relative;
   align-self: end;
   justify-self: start;
-  width: min(90%, 205px);
+  /* 80.5% of this column reproduces the width the bubble had when the cat
+     column was wider — the horizontal move must not change its size, since
+     a wider bubble is also a taller one and would eat the gap to the board. */
+  width: min(80.5%, 205px);
   aspect-ratio: 900 / 230;
   min-width: 0;
+  /* Pulled left of its column so the tail sits by the cat's paw. The cat
+     column is sized for the character, not for where the bubble should
+     start, so this offset is what decouples the two. */
+  margin-left: -10%;
   /* Was a negative margin, which let the bubble sink past the coach row's
      own bottom edge into the dock row below (rows don't clip their
      children), so the tail touched or overlapped the dock chrome. A small
@@ -903,7 +910,7 @@
 
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach {
-  grid-template-columns: minmax(112px, 40%) minmax(0, 1fr);
+  grid-template-columns: minmax(92px, 33%) minmax(0, 1fr);
   width: min(99%, 412px);
   height: clamp(62px, 8.6dvh, 74px);
 }
@@ -927,9 +934,9 @@
      the cat from growing tall enough to cover the board's bottom-left
      tiles on short screens, where the gap below the board is smallest. */
   justify-self: start;
-  width: min(100%, 16.5dvh);
+  width: min(100%, 13.5dvh);
   height: 400%;
-  margin-bottom: calc(-1 * clamp(56px, 10.2dvh, 92px));
+  margin-bottom: calc(-1 * clamp(72px, 13.3dvh, 118px));
   transform: translateX(-16%);
 }
 
