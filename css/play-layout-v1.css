@@ -363,24 +363,14 @@
 
 /* 3. Board -------------------------------------------------------------- */
 .play-ui-v4 .board-zone {
-  container-type: size;
+  container-type: inline-size;
   display: grid;
   place-items: center;
-  align-self: stretch;
+  align-self: auto;
   min-width: 0;
   min-height: 0;
-  overflow: visible;
-}
-
-.screen-play.play-ui-v4:not(.is-tall-board) {
-  grid-template-rows: auto auto auto auto auto;
-  align-content: space-between;
-}
-
-.screen-play.play-ui-v4:not(.is-tall-board) .board-zone {
-  container-type: inline-size;
-  align-self: auto;
   height: auto;
+  overflow: visible;
 }
 
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame,
@@ -394,7 +384,8 @@
   position: relative;
   z-index: 1;
   display: block;
-  width: min(91cqw, calc(97cqh * var(--board-cols) / var(--board-rows)));
+  /* Height budget: 100dvh minus the five fixed chrome rows (~340px). */
+  width: min(91cqw, calc((100dvh - 370px) * var(--board-cols) / var(--board-rows)), 400px);
   height: auto;
   max-width: 100%;
   max-height: 100%;
@@ -662,11 +653,21 @@
 .play-ui-v4 .item-button[data-state="locked"],
 .play-ui-v4 .item-button[data-state="depleted"] { opacity: .42; }
 
-/* Feedback rails sit in the gap below the status bar, above the board:
-   safe-top pad (~16) + top controls (≤72) + gap + status bar (~63). */
+/* The feedback rail is a real grid row between the status bar and the
+   board — a fixed-height spacer whose pills always land in that gap at
+   every viewport, instead of an absolute band that drifts off target. */
 .play-ui-v4 .play-feedback-rail,
 .play-ui-v4.is-stage-clearing .play-feedback-rail {
-  top: calc(var(--safe-top) + clamp(148px, 20dvh, 166px));
+  position: relative;
+  top: auto;
+  left: auto;
+  bottom: auto;
+  grid-row: 3;
+  justify-self: center;
+  align-self: center;
+  width: min(92%, 360px);
+  height: clamp(24px, 3.6dvh, 32px);
+  transform: none;
 }
 
 .play-ui-v4 .low-time-alert {
@@ -701,9 +702,11 @@
   transform: none;
 }
 
+/* The low-time alert shares row 3 with the (usually empty) feedback rail
+   spacer, so the packed six-row rhythm is unchanged while it shows. */
 .screen-play.play-ui-v4.is-low-time-alerting {
-  grid-template-rows: auto auto 34px minmax(0, 1fr) auto auto;
-  align-content: stretch;
+  grid-template-rows: repeat(6, auto);
+  align-content: center;
 }
 
 .screen-play.play-ui-v4.is-low-time-alerting .board-zone { grid-row: 4; }
@@ -854,15 +857,15 @@
 
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="4"],
 .screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="5"] {
-  width: min(88cqw, 344px);
+  width: min(88cqw, calc(100dvh - 370px), 344px);
 }
 
 .play-ui-v4 .board-frame[data-cols="6"][data-rows="6"] {
-  width: min(91cqw, 91cqh, 396px);
+  width: min(91cqw, calc(100dvh - 370px), 396px);
 }
 
 .play-ui-v4 .board-frame[data-cols="6"][data-rows="7"] {
-  width: min(91cqw, calc(97cqh * 6 / 7), 396px);
+  width: min(91cqw, calc((100dvh - 370px) * 6 / 7), 396px);
 }
 
 .play-ui-v4 .board {
@@ -1250,11 +1253,15 @@
    its own painted asset (pause, sound, winged shield, timer pill) placed
    at reference scale: buttons hug the left edge, the shield sits centred
    and dips below the row, the timer pill hugs the right edge. */
+/* Packed cluster: every region is an auto row (the feedback rail included,
+   as a fixed-height spacer row) and the whole stack centres vertically.
+   On tall screens (folds) the surplus goes to the screen edges as sky and
+   meadow, instead of opening voids between the board and the bars. */
 .screen-play.play-ui-v4,
 .screen-play.play-ui-v4:not(.is-tall-board),
 .screen-play.play-ui-v4.is-tall-board {
-  align-content: stretch;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  align-content: center;
+  grid-template-rows: repeat(6, auto);
   padding-top: calc(var(--safe-top) + clamp(12px, 2dvh, 18px));
 }
 
@@ -1455,9 +1462,9 @@
   position: absolute;
   left: 6%;
   right: 55%;
-  top: 42%;
+  top: 45%;
   font-family: var(--font-display);
-  font-size: clamp(18px, 5.3vw, 24px);
+  font-size: clamp(19px, 5.6vw, 25px);
   font-weight: 400;
   line-height: 1;
   text-align: center;
@@ -1468,18 +1475,18 @@
 .screen-play.play-ui-v4 .play-status-bar .goal-track {
   left: 49%;
   right: 6%;
-  top: 47%;
+  top: 49%;
   bottom: auto;
   height: 25%;
 }
 
 @media (max-height: 780px) {
-  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: center; }
 }
 
 @media (max-height: 710px) {
   .screen-play.play-ui-v4:not(.is-tall-board) {
-    align-content: stretch;
+    align-content: center;
     padding-top: calc(var(--safe-top) + 10px);
   }
 }
