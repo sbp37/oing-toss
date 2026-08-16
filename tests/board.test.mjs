@@ -345,3 +345,82 @@ console.log('board.test.mjs: 750 regular and 300 early-assist boards plus scorin
   assert.equal(swept.length, 1);
   assert.equal(orphan.remainingPlayableCells(), 0, 'the sweep finishes the board');
 }
+
+// ── Backbone generation: every board carries a full-clear path ───────────
+{
+  const { BoardModel: Model, gridDrainsByLines, bonusCatTargetForDimensions } = await import('../js/board.js');
+  for (const [cols, rows, round] of [[4, 4, 1], [5, 5, 2], [5, 5, 3], [6, 6, 4], [6, 6, 5], [6, 7, 6], [6, 7, 9]]) {
+    for (let run = 0; run < 12; run += 1) {
+      const model = new Model(cols);
+      model.generate(cols, { cols, rows, round });
+      assert.ok(gridDrainsByLines(model.grid),
+        `stage ${round} (${cols}x${rows}) board must split into one-line sum-ten runs`);
+      const total = model.grid.flat().reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
+      assert.equal(total % 10, 0, 'a full-clearable board total must divide into tens');
+      assert.equal(model.bonusCats.size, bonusCatTargetForDimensions(rows, cols));
+      const answers = model.findAnswers();
+      for (const key of model.bonusCats) {
+        const [r, c] = key.split(':').map(Number);
+        assert.ok(answers.some((a) => r >= a.r1 && r <= a.r2 && c >= a.c1 && c <= a.c2),
+          'every cat sits inside a segment rectangle and stays collectable');
+      }
+    }
+  }
+  assert.equal(gridDrainsByLines([[9, 1], [2, 2]]), false, 'a board without one-line runs is not certified');
+  assert.ok(gridDrainsByLines([[9, 1], [8, 2]]), 'row runs certify');
+  assert.ok(gridDrainsByLines([[9, 8], [1, 2]]), 'column runs certify too');
+}
+
+// ── Sized partition: values deal into prescribed group sizes ─────────────
+{
+  const { partitionIntoSizedTens } = await import('../js/board.js');
+  const dealt = partitionIntoSizedTens([9, 1, 2, 3, 5], [2, 3]);
+  assert.ok(dealt, 'a matching multiset must deal');
+  assert.deepEqual(dealt.map((group) => group.length).sort(), [2, 3]);
+  dealt.forEach((group) => assert.equal(group.reduce((sum, value) => sum + value, 0), 10));
+  assert.equal(partitionIntoSizedTens([9, 1, 2, 3, 5], [5]), null, 'twenty cannot fill a single ten-group');
+  assert.equal(partitionIntoSizedTens([9, 9, 1, 1], [3, 1]), null, 'sizes must cover the values exactly');
+  assert.equal(partitionIntoSizedTens([4, 4, 4, 8], [2, 2]), null, 'an impossible multiset reports null');
+}
+
+// ── Rescue guarantee: one rescue, then the whole tail drains ─────────────
+// The plan the rescue returns is cleared rect by rect with the model's own
+// stats/remove — proving each group really is a selectable sum-ten
+// rectangle at its turn, across assorted hole patterns and bomb debris.
+{
+  const { BoardModel: Model } = await import('../js/board.js');
+  const makeTail = (rows, cols, cells) => {
+    const model = new Model(cols);
+    model.generate(cols, { cols, rows, round: 1 });
+    model.bonusCats.clear();
+    model.specialTiles.clear();
+    model.grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
+    cells.forEach(([r, c, v]) => { model.grid[r][c] = v; });
+    return model;
+  };
+  const scenarios = [
+    ['bomb debris, one row of nines', makeTail(6, 6, [[2, 0, 9], [2, 2, 9], [2, 5, 9]])],
+    ['scattered singles across rows', makeTail(6, 6, [[0, 0, 9], [1, 3, 9], [2, 5, 8], [4, 1, 7], [5, 4, 9]])],
+    ['donut hole after a blast', makeTail(6, 6, [[0, 0, 9], [0, 1, 8], [0, 2, 9], [1, 0, 7], [1, 5, 9], [2, 0, 9], [2, 5, 9], [3, 0, 8], [3, 5, 7], [5, 0, 9], [5, 3, 9], [5, 5, 9]])],
+    ['lone single borrows partners', makeTail(5, 5, [[0, 2, 9], [3, 1, 8], [3, 4, 9]])],
+    ['two survivors in one row', makeTail(4, 4, [[1, 0, 3], [1, 3, 4]])],
+    ['two survivors in two rows', makeTail(4, 4, [[0, 1, 9], [3, 2, 9]])],
+    ['partitionable but badly placed', makeTail(6, 6, [[0, 0, 1], [0, 4, 9], [2, 2, 2], [2, 3, 8], [4, 0, 5], [4, 5, 5], [5, 1, 3], [5, 2, 7]])],
+  ];
+  for (const [name, model] of scenarios) {
+    const shapeBefore = JSON.stringify(model.grid.map((row) => row.map((v) => (v > 0 ? 1 : 0))));
+    const countBefore = model.grid.flat().filter((v) => v > 0).length;
+    const outcome = model.rescueRemaining();
+    assert.ok(outcome && outcome.plan, `${name}: the strong rescue path must produce a drain plan`);
+    assert.equal(JSON.stringify(model.grid.map((row) => row.map((v) => (v > 0 ? 1 : 0)))), shapeBefore,
+      `${name}: rescue never refills a cleared cell`);
+    assert.equal(model.grid.flat().filter((v) => v > 0).length, countBefore,
+      `${name}: rescue never adds or removes numbers`);
+    for (const rect of outcome.plan) {
+      assert.equal(model.stats(rect).sum, 10, `${name}: every planned rectangle sums to ten at its turn`);
+      model.remove(rect);
+    }
+    assert.equal(model.grid.flat().filter((v) => v > 0).length, 0,
+      `${name}: the plan drains the whole tail with zero further rescues`);
+  }
+}

@@ -58,26 +58,6 @@ export function boardAssistForPerformance({
   return 'standard';
 }
 
-const qualityTarget = (size, assist = 'standard') => {
-  const base = BOARD_DIFFICULTY[size] || BOARD_DIFFICULTY[9];
-  const bonus = BOARD_ASSIST_PROFILES[assist] || BOARD_ASSIST_PROFILES.standard;
-  return {
-    ...base,
-    minimumAnswers: base.minimumAnswers + bonus.minimumAnswers,
-    minimumSimpleAnswers: base.minimumSimpleAnswers + bonus.minimumSimpleAnswers,
-    minimumAdjacentPairs: base.minimumAdjacentPairs + bonus.minimumAdjacentPairs,
-  };
-};
-
-const randomValue = () => Math.floor(Math.random() * MAX_VALUE) + MIN_VALUE;
-
-function shuffled(values) {
-  return shuffleArray(values.slice());
-}
-
-function makeRandomGrid(rows, cols = rows) {
-  return Array.from({ length: rows }, () => Array.from({ length: cols }, randomValue));
-}
 
 const ORIGINAL_PAIR_WEIGHTS = Object.freeze([
   Object.freeze([8, 8, 13, 15, 11]),
@@ -88,6 +68,9 @@ const ORIGINAL_PAIR_WEIGHTS = Object.freeze([
 ]);
 const COMPLEMENT_PAIRS = Object.freeze([[1, 9], [2, 8], [3, 7], [4, 6], [5, 5]]);
 const TEN_TRIPLES = Object.freeze([[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]]);
+const TEN_QUADS = Object.freeze([[1, 2, 3, 4], [1, 1, 3, 5], [2, 2, 2, 4], [1, 2, 2, 5], [1, 1, 2, 6], [2, 2, 3, 3], [1, 1, 4, 4], [1, 3, 3, 3]]);
+const TEN_QUINTS = Object.freeze([[1, 1, 2, 2, 4], [2, 2, 2, 2, 2], [1, 2, 2, 2, 3], [1, 1, 1, 3, 4], [1, 1, 2, 3, 3]]);
+const TEN_SEXTS = Object.freeze([[1, 1, 1, 2, 2, 3], [1, 1, 2, 2, 2, 2], [1, 1, 1, 1, 2, 4], [1, 1, 1, 1, 3, 3]]);
 
 // Splits a value list into groups that each sum to exactly ten, or returns
 // null when no such partition exists. Backtracking over descending values
@@ -163,6 +146,69 @@ export function repairValuesForPartition(input) {
     }
   }
   return null;
+}
+
+// Splits a value list into groups of the exact given sizes, each summing to
+// ten. The rescue planner decides the geometry first (which cells form which
+// selectable rectangle) and this solver then deals the values into it.
+export function partitionIntoSizedTens(values, sizes) {
+  const count = values.length;
+  if (!sizes.length || sizes.reduce((sum, size) => sum + size, 0) !== count) return null;
+  if (values.reduce((sum, value) => sum + value, 0) !== sizes.length * 10) return null;
+  const sorted = values.slice().sort((a, b) => b - a);
+  const groups = sizes.map((size) => ({ left: size, need: 10, values: [] }));
+  let budget = 60000;
+
+  const place = (index) => {
+    if (budget <= 0) return false;
+    budget -= 1;
+    if (index === count) return groups.every((group) => group.left === 0);
+    const value = sorted[index];
+    const tried = new Set();
+    for (const group of groups) {
+      if (group.left <= 0 || group.need < value) continue;
+      const remaining = group.left - 1;
+      const rest = group.need - value;
+      if (rest < remaining || rest > remaining * 9) continue;
+      const signature = `${group.left}:${group.need}`;
+      if (tried.has(signature)) continue;
+      tried.add(signature);
+      group.left = remaining;
+      group.need = rest;
+      group.values.push(value);
+      if (place(index + 1)) return true;
+      group.left = remaining + 1;
+      group.need = rest + value;
+      group.values.pop();
+    }
+    return false;
+  };
+
+  if (!place(0)) return null;
+  return groups.map((group) => group.values.slice());
+}
+
+// True when every line (all rows, or all columns) splits into consecutive
+// runs of numbers that each sum to exactly ten. Such a board always drains
+// to empty: each run is a one-line rectangle containing only its own
+// numbers, so it is selectable at any moment, in any order. This is the
+// invariant the backbone generator establishes and the tests verify.
+export function gridDrainsByLines(grid) {
+  const rows = grid.length;
+  const cols = grid[0]?.length || 0;
+  const drains = (lines) => lines.every((line) => {
+    let acc = 0;
+    for (const value of line) {
+      if (!(value > 0)) continue;
+      acc += value;
+      if (acc === 10) acc = 0;
+      else if (acc > 10) return false;
+    }
+    return acc === 0;
+  });
+  if (drains(grid)) return true;
+  const columns = Array.from({ length: cols }, (_, c) => Array.from({ length: rows }, (_, r) => grid[r]?.[c] ?? 0));
+  return drains(columns);
 }
 
 // The ladder holds each size for two stages (4x4 / 5x5 / 5x5 / 6x6 / 6x6 /
@@ -344,109 +390,146 @@ function pacingPenalty(mix, pacing) {
     + above(mix.dominantCellShare, pacing.maximumDominantCellShare) * 80;
 }
 
-function seedAdjacentPairsInGrid(grid, requested) {
-  const rows = grid.length;
-  const cols = grid[0]?.length || 0;
-  let seeded = 0;
-  for (let guard = 0; seeded < requested && guard < 500; guard += 1) {
-    const row = Math.floor(Math.random() * rows);
-    const col = Math.floor(Math.random() * cols);
-    if (!(grid[row]?.[col] > 0)) continue;
-    const neighbors = shuffleArray([[0, 1], [1, 0], [0, -1], [-1, 0]]);
-    const neighbor = neighbors
-      .map(([dr, dc]) => ({ row: row + dr, col: col + dc }))
-      .find(({ row: nextRow, col: nextCol }) => grid[nextRow]?.[nextCol] > 0);
-    if (!neighbor) continue;
-    const needed = 10 - grid[row][col];
-    if (grid[neighbor.row][neighbor.col] === needed) {
-      seeded += 1;
-      continue;
+// Full-clear backbone: every board is built as a tiling of one-line
+// segments that each sum to exactly ten. A segment's numbers sit in a
+// single row (or column), so its bounding rectangle contains no foreign
+// number and is selectable at any moment — the board always has a
+// complete clear path by construction. Difficulty still comes from the
+// value mix: later stages use longer, harder-to-spot segments.
+function backboneSizeMix(round) {
+  const stage = difficultyPhaseForStage(round);
+  if (stage <= 1) return [[2, 8], [3, 2]];
+  if (stage === 2) return [[2, 7], [3, 3]];
+  if (stage === 3) return [[2, 11], [3, 7], [4, 2]];
+  if (stage === 4) return [[2, 9], [3, 8], [4, 3]];
+  if (stage === 5) return [[2, 8], [3, 8], [4, 4]];
+  if (stage <= 7) return [[2, 6], [3, 9], [4, 5]];
+  if (stage <= 9) return [[2, 5], [3, 9], [4, 6]];
+  return [[2, 4], [3, 9], [4, 7]];
+}
+
+function sampleBackboneSize(mix) {
+  const total = mix.reduce((sum, [, weight]) => sum + weight, 0);
+  let roll = Math.random() * total;
+  for (const [size, weight] of mix) {
+    roll -= weight;
+    if (roll <= 0) return size;
+  }
+  return mix.at(-1)[0];
+}
+
+// A sum-ten multiset of the given size. Pairs keep the original stage
+// weighting; sizes past the pattern tables (only reachable through cat
+// gluing) fall back to ones plus a closer.
+function tenGroupValues(count, round) {
+  if (count === 2) {
+    const weights = pairWeightsForRound(round);
+    const total = weights.reduce((sum, value) => sum + value, 0);
+    let roll = Math.random() * total;
+    for (let index = 0; index < COMPLEMENT_PAIRS.length; index += 1) {
+      roll -= weights[index];
+      if (roll <= 0) return COMPLEMENT_PAIRS[index].slice();
     }
-    const candidates = [];
-    for (let sourceRow = 0; sourceRow < rows; sourceRow += 1) {
-      for (let sourceCol = 0; sourceCol < cols; sourceCol += 1) {
-        if (sourceRow === row && sourceCol === col) continue;
-        if (sourceRow === neighbor.row && sourceCol === neighbor.col) continue;
-        if (grid[sourceRow][sourceCol] === needed) candidates.push({ row: sourceRow, col: sourceCol });
+    return COMPLEMENT_PAIRS.at(-1).slice();
+  }
+  const pool = count === 3 ? TEN_TRIPLES : count === 4 ? TEN_QUADS : count === 5 ? TEN_QUINTS : count === 6 ? TEN_SEXTS : null;
+  if (pool) return pool[Math.floor(Math.random() * pool.length)].slice();
+  return [...new Array(count - 1).fill(1), 11 - count];
+}
+
+// Partitions one line's number cells into consecutive segments of 2..9
+// numbers. Cats glue their neighbours together (a split across a cat would
+// leave that cat outside every segment rectangle, stranding it), and a cat
+// past the line's first or last number can never be covered — the caller
+// re-rolls cat placement in that case.
+function lineRangePlan(width, catCols, round) {
+  const positions = [];
+  for (let col = 0; col < width; col += 1) {
+    if (!catCols.has(col)) positions.push(col);
+  }
+  if (positions.length < 2) return null;
+  for (const col of catCols) {
+    if (col < positions[0] || col > positions.at(-1)) return null;
+  }
+  const blocks = [[positions[0]]];
+  for (let index = 1; index < positions.length; index += 1) {
+    let glued = false;
+    for (let col = positions[index - 1] + 1; col < positions[index]; col += 1) {
+      if (catCols.has(col)) glued = true;
+    }
+    if (glued) blocks.at(-1).push(positions[index]);
+    else blocks.push([positions[index]]);
+  }
+  const mix = backboneSizeMix(round);
+  const ranges = [];
+  let index = 0;
+  while (index < blocks.length) {
+    const range = [];
+    const targetSize = sampleBackboneSize(mix);
+    while (index < blocks.length) {
+      range.push(...blocks[index]);
+      index += 1;
+      const rest = blocks.slice(index).reduce((sum, block) => sum + block.length, 0);
+      if (rest === 0) break;
+      if (range.length >= Math.max(2, targetSize) && rest !== 1) break;
+      if (range.length > 9) return null;
+    }
+    if (range.length < 2 || range.length > 9) return null;
+    ranges.push(range);
+  }
+  return ranges;
+}
+
+function makeBackboneGrid(rows, cols, round, catTarget) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const alongRows = attempt % 2 === 0;
+    const lineCount = alongRows ? rows : cols;
+    const lineWidth = alongRows ? cols : rows;
+    const cats = new Set();
+    if (attempt < 40) {
+      while (cats.size < catTarget) {
+        cats.add(cellKey(Math.floor(Math.random() * rows), Math.floor(Math.random() * cols)));
       }
+    } else {
+      // Safety net: one interior cat per distinct line always segments.
+      for (let index = 0; index < catTarget; index += 1) {
+        const line = index % lineCount;
+        const offset = 1 + Math.floor(Math.random() * (lineWidth - 2));
+        cats.add(alongRows ? cellKey(line, offset) : cellKey(offset, line));
+      }
+      if (cats.size < catTarget) continue;
     }
-    if (!candidates.length) continue;
-    const source = candidates[Math.floor(Math.random() * candidates.length)];
-    [grid[neighbor.row][neighbor.col], grid[source.row][source.col]] = [
-      grid[source.row][source.col],
-      grid[neighbor.row][neighbor.col],
-    ];
-    seeded += 1;
-  }
-}
-
-function adjacentPairCount(grid) {
-  let count = 0;
-  for (let row = 0; row < grid.length; row += 1) {
-    for (let col = 0; col < (grid[row]?.length || 0); col += 1) {
-      const value = grid[row][col];
-      if (!(value > 0)) continue;
-      if ((grid[row]?.[col + 1] ?? 0) > 0 && value + grid[row][col + 1] === 10) count += 1;
-      if ((grid[row + 1]?.[col] ?? 0) > 0 && value + grid[row + 1][col] === 10) count += 1;
+    const plans = [];
+    let feasible = true;
+    for (let line = 0; line < lineCount && feasible; line += 1) {
+      const catCols = new Set();
+      cats.forEach((key) => {
+        const [r, c] = key.split(':').map(Number);
+        if ((alongRows ? r : c) === line) catCols.add(alongRows ? c : r);
+      });
+      const plan = lineRangePlan(lineWidth, catCols, round);
+      if (!plan) feasible = false;
+      else plans.push(plan);
     }
+    if (!feasible) continue;
+    const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
+    plans.forEach((ranges, line) => {
+      ranges.forEach((range) => {
+        const values = shuffleArray(tenGroupValues(range.length, round));
+        range.forEach((offset, position) => {
+          const r = alongRows ? line : offset;
+          const c = alongRows ? offset : line;
+          grid[r][c] = values[position];
+        });
+      });
+    });
+    return { grid, cats };
   }
-  return count;
-}
-
-// Preserve the number bag while preventing late boards from accidentally
-// presenting as many obvious adjacent pairs as the tutorial boards.
-function reduceAdjacentPairsInGrid(grid, maximum) {
-  if (!Number.isFinite(maximum)) return;
-  const cells = [];
-  grid.forEach((row, r) => row.forEach((value, c) => {
-    if (value > 0) cells.push({ r, c });
-  }));
-  let current = adjacentPairCount(grid);
-  for (let attempt = 0; current > maximum && attempt < 240; attempt += 1) {
-    const first = cells[Math.floor(Math.random() * cells.length)];
-    const second = cells[Math.floor(Math.random() * cells.length)];
-    if (!first || !second || (first.r === second.r && first.c === second.c)) continue;
-    [grid[first.r][first.c], grid[second.r][second.c]] = [grid[second.r][second.c], grid[first.r][first.c]];
-    const next = adjacentPairCount(grid);
-    if (next <= current) current = next;
-    else [grid[first.r][first.c], grid[second.r][second.c]] = [grid[second.r][second.c], grid[first.r][first.c]];
-  }
-}
-
-function makeBalancedGrid(rows, cols, round, catTarget, pacing) {
-  const total = rows * cols;
-  const catIndexes = new Set();
-  while (catIndexes.size < catTarget) catIndexes.add(Math.floor(Math.random() * total));
-  const bag = numberBagForRound(total - catTarget, round);
-  let bagIndex = 0;
-  const grid = Array.from({ length: rows }, (_, row) => Array.from({ length: cols }, (_, col) => (
-    catIndexes.has(row * cols + col) ? null : bag[bagIndex++]
-  )));
-  seedAdjacentPairsInGrid(grid, adjacentSeedCountForRound(round));
-  if (difficultyPhaseForStage(round) >= 3) reduceAdjacentPairsInGrid(grid, pacing.maximumAdjacentPairs);
-  return { grid, catIndexes };
+  return null;
 }
 
 function isAdjacentPair(answer) {
   return answer.count === 2 && (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1) === 2;
-}
-
-function answersMeetQuality(answers, size, assist = 'standard') {
-  const {
-    minimumAnswers,
-    minimumSimpleAnswers,
-    minimumAdjacentPairs,
-    minimumRichAnswers,
-  } = qualityTarget(size, assist);
-  return answers.length >= minimumAnswers
-    && answers.filter((answer) => answer.count === 2).length >= minimumSimpleAnswers
-    && answers.filter(isAdjacentPair).length >= minimumAdjacentPairs
-    && answers.filter((answer) => answer.count >= 3).length >= minimumRichAnswers;
-}
-
-function hasGoodAnswerMix(grid, assist = 'standard') {
-  const difficultySize = Math.max(grid.length, grid[0]?.length || 0);
-  return answersMeetQuality(findAllSumTenRects(grid), difficultySize, assist);
 }
 
 const cellKey = (row, col) => `${row}:${col}`;
@@ -461,70 +544,6 @@ export function bonusCatTargetForDimensions(rows, cols = rows) {
 
 function rectContainsCell(rect, row, col) {
   return row >= rect.r1 && row <= rect.r2 && col >= rect.c1 && col <= rect.c2;
-}
-
-function placeBonusCats(grid, assist = 'standard') {
-  const cats = new Set();
-  const rows = grid.length;
-  const cols = grid[0]?.length || 0;
-  const target = bonusCatTargetForDimensions(rows, cols);
-  const difficultySize = Math.max(rows, cols);
-
-  for (let index = 0; index < target; index += 1) {
-    const candidates = [];
-    for (let row = 0; row < rows; row += 1) {
-      for (let col = 0; col < cols; col += 1) {
-        if ((grid[row]?.[col] ?? 0) <= 0 || cats.has(cellKey(row, col))) continue;
-        const previous = grid[row][col];
-        grid[row][col] = null;
-        const answers = findAllSumTenRects(grid);
-        const catAnswers = answers.filter((answer) => rectContainsCell(answer, row, col));
-        const everyCatStillCollectable = [...cats, cellKey(row, col)].every((key) => {
-          const [catRow, catCol] = key.split(':').map(Number);
-          return answers.some((answer) => rectContainsCell(answer, catRow, catCol));
-        });
-        if (answersMeetQuality(answers, difficultySize, assist) && catAnswers.length && everyCatStillCollectable) {
-          candidates.push({ row, col, coverage: catAnswers.length });
-        }
-        grid[row][col] = previous;
-      }
-    }
-
-    if (!candidates.length) return null;
-    candidates.sort((a, b) => b.coverage - a.coverage);
-    const bestCoverage = candidates[0].coverage;
-    const best = shuffled(candidates.filter((candidate) => candidate.coverage === bestCoverage))[0];
-    grid[best.row][best.col] = null;
-    cats.add(cellKey(best.row, best.col));
-  }
-
-  return cats;
-}
-
-function seedProfileAnswers(grid, assist = 'standard') {
-  const rowCount = grid.length;
-  const colCount = grid[0]?.length || 0;
-  const { minimumAdjacentPairs, minimumRichAnswers } = qualityTarget(Math.max(rowCount, colCount), assist);
-  const pairPatterns = [[1, 9], [2, 8], [3, 7], [4, 6]];
-  const richPatterns = [[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]];
-  const rows = shuffled(Array.from({ length: rowCount }, (_, index) => index));
-
-  for (let index = 0; index < minimumRichAnswers; index += 1) {
-    const row = rows[(minimumAdjacentPairs + index) % rows.length];
-    const start = Math.min(colCount - 3, index % Math.max(1, colCount - 2));
-    shuffled(richPatterns[index % richPatterns.length]).forEach((value, offset) => {
-      grid[row][start + offset] = value;
-    });
-  }
-
-  const starts = colCount >= 6 ? [0, 2, colCount - 2] : [0, colCount - 2];
-  const pairSlots = shuffled(rows.flatMap((row) => starts.map((start) => ({ row, start }))));
-  for (let index = 0; index < minimumAdjacentPairs; index += 1) {
-    const { row, start } = pairSlots[index % pairSlots.length];
-    shuffled(pairPatterns[index % pairPatterns.length]).forEach((value, offset) => {
-      grid[row][start + offset] = value;
-    });
-  }
 }
 
 export function normalizeRect(a, b) {
@@ -660,6 +679,192 @@ function shuffleArray(values) {
   return values;
 }
 
+function slotRect(slot) {
+  return {
+    r1: Math.min(...slot.cells.map(({ r }) => r)),
+    r2: Math.max(...slot.cells.map(({ r }) => r)),
+    c1: Math.min(...slot.cells.map(({ c }) => c)),
+    c2: Math.max(...slot.cells.map(({ c }) => c)),
+  };
+}
+
+// Splits `count` cells into exactly `runs` consecutive runs of 2..9 cells.
+function runSizesFor(count, runs) {
+  if (runs < 1 || count < runs * 2 || count > runs * 9) return null;
+  const sizes = new Array(runs).fill(2);
+  let left = count - runs * 2;
+  for (let index = 0; index < runs && left > 0; index += 1) {
+    const add = Math.min(7, left);
+    sizes[index] += add;
+    left -= add;
+  }
+  return shuffleArray(sizes);
+}
+
+// Plans a rescue layout over the remaining cells: which cells form which
+// sum-ten group, such that clearing the groups in the returned order is
+// always geometrically possible. Two group shapes are used, both provably
+// clean at their turn:
+//  - a run of consecutive occupied cells inside one row (its rectangle can
+//    contain only holes and its own members, so it is selectable anytime);
+//  - an endgame group of rows holding a single cell each, taken over
+//    consecutive such rows and cleared after every row run (by then its
+//    rectangle spans only its own members). A lone single instead borrows
+//    partners from the nearest multi-cell row and clears last.
+// Values are only rearranged when possible; when the totals cannot make
+// groups of ten (bomb debris), the fewest possible values are rewritten.
+// Returns { slots, changed } or null; cells never move, holes stay holes.
+export function planRescueLayout(cells, values) {
+  const count = cells.length;
+  if (count < 2 || values.length !== count) return null;
+  const byRow = new Map();
+  cells.forEach((cell) => {
+    if (!byRow.has(cell.r)) byRow.set(cell.r, []);
+    byRow.get(cell.r).push({ r: cell.r, c: cell.c });
+  });
+  const rowNumbers = [...byRow.keys()].sort((a, b) => a - b);
+  rowNumbers.forEach((row) => byRow.get(row).sort((a, b) => a.c - b.c));
+  let singles = rowNumbers.filter((row) => byRow.get(row).length === 1).map((row) => byRow.get(row)[0]);
+
+  // A lone single cannot make ten by itself and has no partner row of its
+  // own kind, so it steals one or two partners from the nearest full row.
+  let donorSlot = null;
+  if (singles.length === 1) {
+    const single = singles[0];
+    const donorRow = rowNumbers
+      .filter((row) => byRow.get(row).length >= 2)
+      .sort((a, b) => Math.abs(a - single.r) - Math.abs(b - single.r) || a - b)[0];
+    if (donorRow === undefined) return null;
+    const donorCells = byRow.get(donorRow);
+    if (donorCells.length === 2) {
+      donorSlot = { cells: [single, ...donorCells] };
+      byRow.set(donorRow, []);
+    } else {
+      const donor = donorCells.slice().sort((a, b) => Math.abs(a.c - single.c) - Math.abs(b.c - single.c) || a.c - b.c)[0];
+      byRow.set(donorRow, donorCells.filter((cell) => cell !== donor));
+      donorSlot = { cells: [single, donor] };
+    }
+    singles = [];
+  }
+
+  const endgame = [];
+  if (singles.length >= 2) {
+    const queue = singles.slice();
+    if (queue.length % 2 === 1) endgame.push({ cells: queue.splice(0, 3) });
+    while (queue.length) endgame.push({ cells: queue.splice(0, 2) });
+  }
+  if (donorSlot) endgame.push(donorSlot);
+
+  const rowInfos = rowNumbers
+    .map((row) => ({ cells: byRow.get(row) }))
+    .filter((info) => info.cells.length >= 2);
+  const minRuns = rowInfos.reduce((sum, info) => sum + Math.ceil(info.cells.length / 9), 0);
+  const maxRuns = rowInfos.reduce((sum, info) => sum + Math.floor(info.cells.length / 2), 0);
+  const fixed = endgame.length;
+  if (fixed + maxRuns === 0) return null;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const preferred = Math.min(fixed + maxRuns, Math.max(fixed + minRuns, Math.round(total / 10)));
+  const targets = [...new Set([preferred, preferred - 1, preferred + 1, preferred - 2, preferred + 2])]
+    .filter((target) => target >= fixed + minRuns && target <= fixed + maxRuns);
+
+  // Distributes the row runs to reach the target group count, then deals
+  // the values into the resulting sizes.
+  const attemptDeal = (target, working, changed) => {
+    for (let variant = 0; variant < 4; variant += 1) {
+      let runsLeft = target - fixed;
+      const slots = [];
+      let feasible = true;
+      for (let index = 0; index < rowInfos.length && feasible; index += 1) {
+        const info = rowInfos[index];
+        const rest = rowInfos.slice(index + 1);
+        const restMin = rest.reduce((sum, other) => sum + Math.ceil(other.cells.length / 9), 0);
+        const restMax = rest.reduce((sum, other) => sum + Math.floor(other.cells.length / 2), 0);
+        const low = Math.max(Math.ceil(info.cells.length / 9), runsLeft - restMax);
+        const high = Math.min(Math.floor(info.cells.length / 2), runsLeft - restMin);
+        if (low > high) { feasible = false; break; }
+        const bias = [2.5, 2, 3, 4][variant];
+        const runs = Math.min(high, Math.max(low, Math.round(info.cells.length / bias)));
+        const sizes = runSizesFor(info.cells.length, runs);
+        if (!sizes) { feasible = false; break; }
+        let cursor = 0;
+        sizes.forEach((size) => {
+          slots.push({ cells: info.cells.slice(cursor, cursor + size) });
+          cursor += size;
+        });
+        runsLeft -= runs;
+      }
+      if (!feasible || runsLeft !== 0) continue;
+      slots.push(...endgame.map((slot) => ({ cells: slot.cells })));
+      const groups = partitionIntoSizedTens(working, slots.map((slot) => slot.cells.length));
+      if (!groups) continue;
+      groups.forEach((group, index) => { slots[index].values = shuffleArray(group.slice()); });
+      return { slots, changed };
+    }
+    return null;
+  };
+
+  for (const target of targets) {
+    // Steer the total to target*10 with the fewest value edits — none when
+    // the values already fit. Editing the highest-capacity cells first
+    // keeps the edit count minimal (each edit moves the total by up to
+    // ±8); rotations then try other edit positions when the dealt values
+    // refuse to split. Bomb debris of all-high values can genuinely
+    // require rewriting most of a tiny tail (9+9+9 has no sum-ten split
+    // under any layout), which still beats sweeping the cells away.
+    const delta0 = target * 10 - total;
+    const order = values.map((_, index) => index).sort((a, b) => (
+      delta0 > 0 ? (values[a] - values[b]) : (values[b] - values[a])
+    ));
+    const rotations = delta0 === 0 ? 1 : Math.min(order.length, 6);
+    // Full-width edits use the fewest cells but can flood the tail with
+    // nines that no longer pair with anything; smaller caps spread the
+    // same delta across more cells, producing friendlier multisets.
+    const caps = delta0 === 0 ? [8] : [8, 5, 3];
+    let steered = null;
+    for (const cap of caps) {
+      for (let rotation = 0; rotation < rotations; rotation += 1) {
+        const working = values.slice();
+        let delta = delta0;
+        let changed = 0;
+        for (let step = 0; delta !== 0 && step < order.length; step += 1) {
+          const index = order[(step + rotation) % order.length];
+          const value = working[index];
+          const move = delta > 0
+            ? Math.min(delta, cap, 9 - value)
+            : Math.max(delta, -cap, 1 - value);
+          if (move === 0) continue;
+          working[index] = value + move;
+          delta -= move;
+          changed += 1;
+        }
+        if (delta !== 0) continue;
+        if (!steered) steered = { working: working.slice(), changed };
+        const dealt = attemptDeal(target, working, changed);
+        if (dealt) return dealt;
+      }
+    }
+
+    // Escalation: the total already fits but the multiset refuses these
+    // group sizes — shift weight between two cells (total preserved) until
+    // a split appears.
+    if (steered) {
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const working = steered.working.slice();
+        const from = Math.floor(Math.random() * count);
+        const to = Math.floor(Math.random() * count);
+        if (from === to) continue;
+        const shift = 1 + Math.floor(Math.random() * 8);
+        if (working[to] + shift > 9 || working[from] - shift < 1) continue;
+        working[to] += shift;
+        working[from] -= shift;
+        const dealt = attemptDeal(target, working, steered.changed + 2);
+        if (dealt) return dealt;
+      }
+    }
+  }
+  return null;
+}
+
 export class BoardModel {
   constructor(size = 4) {
     this.size = size;
@@ -686,10 +891,11 @@ export class BoardModel {
     let bestCandidate = null;
     let bestPenalty = Number.POSITIVE_INFINITY;
     for (let attempt = 0; attempt < GENERATION_ATTEMPTS * 2; attempt += 1) {
-      const candidate = makeBalancedGrid(this.rows, this.cols, round, catTarget, pacing);
+      const candidate = makeBackboneGrid(this.rows, this.cols, round, catTarget);
+      if (!candidate) continue;
       const answers = findAllSumTenRects(candidate.grid);
       if (!answers.length) continue;
-      const cats = new Set([...candidate.catIndexes].map((index) => `${Math.floor(index / this.cols)}:${index % this.cols}`));
+      const cats = candidate.cats;
       const everyCatCollectable = [...cats].every((key) => {
         const [row, col] = key.split(':').map(Number);
         return answers.some((answer) => rectContainsCell(answer, row, col));
@@ -725,15 +931,13 @@ export class BoardModel {
       return this.grid;
     }
 
-    // Safety fallback: preserve the prior generator's answer/cat guarantees if
-    // an unusually constrained board cannot place every bonus cat from the bag.
+    // Safety fallback: even without a pacing-approved candidate the board
+    // must keep the full-clear guarantee, so it stays a backbone build.
     while (true) {
-      this.grid = makeRandomGrid(this.rows, this.cols);
-      seedProfileAnswers(this.grid, assist);
-      if (!hasGoodAnswerMix(this.grid, assist)) continue;
-      const bonusCats = placeBonusCats(this.grid, assist);
-      if (bonusCats?.size !== catTarget) continue;
-      this.bonusCats = bonusCats;
+      const candidate = makeBackboneGrid(this.rows, this.cols, round, catTarget);
+      if (!candidate || candidate.cats.size !== catTarget) continue;
+      this.grid = candidate.grid;
+      this.bonusCats = candidate.cats;
       return this.grid;
     }
   }
@@ -915,21 +1119,16 @@ export class BoardModel {
     }
     if (numbered.length < 2) return null;
 
-    // The strong path: repair the value set if a blast broke it, partition
-    // everything left into groups that each sum to ten, and lay the groups
-    // out as contiguous runs. One rescue then leaves the whole tail
-    // clearable in a chain instead of drying up again two clears later —
-    // which is what turned single rescues into rescue loops.
+    // The strong path: plan the tail as geometry-safe groups (row runs plus
+    // an endgame for single-cell rows), deal sum-ten value sets into them,
+    // and verify by simulation that clearing the groups in order drains the
+    // board completely. One rescue then guarantees the whole tail can be
+    // finished without another rescue — laying values out in row-major
+    // order used to promise nothing about the rectangles being selectable.
     const values = numbered.map(({ r, c }) => this.grid[r][c]);
-    const repairedValues = repairValuesForPartition(values);
-    if (repairedValues) {
-      const groups = partitionIntoTens(repairedValues.values);
-      if (groups) {
-        const flat = groups.flat();
-        numbered.forEach(({ r, c }, index) => { this.grid[r][c] = flat[index]; });
-        this.assignSpecialTiles([...this.specialTiles.values()]);
-        if (this.findAnswer()) return { repaired: repairedValues.changed > 0 };
-      }
+    const plan = planRescueLayout(numbered, values);
+    if (plan && this.applyRescuePlan(plan)) {
+      return { repaired: plan.changed > 0, plan: plan.slots.map((slot) => slotRect(slot)) };
     }
 
     // Degraded path: at least put one answer back on the board.
@@ -940,6 +1139,35 @@ export class BoardModel {
     const keep = Math.min(9, Math.max(1, this.grid[first.r][first.c]));
     this.grid[second.r][second.c] = 10 - keep;
     return this.findAnswer() ? { repaired: true } : null;
+  }
+
+  // Writes a rescue plan's values into the grid, then proves the promise on
+  // a copy: each group's rectangle must hold exactly its own numbers summing
+  // to ten at its turn, and the final copy must be empty. Any miss restores
+  // the previous values and reports failure so the degraded path can run.
+  applyRescuePlan(plan) {
+    const backup = this.grid.map((row) => row.slice());
+    plan.slots.forEach((slot) => slot.cells.forEach(({ r, c }, index) => {
+      this.grid[r][c] = slot.values[index];
+    }));
+    const clone = this.grid.map((row) => row.slice());
+    for (const slot of plan.slots) {
+      const rect = slotRect(slot);
+      const stats = rectStats(clone, rect);
+      if (stats.sum !== 10 || stats.count !== slot.cells.length) {
+        this.grid = backup;
+        return false;
+      }
+      cellsInRect(rect).forEach(({ r, c }) => {
+        if (clone[r][c] > 0) clone[r][c] = null;
+      });
+    }
+    if (clone.flat().some((value) => value > 0)) {
+      this.grid = backup;
+      return false;
+    }
+    this.assignSpecialTiles([...this.specialTiles.values()]);
+    return Boolean(this.findAnswer());
   }
 
   // Blast debris: fewer than two numbers can never sum to ten again, so the
