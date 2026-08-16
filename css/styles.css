@@ -6561,7 +6561,6 @@ img {
   box-shadow: 0 2px 4px rgba(77,86,87,.13), inset 0 1px 0 #fff;
   pointer-events: none;
 }
-.tile.special-clock { box-shadow: 0 0 0 1.5px rgba(74,185,205,.32), 0 3px 7px rgba(53,155,177,.12); }
 .tile.special-bomb { box-shadow: 0 0 0 1.5px rgba(241,112,132,.3), 0 3px 7px rgba(188,75,96,.12); }
 .tile.is-special-triggered .special-tile-badge { animation: special-badge-pop 300ms cubic-bezier(.18,.82,.24,1.2) both; }
 .tile.is-special-blast { animation: special-blast-tile 290ms var(--blast-delay,0ms) cubic-bezier(.2,.72,.25,1) both; }
@@ -7884,11 +7883,6 @@ img {
    stays legible when the board reaches six or seven columns. */
 .tile.is-special-tile {
   box-shadow: 0 0 0 2px var(--special-ring, rgba(92,190,185,.3)), 0 5px 11px var(--special-shadow, rgba(71,155,166,.14));
-}
-
-.tile.special-clock {
-  --special-ring: rgba(65,190,190,.4);
-  --special-shadow: rgba(47,164,177,.18);
 }
 
 .tile.special-bomb {

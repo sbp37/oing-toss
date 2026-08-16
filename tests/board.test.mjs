@@ -134,7 +134,7 @@ assert.equal(boardAssistForPerformance({ stage: 6, successCount: 8, failureCount
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 assert.equal(EASY_BOARD_BONUS.minimumAnswers, 1);
 
-assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 });
+assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, bombChance: 0 });
 assert.deepEqual(
   [1, 2, 3, 4, 5].map((stage) => {
     const config = getRoundConfig(stage);
@@ -175,17 +175,24 @@ assert.equal(getRoundConfig(20).size, 6);
 assert.equal(getRoundConfig(20).rows, 7);
 assert.equal(getRoundConfig(20).timeLimit, 120);
 assert.ok(getRoundConfig(20).target > getRoundConfig(10).target);
-assert.ok(getRoundConfig(20).clockChance < 0.07, 'late-stage clocks must stay rare');
+// The clock tile is retired: no stage config may carry a chance for it, and
+// the board must refuse to place one even if a caller asks.
+assert.equal(getRoundConfig(20).clockChance, undefined, 'no stage may define a clock-tile chance');
+assert.ok(getRoundConfig(20).bombChance < 0.6, 'late-stage bomb tiles must stay bounded');
 
 {
   const board = new BoardModel(6);
+  // A clock tile can no longer reach the board even when a caller asks for
+  // one: the type is filtered out at placement, so the retired mechanic
+  // cannot return through a stale call site.
   const placed = board.assignSpecialTiles(['clock', 'bomb'], () => 0);
-  assert.equal(placed.length, 2);
-  assert.deepEqual(new Set(placed.map(({ type }) => type)), new Set(['clock', 'bomb']));
+  assert.equal(placed.length, 1, 'only the bomb tile may be placed');
+  assert.deepEqual(new Set(placed.map(({ type }) => type)), new Set(['bomb']));
   placed.forEach(({ r, c, type }) => assert.equal(board.specialAt(r, c), type));
   assert.ok(placed.every(({ r, c }) => board.findAnswers().some((answer) => r >= answer.r1 && r <= answer.r2 && c >= answer.c1 && c <= answer.c2)));
   assert.equal(board.shuffleRemaining(), true);
-  assert.equal(board.specialTiles.size, 2, 'shuffle keeps both special-tile types on playable cells');
+  assert.equal(board.specialTiles.size, 1, 'shuffle keeps the bomb tile on a playable cell');
+  assert.deepEqual(board.assignSpecialTiles(['clock'], () => 0), [], 'a clock-only request places nothing');
 }
 
 for (const size of [7, 8, 9]) {

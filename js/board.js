@@ -666,7 +666,9 @@ export class BoardModel {
   }
 
   assignSpecialTiles(types = [], random = Math.random) {
-    const requested = Array.isArray(types) ? types.filter((type) => ['clock', 'bomb'].includes(type)) : [];
+    // Bomb is the only special tile the board places; the clock tile was
+    // retired along with its stage chance, badge and aria copy.
+    const requested = Array.isArray(types) ? types.filter((type) => type === 'bomb') : [];
     this.specialTiles.clear();
     if (!requested.length) return [];
     const answers = this.findAnswers();

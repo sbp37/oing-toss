@@ -8,7 +8,7 @@ import {
   TIME_FREEZE_SECONDS,
   TIME_ITEM_CAP_SCORE,
   availableItemTimeBonus,
-  boardDropReward,
+  boardDropRewardForRun,
   buildResultReaction,
   cappedSessionTime,
   chooseBoardDrop,
@@ -596,13 +596,14 @@ class OingGame {
     this.refreshComboDeadline();
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
     if (!this.runtime.testMode) storageAdapter.saveBestCombo(this.state.maxCombo);
-    // Measured against the run's best combo, not the current one: a combo
-    // oscillating across a multiple of seven (fail from 14 to 9, rebuild,
-    // repeat) used to re-earn a drop on every crossing — one instrumented
-    // casual run farmed 11 bombs in a single stage that way. Only pushing
-    // past the session's high-water mark pays out now; clean play earns at
-    // the same rhythm as before.
-    const reward = boardDropReward(Math.max(previousCombo, previousMaxCombo), this.state.combo);
+    // Each seven-combo boundary pays once per run; see boardDropRewardForRun
+    // for why the step is measured from the run's high-water mark. The rule
+    // is covered by regression tests in tests/board-items.test.mjs.
+    const reward = boardDropRewardForRun({
+      previousCombo,
+      nextCombo: this.state.combo,
+      bestComboBefore: previousMaxCombo,
+    });
     let earnedDrop = null;
     if (reward && this.state.round >= 3) {
       const drop = chooseBoardDrop(this.state.combo, Math.random, {

@@ -287,7 +287,9 @@ export class GameUI {
           badge.setAttribute('aria-hidden', 'true');
           tile.append(cat, badge);
         } else {
-          const specialLabel = special === 'clock' ? ', 시계 타일 +5초' : special === 'bomb' ? ', 폭탄 타일' : '';
+          // The bomb is the only special tile the board can produce; the
+          // clock version was retired with its stage chance and placement.
+          const specialLabel = special === 'bomb' ? ', 폭탄 타일' : '';
           tile.setAttribute('aria-label', value ? `${value}${specialLabel}` : '빈칸');
           if (value) {
             const number = document.createElement('span');
@@ -297,13 +299,11 @@ export class GameUI {
               tile.dataset.special = special;
               const badge = document.createElement('img');
               badge.className = 'special-tile-badge';
-              badge.src = special === 'clock'
-                ? 'assets/icons/hud/time.webp'
-                : 'assets/icons/items/bomb.webp';
+              badge.src = 'assets/icons/items/bomb.webp';
               badge.alt = '';
               const actionLabel = document.createElement('small');
               actionLabel.className = 'special-tile-label';
-              actionLabel.textContent = special === 'clock' ? '+5초' : '펑!';
+              actionLabel.textContent = '펑!';
               tile.append(badge, actionLabel);
             }
           }
@@ -666,9 +666,7 @@ export class GameUI {
     const source = specialTiles[0]?.tile?.getBoundingClientRect();
     const frame = this.boardFrame.getBoundingClientRect();
     const popType = specialTiles.some(({ type }) => type === 'bomb') ? 'bomb' : specialTiles[0]?.type;
-    // Clock already flies to the timer with a single +5 SEC label. Repeating
-    // another +5 on the board made one reward read like two separate gains.
-    if (source && popType !== 'clock') {
+    if (source) {
       const pop = document.createElement('div');
       pop.className = `special-trigger-pop special-trigger-${popType}`;
       pop.style.left = `${source.left + source.width / 2 - frame.left}px`;

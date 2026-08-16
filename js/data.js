@@ -36,16 +36,16 @@ export function recordEligibleForStartStage(stage = 1) {
 // 4x4 -> 5x5 -> 6x6 -> 6x7. Later difficulty comes from targets, challenges,
 // time and drop pressure; 7x7+ remains reserved for a future hard mode.
 export const STAGE_CONFIG = Object.freeze([
-  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0, bombChance: 0.08 },
-  { stage: 5, round: 5, size: 6, cols: 6, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
-  { stage: 6, round: 6, size: 6, cols: 6, rows: 7, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
-  { stage: 7, round: 7, size: 6, cols: 6, rows: 7, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
-  { stage: 8, round: 8, size: 6, cols: 6, rows: 7, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
-  { stage: 9, round: 9, size: 6, cols: 6, rows: 7, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
+  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, bombChance: 0 },
+  { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, bombChance: 0 },
+  { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, bombChance: 0 },
+  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, bombChance: 0.08 },
+  { stage: 5, round: 5, size: 6, cols: 6, rows: 7, target: 11, timeLimit: 120, bombChance: 0.12 },
+  { stage: 6, round: 6, size: 6, cols: 6, rows: 7, target: 12, timeLimit: 120, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 6, cols: 6, rows: 7, target: 13, timeLimit: 120, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 6, cols: 6, rows: 7, target: 14, timeLimit: 120, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 6, cols: 6, rows: 7, target: 15, timeLimit: 120, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, target: 17, timeLimit: 120, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -175,6 +175,28 @@ export function boardDropReward(previousCombo, nextCombo) {
   const next = Math.max(0, Math.round(Number(nextCombo) || 0));
   if (Math.floor(next / ITEM_REWARD_INTERVAL) > Math.floor(previous / ITEM_REWARD_INTERVAL)) return 'milestone';
   return null;
+}
+
+// Each seven-combo boundary pays once per run. boardDropReward alone compares
+// the two ends of a single step, so a combo that falls back below a boundary
+// and climbs over it again re-earns the drop every time — a run that broke
+// and rebuilt around 14 could farm the same reward indefinitely.
+//
+// The rule lives here rather than inline at the call site so it is testable:
+// measure the step from the run's high-water mark, never from the current
+// combo. A rebuild inside ground the run has already covered pays nothing,
+// while the first crossing of each new boundary pays exactly once — including
+// when a wide clear jumps two combo in one step.
+export function boardDropRewardForRun({
+  previousCombo = 0,
+  nextCombo = 0,
+  bestComboBefore = 0,
+} = {}) {
+  const floor = Math.max(
+    Math.max(0, Math.round(Number(previousCombo) || 0)),
+    Math.max(0, Math.round(Number(bestComboBefore) || 0)),
+  );
+  return boardDropReward(floor, nextCombo);
 }
 
 export function comboAfterFailure(combo) {
@@ -387,8 +409,9 @@ export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {
 // The special bomb tile stays. It reads as the same kind of thing but the
 // numbers disagree: at 8-32% per board it shows up 0.55 times a run and
 // climbs late, and unlike the one-tap drop it rewards folding the tile into
-// a match. `clockChance` is kept in the stage table so saved balance
-// reports and the tuning history stay readable.
+// a match. `clockChance` is gone from the stage table along with the tile
+// badge, its aria copy and the board's placement filter, so nothing in the
+// codebase still implies a clock can be baked into the grid.
 export function specialTilePlanForStage(stage = 1, random = Math.random) {
   const config = getStageConfig(stage);
   const plan = [];
@@ -779,7 +802,6 @@ export function getStageConfig(stageNumber) {
     rows: last.rows,
     target: Math.min(30, last.target + extra * 2),
     timeLimit: GAME_DURATION_SECONDS,
-    clockChance: Math.min(0.065, last.clockChance + extra * 0.002),
     bombChance: Math.min(0.58, last.bombChance + extra * 0.02),
   };
 }

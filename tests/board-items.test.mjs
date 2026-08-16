@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop } from '../js/data.js';
+import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -171,6 +171,72 @@ test('board items appear only when a seven-combo boundary is crossed', () => {
   assert.equal(boardDropReward(6, 8, 1), 'milestone');
   assert.equal(boardDropReward(7, 8, 2), null);
   assert.equal(boardDropReward(13, 14, 2), 'milestone');
+});
+
+// Drives the same bookkeeping advanceCombo() does: a success calls the rule
+// and then raises the run's high-water mark, while a failure only lowers the
+// live combo. Returns the combo value at each payout.
+function runPayouts(steps) {
+  let combo = 0;
+  let best = 0;
+  const payouts = [];
+  for (const step of steps) {
+    if (step.fail) {
+      combo = step.to;
+      continue;
+    }
+    const reward = boardDropRewardForRun({
+      previousCombo: combo,
+      nextCombo: step.to,
+      bestComboBefore: best,
+    });
+    if (reward) payouts.push(step.to);
+    combo = step.to;
+    best = Math.max(best, combo);
+  }
+  return payouts;
+}
+
+test('each seven-combo boundary pays once per run, however often it is re-crossed', () => {
+  const climb = (from, to) => Array.from({ length: to - from }, (_, i) => ({ to: from + i + 1 }));
+
+  // 7 -> 5 -> 7 must pay exactly once.
+  assert.deepEqual(
+    runPayouts([...climb(0, 7), { fail: true, to: 5 }, ...climb(5, 7)]),
+    [7],
+    'rebuilding to seven after a failure must not re-earn the drop',
+  );
+
+  // 14 -> 10 -> 14 must pay for 14 exactly once (plus the earlier 7).
+  assert.deepEqual(
+    runPayouts([...climb(0, 14), { fail: true, to: 10 }, ...climb(10, 14)]),
+    [7, 14],
+    'rebuilding to fourteen must not re-earn that boundary',
+  );
+
+  // The pathological case from the field: oscillating across a boundary.
+  const oscillation = [...climb(0, 14)];
+  for (let cycle = 0; cycle < 5; cycle += 1) {
+    oscillation.push({ fail: true, to: 9 }, ...climb(9, 14));
+  }
+  assert.deepEqual(
+    runPayouts(oscillation),
+    [7, 14],
+    'five rebuilds across the same boundary still pay only for the first crossing',
+  );
+
+  // A clean climb pays every new boundary.
+  assert.deepEqual(runPayouts(climb(0, 21)), [7, 14, 21]);
+
+  // A wide clear gains two combo and may step over a boundary; still once.
+  assert.deepEqual(
+    runPayouts([{ to: 2 }, { to: 4 }, { to: 6 }, { to: 8 }, { to: 10 }, { to: 12 }, { to: 14 }]),
+    [8, 14],
+    'jumping a boundary with a +2 gain pays exactly once for it',
+  );
+
+  // A fresh run starts from zero, so the same boundaries pay again.
+  assert.deepEqual(runPayouts(climb(0, 7)), [7], 'a new run re-arms every boundary');
 });
 
 test('stage four previews exactly one rare item without changing the recurring pool', () => {
