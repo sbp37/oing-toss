@@ -1373,10 +1373,11 @@ class OingGame {
       && !isFrozen
       && this.state.timeLeft <= 10
       && !this.lowTimeSpoken) {
+      // The cat says it once; the timer already turns red and pulses, and
+      // the banner that used to appear here covered the clock itself.
       this.lowTimeSpoken = true;
       this.showCatMessage('lowTime');
       this.ui.setPlayCharacter('cheer', 1800);
-      this.ui.showLowTimeAlert(Math.ceil(this.state.timeLeft));
     }
     const countdownSecond = Math.ceil(this.state.timeLeft);
     if (!isFrozen && countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
@@ -1545,12 +1546,7 @@ class OingGame {
     fadeOutMusic();
     playGameOverSound(newRecord);
     gameOverHaptic(newRecord);
-    await this.ui.animateGameEnd({
-      score: this.state.score,
-      maxCombo: this.state.maxCombo,
-      newRecord,
-      answers: endAnswers,
-    });
+    await this.ui.animateGameEnd({ answers: endAnswers });
     if (!this.runtime.testMode && newRecord) storageAdapter.saveBestScore(this.state.score);
     if (!this.runtime.testMode && recordEligible) storageAdapter.saveBestCombo(this.state.maxCombo);
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(this.state.round);

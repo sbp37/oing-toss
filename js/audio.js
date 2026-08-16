@@ -94,6 +94,10 @@ export function playStartSound() {
 }
 
 // Original OING playCountNum(): 3→2→1 rises 400→520→640Hz with a soft harmonic.
+// The countdown, GO!, combo and game-over voices are ports of the original
+// OING's own oscillator scripts — same frequencies, same envelopes, and now
+// the same gains. They had been mixed roughly a third as loud, which is why
+// the start of a run felt limp next to the original's.
 export function playReadyCountSound(number) {
   const ctx = getContext();
   if (!ctx) return;
@@ -107,12 +111,12 @@ export function playReadyCountSound(number) {
   voice.frequency.setValueAtTime(frequency, now);
   voice.frequency.exponentialRampToValueAtTime(frequency * 1.1, now + 0.08);
   voiceGain.gain.setValueAtTime(0.0001, now);
-  voiceGain.gain.linearRampToValueAtTime(0.16, now + 0.02);
+  voiceGain.gain.linearRampToValueAtTime(0.45, now + 0.02);
   voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
   voice.connect(voiceGain); voiceGain.connect(getMixBus(ctx));
   voice.start(now); voice.stop(now + 0.24);
 
-  scheduleTone(ctx, frequency * 2, now, 0.18, 0.05, 'triangle', 0.006);
+  scheduleTone(ctx, frequency * 2, now, 0.18, 0.12, 'triangle', 0.006);
 }
 
 // Original OING playGo(): rising C5–C6 fanfare followed by a high sparkle.
@@ -121,14 +125,14 @@ export function playGoSound() {
   if (!ctx) return;
   const now = ctx.currentTime;
   [523, 659, 784, 1046].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.08, 0.25, index === 3 ? 0.13 : 0.12, index === 3 ? 'triangle' : 'sine', 0.02);
+    scheduleTone(ctx, frequency, now + index * 0.08, 0.25, 0.3, index === 3 ? 'triangle' : 'sine', 0.02);
   });
   const sparkle = ctx.createOscillator();
   const sparkleGain = ctx.createGain();
   sparkle.type = 'triangle';
   sparkle.frequency.setValueAtTime(2000, now + 0.24);
   sparkle.frequency.exponentialRampToValueAtTime(3500, now + 0.45);
-  sparkleGain.gain.setValueAtTime(0.045, now + 0.24);
+  sparkleGain.gain.setValueAtTime(0.12, now + 0.24);
   sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
   sparkle.connect(sparkleGain); sparkleGain.connect(getMixBus(ctx));
   sparkle.start(now + 0.24); sparkle.stop(now + 0.52);
@@ -254,13 +258,13 @@ export function playComboSound(combo) {
   const now = ctx.currentTime;
   if (combo > 0 && combo % 7 === 0) {
     [1046, 1318, 1568, 2093].forEach((frequency, index) => {
-      scheduleTone(ctx, frequency, now + index * 0.07, 0.2, index === 3 ? 0.095 : 0.085, 'sine', 0.01);
+      scheduleTone(ctx, frequency, now + index * 0.07, 0.2, 0.14, 'sine', 0.01);
     });
     return;
   }
   const base = 440 + Math.min(Math.max(combo, 2), 6) * 80;
   [base, base * 1.25].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, index === 1 ? 0.082 : 0.09, 'sine', 0.001);
+    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, 0.12, 'sine', 0.001);
   });
 }
 

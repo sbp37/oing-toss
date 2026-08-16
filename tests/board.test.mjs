@@ -284,16 +284,18 @@ assert.ok(scoreForClear(4, 1) > scoreForClear(2, 1) * 2, 'large rectangles must 
 assert.equal(comboGainForClear(3), 1, 'small clears advance one combo');
 assert.equal(comboGainForClear(4), 2, 'four-cell clears advance two combo');
 assert.equal(scoreForWideClear(4, 8), 0, 'four-cell clears do not receive WOW score');
-assert.equal(scoreForWideClear(5, 1), 120, 'five-cell clears receive a visible WOW score');
+// Every score runs through data.js's SCORE_SCALE so the figures read like
+// the original's ("+84", not "+798"); the relationships below are unchanged.
+assert.equal(scoreForWideClear(5, 1), 12, 'five-cell clears receive a visible WOW score');
 assert.ok(scoreForWideClear(6, 5) > scoreForWideClear(5, 5), 'wider clears increase the WOW reward');
-assert.equal(scoreForCatBonus(1, 1), 120, 'one cat grants a visible base bonus on the V2 score scale');
+assert.equal(scoreForCatBonus(1, 1), 12, 'one cat grants a visible base bonus');
 assert.ok(scoreForCatBonus(1, 5) > scoreForCatBonus(1, 1), 'cat bonus follows the live combo multiplier');
-assert.equal(scoreForBomb(37, 9), 823, 'bomb reward must reflect both cleared cells and their value');
-assert.equal(scoreForMegaBomb(37, 12), 1308, 'mega bomb reward must feel rarer and stronger than a normal bomb');
-assert.equal(scoreForCloverBonus(823), 412, 'clover adds a clear half-score bonus to the next success');
+assert.equal(scoreForBomb(37, 9), 82, 'bomb reward must reflect both cleared cells and their value');
+assert.equal(scoreForMegaBomb(37, 12), 131, 'mega bomb reward must feel rarer and stronger than a normal bomb');
+assert.equal(scoreForCloverBonus(82), 41, 'clover adds a clear half-score bonus to the next success');
 assert.equal(scoreForClutch(11, 8), 0, 'ordinary play does not receive the final countdown bonus');
-assert.equal(scoreForClutch(8, 8), 170, 'the last ten seconds add a modest skill bonus');
-assert.equal(scoreForClutch(2, 8), 260, 'the last three seconds carry the strongest clutch reward');
+assert.equal(scoreForClutch(8, 8), 17, 'the last ten seconds add a modest skill bonus');
+assert.equal(scoreForClutch(2, 8), 26, 'the last three seconds carry the strongest clutch reward');
 assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: 6000, bestScore: 2000, completedRuns: 2 }), true);
 assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 41, idleMs: 9000, bestScore: 2000, completedRuns: 2 }), false);
 assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: 9000, bestScore: 9000, completedRuns: 4 }), false);

@@ -1,14 +1,14 @@
-const BEST_SCORE_KEY = 'oing_toss_v2_best_score';
-const LAST_SCORE_KEY = 'oing_toss_v2_last_score';
-const RECENT_SCORES_KEY = 'oing_toss_v2_recent_scores';
-const SETTINGS_KEY = 'oing_toss_v2_settings';
-const TUTORIAL_KEY = 'oing_toss_v2_drag_tutorial_done';
-const HIGHEST_STAGE_KEY = 'oing_toss_v2_highest_stage';
-const BEST_COMBO_KEY = 'oing_toss_v2_best_combo';
-const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v2_recent_result_messages';
-const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v2_rare_showcase_count';
-const CATS_RESCUED_KEY = 'oing_toss_v2_cats_rescued';
-const BEST_GARDEN_REVEAL_KEY = 'oing_toss_v2_best_garden_reveal';
+const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
+const LAST_SCORE_KEY = 'oing_toss_v3_last_score';
+const RECENT_SCORES_KEY = 'oing_toss_v3_recent_scores';
+const SETTINGS_KEY = 'oing_toss_v3_settings';
+const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
+const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
+const BEST_COMBO_KEY = 'oing_toss_v3_best_combo';
+const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v3_recent_result_messages';
+const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v3_rare_showcase_count';
+const CATS_RESCUED_KEY = 'oing_toss_v3_cats_rescued';
+const BEST_GARDEN_REVEAL_KEY = 'oing_toss_v3_best_garden_reveal';
 
 function safeRead(key, fallback) {
   try {

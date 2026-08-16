@@ -419,7 +419,7 @@ export function roundTimeBonusSeconds(round = 1) {
 export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const time = Math.max(0, Math.floor(Number(timeLeft) || 0));
-  return 220 + level * 35 + Math.min(180, time * 2) + (perfect ? 120 : 0);
+  return scaled(220 + level * 35 + Math.min(180, time * 2) + (perfect ? 120 : 0));
 }
 
 // The clock existed on three separate paths — a special tile baked into the
@@ -777,16 +777,25 @@ export function comboMultiplier(combo) {
   return 1 + Math.min(Math.max(combo - 1, 0), 9) * 0.15;
 }
 
+// Every score in the game runs through this divisor. The original OING pays
+// (cells + cats*5) x combo — a five-cell clear at combo 7 is "+84", a number
+// you read at a glance and feel. Ours had drifted an order of magnitude
+// higher, where "+798" is just a shape. One knob keeps every relationship
+// between clears, bombs, cats and bonuses exactly as tuned while bringing
+// the figures back into a range that means something.
+const SCORE_SCALE = 0.1;
+const scaled = (points) => Math.max(1, Math.round(points * SCORE_SCALE));
+
 export function scoreForClear(cellCount, combo) {
   const base = cellCount <= 2
     ? 210
     : 210 + (cellCount - 2) * 210 + Math.max(0, cellCount - 3) * 40;
-  return Math.round(base * comboMultiplier(combo));
+  return scaled(base * comboMultiplier(combo));
 }
 
 export function scoreForWideClear(cellCount, combo) {
   const extraCells = Math.max(0, Math.round(Number(cellCount) || 0) - 4);
-  return Math.round(extraCells * 120 * comboMultiplier(combo));
+  return extraCells ? scaled(extraCells * 120 * comboMultiplier(combo)) : 0;
 }
 
 // The original OING cat cell adds five base points before its integer combo
@@ -794,7 +803,7 @@ export function scoreForWideClear(cellCount, combo) {
 // meaningful "lucky catch" feeling without overpowering the clear itself.
 export function scoreForCatBonus(catCount, combo) {
   const cats = Math.max(0, Math.round(Number(catCount) || 0));
-  return Math.round(cats * 120 * comboMultiplier(combo));
+  return cats ? scaled(cats * 120 * comboMultiplier(combo)) : 0;
 }
 
 export function scoreForCloverBonus(basePoints) {
@@ -805,19 +814,19 @@ export function scoreForClutch(timeLeft, combo) {
   const remaining = Math.max(0, Number(timeLeft) || 0);
   if (remaining > 10) return 0;
   const urgency = remaining <= 3 ? 180 : 90;
-  return urgency + Math.min(10, Math.max(0, Math.round(Number(combo) || 0))) * 10;
+  return scaled(urgency + Math.min(10, Math.max(0, Math.round(Number(combo) || 0))) * 10);
 }
 
 export function scoreForBomb(valueSum, cellCount = 0) {
   const value = Math.max(0, Math.round(Number(valueSum) || 0));
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
-  return 180 + cells * 55 + value * 4;
+  return scaled(180 + cells * 55 + value * 4);
 }
 
 export function scoreForMegaBomb(valueSum, cellCount = 0) {
   const value = Math.max(0, Math.round(Number(valueSum) || 0));
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
-  return 320 + cells * 70 + value * 4;
+  return scaled(320 + cells * 70 + value * 4);
 }
 
 export function getStageConfig(stageNumber) {

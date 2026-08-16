@@ -2237,21 +2237,22 @@
   box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14);
 }
 
-/* Fill colours are the original OING's own three: --accent-green,
-   --accent-lemon and --accent-orange, switching on the same remaining
-   percentages it used (40% and 15%) rather than absolute seconds, so a
-   time bonus stretches the bands instead of skipping them. */
+/* Fill colours are sampled from this screen's own flower field — grass
+   green, the yellow blooms, the apricot ones — so the bar belongs to the
+   art instead of importing the original's dark-theme palette. It still
+   switches on the original's remaining percentages (40% and 15%) rather
+   than absolute seconds, so a time bonus stretches the bands. */
 .play-ui-v4 .board-time-gauge i {
   display: block;
   height: 100%;
   width: 100%;
   border-radius: inherit;
-  background: #3fa855;
+  background: #7cb342;
   transition: width .3s linear, background-color .3s linear;
 }
 
-.play-ui-v4 .board-time-gauge[data-band="mid"] i { background: #da9845; }
-.play-ui-v4 .board-time-gauge[data-band="low"] i { background: #dd6032; }
+.play-ui-v4 .board-time-gauge[data-band="mid"] i { background: #e8c74a; }
+.play-ui-v4 .board-time-gauge[data-band="low"] i { background: #e8734a; }
 .play-ui-v4 .board-time-gauge[data-band="frozen"] i { background: #5db7f0; }
 .play-ui-v4 .board-time-gauge[hidden] { display: none; }
 
@@ -2286,12 +2287,16 @@
   position: absolute;
   z-index: 30;
   left: 50%;
-  top: 30%;
-  color: #da9845;
-  font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 900;
-  text-shadow: 0 0 12px rgba(218, 152, 69, .8);
+  top: 26%;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 7.5vw, 32px);
+  font-weight: 400;
+  letter-spacing: .01em;
+  /* White on a hard coral outline: gold at 15px vanished against the sky. */
+  -webkit-text-stroke: 3px #f2557c;
+  paint-order: stroke fill;
+  text-shadow: 0 0 14px rgba(242, 85, 124, .75), 0 3px 0 rgba(190, 52, 88, .35);
   white-space: nowrap;
   pointer-events: none;
   animation: combo-text-float 1.2s ease forwards;
@@ -2301,23 +2306,33 @@
   0% { opacity: 0; transform: translate(-50%, 6px); }
   18% { opacity: 1; transform: translate(-50%, 0); }
   70% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -26px); }
+  100% { opacity: 0; transform: translate(-50%, -38px); }
 }
 
 .play-ui-v4 .round-clear,
 .play-ui-v4 .round-clear.is-milestone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   border: 0;
   background: none;
   box-shadow: none;
   padding: 0;
+  text-align: center;
 }
 
 .play-ui-v4 .round-clear strong {
-  color: #2aa88f;
+  color: #fff;
   font-family: var(--font-display);
-  font-size: clamp(17px, 5vw, 21px);
+  font-size: clamp(22px, 6.6vw, 29px);
   font-weight: 400;
-  text-shadow: 0 0 12px rgba(42, 168, 143, .55), 0 2px 0 rgba(255, 255, 255, .9);
+  letter-spacing: .01em;
+  /* Teal on sky was invisible; white with a hard mint outline reads at any
+     brightness the background art throws at it. */
+  -webkit-text-stroke: 3px #16a085;
+  paint-order: stroke fill;
+  text-shadow: 0 0 15px rgba(22, 160, 133, .7), 0 3px 0 rgba(11, 110, 91, .35);
   white-space: nowrap;
 }
 
@@ -2329,11 +2344,13 @@
 }
 
 .play-ui-v4 .time-up strong {
-  color: #e0566e;
+  color: #fff;
   font-family: var(--font-display);
-  font-size: clamp(30px, 9.5vw, 42px);
+  font-size: clamp(34px, 11vw, 48px);
   font-weight: 400;
-  text-shadow: 0 0 16px rgba(224, 86, 110, .6), 0 2px 0 rgba(255, 255, 255, .9);
+  -webkit-text-stroke: 4px #e0345a;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(224, 52, 90, .7), 0 3px 0 rgba(160, 30, 60, .35);
   white-space: nowrap;
 }
 
@@ -2346,18 +2363,20 @@
 }
 
 .play-ui-v4 .stage-entry strong {
-  color: #4f9fd6;
+  color: #fff;
   font-family: var(--font-display);
-  font-size: clamp(26px, 8vw, 36px);
+  font-size: clamp(30px, 9vw, 40px);
   font-weight: 400;
   letter-spacing: .02em;
-  text-shadow: 0 0 16px rgba(79, 159, 214, .55), 0 2px 0 rgba(255, 255, 255, .92);
+  -webkit-text-stroke: 4px #3d8fce;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(61, 143, 206, .65), 0 3px 0 rgba(32, 96, 145, .35);
   white-space: nowrap;
 }
 
 .play-ui-v4 .stage-entry.is-milestone strong {
-  color: #38b099;
-  text-shadow: 0 0 16px rgba(56, 176, 153, .6), 0 2px 0 rgba(255, 255, 255, .92);
+  -webkit-text-stroke: 4px #16a085;
+  text-shadow: 0 0 18px rgba(22, 160, 133, .65), 0 3px 0 rgba(11, 110, 91, .35);
 }
 
 /* The clock flight is a line of text now, not a boxed icon. */
@@ -2377,3 +2396,221 @@
   font-weight: 400;
   text-shadow: 0 0 10px rgba(44, 158, 138, .55), 0 2px 0 rgba(255, 255, 255, .9);
 }
+
+/* Time gain reads on the gauge itself ------------------------------------ */
+.play-ui-v4 .board-time-gauge { position: relative; overflow: visible; }
+.play-ui-v4 .board-time-gauge i { border-radius: inherit; }
+
+.play-ui-v4 .board-time-gauge.is-bonus::after {
+  content: attr(data-bonus);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 3px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 17px;
+  -webkit-text-stroke: 3px #2c9e8a;
+  paint-order: stroke fill;
+  text-shadow: 0 0 10px rgba(44, 158, 138, .6);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: gauge-bonus-float 1.1s ease forwards;
+}
+
+@keyframes gauge-bonus-float {
+  0% { opacity: 0; transform: translate(-50%, 6px); }
+  20% { opacity: 1; transform: translate(-50%, 0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
+}
+
+.play-ui-v4 .board-time-gauge.is-bonus { animation: gauge-bonus-flash .7s ease; }
+
+@keyframes gauge-bonus-flash {
+  0%, 100% { box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14); }
+  40% { box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14), 0 0 10px rgba(124, 179, 66, .8); }
+}
+
+/* Result as a bottom sheet ----------------------------------------------- */
+/* The finished board stays on screen with its remaining answers lit, and
+   the result rises over it — the original's own ending, and far better
+   motivation to hit retry than a screen that replaces the board. */
+.screen-play.is-behind-sheet {
+  pointer-events: none;
+  filter: saturate(.92);
+}
+
+.screen-result.is-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  justify-content: flex-end;
+  padding: 0;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(10, 45, 78, 0) 0%, rgba(10, 45, 78, .18) 34%, rgba(10, 45, 78, .46) 100%);
+  animation: result-sheet-scrim .42s ease both;
+}
+
+@keyframes result-sheet-scrim {
+  from { background-color: rgba(10, 45, 78, 0); }
+}
+
+.screen-result.is-sheet .result-decor,
+.screen-result.is-sheet .result-kicker { display: none; }
+
+.screen-result.is-sheet > *:not(.result-decor):not(.result-kicker) {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 430px;
+}
+
+.screen-result.is-sheet .result-card {
+  margin-top: auto;
+  border-radius: 26px 26px 0 0;
+  animation: result-sheet-rise .46s cubic-bezier(.2, .84, .28, 1) both;
+}
+
+.screen-result.is-sheet .result-cat-row,
+.screen-result.is-sheet .result-actions,
+.screen-result.is-sheet .result-secondary-actions {
+  padding-inline: 16px;
+  background: rgba(255, 253, 247, .96);
+  animation: result-sheet-rise .46s cubic-bezier(.2, .84, .28, 1) both;
+}
+
+.screen-result.is-sheet .result-secondary-actions {
+  padding-bottom: calc(12px + var(--safe-bottom));
+  border-radius: 0 0 0 0;
+}
+
+@keyframes result-sheet-rise {
+  from { opacity: 0; transform: translateY(34px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Legacy per-breakpoint rules in styles.css still colour these three by
+   class combinations that outrank the blocks above (.play-feedback-rail
+   .round-clear.is-milestone strong is 0,3,1). The outlined-white treatment
+   is restated here at matching weight so it wins wherever it is used. */
+.play-ui-v4 .play-feedback-rail .round-clear strong,
+.play-ui-v4 .play-feedback-rail .round-clear.is-milestone strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 6.6vw, 29px);
+  font-weight: 400;
+  -webkit-text-stroke: 3px #16a085;
+  paint-order: stroke fill;
+  text-shadow: 0 0 15px rgba(22, 160, 133, .7), 0 3px 0 rgba(11, 110, 91, .35);
+}
+
+.play-ui-v4 .board-frame .time-up strong {
+  color: #fff;
+  font-size: clamp(34px, 11vw, 48px);
+  -webkit-text-stroke: 4px #e0345a;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(224, 52, 90, .7), 0 3px 0 rgba(160, 30, 60, .35);
+}
+
+.play-ui-v4 .board-frame .stage-entry strong,
+.play-ui-v4 .board-frame .stage-entry.is-milestone strong {
+  color: #fff;
+  font-size: clamp(30px, 9vw, 40px);
+  -webkit-text-stroke: 4px #3d8fce;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(61, 143, 206, .65), 0 3px 0 rgba(32, 96, 145, .35);
+}
+
+.play-ui-v4 .board-frame .stage-entry.is-milestone strong {
+  -webkit-text-stroke-color: #16a085;
+  text-shadow: 0 0 18px rgba(22, 160, 133, .65), 0 3px 0 rgba(11, 110, 91, .35);
+}
+
+/* Sheet mode is a bottom sheet, not a full screen: the board above it has to
+   stay readable, because the missed answers lit on it are the reason the
+   sheet sits over the board at all. Everything below trims the result card
+   to roughly the lower half. */
+.screen-result.is-sheet .result-card {
+  padding: 12px 16px 10px;
+  gap: 6px;
+}
+
+.screen-result.is-sheet .final-score {
+  font-size: clamp(38px, 12vw, 52px);
+  line-height: 1;
+}
+
+.screen-result.is-sheet .result-score-label { margin-bottom: -2px; }
+.screen-result.is-sheet .result-score-label img { width: 15px; height: 15px; }
+.screen-result.is-sheet .result-stage-progress { font-size: 12px; }
+
+.screen-result.is-sheet .result-grid { gap: 6px; }
+.screen-result.is-sheet .result-grid > div { padding: 6px 4px; }
+.screen-result.is-sheet .result-grid img { width: 16px; height: 16px; }
+.screen-result.is-sheet .result-grid span { font-size: 10px; }
+.screen-result.is-sheet .result-grid b { font-size: 16px; }
+
+.screen-result.is-sheet .result-cat-row {
+  gap: 8px;
+  padding-block: 6px;
+}
+
+.screen-result.is-sheet .result-character-stage { width: 62px; }
+.screen-result.is-sheet .result-message { font-size: 13px; padding: 8px 12px; }
+
+.screen-result.is-sheet .result-actions { padding-block: 6px 4px; }
+.screen-result.is-sheet .result-secondary-actions { padding-top: 4px; }
+.screen-result.is-sheet .btn { min-height: 44px; }
+.screen-result.is-sheet .result-secondary-actions .btn { min-height: 38px; font-size: 13px; }
+
+/* Second pass: the sheet still ate two-thirds of the screen and covered the
+   board it is supposed to sit over. The cat portrait goes (its line stays),
+   the sections share one panel colour so there is no seam showing board
+   through the gap, and the whole thing is capped so the board always keeps
+   its top rows. */
+.screen-result.is-sheet .result-card,
+.screen-result.is-sheet .result-cat-row,
+.screen-result.is-sheet .result-actions,
+.screen-result.is-sheet .result-secondary-actions {
+  background: rgba(255, 253, 247, .97);
+  box-shadow: none;
+  border: 0;
+}
+
+.screen-result.is-sheet .result-card {
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 22px rgba(28, 78, 120, .18);
+}
+
+.screen-result.is-sheet .result-character-stage { display: none; }
+
+.screen-result.is-sheet .result-cat-row {
+  justify-content: center;
+  padding-block: 2px 4px;
+}
+
+.screen-result.is-sheet .result-message {
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.screen-result.is-sheet .result-message::before,
+.screen-result.is-sheet .result-message::after { display: none; }
+
+.screen-result.is-sheet .result-card { padding: 10px 16px 8px; gap: 4px; }
+.screen-result.is-sheet .final-score { font-size: clamp(34px, 10.5vw, 46px); }
+.screen-result.is-sheet .score-comparisons { margin-block: 2px; }
+.screen-result.is-sheet .score-compare-primary { font-size: 11.5px; padding: 5px 8px; }
+.screen-result.is-sheet .result-grid > div { padding: 5px 3px; }
+.screen-result.is-sheet .result-actions { padding-block: 4px; }
+.screen-result.is-sheet .btn { min-height: 42px; }
+.screen-result.is-sheet .result-secondary-actions .btn { min-height: 34px; font-size: 12.5px; }
+.screen-result.is-sheet .result-secondary-actions { padding-block: 2px calc(8px + var(--safe-bottom)); }
+
+/* The result screen is a flex column with a gap; inside the sheet that gap
+   showed as stripes of board between the panel's sections. */
+.screen-result.is-sheet { gap: 0; }
+.screen-result.is-sheet > * { margin: 0; }
+.screen-result.is-sheet .result-card { margin-top: auto; }

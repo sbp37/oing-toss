@@ -158,12 +158,15 @@ export class GameUI {
     };
   }
 
-  showScreen(name) {
+  showScreen(name, { behind = null } = {}) {
     this.screens.forEach((screen) => {
       const active = screen.dataset.screen === name;
-      screen.classList.toggle('is-active', active);
+      const kept = behind && screen.dataset.screen === behind;
+      screen.classList.toggle('is-active', active || Boolean(kept));
+      screen.classList.toggle('is-behind-sheet', Boolean(kept));
       screen.setAttribute('aria-hidden', String(!active));
     });
+    document.querySelector('#result-screen')?.classList.toggle('is-sheet', name === 'result' && Boolean(behind));
   }
 
   async animateStartCountdown(steps, onStep = () => {}, { compact = false } = {}) {
@@ -705,7 +708,6 @@ export class GameUI {
     region.style.top = `${bounds.top - 3}px`;
     region.style.width = `${bounds.right - bounds.left + 6}px`;
     region.style.height = `${bounds.bottom - bounds.top + 6}px`;
-    region.textContent = 'POP!';
     this.boardFrame.appendChild(region);
   }
 
@@ -854,9 +856,7 @@ export class GameUI {
       const icon = document.createElement('img');
       icon.src = 'assets/icons/items/bomb.webp';
       icon.alt = '';
-      const label = document.createElement('strong');
-      label.textContent = 'POP!';
-      effect.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
       for (let index = 0; index < 5; index += 1) {
         const drop = document.createElement('b');
         drop.style.setProperty('--bomb-drop-index', String(index));
@@ -1127,16 +1127,15 @@ export class GameUI {
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
     primary.textContent = `+${points}`;
-    const detail = document.createElement('span');
-    detail.textContent = kind === 'megabomb'
-      ? '메가폭탄 보너스'
-      : kind === 'bomb' ? '폭탄 보너스' : '아이템 보너스';
-    burst.replaceChildren(primary, detail);
+    // No label: the blast that just played said "bomb" far louder than a
+    // caption can, and the caption sat right on top of the bomb tile.
+    burst.replaceChildren(primary);
     burst.dataset.level = '1';
     burst.dataset.item = kind;
     if (bounds) {
       burst.style.left = `${(bounds.left + bounds.right) / 2}px`;
-      burst.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
+      // Lifted above the blast so the number and the bomb never overlap.
+      burst.style.top = `${Math.max(18, (bounds.top + bounds.bottom) / 2 - 42)}px`;
     }
     clearTimeout(this.scoreBurstTimer);
     burst.classList.remove('is-visible');
@@ -1158,12 +1157,8 @@ export class GameUI {
     // bonus announces itself elsewhere (the cat pop, the bomb blast, the
     // mission chip, the cat's line). Naming them here as well stacked up to
     // seven different labels onto one pop and turned a reward into homework.
-    // The combo prints as a plain integer — the internal multiplier is
-    // fractional, and "콤보 ×1.15" made the game read like algebra.
-    const detail = document.createElement('span');
-    detail.textContent = combo >= 2 ? `×${combo}` : '';
-    detail.hidden = !detail.textContent;
-    burst.replaceChildren(primary, detail);
+    // Just the number. The combo already lives in the HUD, one glance away.
+    burst.replaceChildren(primary);
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     burst.dataset.wide = String(isWowClear(cellCount));
     if (bounds) {
@@ -1263,21 +1258,21 @@ export class GameUI {
     setTimeout(() => pop.remove(), 1200);
   }
 
-  showLowTimeAlert(seconds = 10) {
-    this.elements.playScreen.querySelector('.low-time-alert')?.remove();
-    this.elements.playScreen.classList.add('is-low-time-alerting');
-    const alert = document.createElement('div');
-    alert.className = 'low-time-alert';
-    const value = document.createElement('strong');
-    value.textContent = `딱 ${Math.max(1, Math.round(Number(seconds) || 10))}초 남았다냥!`;
-    alert.append(value);
-    const boardZone = this.elements.playScreen.querySelector('.board-zone');
-    if (boardZone) boardZone.before(alert);
-    else this.elements.playScreen.appendChild(alert);
-    window.setTimeout(() => {
-      alert.remove();
-      this.elements.playScreen.classList.remove('is-low-time-alerting');
-    }, 980);
+  showStageTimeBonus(seconds = 0) {
+    const amount = Math.max(0, Math.round(Number(seconds) || 0));
+    if (!amount || !this.elements.boardTimeGauge) return;
+    // The gain shows on the surface that represents time, rather than as a
+    // pill floating over the HUD where it covered the clock and the tally.
+    const gauge = this.elements.boardTimeGauge;
+    clearTimeout(this.timeBonusTimer);
+    gauge.dataset.bonus = `+${amount}초`;
+    gauge.classList.remove('is-bonus');
+    void gauge.offsetWidth;
+    gauge.classList.add('is-bonus');
+    this.timeBonusTimer = window.setTimeout(() => {
+      gauge.classList.remove('is-bonus');
+      delete gauge.dataset.bonus;
+    }, 1100);
   }
 
   showRoundClear({
@@ -1449,7 +1444,7 @@ export class GameUI {
     });
   }
 
-  async animateGameEnd({ score = 0, maxCombo = 0, newRecord = false, answers = [] } = {}) {
+  async animateGameEnd({ answers = [] } = {}) {
     this.clearSelection();
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
@@ -1466,26 +1461,13 @@ export class GameUI {
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
     timeUp.classList.add('is-visible');
-    await delay(620);
+    await delay(780);
     timeUp.classList.remove('is-visible');
-    const summary = document.createElement('div');
-    summary.className = 'end-score-summary';
-    const label = document.createElement('small');
-    label.textContent = newRecord ? 'NEW RECORD!' : 'FINAL SCORE';
-    const value = document.createElement('strong');
-    value.textContent = Math.max(0, Math.round(score)).toLocaleString('ko-KR');
-    const combo = document.createElement('span');
-    combo.textContent = maxCombo > 1 ? `최고 콤보 ${maxCombo}` : '끝까지 잘했다냥!';
-    summary.append(label, value, combo, document.createElement('i'), document.createElement('i'));
-    summary.classList.toggle('is-record', newRecord);
-    this.boardFrame.appendChild(summary);
-    await delay(620);
-    summary.remove();
     sweep.remove();
-    this.clearEndAnswers();
+    // The score is about to be the sheet's headline, so it is not announced
+    // twice; the missed answers stay lit underneath it.
     this.boardFrame.classList.remove('is-game-ending');
-    this.elements.playScreen.classList.add('is-ending-to-result');
-    await delay(170);
+    await delay(140);
   }
 
   setPlayCharacter(pose, duration = 0) {
@@ -1953,7 +1935,10 @@ export class GameUI {
     const message = resultMessage || pickMessage(newRecord ? 'record' : 'resultNormal', this.lastResultMessage);
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
-    this.showScreen('result');
+    // The board stays on screen behind the sheet, with its remaining answers
+    // still lit — seeing what you missed is what makes the retry button worth
+    // pressing, and it is how the original ends a run.
+    this.showScreen('result', { behind: 'play' });
     if (newRecord) this.launchRecordCelebration();
     void this.elements.resultRecordMeter.offsetWidth;
     this.elements.resultRecordMeter.classList.add('is-animating');
