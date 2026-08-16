@@ -478,9 +478,7 @@ class OingGame {
     this.itemTapCandidate = null;
     const config = getRoundConfig(this.state.round);
     this.generateBoard(config.size, config.rows);
-    this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round, Math.random, {
-      timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
-    }));
+    this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round));
     const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
     this.renderBoard();
     this.updateHUD();
@@ -697,7 +695,6 @@ class OingGame {
   async handleSuccess(rect, stats) {
     this.state.inputLocked = true;
     const specials = stats.specials || [];
-    const hasClockTile = specials.some(({ type }) => type === 'clock');
     const bombSpecials = specials.filter(({ type }) => type === 'bomb');
     const blastCells = this.model.specialBombCells(bombSpecials, rect, 4);
     const blastValue = blastCells.reduce((sum, { r, c }) => sum + this.model.valueAt(r, c), 0);
@@ -746,7 +743,7 @@ class OingGame {
     else if (this.state.combo >= 2) playComboSound(this.state.combo);
     else playSuccessSound();
     if (catCount > 0) {
-      const catSoundOffset = hasClockTile || blastCells.length
+      const catSoundOffset = blastCells.length
         ? 0.36
         : comboGain > 1 ? 0.25 : 0.17;
       playCatBonusSound(catSoundOffset);
@@ -775,16 +772,16 @@ class OingGame {
     if (clutchBonusPoints > 0 && !challengeCompleted && cloverBonusPoints === 0) {
       this.showCatMessage('clutch');
     }
-    if (hasClockTile) this.addStageTime(5);
-    if (hasClockTile) {
-      playClockSound();
-      clockHaptic();
-    }
     if (blastCells.length) {
       playBombSound();
       bombHaptic();
     }
-    this.ui.showMatchConfirmation(rect, this.state.combo);
+    // "딱 10!" is the small confirmation for an ordinary clear. When a combo
+    // milestone banner or an item drop is firing over the same board in the
+    // same frames, it is the tenth thing on screen and the big moment has
+    // already confirmed the success — measured at ten simultaneous effects
+    // on a reward clear, against five on a plain one.
+    if (!comboMilestone && !earnedDrop) this.ui.showMatchConfirmation(rect, this.state.combo);
     const successAnimation = this.ui.animateSuccess(rect, this.state.combo);
     const specialAnimation = this.ui.animateSpecialTiles(specials, blastCells);
     await delay(96);

@@ -377,10 +377,21 @@ export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {
   return 220 + level * 35 + Math.min(180, time * 2) + (perfect ? 120 : 0);
 }
 
-export function specialTilePlanForStage(stage = 1, random = Math.random, { timeBonusCapped = false } = {}) {
+// The clock existed on three separate paths — a special tile baked into the
+// board, a one-tap board drop, and the banked dock item — for one +5s
+// effect. The special tile was the one nobody met: its chance runs 1.5-5%
+// per board, which measured at 0.08 appearances per run, or roughly one
+// sighting every twelve games. It is retired here, leaving the two paths
+// that actually differ: found-and-spent now, or banked for later.
+//
+// The special bomb tile stays. It reads as the same kind of thing but the
+// numbers disagree: at 8-32% per board it shows up 0.55 times a run and
+// climbs late, and unlike the one-tap drop it rewards folding the tile into
+// a match. `clockChance` is kept in the stage table so saved balance
+// reports and the tuning history stay readable.
+export function specialTilePlanForStage(stage = 1, random = Math.random) {
   const config = getStageConfig(stage);
   const plan = [];
-  if (!timeBonusCapped && config.timeLimit > 0 && Math.max(0, random()) < config.clockChance) plan.push('clock');
   if (Math.max(0, random()) < config.bombChance) plan.push('bomb');
   return plan;
 }

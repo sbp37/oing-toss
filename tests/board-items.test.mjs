@@ -65,14 +65,18 @@ test('stage bonus and special tiles ramp in after the tutorial stages', () => {
   assert.ok(stageClearBonus(8, 30, true) > stageClearBonus(1, 0, false));
   assert.deepEqual(specialTilePlanForStage(3, () => 0), []);
   assert.deepEqual(specialTilePlanForStage(4, () => 0), ['bomb']);
-  assert.deepEqual(specialTilePlanForStage(6, () => 0), ['clock', 'bomb']);
-  assert.deepEqual(specialTilePlanForStage(7, () => 0), ['clock', 'bomb']);
   assert.deepEqual(specialTilePlanForStage(10, () => 0.9), []);
-  assert.deepEqual(
-    specialTilePlanForStage(6, () => 0, { timeBonusCapped: true }),
-    ['bomb'],
-    'time-capped runs replace the clock opportunity with the remaining valid special type',
-  );
+  // The bomb is the only special tile: the clock had three separate paths
+  // for one +5s effect and the tile was the one nobody met (0.08 sightings
+  // per run), so it is gone and the board drop plus the banked dock item
+  // remain. No stage may reintroduce it.
+  for (const stage of [1, 4, 6, 7, 10, 15]) {
+    assert.deepEqual(
+      specialTilePlanForStage(stage, () => 0).filter((type) => type !== 'bomb'),
+      [],
+      `stage ${stage} must plan bomb tiles only`,
+    );
+  }
 });
 
 test('combo grace tightens by stage and idle decay stays forgiving early', () => {
