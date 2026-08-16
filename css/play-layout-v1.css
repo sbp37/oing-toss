@@ -2150,23 +2150,27 @@
 
 /* Centre compartment: star icon left, "콤보" label and countdown on the
    top line, the number beside the star, the track along the bottom. */
+/* The star is measured against the wide centre compartment, so matching
+   the coin's on-screen size means a smaller percentage than the coin's
+   own — 17.5% of 42% lands within a pixel of the coin's 25px. */
 .play-ui-v4 .play-status-bar .combo-readout img {
-  left: 7%;
+  left: 5%;
   right: auto;
-  top: 24%;
-  width: auto;
-  height: 46%;
+  top: 50%;
+  width: 17.5%;
+  height: auto;
   aspect-ratio: 266 / 256;
+  translate: 0 -50%;
 }
 
 .play-ui-v4 .play-status-bar .combo-readout span {
-  left: 26%;
+  left: 27%;
   right: auto;
   top: 18%;
 }
 
 .play-ui-v4 .play-status-bar .combo-readout strong {
-  left: 26%;
+  left: 27%;
   right: auto;
   top: 40%;
   text-align: left;
@@ -2187,7 +2191,7 @@
 
 .play-ui-v4 .play-status-bar .combo-item-track {
   position: absolute;
-  left: 48%;
+  left: 50%;
   right: 6%;
   top: 47%;
   height: 17%;
@@ -2220,7 +2224,12 @@
   justify-self: center;
   width: min(92%, 352px);
   height: 7px;
-  margin-bottom: clamp(3px, .8dvh, 7px);
+  /* It first sat 6.8px above the board, reading as part of the board's
+     frame. It now hangs directly under the feedback rail — as close to the
+     status bar as the rail allows — with real air beneath it, so it groups
+     with the HUD rather than with the tiles. Any less bottom margin and it
+     re-attaches itself to the board's top edge. */
+  margin-block: 0 clamp(11px, 2.3dvh, 18px);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, .75);
   border-radius: 999px;
@@ -2228,18 +2237,22 @@
   box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14);
 }
 
+/* Fill colours are the original OING's own three: --accent-green,
+   --accent-lemon and --accent-orange, switching on the same remaining
+   percentages it used (40% and 15%) rather than absolute seconds, so a
+   time bonus stretches the bands instead of skipping them. */
 .play-ui-v4 .board-time-gauge i {
   display: block;
   height: 100%;
   width: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #4fd98a, #2bbd6e);
-  transition: width .45s linear, background-color .4s ease;
+  background: #3fa855;
+  transition: width .3s linear, background-color .3s linear;
 }
 
-.play-ui-v4 .board-time-gauge[data-band="mid"] i { background: linear-gradient(90deg, #ffcd5e, #f5a742); }
-.play-ui-v4 .board-time-gauge[data-band="low"] i { background: linear-gradient(90deg, #ff8f8f, #ef4d68); }
-.play-ui-v4 .board-time-gauge[data-band="frozen"] i { background: linear-gradient(90deg, #9fdcff, #5db7f0); }
+.play-ui-v4 .board-time-gauge[data-band="mid"] i { background: #da9845; }
+.play-ui-v4 .board-time-gauge[data-band="low"] i { background: #dd6032; }
+.play-ui-v4 .board-time-gauge[data-band="frozen"] i { background: #5db7f0; }
 .play-ui-v4 .board-time-gauge[hidden] { display: none; }
 
 /* Board size morph -------------------------------------------------------

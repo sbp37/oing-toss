@@ -1757,15 +1757,18 @@ export class GameUI {
     this.elements.timePill.style.setProperty('--time-progress', String(timed ? clamp(timeLeft / Math.max(1, duration), 0, 1) : 1));
     const isFrozen = freezeRemaining > 0;
     // The gauge above the numbers: remaining time as a shrinking bar in the
-    // original's green-to-red language, readable in peripheral vision while
-    // the eyes stay on the board. Bands match the timer pill's thresholds.
+    // original's green-to-lemon-to-orange language, readable in peripheral
+    // vision while the eyes stay on the board. The original switched on
+    // remaining *percentage* (40% and 15%), not absolute seconds, so a time
+    // bonus widens the green stretch instead of skipping past a band.
     if (this.elements.boardTimeGauge) {
       this.elements.boardTimeGauge.hidden = !timed;
       if (timed) {
-        this.elements.boardTimeFill.style.width = `${clamp(timeLeft / Math.max(1, duration), 0, 1) * 100}%`;
+        const remaining = clamp(timeLeft / Math.max(1, duration), 0, 1);
+        this.elements.boardTimeFill.style.width = `${remaining * 100}%`;
         this.elements.boardTimeGauge.dataset.band = isFrozen ? 'frozen'
-          : time <= 10 ? 'low'
-            : time <= 30 ? 'mid'
+          : remaining <= 0.15 ? 'low'
+            : remaining <= 0.4 ? 'mid'
               : 'high';
       }
     }
@@ -1800,17 +1803,16 @@ export class GameUI {
     const rewardUnlocked = rewardRemaining > 0;
     const rewardProgress = !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
     this.elements.comboTimerFill.style.transform = `scaleX(${rewardProgress})`;
-    // The centre compartment's visible gauge: the original's "아이템까지 N"
-    // readout. Item drops only start at stage 3, so before that the line
-    // stays hidden and the compartment is just the combo figure.
-    const showItemGauge = rewardUnlocked;
+    // The centre compartment's gauge. The track is always on screen — it is
+    // half of what makes the compartment look furnished, and hiding it for
+    // the first two stages left an empty box exactly where new players
+    // look first. Only the "아이템까지 N" caption waits for stage 3, when
+    // item drops actually unlock and the number means something.
     if (this.elements.comboItemTrack) {
-      this.elements.comboItemTrack.hidden = !showItemGauge;
-      this.elements.comboItemLabel.hidden = !showItemGauge;
-      if (showItemGauge) {
-        this.elements.comboItemFill.style.width = `${Math.round(rewardProgress * 100)}%`;
-        this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
-      }
+      const comboCycle = combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
+      this.elements.comboItemFill.style.width = `${Math.round(comboCycle * 100)}%`;
+      this.elements.comboItemLabel.hidden = !rewardUnlocked;
+      if (rewardUnlocked) this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
     }
     this.elements.comboChip.classList.toggle('is-active', combo > 0);
     const comboUrgency = combo > 0 ? clamp(comboRemainingMs / Math.max(1, comboWindowMs), 0, 1) : 1;
