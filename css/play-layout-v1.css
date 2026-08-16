@@ -743,6 +743,16 @@
   transform: none;
 }
 
+/* Combo milestones are the game's most frequent celebration, and the base
+   rule fades the readouts while the painted cream panel stays — so several
+   times a stage the HUD turned into an empty picture frame for ~0.8s, right
+   when the player wants to watch the combo figure tick up. The celebration
+   pill lives in the feedback rail below the bar and never needs the room. */
+.screen-play.play-ui-v4.is-combo-celebrating .hud-secondline {
+  opacity: 1;
+  transform: none;
+}
+
 /* Row assignments are unconditional (see the packed-cluster block), so the
    alert needs no special-case grid geometry — it just occupies the rail's
    cell while it shows. */
@@ -1526,6 +1536,14 @@
   line-height: 1;
   text-align: center;
   white-space: nowrap;
+}
+
+/* Two-digit progress ("16 / 17") is 7 characters; at full size the centred
+   nowrap text spills out of its box and under the progress track on every
+   width. One band down keeps the worst case clear of the track. */
+.play-ui-v4 .play-status-bar .goal-copy b[data-digits="l"] {
+  top: 47.5%;
+  font-size: clamp(14px, 4.2vw, 19px);
 }
 
 .play-ui-v4 .play-status-bar .goal-track,

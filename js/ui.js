@@ -2,6 +2,7 @@ import { cellsInRect } from './board.js';
 import {
   BOARD_DROP_ITEMS,
   buildScoreComparisons,
+  comboMultiplier,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
@@ -1249,9 +1250,15 @@ export class GameUI {
     if (bonus.specialBonusPoints > 0) rewardLabels.push(`폭탄 +${bonus.specialBonusPoints}`);
     if (bonus.wideBonusPoints > 0) rewardLabels.push(`큰 조합 +${bonus.wideBonusPoints}`);
     // The total is the only information needed on every clear. Show at most
-    // one exceptional reward label; cell counts and multipliers remain in the
-    // underlying score calculation instead of racing past as transient copy.
-    detail.textContent = rewardLabels[0] || (isWide ? '큰 조합!' : '');
+    // one label: an exceptional reward first, else the wide-clear callout.
+    // When neither claims the slot and a combo is running, it teaches the
+    // multiplier instead — "combo = bigger points" is the game's core
+    // strategy, and nothing else on screen ever states it.
+    const multiplier = comboMultiplier(combo);
+    const comboLabel = combo >= 3 && multiplier > 1
+      ? `콤보 ×${(Math.round(multiplier * 100) / 100).toLocaleString('ko-KR', { maximumFractionDigits: 2 })}`
+      : '';
+    detail.textContent = rewardLabels[0] || (isWide ? '큰 조합!' : comboLabel);
     detail.hidden = !detail.textContent;
     burst.replaceChildren(primary, detail);
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
@@ -1749,7 +1756,12 @@ export class GameUI {
     this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
     this.elements.goalLabel.textContent = '성공';
-    this.elements.goal.textContent = `${progress} / ${target}`;
+    const goalText = `${progress} / ${target}`;
+    this.elements.goal.textContent = goalText;
+    // Same length-band pattern as the score figure: the goal box is narrow
+    // and the text is nowrap-centred, so "16 / 17" at full size ran under
+    // the progress track on every width (11.8px deep on a 280px Fold).
+    this.elements.goal.dataset.digits = goalText.length > 6 ? 'l' : 'm';
     this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', progress >= target);
     this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
     const mission = this.elements.stageMission;
