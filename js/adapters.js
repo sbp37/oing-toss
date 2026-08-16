@@ -8,6 +8,7 @@ const BEST_COMBO_KEY = 'oing_toss_v2_best_combo';
 const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v2_recent_result_messages';
 const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v2_rare_showcase_count';
 const CATS_RESCUED_KEY = 'oing_toss_v2_cats_rescued';
+const BEST_GARDEN_REVEAL_KEY = 'oing_toss_v2_best_garden_reveal';
 
 function safeRead(key, fallback) {
   try {
@@ -91,6 +92,18 @@ export const storageAdapter = {
   markRareShowcaseSeen() {
     const next = Math.min(3, this.getRareShowcaseCount() + 1);
     try { localStorage.setItem(RARE_SHOWCASE_COUNT_KEY, String(next)); } catch {}
+    return next;
+  },
+  getBestGardenReveal() {
+    const value = Number(safeRead(BEST_GARDEN_REVEAL_KEY, '0'));
+    return Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
+  },
+  saveBestGardenReveal(percent) {
+    const next = Math.min(100, Math.max(
+      this.getBestGardenReveal(),
+      Math.max(0, Math.round(Number(percent) || 0)),
+    ));
+    try { localStorage.setItem(BEST_GARDEN_REVEAL_KEY, String(next)); } catch {}
     return next;
   },
   getCatsRescued() {

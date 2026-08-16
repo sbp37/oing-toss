@@ -46,9 +46,26 @@ test('score comparisons cover first run, previous run, record and near-record ca
 test('result retry copy points toward the next positive goal', () => {
   assert.equal(resultRetryLabel({ recordEligible: false }), 'STAGE 1부터 도전!');
   assert.equal(resultRetryLabel({ newRecord: true }), '신기록 또 넘기기!');
-  assert.equal(resultRetryLabel({ score: 900, previousBest: 1000 }), '최고기록 넘기기!');
-  assert.equal(resultRetryLabel({ score: 400, previousBest: 1000, maxCombo: 7 }), '한 판 더!');
-  assert.equal(resultRetryLabel({ score: 400, previousBest: 1000, round: 2 }), '한 판 더!');
+  // A record within reach becomes the exact number still to find.
+  assert.equal(resultRetryLabel({ score: 900, previousBest: 1000 }), '100점만 더!');
+  assert.equal(
+    resultRetryLabel({ score: 58000, previousBest: 60000, round: 5 }),
+    '2,000점만 더!',
+    'the gap is formatted for reading, not printed raw',
+  );
+  // Too far from the record to be a nudge: the next stage is the goal instead.
+  assert.equal(resultRetryLabel({ score: 400, previousBest: 10000, round: 2 }), '이번엔 STAGE 3 가보자');
+  assert.equal(resultRetryLabel({ score: 400, previousBest: 10000, round: 6 }), '이번엔 STAGE 7 가보자');
+  // A first run has no record to chase and no stage worth naming yet.
+  assert.equal(resultRetryLabel({ score: 400, previousBest: 0, round: 1 }), '한 판 더!');
+  // Every label stays short enough to sit on one button line.
+  for (const label of [
+    resultRetryLabel({ score: 900, previousBest: 1000 }),
+    resultRetryLabel({ score: 400, previousBest: 10000, round: 6 }),
+    resultRetryLabel({ newRecord: true }),
+  ]) {
+    assert.ok(label.length <= 16, `retry label too long: ${label}`);
+  }
 });
 
 test('result reactions reward records, progress and streaks without a losing aftertaste', () => {

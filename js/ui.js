@@ -5,6 +5,7 @@ import {
   buildScoreComparisons,
   comboMultiplier,
   gardenProgress,
+  isRecordInReach,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
@@ -150,6 +151,8 @@ export class GameUI {
       gardenProgressLabel: document.querySelector('#garden-progress-label'),
       gardenProgressFill: document.querySelector('#garden-progress-fill'),
       gardenTiers: document.querySelector('#garden-tiers'),
+      gardenRevealBest: document.querySelector('#garden-reveal-best'),
+      gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
@@ -1325,16 +1328,22 @@ export class GameUI {
     setTimeout(() => pop.remove(), 900);
   }
 
-  showComboMoment(combo) {
-    const level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
+  showComboMoment(combo, { allowCelebration = true } = {}) {
+    // The chip carries every step of the climb — it punches on each combo and
+    // its band keeps rising past 8, so the escalation lives in the HUD rather
+    // than in another card over the board.
+    const level = combo >= 16 ? '16' : combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = level;
     this.elements.comboChip.classList.remove('is-punching');
     void this.elements.comboChip.offsetWidth;
     this.elements.comboChip.classList.add('is-punching');
     setTimeout(() => this.elements.comboChip.classList.remove('is-punching'), 520);
 
-    const milestone = combo === 3 || combo === 5 || combo === 8 || (combo > 8 && combo % 3 === 0);
-    if (!milestone) return;
+    // Past 8 the old rule fired every third combo, which measured at roughly
+    // one banner per success — a milestone that happens constantly is not a
+    // milestone. The steps now spread out as the combo climbs.
+    const milestone = combo === 3 || combo === 5 || combo === 8 || (combo > 8 && combo % 8 === 0);
+    if (!milestone || !allowCelebration) return;
 
     const celebration = this.elements.comboCelebration;
     clearTimeout(this.comboCelebrationTimer);
@@ -1890,7 +1899,12 @@ export class GameUI {
     }
   }
 
-  renderGarden(total = 0) {
+  renderGarden(total = 0, bestReveal = 0) {
+    const reveal = Math.max(0, Math.round(Number(bestReveal) || 0));
+    if (this.elements.gardenRevealBest && this.elements.gardenRevealBestValue) {
+      this.elements.gardenRevealBestValue.textContent = String(reveal);
+      this.elements.gardenRevealBest.hidden = reveal <= 0;
+    }
     const state = gardenProgress(total);
     if (this.elements.gardenCatsTotal) {
       this.elements.gardenCatsTotal.textContent = state.cats.toLocaleString('ko-KR');
@@ -2005,7 +2019,7 @@ export class GameUI {
 
   showResult({
     score, maxCombo, round, progress = 0, target = 1, catsCollected = 0,
-    catsRescuedTotal = 0,
+    catsRescuedTotal = 0, gardenReveal = 0, gardenRevealRecord = false,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
@@ -2038,16 +2052,30 @@ export class GameUI {
     else if (maxCombo >= 5 || round >= 5) this.setResultCharacter('cheer');
     else this.setResultCharacter('wave');
 
+    // One comparison, not two stacked. The card used to print the best-score
+    // line and the last-run line together, so an ordinary result said two
+    // similar things at once and neither led. This picks the single most
+    // meaningful reading of the run and shows only that.
     const comparison = buildScoreComparisons(score, previousScore, previousBest);
-    this.elements.resultBestCompare.textContent = recordEligible
-      ? comparison.bestText
-      : '연습 플레이 기록';
-    this.elements.resultBestCompare.dataset.tone = recordEligible ? comparison.bestTone : 'neutral';
-    this.elements.resultPreviousCompare.textContent = recordEligible
-      ? comparison.previousText
-      : '정식 기록은 STAGE 1부터 시작해';
-    this.elements.resultPreviousCompare.dataset.tone = recordEligible ? comparison.previousTone : 'neutral';
-    this.elements.resultPreviousCompare.hidden = recordEligible ? !comparison.hasPrevious : false;
+    const chasingRecord = recordEligible && !newRecord && isRecordInReach(score, previousBest);
+    const beatLastRun = recordEligible && comparison.hasPrevious && comparison.previousTone === 'up';
+    const headline = !recordEligible
+      ? { text: '연습 플레이 기록 · 최고기록에는 반영되지 않아', tone: 'neutral' }
+      : newRecord || chasingRecord || !beatLastRun
+        ? { text: comparison.bestText, tone: comparison.bestTone }
+        : { text: comparison.previousText, tone: comparison.previousTone };
+    this.elements.resultBestCompare.textContent = headline.text;
+    this.elements.resultBestCompare.dataset.tone = headline.tone;
+    // The freed second line now belongs to the run's other scoreboard, and
+    // only when it was actually beaten — a garden record is a real second
+    // goal, while repeating the percentage every run would be noise.
+    const gardenPercent = Math.max(0, Math.round(Number(gardenReveal) || 0));
+    const showGardenLine = Boolean(gardenRevealRecord) && gardenPercent > 0;
+    this.elements.resultPreviousCompare.hidden = !showGardenLine;
+    this.elements.resultPreviousCompare.textContent = showGardenLine
+      ? `정원 최다 공개 ${gardenPercent}%!`
+      : '';
+    if (showGardenLine) this.elements.resultPreviousCompare.dataset.tone = 'up';
     const recordProgress = !recordEligible
       ? 0
       : newRecord || previousBest <= 0

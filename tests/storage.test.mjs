@@ -51,6 +51,22 @@ test('rescued cats accumulate across runs and never go backwards', () => {
   }
 });
 
+test('the garden reveal record only ever climbs and stays a percentage', () => {
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = new MemoryStorage();
+  try {
+    assert.equal(storageAdapter.getBestGardenReveal(), 0);
+    assert.equal(storageAdapter.saveBestGardenReveal(42), 42);
+    assert.equal(storageAdapter.saveBestGardenReveal(19), 42, 'a weaker run keeps the record');
+    assert.equal(storageAdapter.saveBestGardenReveal(77), 77);
+    assert.equal(storageAdapter.saveBestGardenReveal(140), 100, 'the record cannot exceed a full board');
+    assert.equal(storageAdapter.saveBestGardenReveal(-5), 100);
+    assert.equal(storageAdapter.getBestGardenReveal(), 100);
+  } finally {
+    globalThis.localStorage = previous;
+  }
+});
+
 test('the garden ladder unlocks in order and measures progress within the current step', () => {
   const empty = gardenProgress(0);
   assert.deepEqual(empty.unlocked, []);

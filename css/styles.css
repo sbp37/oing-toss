@@ -1275,6 +1275,12 @@ img {
 .combo-readout[data-level="3"] strong { color: #e38b42; }
 .combo-readout[data-level="5"] strong { color: #ea6280; text-shadow: 0 0 7px rgba(255, 193, 79, 0.2); }
 .combo-readout[data-level="8"] strong { color: var(--coral-deep); text-shadow: 0 0 8px rgba(255,113,136,0.25); }
+/* Past sixteen the banner has stepped aside, so the chip keeps the climb
+   going on its own: a hotter figure with a steady glow behind it. */
+.combo-readout[data-level="16"] strong {
+  color: #e0325f;
+  text-shadow: 0 0 10px rgba(255,86,120,0.42), 0 0 20px rgba(255,140,120,0.24);
+}
 
 @keyframes combo-punch {
   32% { transform: translateY(-1px) scale(1.13); }
@@ -4888,6 +4894,21 @@ img {
   color: #d96474;
   font-family: var(--font-sans);
   font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.garden-reveal-best {
+  margin: -3px 0 8px;
+  color: #8b9a84;
+  font-size: 11.5px;
+  font-weight: 850;
+  text-align: center;
+}
+.garden-reveal-best strong {
+  color: #58a273;
+  font-family: var(--font-sans);
+  font-size: 13px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }

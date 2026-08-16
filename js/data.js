@@ -703,10 +703,25 @@ export function resultRetryLabel({
   if (newRecord) return '신기록 또 넘기기!';
   const current = Math.max(0, Math.round(Number(score) || 0));
   const best = Math.max(0, Math.round(Number(previousBest) || 0));
-  if (best > 0 && current < best && (best - current <= 150 || current / best >= 0.9)) {
-    return '최고기록 넘기기!';
+  const stage = Math.max(1, Math.round(Number(round) || 1));
+  if (isRecordInReach(current, best)) {
+    return `${(best - current).toLocaleString('ko-KR')}점만 더!`;
   }
+  if (best > 0 && stage >= 2) return `이번엔 STAGE ${stage + 1} 가보자`;
   return '한 판 더!';
+}
+
+// Whether the run ended close enough that the record is the natural next
+// goal. The result card and the retry button both read from this, so the
+// headline and the button always tell the same story about the run —
+// they used to disagree, one talking about the last run while the other
+// counted down to the record. Wider than a quarter of the record reads as a
+// chore rather than a nudge, with a floor so early tiny records still count.
+export function isRecordInReach(score = 0, previousBest = 0) {
+  const current = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  const gap = best - current;
+  return best > 0 && gap > 0 && gap <= Math.max(1500, best * 0.25);
 }
 
 // The secret garden's collection ladder. Rescued cats are the only currency,

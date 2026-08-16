@@ -111,6 +111,12 @@ import {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
+// Drops worth taking the lead of a moment. Bomb and clock are the everyday
+// rewards; these three are the ones a player should stop and look at.
+const RARE_BOARD_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
+// The garden only shows through from STAGE 3, so earlier boards cannot
+// uncover any of it and must not count toward the reveal record.
+const GARDEN_REVEAL_FIRST_STAGE = 3;
 
 class OingGame {
   constructor() {
@@ -237,6 +243,7 @@ class OingGame {
       failureCount: 0,
       consecutiveFailures: 0,
       maxClearCells: 0,
+      maxGardenReveal: 0,
       catsCollected: 0,
       catBonusScore: 0,
       cloverBoostPending: false,
@@ -693,6 +700,38 @@ class OingGame {
     }
   }
 
+  // A second thing to chase besides the score, built from what the board
+  // already knows: on the stages where the garden shows through, how much of
+  // it did this run manage to uncover at once? Kept deliberately small — one
+  // number per run and one personal best, no new screen.
+  trackGardenReveal() {
+    if (this.state.round < GARDEN_REVEAL_FIRST_STAGE) return;
+    const cells = this.model.rows * this.model.cols;
+    if (cells <= 0) return;
+    const cleared = cells - this.model.remainingPlayableCells();
+    const percent = Math.round((cleared / cells) * 100);
+    this.state.maxGardenReveal = Math.max(this.state.maxGardenReveal || 0, percent);
+  }
+
+  // LEVEL 5 stage clear · 4 rare item or challenge · 3 combo milestone or an
+  // ordinary drop · 2 wide clear or cat bonus · 1 plain clear. Higher ranks
+  // own the frame; lower-ranked flourishes stand down for it.
+  successFeedbackLevel({
+    willClearStage = false,
+    challengeCompleted = false,
+    earnedDrop = null,
+    comboMilestone = 0,
+    comboGain = 1,
+    catCount = 0,
+  } = {}) {
+    if (willClearStage) return 5;
+    const rareDrop = Boolean(earnedDrop) && RARE_BOARD_DROP_IDS.includes(earnedDrop.id);
+    if (rareDrop || challengeCompleted) return 4;
+    if (comboMilestone || earnedDrop) return 3;
+    if (comboGain > 1 || catCount > 0) return 2;
+    return 1;
+  }
+
   async handleSuccess(rect, stats) {
     this.state.inputLocked = true;
     const specials = stats.specials || [];
@@ -707,6 +746,7 @@ class OingGame {
     this.state.successCount += 1;
     this.state.consecutiveFailures = 0;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, clearedCellCount);
+    this.trackGardenReveal();
     const clearPoints = scoreForClear(clearedCellCount, this.state.combo);
     const wideBonusPoints = scoreForWideClear(clearedCellCount, this.state.combo);
     const catBonusPoints = scoreForCatBonus(catCount, this.state.combo);
@@ -737,6 +777,20 @@ class OingGame {
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
     this.state.progress += stageProgressGainForClear(clearedCellCount);
+
+    // One rank for the whole moment, so the celebrations stop competing.
+    // Every system used to fire independently, which made the best clears the
+    // busiest frames on screen — measured at nine simultaneous effects. The
+    // rank decides who is the lead and who steps back; it never suppresses a
+    // number, so score, combo and goal keep updating in the HUD regardless.
+    const successLevel = this.successFeedbackLevel({
+      willClearStage: shouldAdvanceRound(this.state.progress, getRoundConfig(this.state.round).target, true),
+      challengeCompleted,
+      earnedDrop,
+      comboMilestone,
+      comboGain,
+      catCount,
+    });
     this.completeTutorial();
     successHaptic(this.state.combo);
     duckMusic(comboGain > 1 ? 560 : 390, comboGain > 1 ? 0.48 : 0.64);
@@ -762,7 +816,7 @@ class OingGame {
     });
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
-    this.speakForSuccess(catCount, comboGain);
+    this.speakForSuccess(catCount, comboGain, successLevel);
     if (challengeCompleted) {
       this.ui.setPlayCharacter('success', 1000);
       this.showCatMessage('challengeComplete');
@@ -777,19 +831,19 @@ class OingGame {
       playBombSound();
       bombHaptic();
     }
-    // "딱 10!" is the small confirmation for an ordinary clear. When a combo
-    // milestone banner or an item drop is firing over the same board in the
-    // same frames, it is the tenth thing on screen and the big moment has
-    // already confirmed the success — measured at ten simultaneous effects
-    // on a reward clear, against five on a plain one.
-    if (!comboMilestone && !earnedDrop) this.ui.showMatchConfirmation(rect, this.state.combo);
+    // "딱 10!" belongs to the quiet clears. From rank 3 up something louder
+    // is already confirming the success over the same tiles.
+    if (successLevel <= 2) this.ui.showMatchConfirmation(rect, this.state.combo);
     const successAnimation = this.ui.animateSuccess(rect, this.state.combo);
     const specialAnimation = this.ui.animateSpecialTiles(specials, blastCells);
     await delay(96);
     scoreFeedback();
     if (this.state.combo >= 2) {
       await delay(this.state.combo >= 5 ? 90 : 68);
-      this.ui.showComboMoment(this.state.combo);
+      // The chip always punches — that is the combo's own escalation. The
+      // banner across the board is held back for rank 3 and below, so a rare
+      // item or a stage clear is never fighting a COMBO card for the centre.
+      this.ui.showComboMoment(this.state.combo, { allowCelebration: successLevel <= 3 });
     }
     await Promise.all([successAnimation, specialAnimation]);
     this.model.remove(rect);
@@ -883,7 +937,13 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
-  speakForSuccess(catCount = 0, comboGain = 1) {
+  speakForSuccess(catCount = 0, comboGain = 1, successLevel = 1) {
+    // The cat used to have a line for literally every clear, which measured
+    // at 3.67 message changes per success — it talked over the game instead
+    // of reacting to it. It now speaks for moments with feeling behind them:
+    // the first clear, a big or lucky one, the last step before a goal or a
+    // reward, and the combo milestones. An ordinary clear passes in silence,
+    // which is what makes the next line worth reading.
     if (catCount > 0) {
       this.ui.setPlayCharacter('success', 950);
       this.showCatMessage('catBonus');
@@ -905,10 +965,11 @@ class OingGame {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
       this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
-    } else if (this.state.combo >= 5) {
+    } else if (this.state.combo === 5 || this.state.combo === 8) {
       this.ui.setPlayCharacter('success', 900);
       this.showCatMessage(this.state.combo >= 8 ? 'combo8' : 'combo5');
-    } else {
+    } else if (successLevel >= 3) {
+      // A milestone or a reward landed; a short line is earned.
       this.showCatMessage('success');
     }
   }
@@ -1579,6 +1640,11 @@ class OingGame {
     const catsRescuedTotal = this.runtime.testMode
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
+    // The garden reveal is the run's second scoreboard. Capture the previous
+    // best before saving so the result card can tell the player they beat it.
+    const gardenReveal = Math.max(0, Math.round(this.state.maxGardenReveal || 0));
+    const previousGardenBest = storageAdapter.getBestGardenReveal();
+    if (!this.runtime.testMode && gardenReveal > 0) storageAdapter.saveBestGardenReveal(gardenReveal);
     this.ui.updateBestScore(recordEligible ? Math.max(oldBest, this.state.score) : oldBest);
     this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
@@ -1590,6 +1656,8 @@ class OingGame {
       maxClearCells: this.state.maxClearCells,
       catsCollected: this.state.catsCollected,
       catsRescuedTotal,
+      gardenReveal,
+      gardenRevealRecord: gardenReveal > 0 && gardenReveal > previousGardenBest,
       newRecord,
       previousBest: oldBest,
       previousScore,
@@ -1642,7 +1710,7 @@ class OingGame {
   openGarden() {
     const total = storageAdapter.getCatsRescued();
     this.ui.updateCatsRescued(total);
-    this.ui.renderGarden(total);
+    this.ui.renderGarden(total, storageAdapter.getBestGardenReveal());
     this.ui.setOverlay('garden-overlay', true);
   }
 
