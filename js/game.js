@@ -43,6 +43,7 @@ import {
   shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
   shouldAdvanceRound,
+  needsRescueShuffle,
   isWowClear,
 } from './data.js';
 import { BoardModel, boardAssistForPerformance } from './board.js';
@@ -240,6 +241,9 @@ class OingGame {
       consecutiveFailures: 0,
       maxClearCells: 0,
       maxGardenReveal: 0,
+      rescueShuffles: 0,
+      stageRescues: 0,
+      cleanClears: 0,
       catsCollected: 0,
       catBonusScore: 0,
       cloverBoostPending: false,
@@ -818,11 +822,14 @@ class OingGame {
     }
 
     const remainingAnswer = this.model.findAnswer();
-    const perfect = this.model.remainingPlayableCells() === 0;
-    if (shouldAdvanceRound({ hasAnswer: Boolean(remainingAnswer), boardEmpty: perfect })) {
+    const boardEmpty = this.model.remainingPlayableCells() === 0;
+    if (shouldAdvanceRound({ boardEmpty })) {
       this.renderBoard({ preserveScoreBurst: true });
       if (comboMilestone) await delay(220);
-      await this.clearRound({ perfect });
+      await this.clearRound();
+    } else if (needsRescueShuffle({ hasAnswer: Boolean(remainingAnswer), boardEmpty })) {
+      this.renderBoard({ preserveScoreBurst: true });
+      await this.rescueShuffle();
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard({ preserveScoreBurst: true });
@@ -830,6 +837,42 @@ class OingGame {
     }
     this.state.inputLocked = false;
     this.updateHUD();
+  }
+
+  // The stage never ends with tiles on the board. When the answers run out
+  // instead, the cat quietly rearranges what is left — and if the values
+  // themselves can no longer make ten (a bomb blast is the usual culprit),
+  // the model repairs the smallest possible pair. Cleared cells are never
+  // refilled, and the shuffle item's count is never touched. If fewer than
+  // two numbers remain, nothing can ever sum to ten again: the leftovers
+  // are swept off as blast debris and the stage completes.
+  async rescueShuffle() {
+    this.state.rescueShuffles += 1;
+    this.state.stageRescues += 1;
+    this.telemetry?.rescueShuffle?.();
+    // The cat explains the first rescue of a stage; repeats stay wordless so
+    // a tail that needs two nudges doesn't turn into a monologue.
+    if (this.state.stageRescues === 1) {
+      this.showCatMessage('rescue');
+      this.ui.setPlayCharacter('wave', 1000);
+    }
+    duckMusic(420, 0.66);
+    playShuffleSound();
+    itemHaptic();
+    const outcome = this.model.rescueRemaining();
+    if (!outcome) {
+      const sweep = this.model.sweepRemaining();
+      if (sweep.length) await this.ui.animateSweep(sweep);
+      this.renderBoard({ preserveScoreBurst: true });
+      this.trackGardenReveal();
+      await this.clearRound();
+      return;
+    }
+    await this.ui.animateShuffleOut();
+    this.renderBoard();
+    await this.ui.animateShuffleIn();
+    itemHaptic();
+    this.inputGuardUntil = performance.now() + 140;
   }
 
   addStageTime(seconds = 5) {
@@ -913,10 +956,18 @@ class OingGame {
     }
   }
 
-  async clearRound({ perfect = false } = {}) {
+  async clearRound() {
+    // Every clear is a full clear now; PERFECT means the board emptied
+    // without a single rescue shuffle.
+    const perfect = this.state.stageRescues === 0;
     this.state.inputLocked = true;
     this.telemetry?.roundCleared({ perfect });
     this.stopTimer();
+    if (perfect) this.state.cleanClears += 1;
+    // The finished garden is the clear's reward: the board is empty, so the
+    // art beneath it is fully visible for the first time — hold on it
+    // briefly before anything covers it.
+    await this.ui.celebrateFullGarden({ perfect });
     const clearedStage = this.state.round;
     const nextRound = clearedStage + 1;
     const clearedConfig = getRoundConfig(clearedStage);
@@ -935,21 +986,18 @@ class OingGame {
       nextStage: nextRound,
       rows: nextConfig.rows,
       cols: nextConfig.cols,
+      perfect,
       boardGrew: nextConfig.rows !== clearedConfig.rows || nextConfig.cols !== clearedConfig.cols,
     });
     this.ui.setPlayCharacter('cheer', 1000);
-    this.showCatMessage('stage');
-    if (perfect) {
-      this.grantItems({ hint: 1 }, { source: 'earned' });
-      this.showCatMessage('perfect');
-      this.ui.toast('PERFECT! 힌트 +1');
-    }
+    this.showCatMessage(perfect ? 'perfect' : 'stage');
     this.updateHUD();
     const [storedItems] = await Promise.all([
       this.storeRoundItems({ soundDelay: 260 }),
       delay(760),
     ]);
     this.state.round = nextRound;
+    this.state.stageRescues = 0;
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
@@ -1160,10 +1208,13 @@ class OingGame {
   async finishBlast(boardItemKey = null) {
     if (boardItemKey) this.boardItems.delete(boardItemKey);
     const remainingAnswer = this.model.findAnswer();
-    const perfect = this.model.remainingPlayableCells() === 0;
-    if (shouldAdvanceRound({ hasAnswer: Boolean(remainingAnswer), boardEmpty: perfect })) {
+    const boardEmpty = this.model.remainingPlayableCells() === 0;
+    if (shouldAdvanceRound({ boardEmpty })) {
       this.renderBoard();
-      await this.clearRound({ perfect });
+      await this.clearRound();
+    } else if (needsRescueShuffle({ hasAnswer: Boolean(remainingAnswer), boardEmpty })) {
+      this.renderBoard();
+      await this.rescueShuffle();
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
@@ -1558,9 +1609,10 @@ class OingGame {
       : storageAdapter.addCatsRescued(this.state.catsCollected);
     // The garden reveal is the run's second scoreboard. Capture the previous
     // best before saving so the result card can tell the player they beat it.
-    const gardenReveal = Math.max(0, Math.round(this.state.maxGardenReveal || 0));
-    const previousGardenBest = storageAdapter.getBestGardenReveal();
-    if (!this.runtime.testMode && gardenReveal > 0) storageAdapter.saveBestGardenReveal(gardenReveal);
+    const cleanClears = Math.max(0, Math.round(this.state.cleanClears || 0));
+    const cleanClearsTotal = this.runtime.testMode
+      ? cleanClears
+      : storageAdapter.addCleanClears(cleanClears);
     this.ui.updateBestScore(recordEligible ? Math.max(oldBest, this.state.score) : oldBest);
     this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
@@ -1571,8 +1623,9 @@ class OingGame {
       maxClearCells: this.state.maxClearCells,
       catsCollected: this.state.catsCollected,
       catsRescuedTotal,
-      gardenReveal,
-      gardenRevealRecord: gardenReveal > 0 && gardenReveal > previousGardenBest,
+      cleanClears,
+      cleanClearsTotal,
+      rescueShuffles: this.state.rescueShuffles,
       newRecord,
       previousBest: oldBest,
       previousScore,
@@ -1625,7 +1678,7 @@ class OingGame {
   openGarden() {
     const total = storageAdapter.getCatsRescued();
     this.ui.updateCatsRescued(total);
-    this.ui.renderGarden(total, storageAdapter.getBestGardenReveal());
+    this.ui.renderGarden(total, storageAdapter.getCleanClears());
     this.ui.setOverlay('garden-overlay', true);
   }
 

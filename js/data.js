@@ -30,23 +30,22 @@ export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
-// Main-mode board growth is intentionally capped at 6x7, and the ladder only
-// ever grows ONE axis per stage, columns last: tile size on a phone is set by
-// the column count, so width steps (the moments tiles visibly shrink) happen
-// exactly twice — at 5 and at 6 columns — each cushioned by a rows-only stage
-// before and after. Past 6x7 the board never changes again; late difficulty
-// comes from the value mix, time and drop pressure. 7x7+ remains
-// reserved for a future hard mode. `size` doubles as the column count for the
-// board generator.
+// Main-mode board growth is capped at 6x7, holds every size for two stages,
+// and only ever grows in square steps: 4x4, then 5x5 twice, then 6x6 twice,
+// then 6x7. The in-between rectangles (4x5, 5x6) are gone — growing a
+// rectangle into the next square shrank the board's height on screen, so a
+// bigger stage read as a smaller board. A repeated size raises the value
+// mix one phase instead, which is the original OING's own difficulty model.
+// 7x7+ remains reserved for a future hard mode. `size` doubles as the
+// column count for the board generator.
 //
-// There is deliberately no success target here. A stage runs until its board
-// has no sum-ten answer left, exactly like the original OING: the only things
-// a player chases are score, combo and how many stages they reach.
+// There is deliberately no success target here. A stage ends when its board
+// is completely empty — every number and bonus cat cleared — and only then.
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, timeLimit: 120, bombChance: 0 },
-  { stage: 2, round: 2, size: 4, cols: 4, rows: 5, timeLimit: 120, bombChance: 0 },
+  { stage: 2, round: 2, size: 5, cols: 5, rows: 5, timeLimit: 120, bombChance: 0 },
   { stage: 3, round: 3, size: 5, cols: 5, rows: 5, timeLimit: 120, bombChance: 0 },
-  { stage: 4, round: 4, size: 5, cols: 5, rows: 6, timeLimit: 120, bombChance: 0.08 },
+  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, timeLimit: 120, bombChance: 0.08 },
   { stage: 5, round: 5, size: 6, cols: 6, rows: 6, timeLimit: 120, bombChance: 0.12 },
   { stage: 6, round: 6, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.16 },
   { stage: 7, round: 7, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.2 },
@@ -354,15 +353,21 @@ export function itemRewardCountdown(combo, stage = 1) {
   return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
 }
 
-// The board itself decides when a stage ends, exactly like the original OING:
-// it runs dry (no sum-ten answer left) or the player empties it outright.
-// There is no success target to reach and none to fall short of, so a stage
-// never ends while the player can still see something to clear.
-export function shouldAdvanceRound({ hasAnswer = false, boardEmpty = false } = {}) {
-  return boardEmpty || !hasAnswer;
+// A stage ends when — and only when — its board is completely empty. Running
+// out of answers while cells remain never ends a stage any more: that case
+// triggers the rescue shuffle instead, so the player never sees a board
+// taken away with tiles still on it.
+export function shouldAdvanceRound({ boardEmpty = false } = {}) {
+  return Boolean(boardEmpty);
 }
 
 export const shouldAdvanceStage = shouldAdvanceRound;
+
+// True when the board is stuck but not finished: numbers remain and none of
+// them make ten. The caller answers with a rescue shuffle, not a transition.
+export function needsRescueShuffle({ hasAnswer = false, boardEmpty = false } = {}) {
+  return !boardEmpty && !hasAnswer;
+}
 
 export function shouldShowBeginnerAutoHint({
   running = false, inputLocked = false, tutorialActive = false, alreadyShown = false,
@@ -505,7 +510,8 @@ export const MESSAGES = Object.freeze({
   struggleHint: Object.freeze(['이건 내가 살짝 보여줄게냥!', '잠깐, 여기부터 다시 봐봐!', '이 조합은 서비스다냥.']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
-  perfect: Object.freeze(['퍼펙트! 힌트 하나 챙겼다냥!', '판을 싹 비웠다냥! 선물이다냥!']),
+  perfect: Object.freeze(['퍼펙트! 한 번도 안 막혔다냥!', '싹 비웠다냥, 최고다냥!']),
+  rescue: Object.freeze(['막혔네, 내가 살짝 섞어줄게냥!', '잠깐, 판 좀 다듬는다냥!', '요렇게 섞으면 된다냥!']),
   shuffle: Object.freeze(['판 좀 뒤집어볼까냥?', '숫자들 자리 바꾼다!', '내가 한번 섞어주지냥.']),
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),

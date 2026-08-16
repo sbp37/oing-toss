@@ -25,13 +25,21 @@ assert.ok(suite.expert.initialValuePatternsMean > suite.novice.initialValuePatte
 assert.ok(suite.expert.initialOrientationsMean >= suite.novice.initialOrientationsMean);
 assert.ok(suite.novice.maxComboMean < suite.regular.maxComboMean);
 assert.ok(suite.regular.maxComboMean < suite.expert.maxComboMean, 'tighter late windows still reward genuinely fast play');
-// A stage now lasts exactly as long as its board has answers, so the stage
-// number counts boards emptied rather than targets met — the same run reaches
-// a higher number than it did under the old target gate, and the bands below
-// are calibrated to that meaning.
-assert.ok(suite.novice.roundMean >= 4 && suite.novice.roundMean <= 7, 'novices should clear a handful of boards');
-assert.ok(suite.regular.roundMean >= 6.5 && suite.regular.roundMean <= 11, 'regular players should roughly double that');
-assert.ok(suite.expert.roundMean >= 11 && suite.expert.roundMean <= 20, 'experts should keep boards turning over');
+// Full-clear rule: a stage ends only when its board is completely empty, so
+// runs travel fewer, fuller stages. Bands follow the measured baseline
+// (novice 3.1 / regular 4.5 / expert 7.0 at the unchanged time economy).
+assert.ok(suite.novice.roundMean >= 2.3 && suite.novice.roundMean <= 4.2, 'novices should finish around stages 3-4');
+assert.ok(suite.regular.roundMean >= 3.5 && suite.regular.roundMean <= 6, 'regular players should finish around stages 4-6');
+assert.ok(suite.expert.roundMean >= 5.5 && suite.expert.roundMean <= 10, 'experts should reach the late stages');
+// The rescue shuffle must stay an exception, not the game playing itself,
+// and clean clears must remain achievable.
+assert.ok(suite.expert.rescueMean / Math.max(1, suite.expert.boardsClearedMean) <= 3.2,
+  'rescues per fully cleared board stay bounded');
+for (const profile of ['novice', 'regular', 'expert']) {
+  assert.ok(suite[profile].cleanClearRate >= 0 && suite[profile].cleanClearRate <= 1,
+    'clean-clear rate is a proportion of fully cleared boards');
+  assert.ok(suite[profile].timeUpRemainingCellsMean >= 0, 'TIME UP leftover cells are measured');
+}
 assert.ok(suite.expert.roundTimeBonusMean <= 90,
   'stage time stays bounded: small per-growth bonuses plus at most 4s per flat board');
 assert.ok(suite.expert.itemTimeBonusMean <= 15, 'rare clock and freeze rewards must not dominate survival time');

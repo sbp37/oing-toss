@@ -808,6 +808,29 @@ export class GameUI {
     });
   }
 
+  // Blast-debris removal for the rescue fallback: the last orphaned cells
+  // pop away so the stage can complete. Reuses the success pop rhythm.
+  async animateSweep(cells = []) {
+    const tiles = cells
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter(Boolean);
+    tiles.forEach((tile, index) => {
+      tile.style.setProperty('--sweep-delay', `${index * 45}ms`);
+      tile.classList.add('is-sweeping');
+    });
+    await delay(360 + cells.length * 45);
+  }
+
+  // The full-clear payoff: the board is empty, so the garden art beneath it
+  // is completely visible for the first time. Hold on it briefly — long
+  // enough to register as a reward, short enough not to stall the run.
+  async celebrateFullGarden({ perfect = false } = {}) {
+    this.boardFrame.classList.add('is-garden-complete');
+    this.boardFrame.classList.toggle('is-garden-perfect', perfect);
+    await delay(perfect ? 780 : 620);
+    this.boardFrame.classList.remove('is-garden-complete', 'is-garden-perfect');
+  }
+
   async animateShuffleOut() {
     this.setShuffleVectors();
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
@@ -1280,14 +1303,16 @@ export class GameUI {
     nextStage = stage + 1,
     rows = 0,
     cols = 0,
+    perfect = false,
     boardGrew = false,
   } = {}) {
     const clear = this.elements.roundClear;
     const label = clear.querySelector('strong');
     // One line of text is the whole card, like the original's board-change
-    // pop. Board size and time bonus each announce themselves elsewhere
-    // (the board visibly grows; the gauge floats "+N초").
-    if (label) label.textContent = `STAGE ${stage} CLEAR!`;
+    // pop. PERFECT — a board emptied without one rescue shuffle — earns the
+    // word itself; everything else stays the plain clear.
+    if (label) label.textContent = perfect ? `STAGE ${stage} PERFECT!` : `STAGE ${stage} CLEAR!`;
+    clear.dataset.perfect = perfect ? '1' : '0';
     clear.dataset.stage = String(stage);
     clear.dataset.nextStage = String(nextStage);
     clear.classList.toggle('is-milestone', timeBonus > 0 || boardGrew);
@@ -1732,11 +1757,11 @@ export class GameUI {
     }
   }
 
-  renderGarden(total = 0, bestReveal = 0) {
-    const reveal = Math.max(0, Math.round(Number(bestReveal) || 0));
+  renderGarden(total = 0, cleanClears = 0) {
+    const cleared = Math.max(0, Math.round(Number(cleanClears) || 0));
     if (this.elements.gardenRevealBest && this.elements.gardenRevealBestValue) {
-      this.elements.gardenRevealBestValue.textContent = String(reveal);
-      this.elements.gardenRevealBest.hidden = reveal <= 0;
+      this.elements.gardenRevealBestValue.textContent = cleared.toLocaleString('ko-KR');
+      this.elements.gardenRevealBest.hidden = cleared <= 0;
     }
     const state = gardenProgress(total);
     if (this.elements.gardenCatsTotal) {
@@ -1852,7 +1877,7 @@ export class GameUI {
 
   showResult({
     score, maxCombo, round, successCount = 0, catsCollected = 0,
-    catsRescuedTotal = 0, gardenReveal = 0, gardenRevealRecord = false,
+    catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
@@ -1892,16 +1917,13 @@ export class GameUI {
         : { text: comparison.previousText, tone: comparison.previousTone };
     this.elements.resultBestCompare.textContent = headline.text;
     this.elements.resultBestCompare.dataset.tone = headline.tone;
-    // The freed second line now belongs to the run's other scoreboard, and
-    // only when it was actually beaten — a garden record is a real second
-    // goal, while repeating the percentage every run would be noise.
-    const gardenPercent = Math.max(0, Math.round(Number(gardenReveal) || 0));
-    const showGardenLine = Boolean(gardenRevealRecord) && gardenPercent > 0;
-    this.elements.resultPreviousCompare.hidden = !showGardenLine;
-    this.elements.resultPreviousCompare.textContent = showGardenLine
-      ? `정원 최다 공개 ${gardenPercent}%!`
-      : '';
-    if (showGardenLine) this.elements.resultPreviousCompare.dataset.tone = 'up';
+    // The freed second line celebrates clean clears — boards emptied without
+    // a rescue — which replaced the reveal-percentage record now that every
+    // stage ends fully revealed.
+    const clean = Math.max(0, Math.round(Number(cleanClears) || 0));
+    this.elements.resultPreviousCompare.hidden = clean <= 0;
+    this.elements.resultPreviousCompare.textContent = clean > 0 ? `CLEAN CLEAR ×${clean}!` : '';
+    if (clean > 0) this.elements.resultPreviousCompare.dataset.tone = 'up';
     const recordProgress = !recordEligible
       ? 0
       : newRecord || previousBest <= 0

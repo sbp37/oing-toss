@@ -8,7 +8,7 @@ const BEST_COMBO_KEY = 'oing_toss_v3_best_combo';
 const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v3_recent_result_messages';
 const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v3_rare_showcase_count';
 const CATS_RESCUED_KEY = 'oing_toss_v3_cats_rescued';
-const BEST_GARDEN_REVEAL_KEY = 'oing_toss_v3_best_garden_reveal';
+const CLEAN_CLEARS_KEY = 'oing_toss_v3_clean_clears';
 
 function safeRead(key, fallback) {
   try {
@@ -94,16 +94,16 @@ export const storageAdapter = {
     try { localStorage.setItem(RARE_SHOWCASE_COUNT_KEY, String(next)); } catch {}
     return next;
   },
-  getBestGardenReveal() {
-    const value = Number(safeRead(BEST_GARDEN_REVEAL_KEY, '0'));
-    return Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
+  // Every stage ends in a full clear now, so "best reveal %" stopped being a
+  // record — 100 became the norm. The garden's long-term number is instead
+  // how many boards were emptied without a single rescue shuffle.
+  getCleanClears() {
+    const value = Number(safeRead(CLEAN_CLEARS_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
   },
-  saveBestGardenReveal(percent) {
-    const next = Math.min(100, Math.max(
-      this.getBestGardenReveal(),
-      Math.max(0, Math.round(Number(percent) || 0)),
-    ));
-    try { localStorage.setItem(BEST_GARDEN_REVEAL_KEY, String(next)); } catch {}
+  addCleanClears(count) {
+    const next = this.getCleanClears() + Math.max(0, Math.round(Number(count) || 0));
+    try { localStorage.setItem(CLEAN_CLEARS_KEY, String(next)); } catch {}
     return next;
   },
   getCatsRescued() {

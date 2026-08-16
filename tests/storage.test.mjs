@@ -51,17 +51,16 @@ test('rescued cats accumulate across runs and never go backwards', () => {
   }
 });
 
-test('the garden reveal record only ever climbs and stays a percentage', () => {
+test('clean clears accumulate as the garden record now that every stage fully reveals', () => {
   const previous = globalThis.localStorage;
   globalThis.localStorage = new MemoryStorage();
   try {
-    assert.equal(storageAdapter.getBestGardenReveal(), 0);
-    assert.equal(storageAdapter.saveBestGardenReveal(42), 42);
-    assert.equal(storageAdapter.saveBestGardenReveal(19), 42, 'a weaker run keeps the record');
-    assert.equal(storageAdapter.saveBestGardenReveal(77), 77);
-    assert.equal(storageAdapter.saveBestGardenReveal(140), 100, 'the record cannot exceed a full board');
-    assert.equal(storageAdapter.saveBestGardenReveal(-5), 100);
-    assert.equal(storageAdapter.getBestGardenReveal(), 100);
+    assert.equal(storageAdapter.getCleanClears(), 0);
+    assert.equal(storageAdapter.addCleanClears(2), 2);
+    assert.equal(storageAdapter.addCleanClears(0), 2, 'a run with no clean clears changes nothing');
+    assert.equal(storageAdapter.addCleanClears(3), 5);
+    assert.equal(storageAdapter.addCleanClears(-4), 5, 'negative input never shrinks the total');
+    assert.equal(storageAdapter.getCleanClears(), 5);
   } finally {
     globalThis.localStorage = previous;
   }

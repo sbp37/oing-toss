@@ -2820,3 +2820,44 @@
 .play-ui-v4 .board.is-tutorial-active .tile.is-tutorial {
   opacity: 1;
 }
+
+/* Full-clear payoff ------------------------------------------------------ */
+.play-ui-v4 .tile.is-sweeping {
+  animation: tile-sweep .4s ease var(--sweep-delay, 0ms) both;
+  pointer-events: none;
+}
+
+@keyframes tile-sweep {
+  0% { opacity: 1; transform: scale(1); }
+  45% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(.5) rotate(7deg); }
+}
+
+/* The empty board holds still for a beat so the finished garden reads as
+   the clear's reward; PERFECT warms the glow a step. */
+.play-ui-v4 .board-frame.is-garden-complete {
+  animation: garden-complete-glow .65s ease both;
+}
+
+.play-ui-v4 .board-frame.is-garden-complete.is-garden-perfect {
+  animation: garden-perfect-glow .8s ease both;
+}
+
+@keyframes garden-complete-glow {
+  0% { filter: brightness(1); }
+  35% { filter: brightness(1.1) saturate(1.12); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes garden-perfect-glow {
+  0% { filter: brightness(1); }
+  30% { filter: brightness(1.18) saturate(1.2) drop-shadow(0 0 18px rgba(255, 214, 110, .55)); }
+  70% { filter: brightness(1.08) saturate(1.1) drop-shadow(0 0 10px rgba(255, 214, 110, .35)); }
+  100% { filter: brightness(1); }
+}
+
+/* PERFECT gets the gold treatment on the clear line. */
+.play-ui-v4 .play-feedback-rail .round-clear[data-perfect="1"] strong {
+  -webkit-text-stroke-color: #d9a021;
+  text-shadow: 0 0 16px rgba(217, 160, 33, .75), 0 3px 0 rgba(160, 112, 18, .35);
+}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -47,13 +47,13 @@ test('background pause rebases game, freeze and combo deadlines together', () =>
 });
 
 test('board growth pays time bonuses scaled to the step, flat clears pay small ones', () => {
-  // The one-axis ladder grows five times in small steps (+4~6 cells), so
-  // each growth pays the small six-second bonus; a nine-cell-plus jump
-  // would still pay the full ten.
-  assert.equal(roundTimeBonusSeconds(1), 6);
-  assert.equal(roundTimeBonusSeconds(2), 6);
-  assert.equal(roundTimeBonusSeconds(3), 6);
-  assert.equal(roundTimeBonusSeconds(4), 6);
+  // The square ladder grows in nine-cell-plus jumps (16→25→36) that pay the
+  // full ten, one small 36→42 step that pays six, and holds sizes between.
+  // Baseline economy, unchanged pending the full-clear simulations.
+  assert.equal(roundTimeBonusSeconds(1), 10);
+  assert.equal(roundTimeBonusSeconds(2), 0, 'the early same-size clear predates the stage-3 flat bonus');
+  assert.equal(roundTimeBonusSeconds(3), 10);
+  assert.equal(roundTimeBonusSeconds(4), 4);
   assert.equal(roundTimeBonusSeconds(5), 6);
   assert.equal(roundTimeBonusSeconds(6), 4, 'same-size clears at the 6x7 cap pay a small bonus');
   assert.equal(roundTimeBonusSeconds(10), 4);
@@ -300,16 +300,16 @@ test('the reward countdown makes the sixth combo an explicit one-more moment', (
   assert.equal(itemRewardCountdown(13, 5), 1);
 });
 
-test('only the board decides when a stage ends — there is no success target', () => {
-  // Answers remain, so the board stays no matter how much has been cleared.
-  // This is the "잉? 아직 지울 수 있는데" fix: the game never takes a board
-  // away while the player can still see something to clear.
-  assert.equal(shouldAdvanceRound({ hasAnswer: true }), false);
-  assert.equal(shouldAdvanceRound({ hasAnswer: true, boardEmpty: false }), false);
-  // Answers exhausted, or the board emptied outright: next stage.
-  assert.equal(shouldAdvanceRound({ hasAnswer: false }), true);
-  assert.equal(shouldAdvanceRound({ hasAnswer: true, boardEmpty: true }), true);
-  assert.equal(shouldAdvanceRound({}), true, 'a board with no answer at all advances');
+test('a stage ends only on an empty board; a dry board takes a rescue instead', () => {
+  // Full-clear rule: cells on the board mean the stage is still going, no
+  // matter what — running out of answers triggers the rescue shuffle, never
+  // a transition with tiles left behind.
+  assert.equal(shouldAdvanceRound({ boardEmpty: true }), true);
+  assert.equal(shouldAdvanceRound({ boardEmpty: false }), false);
+  assert.equal(shouldAdvanceRound({}), false);
+  assert.equal(needsRescueShuffle({ hasAnswer: false, boardEmpty: false }), true);
+  assert.equal(needsRescueShuffle({ hasAnswer: true, boardEmpty: false }), false);
+  assert.equal(needsRescueShuffle({ hasAnswer: false, boardEmpty: true }), false);
 
   // No stage config carries a target any more; nothing may reintroduce one.
   for (const stage of [1, 3, 5, 10, 16]) {

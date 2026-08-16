@@ -89,17 +89,89 @@ const ORIGINAL_PAIR_WEIGHTS = Object.freeze([
 const COMPLEMENT_PAIRS = Object.freeze([[1, 9], [2, 8], [3, 7], [4, 6], [5, 5]]);
 const TEN_TRIPLES = Object.freeze([[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]]);
 
-// The stage ladder grew gentler (one axis per stage, 6x7 cap), but the
-// difficulty bands below were all tuned against the old 4x4→5x5→6x6→6x7
-// ladder where the board hit full size by stage 5. This maps a stage onto
-// that old scale by matching cell counts (S3 now deals 25 cells like old
-// S2, S5 deals 36 like old S4, ...), so the value mix, seeded pairs and
-// pacing keep following the board actually on screen instead of running
-// ahead of it.
+// Splits a value list into groups that each sum to exactly ten, or returns
+// null when no such partition exists. Backtracking over descending values
+// with a node budget — rescue tails are small, and a budget miss just falls
+// back to the single-answer repair path.
+export function partitionIntoTens(values) {
+  const total = values.reduce((sum, value) => sum + value, 0);
+  if (total === 0) return [];
+  if (total % 10 !== 0) return null;
+  const sorted = values.slice().sort((a, b) => b - a);
+  const used = new Array(sorted.length).fill(false);
+  const groups = [];
+  let budget = 40000;
+
+  const fill = (need, startIndex, group) => {
+    if (budget <= 0) return false;
+    budget -= 1;
+    if (need === 0) {
+      groups.push(group.slice());
+      const nextIndex = used.findIndex((flag) => !flag);
+      if (nextIndex === -1) return true;
+      used[nextIndex] = true;
+      group.length = 0;
+      group.push(sorted[nextIndex]);
+      if (fill(10 - sorted[nextIndex], nextIndex + 1, group)) return true;
+      used[nextIndex] = false;
+      groups.pop();
+      return false;
+    }
+    for (let index = startIndex; index < sorted.length; index += 1) {
+      if (used[index] || sorted[index] > need) continue;
+      if (index > startIndex && sorted[index] === sorted[index - 1] && !used[index - 1]) continue;
+      used[index] = true;
+      group.push(sorted[index]);
+      if (fill(need - sorted[index], index + 1, group)) return true;
+      group.pop();
+      used[index] = false;
+    }
+    return false;
+  };
+
+  used[0] = true;
+  const seed = [sorted[0]];
+  if (fill(10 - sorted[0], 1, seed)) return groups.concat(groups.length && groups.at(-1) === seed ? [] : []);
+  return null;
+}
+
+// Makes a value list partitionable into tens with as few changes as
+// possible: zero when it already is, otherwise one value rewritten (two in
+// pathological cases). Returns { values, changed } or null.
+export function repairValuesForPartition(input) {
+  if (partitionIntoTens(input)) return { values: input.slice(), changed: 0 };
+  for (let index = 0; index < input.length; index += 1) {
+    for (let value = 1; value <= 9; value += 1) {
+      if (value === input[index]) continue;
+      const candidate = input.slice();
+      candidate[index] = value;
+      if (partitionIntoTens(candidate)) return { values: candidate, changed: 1 };
+    }
+  }
+  if (input.length <= 6) {
+    for (let a = 0; a < input.length; a += 1) {
+      for (let b = a + 1; b < input.length; b += 1) {
+        for (let va = 1; va <= 9; va += 1) {
+          for (let vb = 1; vb <= 9; vb += 1) {
+            const candidate = input.slice();
+            candidate[a] = va;
+            candidate[b] = vb;
+            if (partitionIntoTens(candidate)) return { values: candidate, changed: 2 };
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// The ladder holds each size for two stages (4x4 / 5x5 / 5x5 / 6x6 / 6x6 /
+// 6x7), and a repeated size is exactly where the value mix must climb one
+// step — that is the whole point of holding the size. The stage number
+// itself is therefore the difficulty phase again; the remapping that the
+// one-axis ladder needed is retired with that ladder.
 export function difficultyPhaseForStage(stage = 1) {
-  const level = Math.max(1, Math.round(Number(stage) || 1));
-  const phases = [1, 2, 2, 3, 4, 5, 6, 7, 8, 9];
-  return phases[level - 1] ?? level - 1;
+  return Math.max(1, Math.round(Number(stage) || 1));
 }
 
 function pairWeightsForRound(round = 1) {
@@ -823,6 +895,91 @@ export class BoardModel {
 
   bestBombTarget() {
     return findBestBombTarget(this.grid);
+  }
+
+  // The rescue shuffle behind the full-clear rule: when numbers remain but
+  // no sum-ten answer does, the board must become playable again without
+  // ever refilling a cleared cell. Rearrangement is tried first (the values
+  // usually allow an answer, they are just badly placed); if the value set
+  // itself cannot make ten — the common cause is a bomb blast removing an
+  // arbitrary-sum region — the smallest possible repair is applied: two
+  // occupied cells whose bounding rectangle holds no other number become a
+  // complementary pair. Returns null when fewer than two numbers remain
+  // (nothing can ever sum to ten again), otherwise { repaired }.
+  rescueRemaining() {
+    const numbered = [];
+    for (let r = 0; r < this.rows; r += 1) {
+      for (let c = 0; c < this.cols; c += 1) {
+        if (this.grid[r][c] > 0) numbered.push({ r, c });
+      }
+    }
+    if (numbered.length < 2) return null;
+
+    // The strong path: repair the value set if a blast broke it, partition
+    // everything left into groups that each sum to ten, and lay the groups
+    // out as contiguous runs. One rescue then leaves the whole tail
+    // clearable in a chain instead of drying up again two clears later —
+    // which is what turned single rescues into rescue loops.
+    const values = numbered.map(({ r, c }) => this.grid[r][c]);
+    const repairedValues = repairValuesForPartition(values);
+    if (repairedValues) {
+      const groups = partitionIntoTens(repairedValues.values);
+      if (groups) {
+        const flat = groups.flat();
+        numbered.forEach(({ r, c }, index) => { this.grid[r][c] = flat[index]; });
+        this.assignSpecialTiles([...this.specialTiles.values()]);
+        if (this.findAnswer()) return { repaired: repairedValues.changed > 0 };
+      }
+    }
+
+    // Degraded path: at least put one answer back on the board.
+    if (this.shuffleRemaining() && this.findAnswer()) return { repaired: false };
+    const pair = this.findCleanPair(numbered);
+    if (!pair) return null;
+    const [first, second] = pair;
+    const keep = Math.min(9, Math.max(1, this.grid[first.r][first.c]));
+    this.grid[second.r][second.c] = 10 - keep;
+    return this.findAnswer() ? { repaired: true } : null;
+  }
+
+  // Blast debris: fewer than two numbers can never sum to ten again, so the
+  // leftovers (an orphan number and any uncollected cats) are swept off the
+  // board. Cleared cells stay cleared — this only ever removes.
+  sweepRemaining() {
+    const removed = [];
+    for (let r = 0; r < this.rows; r += 1) {
+      for (let c = 0; c < this.cols; c += 1) {
+        if (this.grid[r][c] > 0) {
+          removed.push({ r, c });
+          this.grid[r][c] = null;
+        }
+      }
+    }
+    this.bonusCats.forEach((key) => {
+      const [r, c] = key.split(':').map(Number);
+      removed.push({ r, c });
+    });
+    this.bonusCats.clear();
+    this.specialTiles.clear();
+    return removed;
+  }
+
+  // Two occupied cells whose bounding rectangle contains no third number.
+  // A same-row pair with only gaps between them is always clean; failing
+  // that, consecutive cells in row-sorted order cannot enclose a third.
+  findCleanPair(numbered) {
+    const byRow = new Map();
+    numbered.forEach((cell) => {
+      if (!byRow.has(cell.r)) byRow.set(cell.r, []);
+      byRow.get(cell.r).push(cell);
+    });
+    for (const cells of byRow.values()) {
+      if (cells.length < 2) continue;
+      const sorted = cells.slice().sort((a, b) => a.c - b.c);
+      return [sorted[0], sorted[1]];
+    }
+    const sorted = numbered.slice().sort((a, b) => a.r - b.r || a.c - b.c);
+    return sorted.length >= 2 ? [sorted[0], sorted[1]] : null;
   }
 
   shuffleRemaining() {

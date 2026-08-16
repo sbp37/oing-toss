@@ -72,13 +72,12 @@ for (const bag of [easyBag]) {
 }
 assert.equal(tripleUnitCountForRound(110, 1), 0);
 assert.ok(tripleUnitCountForRound(110, 8) >= 7, 'late bags replace some obvious pairs with sum-ten triples');
-// Seeding and pacing follow difficultyPhaseForStage: the gentler one-axis
-// ladder maps each stage onto the old band scale by matching cell counts,
-// so stage 3 (25 cells, like the old stage 2) still seeds three pairs and
-// stage 5 (36 cells, like the old stage 4) gets the old stage-4 pacing.
+// The difficulty phase is the stage number again: the square ladder holds
+// each size for two stages, and the held stage is exactly where the value
+// mix climbs a step.
 assert.equal(adjacentSeedCountForRound(1), 4);
-assert.equal(adjacentSeedCountForRound(3), 3);
-assert.equal(adjacentSeedCountForRound(5), 1);
+assert.equal(adjacentSeedCountForRound(3), 2);
+assert.equal(adjacentSeedCountForRound(5), 0);
 assert.equal(adjacentSeedCountForRound(6), 0);
 assert.deepEqual(boardPacingForRound(1), {
   targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4,
@@ -88,11 +87,11 @@ assert.deepEqual(boardPacingForRound(1), {
   minimumAnswerZones: 3, maximumDominantCellShare: 0.52,
 });
 assert.deepEqual(boardPacingForRound(5), {
-  targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8,
-  maximumSimpleAnswers: 5,
-  minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 4,
-  minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2,
-  minimumAnswerZones: 4, maximumDominantCellShare: 0.46,
+  targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9,
+  maximumSimpleAnswers: 4,
+  minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5,
+  minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2,
+  minimumAnswerZones: 4, maximumDominantCellShare: 0.38,
 });
 assert.equal(boardPacingForRound(7, 'starter').minimumAdjacentPairs, 1);
 
@@ -140,15 +139,15 @@ assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 assert.equal(EASY_BOARD_BONUS.minimumAnswers, 1);
 
 assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, timeLimit: 120, bombChance: 0 });
-// The ladder grows one axis per stage, rows first: tile size on a phone is
-// set by the column count, so the two width steps (to 5 and to 6 columns)
-// each sit between rows-only stages that hold tile size steady.
+// The square ladder: every size is held for two stages, and the in-between
+// rectangles are gone — growing a rectangle into the next square shrank the
+// board's height on screen, so a bigger stage read as a smaller board.
 assert.deepEqual(
   [1, 2, 3, 4, 5].map((stage) => {
     const config = getRoundConfig(stage);
     return [config.cols, config.rows];
   }),
-  [[4, 4], [4, 5], [5, 5], [5, 6], [6, 6]],
+  [[4, 4], [5, 5], [5, 5], [6, 6], [6, 6]],
 );
 // The board stops growing at 6x7 so the late-stage numerals stay readable and
 // the cell keeps its near-square proportion; difficulty rides on `target` and
@@ -170,8 +169,8 @@ assert.deepEqual(
     const previous = dimensions[index - 1];
     assert.ok(config.cols >= previous.cols && config.rows >= previous.rows,
       `STAGE ${index + 1} must not shrink the board`);
-    assert.ok(config.cols === previous.cols || config.rows === previous.rows,
-      `STAGE ${index + 1} may grow only one axis, so tiles shrink as rarely as possible`);
+    assert.ok(config.cols === config.rows || (config.cols === 6 && config.rows === 7),
+      `STAGE ${index + 1} must stay square until the final 6x7`);
   });
   assert.ok(dimensions.every((config) => config.rows <= 7), 'no stage may exceed seven rows');
   assert.ok(dimensions.every((config) => config.cols <= 6), 'no stage may exceed six columns');
@@ -302,3 +301,47 @@ assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: 9
 
 Math.random = originalRandom;
 console.log('board.test.mjs: 750 regular and 300 early-assist boards plus scoring assertions passed');
+
+// ── Full-clear rule: rescue shuffle guarantees ───────────────────────────
+{
+  const { BoardModel: Model } = await import('../js/board.js');
+  const { partitionIntoTens, repairValuesForPartition } = await import('../js/board.js');
+
+  // Partition: clean sets split fully, broken sets repair minimally.
+  assert.deepEqual(partitionIntoTens([]), [], 'an empty tail is already done');
+  assert.ok(partitionIntoTens([2, 8, 3, 7]).length === 2);
+  assert.equal(partitionIntoTens([6, 7, 7]), null, 'sum divisible is not enough');
+  assert.equal(repairValuesForPartition([4, 6]).changed, 0);
+  assert.equal(repairValuesForPartition([4, 9, 8, 6]).changed, 1, 'a bomb-broken sum repairs one value');
+  {
+    const repaired = repairValuesForPartition([6, 7, 7]);
+    assert.ok(repaired && partitionIntoTens(repaired.values), 'pathological trios still become clearable');
+  }
+
+  // Rescue on a stuck board: cleared cells stay cleared, an answer returns.
+  const model = new Model(4);
+  for (let r = 0; r < 4; r += 1) for (let c = 0; c < 4; c += 1) model.grid[r][c] = null;
+  model.bonusCats.clear();
+  model.specialTiles.clear();
+  // Scattered stuck tail whose values cannot pair in place: 4,9,8,6 (sum 27,
+  // the shape a bomb blast leaves behind).
+  model.grid[0][0] = 4; model.grid[1][3] = 9; model.grid[2][1] = 8; model.grid[3][3] = 6;
+  const clearedBefore = model.grid.flat().filter((v) => v === null).length;
+  const outcome = model.rescueRemaining();
+  assert.ok(outcome, 'a four-cell stuck tail must be rescuable');
+  assert.ok(model.findAnswer(), 'rescue must put a live answer back on the board');
+  assert.equal(model.grid.flat().filter((v) => v === null).length, clearedBefore,
+    'rescue never refills a cleared cell');
+  assert.equal(model.grid.flat().filter((v) => v > 0).length, 4, 'rescue never adds or removes numbers');
+
+  // Fewer than two numbers: rescue declines and the sweep clears the debris.
+  const orphan = new Model(4);
+  for (let r = 0; r < 4; r += 1) for (let c = 0; c < 4; c += 1) orphan.grid[r][c] = null;
+  orphan.bonusCats.clear();
+  orphan.specialTiles.clear();
+  orphan.grid[2][2] = 7;
+  assert.equal(orphan.rescueRemaining(), null, 'one number can never sum to ten again');
+  const swept = orphan.sweepRemaining();
+  assert.equal(swept.length, 1);
+  assert.equal(orphan.remainingPlayableCells(), 0, 'the sweep finishes the board');
+}
