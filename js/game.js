@@ -25,9 +25,12 @@ import {
   nextBoardDropPity,
   pickMessage,
   rebasePausedTimeline,
+  gardenRevealPercent,
+  nextGardenRevealBest,
   recordEligibleForStartStage,
   roundTimeBonusSeconds,
   specialTilePlanForStage,
+  successFeedbackLevel,
   stageChallengeBonus,
   stageChallengeForStage,
   stageChallengeProgress,
@@ -113,7 +116,6 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 // Drops worth taking the lead of a moment. Bomb and clock are the everyday
 // rewards; these three are the ones a player should stop and look at.
-const RARE_BOARD_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
 // The garden only shows through from STAGE 3, so earlier boards cannot
 // uncover any of it and must not count toward the reveal record.
 const GARDEN_REVEAL_FIRST_STAGE = 3;
@@ -709,27 +711,8 @@ class OingGame {
     const cells = this.model.rows * this.model.cols;
     if (cells <= 0) return;
     const cleared = cells - this.model.remainingPlayableCells();
-    const percent = Math.round((cleared / cells) * 100);
-    this.state.maxGardenReveal = Math.max(this.state.maxGardenReveal || 0, percent);
-  }
-
-  // LEVEL 5 stage clear · 4 rare item or challenge · 3 combo milestone or an
-  // ordinary drop · 2 wide clear or cat bonus · 1 plain clear. Higher ranks
-  // own the frame; lower-ranked flourishes stand down for it.
-  successFeedbackLevel({
-    willClearStage = false,
-    challengeCompleted = false,
-    earnedDrop = null,
-    comboMilestone = 0,
-    comboGain = 1,
-    catCount = 0,
-  } = {}) {
-    if (willClearStage) return 5;
-    const rareDrop = Boolean(earnedDrop) && RARE_BOARD_DROP_IDS.includes(earnedDrop.id);
-    if (rareDrop || challengeCompleted) return 4;
-    if (comboMilestone || earnedDrop) return 3;
-    if (comboGain > 1 || catCount > 0) return 2;
-    return 1;
+    const percent = gardenRevealPercent(cleared, cells);
+    this.state.maxGardenReveal = nextGardenRevealBest(this.state.maxGardenReveal, percent);
   }
 
   async handleSuccess(rect, stats) {
@@ -746,7 +729,6 @@ class OingGame {
     this.state.successCount += 1;
     this.state.consecutiveFailures = 0;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, clearedCellCount);
-    this.trackGardenReveal();
     const clearPoints = scoreForClear(clearedCellCount, this.state.combo);
     const wideBonusPoints = scoreForWideClear(clearedCellCount, this.state.combo);
     const catBonusPoints = scoreForCatBonus(catCount, this.state.combo);
@@ -783,7 +765,7 @@ class OingGame {
     // busiest frames on screen — measured at nine simultaneous effects. The
     // rank decides who is the lead and who steps back; it never suppresses a
     // number, so score, combo and goal keep updating in the HUD regardless.
-    const successLevel = this.successFeedbackLevel({
+    const successLevel = successFeedbackLevel({
       willClearStage: shouldAdvanceRound(this.state.progress, getRoundConfig(this.state.round).target, true),
       challengeCompleted,
       earnedDrop,
@@ -843,11 +825,17 @@ class OingGame {
       // The chip always punches — that is the combo's own escalation. The
       // banner across the board is held back for rank 3 and below, so a rare
       // item or a stage clear is never fighting a COMBO card for the centre.
-      this.ui.showComboMoment(this.state.combo, { allowCelebration: successLevel <= 3 });
+      // `comboMilestone` is the same crossing check successLevel used, so
+      // the banner and the rank can never disagree about this success.
+      this.ui.showComboMoment(this.state.combo, { allowCelebration: successLevel <= 3, milestone: comboMilestone });
     }
     await Promise.all([successAnimation, specialAnimation]);
     this.model.remove(rect);
     if (blastCells.length) this.model.removeCells(blastCells);
+    // Read after every cell from this success (including a bomb blast) is
+    // actually gone, and before the board is rebuilt for the next stage —
+    // this is the one moment the model reflects what the run just revealed.
+    this.trackGardenReveal();
     if (this.finishPending) {
       this.renderBoard({ preserveScoreBurst: true });
       return;

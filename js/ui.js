@@ -1328,7 +1328,14 @@ export class GameUI {
     setTimeout(() => pop.remove(), 900);
   }
 
-  showComboMoment(combo, { allowCelebration = true } = {}) {
+  // `milestone` is whatever comboMilestoneCrossed(previousCombo, combo)
+  // returned for this success — the caller decides whether one was crossed,
+  // this method only ever renders that answer. It used to recompute its own
+  // "did combo land exactly on 3/5/8/multiple-of-8" check, which disagreed
+  // with the rank calculation's crossing check (e.g. 15 -> 17 skips 16 by
+  // landing but still crosses it), so a banner could fire at the same time
+  // successFeedbackLevel had already decided this was a plain clear.
+  showComboMoment(combo, { allowCelebration = true, milestone = 0 } = {}) {
     // The chip carries every step of the climb — it punches on each combo and
     // its band keeps rising past 8, so the escalation lives in the HUD rather
     // than in another card over the board.
@@ -1339,10 +1346,6 @@ export class GameUI {
     this.elements.comboChip.classList.add('is-punching');
     setTimeout(() => this.elements.comboChip.classList.remove('is-punching'), 520);
 
-    // Past 8 the old rule fired every third combo, which measured at roughly
-    // one banner per success — a milestone that happens constantly is not a
-    // milestone. The steps now spread out as the combo climbs.
-    const milestone = combo === 3 || combo === 5 || combo === 8 || (combo > 8 && combo % 8 === 0);
     if (!milestone || !allowCelebration) return;
 
     const celebration = this.elements.comboCelebration;

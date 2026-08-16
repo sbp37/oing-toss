@@ -325,9 +325,71 @@ export function stageChallengeProgress(challenge, {
   });
 }
 
+// The single source of truth for "did this success cross a combo
+// milestone" — 3, 5, 8, then every 8 (16, 24, 32, ...). Both the success
+// feedback rank and the combo banner call this, so they can never disagree
+// about which clears count as a milestone. A wide clear can gain two combo
+// in one step, so this checks whether a boundary sits strictly between the
+// two values, not whether nextCombo lands exactly on one; when a jump spans
+// several boundaries at once (in principle, not in current play), the
+// highest one crossed is reported, since that is the moment worth
+// celebrating.
+// How much of the board a run has cleared at once, as a percentage of the
+// board's total cells. Pulled out as a pure function (rather than reading
+// `this.model` inline) so the reveal math — and the "best never falls"
+// guarantee below — can be tested without a DOM.
+export function gardenRevealPercent(clearedCells, totalCells) {
+  const total = Math.max(0, Math.round(Number(totalCells) || 0));
+  if (total <= 0) return 0;
+  const cleared = Math.max(0, Math.min(total, Math.round(Number(clearedCells) || 0)));
+  return Math.round((cleared / total) * 100);
+}
+
+// A run's garden-reveal record can only climb, the same way a high score
+// can only climb: a weaker clear later in the run must not overwrite a
+// stronger one from earlier.
+export function nextGardenRevealBest(previousBest, percent) {
+  const previous = Math.max(0, Math.min(100, Math.round(Number(previousBest) || 0)));
+  const next = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+  return Math.max(previous, next);
+}
+
+// Drops worth taking the lead of a success moment. Bomb and clock are the
+// everyday rewards; these three are the ones a player should stop and look
+// at, so they outrank an ordinary combo-7 drop in successFeedbackLevel.
+export const RARE_BOARD_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
+
+// LEVEL 5 stage clear · 4 rare item or challenge · 3 combo milestone or an
+// ordinary drop · 2 wide clear or cat bonus · 1 plain clear. Higher ranks
+// own the frame for a success; lower-ranked flourishes (the "딱 10!" pop,
+// the combo banner) stand down for whichever rank actually applies. This is
+// a pure function specifically so the ranking and the combo banner's
+// milestone check can share one answer — comboMilestone here must already
+// be comboMilestoneCrossed's result, not recomputed.
+export function successFeedbackLevel({
+  willClearStage = false,
+  challengeCompleted = false,
+  earnedDrop = null,
+  comboMilestone = 0,
+  comboGain = 1,
+  catCount = 0,
+} = {}) {
+  if (willClearStage) return 5;
+  const rareDrop = Boolean(earnedDrop) && RARE_BOARD_DROP_IDS.includes(earnedDrop.id);
+  if (rareDrop || challengeCompleted) return 4;
+  if (comboMilestone || earnedDrop) return 3;
+  if (comboGain > 1 || catCount > 0) return 2;
+  return 1;
+}
+
 export function comboMilestoneCrossed(previousCombo, nextCombo) {
   const previous = Math.max(0, Math.round(Number(previousCombo) || 0));
   const next = Math.max(previous, Math.round(Number(nextCombo) || 0));
+  if (next > 8) {
+    const previousBand = Math.floor(Math.max(previous, 8) / 8);
+    const nextBand = Math.floor(next / 8);
+    if (nextBand > previousBand) return nextBand * 8;
+  }
   return [8, 5, 3].find((milestone) => previous < milestone && next >= milestone) || 0;
 }
 

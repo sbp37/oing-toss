@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop } from '../js/data.js';
+import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -162,6 +162,74 @@ test('two-combo WOW clears cannot skip celebration thresholds', () => {
   assert.equal(comboMilestoneCrossed(4, 6), 5);
   assert.equal(comboMilestoneCrossed(7, 9), 8);
   assert.equal(comboMilestoneCrossed(8, 10), 0);
+});
+
+test('combo milestones past eight step every eight and this is the only place that decides it', () => {
+  // This is the single rule successFeedbackLevel and the combo banner both
+  // read from; ui.js no longer computes its own landing check
+  // (combo === 3 || combo === 5 || ...), which used to disagree with this
+  // crossing check whenever a wide clear stepped over a boundary instead of
+  // landing on it (15 -> 17 skips 16 by value but still crosses it).
+  assert.equal(comboMilestoneCrossed(2, 3), 3);
+  assert.equal(comboMilestoneCrossed(4, 6), 5, '5 crossed');
+  assert.equal(comboMilestoneCrossed(7, 9), 8, '8 crossed');
+  assert.equal(comboMilestoneCrossed(15, 16), 16);
+  assert.equal(comboMilestoneCrossed(15, 17), 16, 'a +2 jump that steps over 16 still crosses it');
+  assert.equal(comboMilestoneCrossed(16, 17), 0, 'no boundary lies strictly between 16 and 17');
+  assert.equal(comboMilestoneCrossed(23, 25), 24, '24 crossed');
+  assert.equal(comboMilestoneCrossed(31, 33), 32, '32 crossed');
+});
+
+test('a combo milestone always ranks at least 3, so "딱 10!" never shows alongside the banner', () => {
+  // handleSuccess only shows the "딱 10!" pop when successLevel <= 2 and
+  // only shows the combo banner when comboMilestone is truthy. If a
+  // milestone could ever produce rank <= 2 the two would render together;
+  // this is the invariant that guarantees they cannot.
+  for (const comboMilestone of [3, 5, 8, 16, 24, 32]) {
+    const level = successFeedbackLevel({ comboMilestone, comboGain: 1, catCount: 0 });
+    assert.ok(level >= 3, `milestone ${comboMilestone} produced rank ${level}, which would show 딱 10!`);
+  }
+  // The same must hold when a milestone lands alongside a wide clear or a
+  // cat bonus — those alone would only earn rank 2.
+  assert.equal(successFeedbackLevel({ comboMilestone: 8, comboGain: 2, catCount: 1 }), 3);
+
+  // An ordinary drop without a milestone also ranks 3, for the same reason:
+  // showComboReward's pop would otherwise share the frame with 딱 10!.
+  assert.equal(successFeedbackLevel({ earnedDrop: { id: 'bomb' }, comboMilestone: 0 }), 3);
+
+  // Full ladder, sanity-checked end to end.
+  assert.equal(successFeedbackLevel({}), 1, 'a plain clear with no other signal ranks 1');
+  assert.equal(successFeedbackLevel({ comboGain: 2 }), 2, 'a wide clear ranks 2');
+  assert.equal(successFeedbackLevel({ catCount: 1 }), 2, 'a cat bonus ranks 2');
+  assert.equal(successFeedbackLevel({ challengeCompleted: true }), 4);
+  assert.equal(successFeedbackLevel({ earnedDrop: { id: 'megabomb' } }), 4, 'a rare drop outranks an ordinary one');
+  assert.equal(successFeedbackLevel({ willClearStage: true, comboMilestone: 8 }), 5, 'stage clear always wins');
+});
+
+test('the garden reveal percentage and its run-best both move only the right way', () => {
+  // Clearing more cells raises the percentage; this is what makes the
+  // ordering fix in handleSuccess (track after model.remove, not before)
+  // matter — reading it one success early always understated the reveal.
+  assert.equal(gardenRevealPercent(0, 36), 0);
+  assert.equal(gardenRevealPercent(9, 36), 25, 'a quarter of the board cleared');
+  assert.equal(gardenRevealPercent(18, 36), 50, 'reveal increases as more cells clear');
+  // A bomb blast clears extra cells beyond the matched rectangle; whatever
+  // count is passed in must be reflected, matching that the fix reads the
+  // model after both this.model.remove(rect) and this.model.removeCells
+  // (the bomb's blastCells) have already run.
+  assert.equal(gardenRevealPercent(26, 36), 72, 'the match plus a bomb blast both count');
+  // Clearing the whole board — including the clear that ends the stage —
+  // must read as a full reveal, not the stage-1-early undercount.
+  assert.equal(gardenRevealPercent(36, 36), 100, 'a fully cleared board reveals 100%');
+  assert.equal(gardenRevealPercent(40, 36), 100, 'cleared cannot exceed the board');
+  assert.equal(gardenRevealPercent(5, 0), 0, 'a board with no cells has nothing to reveal');
+
+  // The run's best never falls: a smaller reveal later in the run, or on a
+  // later stage, must not erase an earlier larger one.
+  assert.equal(nextGardenRevealBest(0, 25), 25);
+  assert.equal(nextGardenRevealBest(70, 40), 70, 'a weaker clear does not lower the run best');
+  assert.equal(nextGardenRevealBest(40, 70), 70, 'a stronger clear does raise it');
+  assert.equal(nextGardenRevealBest(100, 0), 100);
 });
 
 test('board items appear only when a seven-combo boundary is crossed', () => {
