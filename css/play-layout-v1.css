@@ -2526,91 +2526,181 @@
   text-shadow: 0 0 18px rgba(22, 160, 133, .65), 0 3px 0 rgba(11, 110, 91, .35);
 }
 
-/* Sheet mode is a bottom sheet, not a full screen: the board above it has to
-   stay readable, because the missed answers lit on it are the reason the
-   sheet sits over the board at all. Everything below trims the result card
-   to roughly the lower half. */
+/* Result sheet, laid out after the original's end panel ------------------
+   Three zones on one line — share on the left, the score in the middle
+   with its record comparison under it, the run's two headline numbers on
+   the right — then the cat's line, then a wide retry beside a narrow
+   ranking button. Same shape as the original's bottom panel, in this
+   game's own materials. The rescued-cat tile is gone: that count belongs
+   to the garden, which is where it accumulates. */
 .screen-result.is-sheet .result-card {
-  padding: 12px 16px 10px;
-  gap: 6px;
+  display: block;
+  margin-top: auto;
+  padding: 12px 14px 10px;
+  border-radius: 24px 24px 0 0;
+}
+
+.screen-result.is-sheet .result-headline {
+  display: grid;
+  grid-template-columns: minmax(58px, 21%) 1fr minmax(66px, 25%);
+  align-items: center;
+  gap: 8px;
+}
+
+.result-share-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgba(226, 186, 108, .9);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fdeec4, #f6dda1);
+  box-shadow: 0 2px 0 rgba(186, 146, 74, .28);
+  color: #8a6524;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.result-share-chip img { width: 13px; height: 13px; object-fit: contain; }
+.result-share-chip:active { transform: translateY(1px); box-shadow: none; }
+
+.screen-result.is-sheet .result-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
 }
 
 .screen-result.is-sheet .final-score {
-  font-size: clamp(38px, 12vw, 52px);
+  font-size: clamp(36px, 11.5vw, 50px);
   line-height: 1;
 }
 
-.screen-result.is-sheet .result-score-label { margin-bottom: -2px; }
-.screen-result.is-sheet .result-score-label img { width: 15px; height: 15px; }
-.screen-result.is-sheet .result-stage-progress { font-size: 12px; }
-
-.screen-result.is-sheet .result-grid { gap: 6px; }
-.screen-result.is-sheet .result-grid > div { padding: 6px 4px; }
-.screen-result.is-sheet .result-grid img { width: 16px; height: 16px; }
-.screen-result.is-sheet .result-grid span { font-size: 10px; }
-.screen-result.is-sheet .result-grid b { font-size: 16px; }
-
-.screen-result.is-sheet .result-cat-row {
-  gap: 8px;
-  padding-block: 6px;
-}
-
-.screen-result.is-sheet .result-character-stage { width: 62px; }
-.screen-result.is-sheet .result-message { font-size: 13px; padding: 8px 12px; }
-
-.screen-result.is-sheet .result-actions { padding-block: 6px 4px; }
-.screen-result.is-sheet .result-secondary-actions { padding-top: 4px; }
-.screen-result.is-sheet .btn { min-height: 44px; }
-.screen-result.is-sheet .result-secondary-actions .btn { min-height: 38px; font-size: 13px; }
-
-/* Second pass: the sheet still ate two-thirds of the screen and covered the
-   board it is supposed to sit over. The cat portrait goes (its line stays),
-   the sections share one panel colour so there is no seam showing board
-   through the gap, and the whole thing is capped so the board always keeps
-   its top rows. */
-.screen-result.is-sheet .result-card,
-.screen-result.is-sheet .result-cat-row,
-.screen-result.is-sheet .result-actions,
-.screen-result.is-sheet .result-secondary-actions {
-  background: rgba(255, 253, 247, .97);
-  box-shadow: none;
+.screen-result.is-sheet .score-compare-primary {
+  margin: 0;
+  padding: 0;
   border: 0;
-}
-
-.screen-result.is-sheet .result-card {
-  border-radius: 24px 24px 0 0;
-  box-shadow: 0 -8px 22px rgba(28, 78, 120, .18);
-}
-
-.screen-result.is-sheet .result-character-stage { display: none; }
-
-.screen-result.is-sheet .result-cat-row {
-  justify-content: center;
-  padding-block: 2px 4px;
-}
-
-.screen-result.is-sheet .result-message {
-  width: 100%;
-  padding: 6px 12px;
-  font-size: 12.5px;
+  background: none;
+  color: #7d8794;
+  font-size: 11.5px;
+  font-weight: 700;
   text-align: center;
 }
 
-.screen-result.is-sheet .result-message::before,
-.screen-result.is-sheet .result-message::after { display: none; }
+.result-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  text-align: right;
+}
 
-.screen-result.is-sheet .result-card { padding: 10px 16px 8px; gap: 4px; }
-.screen-result.is-sheet .final-score { font-size: clamp(34px, 10.5vw, 46px); }
-.screen-result.is-sheet .score-comparisons { margin-block: 2px; }
-.screen-result.is-sheet .score-compare-primary { font-size: 11.5px; padding: 5px 8px; }
-.screen-result.is-sheet .result-grid > div { padding: 5px 3px; }
-.screen-result.is-sheet .result-actions { padding-block: 4px; }
-.screen-result.is-sheet .btn { min-height: 42px; }
-.screen-result.is-sheet .result-secondary-actions .btn { min-height: 34px; font-size: 12.5px; }
-.screen-result.is-sheet .result-secondary-actions { padding-block: 2px calc(8px + var(--safe-bottom)); }
+.result-stats > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 5px;
+}
 
-/* The result screen is a flex column with a gap; inside the sheet that gap
-   showed as stripes of board between the panel's sections. */
+.result-stats dt {
+  color: #8b95a2;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.result-stats dd {
+  margin: 0;
+  color: #3b526e;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.screen-result.is-sheet .result-stage-progress {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.screen-result.is-sheet .new-record { margin: 6px auto 0; }
+.screen-result.is-sheet .score-compare-secondary { margin: 4px 0 0; font-size: 11px; text-align: center; }
+.screen-result.is-sheet .result-record-meter { margin-top: 7px; }
+
+/* Cat line and buttons share the card's surface so the sheet reads as one
+   panel rather than stacked strips with board showing through. */
+.screen-result.is-sheet .result-cat-row,
+.screen-result.is-sheet .result-actions {
+  background: rgba(255, 253, 247, .97);
+  border: 0;
+  box-shadow: none;
+}
+
+.screen-result.is-sheet .result-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 14px 4px;
+}
+
+.screen-result.is-sheet .result-character-stage { width: 54px; flex: 0 0 auto; }
+.screen-result.is-sheet .result-message {
+  flex: 1;
+  padding: 7px 11px;
+  font-size: 12.5px;
+}
+
+.screen-result.is-sheet .result-actions {
+  display: grid;
+  grid-template-columns: 1fr minmax(84px, 30%);
+  align-items: stretch;
+  gap: 8px;
+  padding: 4px 14px calc(8px + var(--safe-bottom));
+}
+
+.screen-result.is-sheet .result-actions .btn { min-height: 46px; margin: 0; }
+.screen-result.is-sheet #retry-button { grid-column: 1; font-size: 16px; }
+.screen-result.is-sheet .result-ranking-button { grid-column: 2; font-size: 13px; }
+.screen-result.is-sheet .result-ranking-button .button-icon { width: 15px; height: 15px; }
+
+.screen-result.is-sheet .result-home-button {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 2px;
+}
+
 .screen-result.is-sheet { gap: 0; }
 .screen-result.is-sheet > * { margin: 0; }
-.screen-result.is-sheet .result-card { margin-top: auto; }
+
+/* The share chip wrapped mid-word and the comparison line pushed into the
+   score; the middle column needs the room and the chip must never wrap. */
+.screen-result.is-sheet .result-headline {
+  grid-template-columns: minmax(52px, 17%) 1fr minmax(74px, 27%);
+  gap: 6px;
+}
+
+.result-share-chip {
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.result-share-chip img { width: 14px; height: 14px; }
+
+.screen-result.is-sheet .score-compare-primary {
+  font-size: 10.5px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

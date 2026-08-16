@@ -143,8 +143,6 @@ export class GameUI {
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
-      finalCats: document.querySelector('#final-cats'),
-      finalCatsTotal: document.querySelector('#final-cats-total'),
       newRecord: document.querySelector('#new-record'),
       resultBestCompare: document.querySelector('#result-best-compare'),
       resultPreviousCompare: document.querySelector('#result-previous-compare'),
@@ -1870,15 +1868,8 @@ export class GameUI {
       maxCombo,
       round,
     });
-    this.elements.finalCats.textContent = String(catsCollected);
-    // The running total turns the per-run count into a visible collection.
-    // On a first run (or none rescued yet) the total equals the run count
-    // and would just repeat the number, so the line stays hidden.
-    const total = Math.max(0, Math.round(Number(catsRescuedTotal) || 0));
-    if (this.elements.finalCatsTotal) {
-      this.elements.finalCatsTotal.textContent = `모두 ${total.toLocaleString('ko-KR')}마리`;
-      this.elements.finalCatsTotal.hidden = !(total > catsCollected);
-    }
+    // Rescued-cat counts live in the garden screen, which is where they
+    // actually accumulate; the sheet keeps to the run's own headline.
     this.elements.newRecord.hidden = !newRecord;
     this.elements.resultDecor.classList.toggle('is-record', newRecord);
 
