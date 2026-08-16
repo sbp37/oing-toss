@@ -1950,6 +1950,48 @@
   line-height: 1.05;
 }
 
+/* The score is the reason this screen exists, but it used to be merely the
+   largest of eight same-width bands. Retiring the meter's duplicate label
+   paid for this step up, so the total dominates without the card growing —
+   the short-screen block below still holds its own smaller size. */
+/* The ceiling is set by the widest total the card must hold, not by taste:
+   at 68px a nine-character score overflowed the card on a 430px phone. */
+.screen-result .final-score {
+  font-size: clamp(44px, 16.4vw, 64px);
+  letter-spacing: -0.06em;
+}
+
+/* styles.css already compacts the whole result screen under 690px tall;
+   this restates that intent at matching specificity so the step-up above
+   cannot silently undo it on a short phone. */
+@media (max-height: 690px) {
+  .screen-result .final-score { font-size: clamp(36px, 11.6vw, 46px); }
+}
+
+/* The coin pill above it competed for the same attention at nearly the size
+   of the stage line. Quieter, it reads as the score's caption. */
+.screen-result .result-score-label {
+  font-size: 12.5px;
+}
+
+.screen-result .result-score-label img { width: 15px; height: 15px; }
+
+/* Button hierarchy: one clear next action, then a quiet pair, then the way
+   out. The share button was mint and the ranking button cream, so the two
+   secondary actions read as rivals of different weights instead of a pair —
+   and mint is the game's "go" colour, which belongs to 한 판 더 alone. */
+.screen-result .result-actions .result-share-button,
+.screen-result .result-actions .result-ranking-button {
+  border-color: rgba(226, 205, 165, .95);
+  background: linear-gradient(#fffdf7, #fdf1dc);
+  color: #8a7259;
+}
+
+.screen-result .result-actions .result-share-button .button-icon,
+.screen-result .result-actions .result-ranking-button .button-icon {
+  opacity: .9;
+}
+
 /* Running total under the per-run rescue count. It only shows from the
    second run on (the JS hides it while total == this run), so first-run
    cards keep their three matching rows. */
@@ -1962,12 +2004,25 @@
   white-space: nowrap;
 }
 
-/* The record meter is the one element that has a label and a bar; centre
-   the label over the bar so it sits on the card's axis like everything else. */
+/* The record meter is now bar-only: its printed label repeated the
+   comparison line above it word for word, so the text is kept for assistive
+   tech and taken out of the visual flow. The height that frees up goes to
+   the score, which is what the screen is actually about. */
 .screen-result .result-record-meter {
-  gap: 5px;
+  gap: 0;
   margin-top: 10px;
   text-align: center;
+}
+
+.screen-result .result-record-meter > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .screen-result .result-record-meter > i {

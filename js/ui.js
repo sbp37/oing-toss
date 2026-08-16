@@ -2056,11 +2056,18 @@ export class GameUI {
       ? 1
       : clamp(score / Math.max(1, previousBest), 0, 1);
     const recordPercent = Math.round(recordProgress * 100);
-    this.elements.resultRecordMeterLabel.textContent = !recordEligible
-      ? '연습 기록 · 최고기록 제외'
-      : newRecord
-      ? '새 최고기록 달성!'
-      : `최고기록 도전 ${recordPercent}%`;
+    // The meter only earns its row when it says something the copy above it
+    // does not. A new record pins it at 100% and a practice run excludes it
+    // from records entirely, and in both cases the line under the score has
+    // already said so — so the meter is a chase bar, shown only while there
+    // is a record left to chase.
+    const meterIsInformative = recordEligible && !newRecord && previousBest > 0;
+    this.elements.resultRecordMeter.hidden = !meterIsInformative;
+    // Its own label repeated the comparison line verbatim ("최고기록 도전
+    // 15%" over "최고 기록의 15%까지 왔다냥"), so the bar now carries the
+    // figure for assistive tech instead of printing it twice.
+    this.elements.resultRecordMeterLabel.textContent = `최고기록 도전 ${recordPercent}%`;
+    this.elements.resultRecordMeter.setAttribute('aria-label', `최고기록 도전 진행도 ${recordPercent}%`);
     this.elements.resultRecordMeter.style.setProperty('--record-progress', String(recordProgress));
     this.elements.resultRecordMeter.classList.remove('is-animating');
 
