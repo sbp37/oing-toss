@@ -2704,3 +2704,101 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Sheet geometry ---------------------------------------------------------
+   The sheet is one panel on a single rhythm, not four stacked components
+   each keeping its full-screen metrics. The measurements that made it read
+   as a prototype: .result-cat-row still carried min-height:137px and the
+   portrait had a width cap but no height cap, so one line of the cat's
+   dialogue occupied 143px — forty per cent of the sheet — as blank cream.
+   Everything below pins the heights and puts every zone on the same
+   16px gutter. */
+:root { --sheet-gutter: 16px; }
+
+.screen-result.is-sheet .result-card,
+.screen-result.is-sheet .result-cat-row,
+.screen-result.is-sheet .result-actions {
+  padding-inline: var(--sheet-gutter);
+  background: linear-gradient(180deg, rgba(255, 254, 250, .985), rgba(255, 251, 242, .985));
+  border: 0;
+  box-shadow: none;
+}
+
+.screen-result.is-sheet .result-card {
+  padding-block: 13px 9px;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -9px 24px rgba(28, 78, 120, .17);
+}
+
+/* Headline: a fixed-width chip, the score, and the two run numbers, all
+   centred on one 62px row so nothing floats against dead space. */
+.screen-result.is-sheet .result-headline {
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 62px;
+}
+
+.result-share-chip { width: 64px; min-height: 40px; }
+
+.screen-result.is-sheet .final-score { font-size: clamp(34px, 10.5vw, 46px); }
+
+.screen-result.is-sheet .score-compare-primary {
+  margin-top: 1px;
+  font-size: 11px;
+}
+
+.result-stats { gap: 2px; }
+.result-stats dd { font-size: 16px; }
+
+/* A hairline under the headline gives the numbers a floor to sit on. */
+.screen-result.is-sheet .result-stage-progress {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(203, 186, 156, .34);
+  color: #8b95a2;
+  font-size: 11.5px;
+}
+
+/* Hidden meter must not leave its margin behind. */
+.screen-result.is-sheet .result-record-meter[hidden],
+.screen-result.is-sheet .result-record-meter:not([style*="--record-progress"]) { margin-top: 0; }
+.screen-result.is-sheet .result-record-meter { margin-top: 8px; }
+
+/* Cat line: a small square portrait and one speech line, on a 52px row. */
+.screen-result.is-sheet .result-cat-row {
+  min-height: 0;
+  padding-block: 6px;
+  gap: 9px;
+}
+
+.screen-result.is-sheet .result-character-stage {
+  width: 46px;
+  height: 46px;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.screen-result.is-sheet .result-character-stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.screen-result.is-sheet .result-message {
+  min-height: 0;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+/* Actions on the same gutter, home tucked under without extra air. */
+.screen-result.is-sheet .result-actions {
+  padding-block: 2px calc(10px + var(--safe-bottom));
+  gap: 9px;
+  row-gap: 6px;
+}
+
+.screen-result.is-sheet .result-actions .btn { min-height: 48px; }
+.screen-result.is-sheet .result-home-button { margin-top: 0; min-height: 34px; }
