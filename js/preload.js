@@ -1,5 +1,5 @@
 const PLAY_CRITICAL_ASSETS = Object.freeze([
-  'assets/backgrounds/play-bg-rose-morning-v2.webp',
+  'assets/backgrounds/play-bg-spring-meadow-v1.webp',
   'assets/ui/play-control-pause-v3.webp',
   'assets/ui/play-control-sound-v3.webp',
   'assets/ui/play-stage-badge-v3.webp',
