@@ -56,6 +56,9 @@
           <span><em>최고기록</em><small id="home-best-stage">STAGE 1</small></span>
           <strong id="home-best-score">0</strong>
         </div>
+        <button class="btn btn-cream home-garden-button" id="home-garden-button" type="button">
+          <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" decoding="async" alt=""><span>내 정원</span><b id="home-garden-count">고양이 0마리</b>
+        </button>
       </div>
     </section>
 
@@ -276,6 +279,27 @@
         </section>
         <button class="btn btn-primary ranking-play-button" id="ranking-play-button" type="button">한 판 더 하기</button>
         <small class="record-online-note">친구 랭킹은 계정 연동 후 열릴 예정이야</small>
+      </div>
+    </div>
+
+    <div class="overlay" id="garden-overlay" hidden>
+      <div class="mini-panel garden-panel" role="dialog" aria-modal="true" aria-labelledby="garden-title">
+        <button class="overlay-close" id="garden-close" type="button" aria-label="닫기"><i></i></button>
+        <div class="record-heading">
+          <img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt="">
+          <div><span>MY SECRET GARDEN</span><h2 id="garden-title">내 정원</h2></div>
+        </div>
+        <div class="garden-scene" id="garden-scene">
+          <img class="garden-scene-cat" src="assets/characters/cat-cheer.webp" width="431" height="481" loading="lazy" decoding="async" alt="정원에서 기뻐하는 블루 고양이">
+        </div>
+        <p class="garden-count">구조한 고양이 <strong id="garden-cats-total">0</strong>마리</p>
+        <div class="garden-progress" aria-label="다음 정원 친구까지 진행도">
+          <span id="garden-progress-label">첫 친구까지 3마리</span>
+          <i><b id="garden-progress-fill"></b></i>
+        </div>
+        <ul class="garden-tiers" id="garden-tiers" aria-label="정원 친구 목록"></ul>
+        <button class="btn btn-primary" id="garden-play-button" type="button">고양이 구하러 가기</button>
+        <small class="record-online-note">고양이 칸을 조합에 넣어 지우면 구조된다냥</small>
       </div>
     </div>
 

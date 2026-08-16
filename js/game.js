@@ -209,6 +209,7 @@ class OingGame {
     this.renderBoard();
     this.ui.updateBestScore(storageAdapter.getBestScore());
     this.ui.updateHighestStage(storageAdapter.getHighestStage());
+    this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     this.ui.showScreen('home');
     schedulePlayAssetsPreload();
   }
@@ -293,6 +294,12 @@ class OingGame {
     document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
+      this.start(this.runtime.forcedRound || 1);
+    });
+    document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
+    document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
+    document.querySelector('#garden-play-button').addEventListener('click', () => {
+      this.ui.setOverlay('garden-overlay', false);
       this.start(this.runtime.forcedRound || 1);
     });
     const toggleSound = () => {
@@ -1575,6 +1582,7 @@ class OingGame {
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
     this.ui.updateBestScore(recordEligible ? Math.max(oldBest, this.state.score) : oldBest);
+    this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
       score: this.state.score,
       maxCombo: this.state.maxCombo,
@@ -1631,6 +1639,13 @@ class OingGame {
     this.ui.renderRanking(records);
     this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     this.ui.setOverlay('ranking-overlay', true);
+  }
+
+  openGarden() {
+    const total = storageAdapter.getCatsRescued();
+    this.ui.updateCatsRescued(total);
+    this.ui.renderGarden(total);
+    this.ui.setOverlay('garden-overlay', true);
   }
 
   async shareResult() {

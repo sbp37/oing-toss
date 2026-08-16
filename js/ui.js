@@ -1,8 +1,10 @@
 import { cellsInRect } from './board.js';
 import {
   BOARD_DROP_ITEMS,
+  GARDEN_MILESTONES,
   buildScoreComparisons,
   comboMultiplier,
+  gardenProgress,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
@@ -142,6 +144,12 @@ export class GameUI {
       rankingEmpty: document.querySelector('#ranking-empty'),
       rankingCatsLine: document.querySelector('#ranking-cats-line'),
       rankingCatsTotal: document.querySelector('#ranking-cats-total'),
+      homeGardenCount: document.querySelector('#home-garden-count'),
+      gardenScene: document.querySelector('#garden-scene'),
+      gardenCatsTotal: document.querySelector('#garden-cats-total'),
+      gardenProgressLabel: document.querySelector('#garden-progress-label'),
+      gardenProgressFill: document.querySelector('#garden-progress-fill'),
+      gardenTiers: document.querySelector('#garden-tiers'),
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
@@ -1874,9 +1882,66 @@ export class GameUI {
 
   updateCatsRescued(total = 0) {
     const count = Math.max(0, Math.round(Number(total) || 0));
-    if (!this.elements.rankingCatsLine || !this.elements.rankingCatsTotal) return;
-    this.elements.rankingCatsTotal.textContent = count.toLocaleString('ko-KR');
-    this.elements.rankingCatsLine.hidden = count <= 0;
+    const formatted = count.toLocaleString('ko-KR');
+    if (this.elements.rankingCatsLine && this.elements.rankingCatsTotal) {
+      this.elements.rankingCatsTotal.textContent = formatted;
+      this.elements.rankingCatsLine.hidden = count <= 0;
+    }
+    if (this.elements.homeGardenCount) {
+      this.elements.homeGardenCount.textContent = `고양이 ${formatted}마리`;
+    }
+  }
+
+  renderGarden(total = 0) {
+    const state = gardenProgress(total);
+    if (this.elements.gardenCatsTotal) {
+      this.elements.gardenCatsTotal.textContent = state.cats.toLocaleString('ko-KR');
+    }
+    if (this.elements.gardenProgressLabel) {
+      this.elements.gardenProgressLabel.textContent = state.complete
+        ? '정원을 모두 채웠다냥!'
+        : `${state.next.label}까지 ${state.remaining.toLocaleString('ko-KR')}마리`;
+    }
+    if (this.elements.gardenProgressFill) {
+      this.elements.gardenProgressFill.style.width = `${Math.round(state.progress * 100)}%`;
+    }
+    if (this.elements.gardenScene) {
+      // Unlocked decorations are the garden itself filling in. Positions are
+      // fixed per tier so a returning player finds the same garden, with the
+      // newest friend arriving in an empty spot rather than reshuffling.
+      this.elements.gardenScene.querySelectorAll('.garden-decor').forEach((decor) => decor.remove());
+      GARDEN_MILESTONES.forEach((milestone, index) => {
+        if (!state.unlocked.includes(milestone.id)) return;
+        const decor = document.createElement('img');
+        decor.className = `garden-decor garden-decor-${milestone.id}`;
+        decor.dataset.slot = String(index);
+        decor.src = milestone.asset;
+        decor.alt = '';
+        this.elements.gardenScene.appendChild(decor);
+      });
+      this.elements.gardenScene.dataset.tier = String(state.unlocked.length);
+    }
+    if (this.elements.gardenTiers) {
+      const tiers = GARDEN_MILESTONES.map((milestone) => {
+        const unlocked = state.unlocked.includes(milestone.id);
+        const item = document.createElement('li');
+        item.className = 'garden-tier';
+        item.classList.toggle('is-unlocked', unlocked);
+        const icon = document.createElement('img');
+        icon.src = milestone.asset;
+        icon.alt = '';
+        const label = document.createElement('span');
+        label.textContent = milestone.label;
+        const requirement = document.createElement('b');
+        requirement.textContent = unlocked ? '완료' : `${milestone.cats}마리`;
+        item.append(icon, label, requirement);
+        item.setAttribute('aria-label', unlocked
+          ? `${milestone.label} 해금 완료`
+          : `${milestone.label} 잠김, 고양이 ${milestone.cats}마리 필요`);
+        return item;
+      });
+      this.elements.gardenTiers.replaceChildren(...tiers);
+    }
   }
 
   renderRanking({ summary } = {}) {

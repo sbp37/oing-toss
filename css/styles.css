@@ -4807,6 +4807,150 @@ img {
   font-variant-numeric: tabular-nums;
 }
 
+/* Secret garden collection ------------------------------------------------
+   The garden panel reuses the records panel's chrome; only the scene, the
+   step meter and the tier list are new. */
+.home-garden-button {
+  grid-column: 1 / -1;
+  min-height: 46px;
+  gap: 7px;
+}
+.home-garden-button b {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255,236,224,0.9);
+  color: #cf7565;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.garden-scene {
+  position: relative;
+  overflow: hidden;
+  height: 132px;
+  margin: 4px 0 9px;
+  border: 1.5px solid rgba(190,214,178,0.6);
+  border-radius: 18px;
+  /* Framed on the flower beds at the bottom of the artwork, not its middle:
+     the middle holds the illustration's own cat, which sat beside the
+     cheering cat below and read as two different cats in one garden. */
+  background:
+    linear-gradient(rgba(255,252,250,0.14), rgba(255,250,248,0.14)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp") center bottom / 150% auto no-repeat;
+  box-shadow: inset 0 2px 6px rgba(120,150,110,0.12);
+}
+
+.garden-scene-cat {
+  position: absolute;
+  left: 8px;
+  bottom: -6px;
+  width: 74px;
+  height: 82px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(120,110,90,0.2));
+}
+
+/* Fixed slots keep a returning player's garden recognisable: each unlocked
+   friend always lands in the same spot, and the next one fills a gap. */
+.garden-decor {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(140,110,80,0.22));
+  animation: garden-decor-in 420ms cubic-bezier(.18,.82,.24,1.14) both;
+}
+.garden-decor[data-slot="0"] { right: 20%; bottom: 16%; }
+.garden-decor[data-slot="1"] { right: 8%; bottom: 34%; width: 26px; height: 26px; }
+.garden-decor[data-slot="2"] { right: 33%; top: 18%; }
+.garden-decor[data-slot="3"] { left: 40%; top: 10%; }
+.garden-decor[data-slot="4"] { right: 15%; top: 44%; width: 18px; height: 18px; }
+.garden-decor[data-slot="5"] { left: 27%; top: 30%; width: 30px; height: 26px; }
+
+@keyframes garden-decor-in {
+  0% { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+  60% { opacity: 1; transform: scale(1.12) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.garden-count {
+  margin: 0 0 7px;
+  color: #7d8a76;
+  font-size: 13px;
+  font-weight: 850;
+  text-align: center;
+}
+.garden-count strong {
+  color: #d96474;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.garden-progress { display: grid; gap: 4px; margin-bottom: 10px; }
+.garden-progress span {
+  color: #97887a;
+  font-size: 11.5px;
+  font-weight: 850;
+  text-align: center;
+}
+.garden-progress i {
+  display: block;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(214,226,205,0.75);
+  box-shadow: inset 0 1px 2px rgba(109,123,95,0.16);
+}
+.garden-progress b {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8fd9a8, #64c58b);
+  transition: width 320ms cubic-bezier(.2,.72,.25,1);
+}
+
+.garden-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.garden-tier {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 3px 6px;
+  border: 1px solid rgba(222,210,186,0.7);
+  border-radius: 13px;
+  background: rgba(248,247,241,0.8);
+}
+.garden-tier img { width: 20px; height: 20px; object-fit: contain; opacity: 0.32; filter: grayscale(1); }
+.garden-tier span { color: #a2988c; font-size: 10.5px; font-weight: 850; white-space: nowrap; }
+.garden-tier b {
+  color: #b0a496;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.garden-tier.is-unlocked {
+  border-color: rgba(139,201,157,0.7);
+  background: linear-gradient(180deg, rgba(240,255,244,0.95), rgba(216,244,225,0.85));
+}
+.garden-tier.is-unlocked img { opacity: 1; filter: none; }
+.garden-tier.is-unlocked span { color: #4f8362; }
+.garden-tier.is-unlocked b { color: #58a273; }
+
 .record-history {
   position: relative;
   margin-top: 8px;

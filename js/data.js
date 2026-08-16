@@ -675,6 +675,38 @@ export function resultRetryLabel({
   return '한 판 더!';
 }
 
+// The secret garden's collection ladder. Rescued cats are the only currency,
+// and every tier is reachable by ordinary play — the first lands inside a
+// single run so the ladder introduces itself, and the spacing widens so the
+// last tiers stay a long-term reason to come back.
+export const GARDEN_MILESTONES = Object.freeze([
+  Object.freeze({ id: 'sprout', cats: 3, label: '새싹', asset: 'assets/decor/flower.webp', copy: '첫 싹이 돋았다냥!' }),
+  Object.freeze({ id: 'flowers', cats: 10, label: '꽃밭', asset: 'assets/decor/flower.webp', copy: '꽃밭이 넓어졌다냥!' }),
+  Object.freeze({ id: 'hearts', cats: 25, label: '하트꽃', asset: 'assets/decor/heart.webp', copy: '정원에 하트가 피었다냥!' }),
+  Object.freeze({ id: 'stars', cats: 50, label: '별꽃', asset: 'assets/decor/star.webp', copy: '밤이면 별꽃이 빛난다냥!' }),
+  Object.freeze({ id: 'sparkle', cats: 100, label: '반짝임', asset: 'assets/decor/sparkle.webp', copy: '정원이 반짝이기 시작했다냥!' }),
+  Object.freeze({ id: 'cloud', cats: 200, label: '구름다리', asset: 'assets/decor/cloud.webp', copy: '구름까지 이어진 정원이다냥!' }),
+]);
+
+export function gardenProgress(catsRescued = 0) {
+  const cats = Math.max(0, Math.round(Number(catsRescued) || 0));
+  const unlocked = GARDEN_MILESTONES.filter((milestone) => cats >= milestone.cats);
+  const next = GARDEN_MILESTONES.find((milestone) => cats < milestone.cats) || null;
+  // Progress is measured inside the current step, not from zero, so the bar
+  // restarts after each unlock instead of crawling for the last two tiers.
+  const floor = unlocked.length ? unlocked.at(-1).cats : 0;
+  const span = next ? Math.max(1, next.cats - floor) : 1;
+  return Object.freeze({
+    cats,
+    unlocked: Object.freeze(unlocked.map((milestone) => milestone.id)),
+    latest: unlocked.length ? unlocked.at(-1) : null,
+    next,
+    remaining: next ? next.cats - cats : 0,
+    progress: next ? Math.min(1, Math.max(0, (cats - floor) / span)) : 1,
+    complete: !next,
+  });
+}
+
 export function comboMultiplier(combo) {
   return 1 + Math.min(Math.max(combo - 1, 0), 9) * 0.15;
 }

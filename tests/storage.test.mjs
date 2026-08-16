@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { storageAdapter } from '../js/adapters.js';
+import { GARDEN_MILESTONES, gardenProgress } from '../js/data.js';
 
 class MemoryStorage {
   constructor() { this.values = new Map(); }
@@ -48,6 +49,38 @@ test('rescued cats accumulate across runs and never go backwards', () => {
   } finally {
     globalThis.localStorage = previous;
   }
+});
+
+test('the garden ladder unlocks in order and measures progress within the current step', () => {
+  const empty = gardenProgress(0);
+  assert.deepEqual(empty.unlocked, []);
+  assert.equal(empty.latest, null);
+  assert.equal(empty.next.id, 'sprout');
+  assert.equal(empty.remaining, 3);
+  assert.equal(empty.progress, 0);
+  assert.equal(empty.complete, false);
+
+  const first = gardenProgress(3);
+  assert.deepEqual(first.unlocked, ['sprout']);
+  assert.equal(first.latest.id, 'sprout');
+  assert.equal(first.next.id, 'flowers');
+  assert.equal(first.remaining, 7);
+  assert.equal(first.progress, 0, 'the bar restarts at each unlock instead of counting from zero');
+
+  const midStep = gardenProgress(6);
+  assert.ok(midStep.progress > 0.42 && midStep.progress < 0.44, `expected ~3/7, got ${midStep.progress}`);
+
+  const finished = gardenProgress(GARDEN_MILESTONES.at(-1).cats);
+  assert.equal(finished.unlocked.length, GARDEN_MILESTONES.length);
+  assert.equal(finished.next, null);
+  assert.equal(finished.remaining, 0);
+  assert.equal(finished.progress, 1);
+  assert.equal(finished.complete, true);
+
+  assert.equal(gardenProgress(-5).cats, 0, 'a negative total cannot unlock anything');
+  assert.deepEqual(gardenProgress(99999).unlocked.length, GARDEN_MILESTONES.length);
+  const requirements = GARDEN_MILESTONES.map((milestone) => milestone.cats);
+  assert.deepEqual(requirements, [...requirements].sort((a, b) => a - b), 'tiers must stay in ascending order');
 });
 
 test('new players start with music on while an explicit saved preference remains compatible', () => {
