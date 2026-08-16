@@ -46,13 +46,13 @@ test('background pause rebases game, freeze and combo deadlines together', () =>
   });
 });
 
-test('only major board-size transitions refill time and held time stays capped', () => {
+test('board growth pays big time bonuses, later flat clears pay small ones', () => {
   assert.equal(roundTimeBonusSeconds(1), 6);
   assert.equal(roundTimeBonusSeconds(2), 10);
-  assert.equal(roundTimeBonusSeconds(3), 0);
+  assert.equal(roundTimeBonusSeconds(3), 4, 'same-size clears from stage 3 pay a small bonus');
   assert.equal(roundTimeBonusSeconds(4), 10);
-  assert.equal(roundTimeBonusSeconds(5), 0);
-  assert.equal(roundTimeBonusSeconds(10), 0);
+  assert.equal(roundTimeBonusSeconds(5), 4);
+  assert.equal(roundTimeBonusSeconds(10), 4);
   assert.equal(cappedSessionTime(90, 5), 95);
   assert.equal(cappedSessionTime(117, 10), 120);
   assert.equal(cappedSessionTime(120, 15), 120);
@@ -200,13 +200,16 @@ test('combo-seven rewards unlock variety gradually while board actions stay domi
   assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
   assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'clock');
+  // Stage 5 pool: 13 bombs, clock, then the two megabomb slots that now
+  // open here — 0.999 lands on megabomb, 0.845 on the clock slot.
+  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'megabomb');
+  assert.equal(chooseBoardDrop(7, () => 0.845, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'clock');
   assert.notEqual(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 5 })?.id, 'clover');
   assert.notEqual(chooseBoardDrop(28, () => 0, {
     pity: { clover: 99 }, rewardIndex: 4, stage: 5,
   })?.id, 'clover', 'clover pity must stay locked before stage 6');
-  assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'freeze');
-  assert.equal(chooseBoardDrop(21, () => 0.999, { rewardIndex: 3, stage: 6 }).id, 'clover');
+  assert.equal(chooseBoardDrop(10, () => 0.999, { rewardIndex: 2, stage: 5 }).id, 'freeze');
+  assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 8 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 5, stage: 8, cloverGiven: true }).id, 'freeze');
 
@@ -284,7 +287,8 @@ test('time-capped runs stop dropping clock and freeze without suppressing reward
     stage: 5,
     timeBonusCapped: true,
   });
-  assert.equal(stageFiveReplacement.id, 'bomb');
+  assert.ok(['bomb', 'megabomb'].includes(stageFiveReplacement.id),
+    'a capped run replaces time effects with board actions');
 
   const forcedFreezeReplacement = chooseBoardDrop(28, () => 0, {
     cloverGiven: true,

@@ -29,7 +29,8 @@ assert.ok(suite.expert.challengeBonusMean > suite.regular.challengeBonusMean);
 assert.ok(suite.novice.roundMean >= 3 && suite.novice.roundMean <= 5.5, 'novices should usually finish around stages 3-5');
 assert.ok(suite.regular.roundMean >= 5 && suite.regular.roundMean <= 7.5, 'regular players should usually finish around stages 5-7');
 assert.ok(suite.expert.roundMean >= 7.5 && suite.expert.roundMean <= 10.5, 'experts should usually reach stages 8-10+');
-assert.ok(suite.expert.roundTimeBonusMean <= 30, 'only the three board-size milestones may add stage time');
+assert.ok(suite.expert.roundTimeBonusMean <= 52,
+  'stage time stays bounded: 26s of growth milestones plus at most 4s per flat clear');
 assert.ok(suite.expert.itemTimeBonusMean <= 15, 'rare clock and freeze rewards must not dominate survival time');
 assert.equal(suite.novice.cappedRuns, 0);
 

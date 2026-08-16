@@ -586,11 +586,18 @@ class OingGame {
 
   advanceCombo(amount = 1) {
     const previousCombo = this.state.combo;
+    const previousMaxCombo = this.state.maxCombo;
     this.state.combo = previousCombo + Math.max(1, Math.round(Number(amount) || 1));
     this.refreshComboDeadline();
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
     if (!this.runtime.testMode) storageAdapter.saveBestCombo(this.state.maxCombo);
-    const reward = boardDropReward(previousCombo, this.state.combo);
+    // Measured against the run's best combo, not the current one: a combo
+    // oscillating across a multiple of seven (fail from 14 to 9, rebuild,
+    // repeat) used to re-earn a drop on every crossing — one instrumented
+    // casual run farmed 11 bombs in a single stage that way. Only pushing
+    // past the session's high-water mark pays out now; clean play earns at
+    // the same rhythm as before.
+    const reward = boardDropReward(Math.max(previousCombo, previousMaxCombo), this.state.combo);
     let earnedDrop = null;
     if (reward && this.state.round >= 3) {
       const drop = chooseBoardDrop(this.state.combo, Math.random, {

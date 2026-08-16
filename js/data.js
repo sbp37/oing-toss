@@ -101,9 +101,15 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   const bombWeight = streak >= 14 ? 12 : streak >= 7 ? 13 : 15;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
   if (level >= 5 && !timeBonusCapped) pool.push('clock');
-  if (level >= 6 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 6 && streak >= 14 && !timeBonusCapped) pool.push('freeze');
-  if (level >= 6 && streak >= 21 && !cloverGiven) pool.push('clover');
+  // Reachability pass: across three full instrumented runs (casual to
+  // near-perfect pace) freeze and clover never appeared once — the old
+  // level>=6 + streak 14/21 gates sat past where most runs end. Megabomb
+  // and freeze now open on STAGE 5 and clover's streak halves, so a decent
+  // run meets each rare item while the bomb-heavy weighting still keeps
+  // board actions dominant (see the late-drop distribution test).
+  if (level >= 5 && streak >= 7) pool.push('megabomb', 'megabomb');
+  if (level >= 5 && streak >= 10 && !timeBonusCapped) pool.push('freeze');
+  if (level >= 6 && streak >= 14 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
 
@@ -122,11 +128,11 @@ export function chooseBoardDrop(combo, random = Math.random, {
   // The first earned board item always demonstrates the most tactile reward.
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
   const previousWasTimeItem = ['clock', 'freeze'].includes(previousType);
-  if (!cloverGiven && level >= 6 && streak >= 21
+  if (!cloverGiven && level >= 6 && streak >= 14
     && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
     return BOARD_DROP_ITEMS.clover;
   }
-  if (!timeBonusCapped && !previousWasTimeItem && level >= 6 && streak >= 14
+  if (!timeBonusCapped && !previousWasTimeItem && level >= 5 && streak >= 10
     && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
     return BOARD_DROP_ITEMS.freeze;
   }
@@ -134,7 +140,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
   // 후반과 동일하게 유지하고 pity만 짧게 둬 regular의 등장 판 비율이
   // 20% 아래로 굶지 않게 한다. STAGE 8+는 긴 pity로 희귀도를 회복한다.
   const megabombPityLimit = level <= 7 ? EARLY_MEGABOMB_PITY_LIMIT : BOARD_DROP_PITY_LIMITS.megabomb;
-  if (level >= 6 && streak >= 7
+  if (level >= 5 && streak >= 7
     && Math.max(0, pity.megabomb || 0) >= megabombPityLimit
     && previousType !== 'megabomb') {
     return BOARD_DROP_ITEMS.megabomb;
@@ -158,9 +164,9 @@ export function nextBoardDropPity(pity = {}, dropType = '', { stage = 1, combo =
   const previousClover = Math.max(0, Math.round(Number(pity.clover) || 0));
   const previousFreeze = Math.max(0, Math.round(Number(pity.freeze) || 0));
   return Object.freeze({
-    megabomb: level >= 6 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
-    clover: level >= 6 && streak >= 21 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
-    freeze: level >= 6 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
+    megabomb: level >= 5 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
+    clover: level >= 6 && streak >= 14 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
+    freeze: level >= 5 && streak >= 10 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
   });
 }
 
@@ -354,7 +360,13 @@ export function roundTimeBonusSeconds(round = 1) {
   const current = getStageConfig(round);
   const next = getStageConfig(current.stage + 1);
   const grew = next.cols * next.rows > current.cols * current.rows;
-  if (!grew) return 0;
+  // Non-growth clears used to pay nothing, which made STAGE 4 the run's
+  // dead stretch (rising target, no time back) and killed STAGE 6+ as a
+  // countdown nobody outruns: an instrumented near-perfect run still died
+  // on STAGE 7. A small flat bonus keeps clears feeling rewarded and lets
+  // strong runs actually reach the late-stage content; the 120s session
+  // cap still bounds total run length.
+  if (!grew) return current.stage >= 3 ? 4 : 0;
   // The opening 4x4 -> 5x5 step is small and comes with plenty of clock left.
   return current.stage === 1 ? 6 : 10;
 }

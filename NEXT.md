@@ -1,9 +1,47 @@
 # 다음 작업 (이어서 할 것)
 
-브랜치: `codex/play-layout-structure-v1`
-프리뷰: https://oing-toss-git-codex-play-layout-structure-v1-sbp37s-projects.vercel.app
+브랜치: `claude/play-layout-structure-v1-8eghdi` (PR #5, base: codex/play-layout-structure-v1)
+프리뷰: https://oing-toss-git-claude-play-layout-structu-b5382c-sbp37s-projects.vercel.app
 
-## 완료 (이번 세션)
+## 완료 (2차 세션 — 진단 후 개선 묶음 1·2)
+
+### 묶음 1. 피드백 마감 (ab8e936)
+- 콤보 마일스톤(3/5/8) 연출 중 상태바 판독값이 사라져 빈 크림 액자만
+  0.8초 보이던 문제 — low-time alert와 같은 방식으로 v4 레이아웃에서
+  판독값 유지 (`is-combo-celebrating` override).
+- 점수 버스트의 비어 있던 detail 슬롯에 콤보 3+ 일반 클리어 시
+  "콤보 ×N" 표기 — 콤보=점수 배수라는 핵심 전략이 처음으로 화면에 노출.
+  보상 라벨(미션/클로버/큰 조합 등)이 항상 우선.
+- "16 / 17" 같은 2자리 목표 텍스트가 진행 게이지 밑으로 최대 11.8px
+  파고들던 문제 — 점수판과 같은 data-digits 단계 축소 적용.
+
+### 묶음 2. 도달성·밸런스 (이 커밋)
+- 보드가 안 크는 스테이지 클리어(3→4, 5→6+)에 +4초 지급
+  (`roundTimeBonusSeconds`). 120초 캡은 유지.
+- 희귀템 문턱 인하: 메가폭탄·프리즈 STAGE 5부터(기존 6),
+  프리즈 콤보 10부터(기존 14), 클로버 콤보 14부터(기존 21, STAGE 6 유지).
+  pity 게이트(`nextBoardDropPity`, `chooseBoardDrop`)도 동일하게 정렬.
+- 콤보 7의 배수 경계를 오르내리며 드롭을 파밍하던 구멍 봉인 —
+  `advanceCombo`가 세션 최고 콤보(high-water mark) 돌파 시에만 지급.
+- 검증: npm test 71/71 (도달 밴드 novice 3~5.5 / regular 5~7.5 /
+  expert 7.5~10.5 계약 유지, 시뮬 실측 4.7/6.7/10.0).
+  item-drop-compare 200판: regular 기준 메가폭탄 66%·프리즈 79%·클로버
+  41% 판에서 등장(기존엔 사실상 0%). 실플레이(Playwright 실제 드래그):
+  숙련 페이스 STAGE 7→9 도달, 프리즈·클로버·메가폭탄 실등장 확인,
+  캐주얼 파밍 11회→정상 2회.
+
+## 다음 후보 (우선순위 순)
+
+### 1. 정원 수집 메타 v1 (진단 보고 H-3)
+숨은 정원 그림을 스테이지/판마다 로테이션하고, 결과 화면의
+'고양이 구조 N마리'를 실제 수집(정원 화면)으로 연결. 리텐션 첫 훅.
+정원 이미지 에셋 추가 필요 (`assets/backgrounds/board-secret-garden-*`).
+
+### 2. (보류) 결과 화면 완성도
+정렬은 맞췄지만 "에셋 같다"는 피드백. 점수 큰 숫자, 기록 게이지,
+버튼 위계 재정비.
+
+## 완료 (1차 세션)
 
 ### 1. 스테이지 전환 시 숨은 그림 노출 — 수정 완료
 원인: 라운드를 클리어하면 보드가 전부 `is-empty`가 되고, `updateHUD`가
