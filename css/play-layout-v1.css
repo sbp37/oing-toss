@@ -16,7 +16,7 @@
   min-height: 100dvh;
   padding: calc(var(--safe-top) + 8px) var(--flow-inline) calc(var(--safe-bottom) + 6px);
   overflow: hidden;
-  background: #0990fc url("../assets/backgrounds/play-bg-spring-path-v1.webp") center bottom / cover no-repeat;
+  background: #36a4fa url("../assets/backgrounds/play-bg-spring-path-v2.webp") center bottom / cover no-repeat;
 }
 
 .screen-play.play-ui-v4:not(.is-active) { display: none; }
