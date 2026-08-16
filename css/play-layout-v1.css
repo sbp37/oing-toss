@@ -2802,3 +2802,21 @@
 
 .screen-result.is-sheet .result-actions .btn { min-height: 48px; }
 .screen-result.is-sheet .result-home-button { margin-top: 0; min-height: 34px; }
+
+/* Hint dimming without transparency --------------------------------------
+   Three generations of hint styles dimmed the non-hint tiles by dropping
+   their opacity (0.58-0.68). The tiles are translucent glass over the
+   hidden-garden art, so lowering opacity didn't darken them — it let the
+   garden bleed straight through the middle of a live board. Dim with
+   filter only; opacity stays at 1 so the tile face keeps hiding what it
+   is supposed to hide. */
+.play-ui-v4 .board.is-hinting .tile:not(.is-hint),
+.play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
+  opacity: 1;
+  filter: brightness(.86) saturate(.5) contrast(.96);
+}
+
+.play-ui-v4 .board.is-hinting .tile.is-hint,
+.play-ui-v4 .board.is-tutorial-active .tile.is-tutorial {
+  opacity: 1;
+}
