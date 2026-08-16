@@ -17,7 +17,6 @@ import {
   comboAfterFailure,
   comboGainForClear,
   comboWindowMsForStage,
-  completesStageChallenge,
   getRoundConfig,
   nextBoardDropPity,
   roundTimeBonusSeconds,
@@ -28,8 +27,6 @@ import {
   scoreForCloverBonus,
   scoreForMegaBomb,
   scoreForWideClear,
-  stageChallengeBonus,
-  stageChallengeForStage,
   stageShowcaseBoardDrop,
 } from './data.js';
 
@@ -122,9 +119,6 @@ export function simulateRun({
       perfectClears: 0,
       roundTimeBonus: 0,
       itemTimeBonus: 0,
-      stageChallengeComplete: false,
-      stageChallengeStreak: 0,
-      stageChallengeScore: 0,
       cloverBonusScore: 0,
       clutchBonusScore: 0,
       itemClearedCells: 0,
@@ -205,8 +199,6 @@ export function simulateRun({
       state.roundTimeBonus += bonus;
       state.timeLeft = cappedSessionTime(state.timeLeft, bonus);
       state.round += 1;
-      state.stageChallengeComplete = false;
-      state.stageChallengeStreak = 0;
       refreshComboDeadline();
       buildBoard();
       const showcaseDrop = showcaseEligible
@@ -273,7 +265,6 @@ export function simulateRun({
       if (random() < settings.errorRate) {
         state.errors += 1;
         state.combo = comboAfterFailure(state.combo);
-        state.stageChallengeStreak = 0;
         refreshComboDeadline();
         continue;
       }
@@ -285,18 +276,6 @@ export function simulateRun({
       state.combo += comboGainForClear(clearedCells);
       refreshComboDeadline();
       state.maxCombo = Math.max(state.maxCombo, state.combo);
-      state.stageChallengeStreak += 1;
-      const challenge = stageChallengeForStage(state.round);
-      const challengeCompleted = !state.stageChallengeComplete && completesStageChallenge(challenge, {
-        cellCount: clearedCells,
-        catCount: stats.catCount,
-        stageStreak: state.stageChallengeStreak,
-      });
-      const challengePoints = challengeCompleted ? stageChallengeBonus(state.round) : 0;
-      if (challengeCompleted) {
-        state.stageChallengeComplete = true;
-        state.stageChallengeScore += challengePoints;
-      }
       const clearPoints = scoreForClear(clearedCells, state.combo);
       const widePoints = scoreForWideClear(clearedCells, state.combo);
       const catPoints = scoreForCatBonus(stats.catCount, state.combo);
@@ -305,7 +284,7 @@ export function simulateRun({
       cloverBoost = false;
       state.cloverBonusScore += cloverPoints;
       state.clutchBonusScore += clutchPoints;
-      state.score += clearPoints + widePoints + catPoints + challengePoints + cloverPoints + clutchPoints;
+      state.score += clearPoints + widePoints + catPoints + cloverPoints + clutchPoints;
       state.clears += 1;
       clearsOnBoard += 1;
       state.catBonuses += stats.catCount;
@@ -367,7 +346,6 @@ export function summarizeRuns(runs) {
     clearsPerBoardMean: Math.round(mean(runs.flatMap((run) => run.boardClearCounts)) * 10) / 10,
     richClearRatio: Math.round(1000 * runs.reduce((sum, run) => sum + run.richClears, 0)
       / Math.max(1, runs.reduce((sum, run) => sum + run.clears, 0))) / 10,
-    challengeBonusMean: Math.round(mean(runs.map((run) => run.stageChallengeScore))),
     cloverBonusMean: Math.round(mean(runs.map((run) => run.cloverBonusScore))),
     clutchBonusMean: Math.round(mean(runs.map((run) => run.clutchBonusScore))),
     itemClearedCellsMean: Math.round(mean(runs.map((run) => run.itemClearedCells)) * 10) / 10,

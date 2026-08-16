@@ -17,7 +17,6 @@ import {
   comboGainForClear,
   comboMilestoneCrossed,
   comboWindowMsForStage,
-  completesStageChallenge,
   freezeTimeline,
   getRoundConfig,
   itemUnlockGrantForStage,
@@ -31,9 +30,6 @@ import {
   roundTimeBonusSeconds,
   specialTilePlanForStage,
   successFeedbackLevel,
-  stageChallengeBonus,
-  stageChallengeForStage,
-  stageChallengeProgress,
   stageShowcaseBoardDrop,
   stageIntroForStage,
   stageClearBonus,
@@ -257,9 +253,6 @@ class OingGame {
       stageShowcaseGiven: false,
       stageShowcaseEligible: this.runtime?.testMode || rareShowcaseCount < 3,
       stageShowcaseIndex: this.runtime?.testMode ? 0 : rareShowcaseCount,
-      stageChallengeComplete: false,
-      stageChallengeStreak: 0,
-      stageChallengeScore: 0,
       items: this.inventory.snapshot(),
     };
   }
@@ -448,7 +441,6 @@ class OingGame {
     this.telemetry?.playReady();
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 100;
-    this.announceStageChallenge();
     if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
     else this.beginCountdown();
     return true;
@@ -738,20 +730,8 @@ class OingGame {
     this.state.cloverBoostPending = false;
     this.state.cloverBonusScore += cloverBonusPoints;
     this.state.clutchBonusScore += clutchBonusPoints;
-    this.state.stageChallengeStreak += 1;
-    const challenge = stageChallengeForStage(this.state.round);
-    const challengeCompleted = !this.state.stageChallengeComplete && completesStageChallenge(challenge, {
-      cellCount: clearedCellCount,
-      catCount,
-      stageStreak: this.state.stageChallengeStreak,
-    });
-    const challengeBonusPoints = challengeCompleted ? stageChallengeBonus(this.state.round) : 0;
-    if (challengeCompleted) {
-      this.state.stageChallengeComplete = true;
-      this.state.stageChallengeScore += challengeBonusPoints;
-    }
     const points = clearPoints + wideBonusPoints + catBonusPoints + specialBonusPoints
-      + challengeBonusPoints + cloverBonusPoints + clutchBonusPoints;
+      + cloverBonusPoints + clutchBonusPoints;
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
@@ -769,7 +749,6 @@ class OingGame {
     const successLevel = successFeedbackLevel({
       emptiesBoard,
       wow,
-      challengeCompleted,
       earnedDrop,
       comboMilestone,
       catCount,
@@ -791,7 +770,6 @@ class OingGame {
         : wow ? 0.25 : 0.17;
       playCatBonusSound(catSoundOffset);
     }
-    if (earnedDrop) this.ui.showComboReward(earnedDrop, comboMilestone ? 300 : 40);
     const scoreFeedback = () => this.ui.showScoreBurst(
       points,
       rect,
@@ -802,14 +780,9 @@ class OingGame {
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
     this.speakForSuccess(catCount, wow, successLevel);
-    if (challengeCompleted) {
-      this.ui.setPlayCharacter('success', 1000);
-      this.showCatMessage('challengeComplete');
-    }
     if (cloverBonusPoints > 0) {
       this.showCatMessage('cloverSuccess');
-    }
-    if (clutchBonusPoints > 0 && !challengeCompleted && cloverBonusPoints === 0) {
+    } else if (clutchBonusPoints > 0) {
       this.showCatMessage('clutch');
     }
     if (blastCells.length) {
@@ -882,7 +855,6 @@ class OingGame {
     this.state.failureCount += 1;
     this.state.consecutiveFailures += 1;
     this.state.combo = comboAfterIncorrectSelection(previousCombo, stats.sum);
-    this.state.stageChallengeStreak = 0;
     this.refreshComboDeadline();
     failHaptic();
     playFailSound();
@@ -978,8 +950,6 @@ class OingGame {
       delay(760),
     ]);
     this.state.round = nextRound;
-    this.state.stageChallengeComplete = false;
-    this.state.stageChallengeStreak = 0;
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
@@ -1026,19 +996,7 @@ class OingGame {
     this.inputGuardUntil = performance.now() + STAGE_TRANSITION_INPUT_GUARD_MS;
     this.refreshComboDeadline(this.inputGuardUntil);
     this.ui.showRoundReady(360);
-    this.announceStageChallenge();
     this.beginCountdown();
-  }
-
-  announceStageChallenge() {
-    const challenge = stageChallengeForStage(this.state.round);
-    if (!challenge || this.state.stageChallengeComplete) return;
-    const type = challenge.kind === 'wide'
-      ? 'challengeWide'
-      : challenge.kind === 'cat'
-        ? 'challengeCat'
-        : 'challengeChain';
-    this.showCatMessage(type);
   }
 
   async storeRoundItems({ soundDelay = 0 } = {}) {
@@ -1690,14 +1648,8 @@ class OingGame {
   updateHUD() {
     const config = getRoundConfig(this.state.round);
     const comboWindowMs = comboWindowMsForStage(this.state.round);
-    const stageChallenge = stageChallengeForStage(this.state.round);
     this.ui.updateHUD({
       ...this.state,
-      stageMission: stageChallengeProgress(stageChallenge, {
-        completed: this.state.stageChallengeComplete,
-        stageStreak: this.state.stageChallengeStreak,
-      }),
-      stageMissionBonus: stageChallenge ? stageChallengeBonus(this.state.round) : 0,
       rewardRemaining: itemRewardCountdown(this.state.combo, this.state.round),
       comboRemainingMs: this.state.combo > 0
         ? Math.max(0, this.state.comboExpiresAt - performance.now())

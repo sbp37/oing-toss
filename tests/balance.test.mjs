@@ -25,7 +25,6 @@ assert.ok(suite.expert.initialValuePatternsMean > suite.novice.initialValuePatte
 assert.ok(suite.expert.initialOrientationsMean >= suite.novice.initialOrientationsMean);
 assert.ok(suite.novice.maxComboMean < suite.regular.maxComboMean);
 assert.ok(suite.regular.maxComboMean < suite.expert.maxComboMean, 'tighter late windows still reward genuinely fast play');
-assert.ok(suite.expert.challengeBonusMean > suite.regular.challengeBonusMean);
 // A stage now lasts exactly as long as its board has answers, so the stage
 // number counts boards emptied rather than targets met — the same run reaches
 // a higher number than it did under the old target gate, and the bands below

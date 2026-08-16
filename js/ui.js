@@ -53,14 +53,6 @@ const CHARACTER_ALT = Object.freeze({
   fail: '살짝 아쉬워하는 블루 고양이',
 });
 
-const ITEM_DROP_COPY = Object.freeze({
-  bomb: '톡 누르면 바로 펑!',
-  megabomb: '톡 누르면 크게 펑!',
-  clock: '톡 누르면 +5초!',
-  freeze: '톡 누르면 10초 정지!',
-  clover: '톡 누르면 정답 발견!',
-});
-
 export class GameUI {
   constructor() {
     this.screens = [...document.querySelectorAll('[data-screen]')];
@@ -71,14 +63,11 @@ export class GameUI {
     this.characterTimer = null;
     this.selectionSnapTimer = null;
     this.selectionSnapAnimation = null;
-    this.comboCelebrationTimer = null;
     this.hintTimer = null;
     this.roundReadyTimer = null;
     this.countdownPulseTimer = null;
     this.goalPulseTimer = null;
-    this.stageMissionPulseTimer = null;
     this.itemRewardPreviewTimer = null;
-    this.comboRewardTimer = null;
     this.comboLossTimer = null;
     this.scoreBurstTimer = null;
     this.lastCountdownSecond = null;
@@ -110,9 +99,6 @@ export class GameUI {
       boardTimeFill: document.querySelector('#board-time-fill'),
       goal: document.querySelector('#goal-value'),
       goalLabel: document.querySelector('#goal-label'),
-      stageMission: document.querySelector('#stage-mission'),
-      stageMissionIcon: document.querySelector('#stage-mission-icon'),
-      stageMissionValue: document.querySelector('#stage-mission-value'),
       roundMini: document.querySelector('.round-mini'),
       sumBubble: document.querySelector('#sum-bubble'),
       sum: document.querySelector('#sum-value'),
@@ -126,9 +112,6 @@ export class GameUI {
       resultDecor: document.querySelector('#result-decor'),
       roundClear: document.querySelector('#round-clear'),
       timeUp: document.querySelector('#time-up'),
-      comboCelebration: document.querySelector('#combo-celebration'),
-      comboCelebrationKicker: document.querySelector('#combo-celebration-kicker'),
-      comboCelebrationValue: document.querySelector('#combo-celebration-value'),
       scoreBurst: document.querySelector('#score-burst'),
       hintCount: document.querySelector('#hint-count'),
       shuffleCount: document.querySelector('#shuffle-count'),
@@ -580,31 +563,6 @@ export class GameUI {
     }, 760);
   }
 
-  showComboReward(item, delayMs = 0) {
-    clearTimeout(this.comboRewardTimer);
-    this.elements.playScreen.querySelector('.combo-reward-pop')?.remove();
-    this.comboRewardTimer = window.setTimeout(() => {
-      const pop = document.createElement('div');
-      pop.className = `combo-reward-pop combo-reward-${item.id}`;
-      const icon = document.createElement('img');
-      icon.src = item.asset;
-      icon.alt = '';
-      const copy = document.createElement('span');
-      copy.textContent = `+${item.label}`;
-      pop.append(icon, copy, document.createElement('i'), document.createElement('i'));
-      this.elements.comboChip.appendChild(pop);
-      this.elements.comboChip.classList.add('is-inline-feedback');
-      this.elements.comboChip.classList.remove('is-reward-earned');
-      void this.elements.comboChip.offsetWidth;
-      this.elements.comboChip.classList.add('is-reward-earned');
-      window.setTimeout(() => {
-        pop.remove();
-        this.elements.comboChip.classList.remove('is-inline-feedback');
-        this.elements.comboChip.classList.remove('is-reward-earned');
-      }, 1050);
-    }, Math.max(0, delayMs));
-  }
-
   showComboLoss(amount) {
     const loss = Math.max(1, Math.round(Number(amount) || 1));
     clearTimeout(this.comboLossTimer);
@@ -673,16 +631,6 @@ export class GameUI {
       });
     const source = specialTiles[0]?.tile?.getBoundingClientRect();
     const frame = this.boardFrame.getBoundingClientRect();
-    const popType = specialTiles.some(({ type }) => type === 'bomb') ? 'bomb' : specialTiles[0]?.type;
-    if (source) {
-      const pop = document.createElement('div');
-      pop.className = `special-trigger-pop special-trigger-${popType}`;
-      pop.style.left = `${source.left + source.width / 2 - frame.left}px`;
-      pop.style.top = `${source.top + source.height / 2 - frame.top}px`;
-      pop.textContent = 'POP!';
-      this.boardFrame.appendChild(pop);
-      setTimeout(() => pop.remove(), 520);
-    }
     await delay(300);
   }
 
@@ -977,53 +925,11 @@ export class GameUI {
       flightIcon.alt = '';
       flight.append(flightIcon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
       this.elements.playScreen.appendChild(flight);
-      const effect = document.createElement('div');
-      effect.className = `item-drop-fx item-drop-${type}`;
-      effect.style.left = `${tileRect.left + tileRect.width / 2 - frameRect.left}px`;
-      effect.style.top = `${tileRect.top + tileRect.height / 2 - frameRect.top}px`;
-      effect.style.setProperty('--item-landing-delay', `${landingDelay}ms`);
-      const icon = document.createElement('img');
-      icon.src = definition?.asset || '';
-      icon.alt = '';
-      const label = document.createElement('span');
-      label.textContent = showcase
-        ? `첫 등장! ${definition?.label || '희귀 아이템'}`
-        : ITEM_DROP_COPY[type] || `${definition?.label || '아이템'} 등장!`;
-      effect.append(icon, label);
-      for (let sparkle = 0; sparkle < 4; sparkle += 1) effect.appendChild(document.createElement('i'));
-      for (let pawIndex = 0; pawIndex < 2; pawIndex += 1) {
-        const paw = document.createElement('b');
-        paw.className = 'item-drop-paw';
-        effect.appendChild(paw);
-      }
-      this.boardFrame.appendChild(effect);
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
-        effect.remove();
         flight.remove();
       }, 1420 + index * 80);
     });
-  }
-
-  showItemTease(type = 'bomb') {
-    this.boardFrame.querySelector('.item-tease')?.remove();
-    const definition = BOARD_DROP_ITEMS[type] || BOARD_DROP_ITEMS.bomb;
-    const tease = document.createElement('div');
-    tease.className = `item-tease item-tease-${definition.id}`;
-    const icon = document.createElement('img');
-    icon.src = definition.asset || '';
-    icon.width = 286;
-    icon.height = 312;
-    icon.alt = '';
-    const copy = document.createElement('div');
-    const kicker = document.createElement('span');
-    kicker.textContent = 'NEXT BONUS';
-    const title = document.createElement('strong');
-    title.textContent = `다음 합10에 ${definition.label}!`;
-    copy.append(kicker, title);
-    tease.append(icon, copy, document.createElement('i'), document.createElement('i'));
-    this.boardFrame.appendChild(tease);
-    setTimeout(() => tease.remove(), 1150);
   }
 
   pressBoardItem(row, col, pressed) {
@@ -1117,12 +1023,11 @@ export class GameUI {
     flight.style.top = `${start.top + start.height / 2 - frame.top}px`;
     flight.style.setProperty('--clock-x', `${target.left + target.width / 2 - start.left - start.width / 2}px`);
     flight.style.setProperty('--clock-y', `${target.top + target.height / 2 - start.top - start.height / 2}px`);
-    const icon = document.createElement('img');
-    icon.src = 'assets/icons/hud/time.webp';
-    icon.alt = '';
+    // Text only: the icon asset has an opaque square background, which is
+    // what flew across the screen as a clipped box.
     const label = document.createElement('strong');
     label.textContent = `+${seconds}초`;
-    flight.append(icon, label);
+    flight.append(label);
     sourceElement?.classList.add('is-casting');
     this.elements.playScreen.classList.toggle('is-time-rescued', urgent);
     screen.appendChild(flight);
@@ -1133,15 +1038,6 @@ export class GameUI {
     for (let index = 0; index < 6; index += 1) impact.appendChild(document.createElement('i'));
     await delay(350);
     screen.appendChild(impact);
-    if (urgent) {
-      const rescue = document.createElement('div');
-      rescue.className = 'time-rescue-label';
-      rescue.textContent = '시간 살렸다!';
-      rescue.style.left = `${target.left + target.width / 2 - frame.left}px`;
-      rescue.style.top = `${target.bottom - frame.top + 5}px`;
-      screen.appendChild(rescue);
-      window.setTimeout(() => rescue.remove(), 760);
-    }
     this.elements.timePill.classList.remove('is-time-added');
     void this.elements.timePill.offsetWidth;
     this.elements.timePill.classList.add('is-time-added');
@@ -1356,35 +1252,19 @@ export class GameUI {
 
     if (!milestone || !allowCelebration) return;
 
-    const celebration = this.elements.comboCelebration;
-    clearTimeout(this.comboCelebrationTimer);
-    celebration.dataset.level = level;
-    this.elements.comboCelebrationValue.textContent = String(combo);
-    const callout = level === '8'
-      ? 'OING FEVER!'
-      : level === '5'
-        ? 'SWEET!'
-        : 'NICE!';
-    this.elements.comboCelebrationKicker.textContent = callout;
-    this.elements.comboChip.dataset.callout = callout;
-    celebration.classList.remove('is-visible');
-    void celebration.offsetWidth;
-    celebration.setAttribute('aria-hidden', 'false');
-    celebration.classList.add('is-visible');
-    this.elements.playScreen.classList.add('is-combo-celebrating');
-    this.boardFrame.classList.remove('combo-celebrating');
-    this.boardFrame.dataset.comboCelebration = level;
-    this.boardFrame.classList.add('combo-celebrating');
-    if (level) this.spawnComboConfetti(Number(level));
-    const duration = level === '8' ? 820 : level === '5' ? 760 : 700;
-    this.comboCelebrationTimer = window.setTimeout(() => {
-      this.dismissComboCelebration();
-    }, duration);
+    // The original's entire milestone celebration is one small line of
+    // floating text over the board — no card, no confetti, nothing that has
+    // to be dismissed or that can double up with the HUD chip.
+    this.elements.playScreen.querySelector('.combo-text-pop')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'combo-text-pop';
+    pop.textContent = `${combo} combo \uD83D\uDD25`;
+    this.elements.playScreen.appendChild(pop);
+    setTimeout(() => pop.remove(), 1200);
   }
 
   showLowTimeAlert(seconds = 10) {
     this.elements.playScreen.querySelector('.low-time-alert')?.remove();
-    this.dismissComboCelebration();
     this.elements.playScreen.classList.add('is-low-time-alerting');
     const alert = document.createElement('div');
     alert.className = 'low-time-alert';
@@ -1400,44 +1280,6 @@ export class GameUI {
     }, 980);
   }
 
-  spawnComboConfetti(level) {
-    this.boardFrame.querySelectorAll('.combo-confetti').forEach((particle) => particle.remove());
-    const count = level >= 8 ? 10 : level >= 5 ? 7 : 4;
-    const sources = [
-      'assets/decor/star.webp',
-      'assets/decor/sparkle.webp',
-      'assets/decor/heart.webp',
-      'assets/decor/paw.webp',
-    ];
-    for (let index = 0; index < count; index += 1) {
-      const particle = document.createElement('img');
-      const angle = -156 + (312 / Math.max(1, count - 1)) * index;
-      const distance = 74 + (index % 3) * 18 + level * 2;
-      const radians = (angle * Math.PI) / 180;
-      particle.className = 'combo-confetti';
-      particle.src = sources[index % sources.length];
-      particle.alt = '';
-      particle.style.setProperty('--combo-x', `${Math.cos(radians) * distance}px`);
-      particle.style.setProperty('--combo-y', `${Math.sin(radians) * distance}px`);
-      particle.style.setProperty('--combo-rotate', `${(index % 2 ? 1 : -1) * (35 + index * 11)}deg`);
-      particle.style.setProperty('--combo-delay', `${(index % 5) * 18}ms`);
-      particle.style.setProperty('--combo-size', `${level >= 8 ? 18 + (index % 3) * 3 : 15 + (index % 3) * 2}px`);
-      this.boardFrame.appendChild(particle);
-      setTimeout(() => particle.remove(), level >= 8 ? 980 : 860);
-    }
-  }
-
-  dismissComboCelebration() {
-    clearTimeout(this.comboCelebrationTimer);
-    this.comboCelebrationTimer = null;
-    this.elements.comboCelebration.classList.remove('is-visible');
-    this.elements.comboCelebration.setAttribute('aria-hidden', 'true');
-    this.elements.playScreen.classList.remove('is-combo-celebrating');
-    delete this.elements.comboChip.dataset.callout;
-    this.boardFrame.classList.remove('combo-celebrating');
-    delete this.boardFrame.dataset.comboCelebration;
-  }
-
   showRoundClear({
     scoreBonus = 0,
     timeBonus = 0,
@@ -1447,15 +1289,12 @@ export class GameUI {
     cols = 0,
     boardGrew = false,
   } = {}) {
-    this.dismissComboCelebration();
     const clear = this.elements.roundClear;
     const label = clear.querySelector('strong');
-    const reward = clear.querySelector('#round-clear-reward');
+    // One line of text is the whole card, like the original's board-change
+    // pop. Board size and time bonus each announce themselves elsewhere
+    // (the board visibly grows; the gauge floats "+N초").
     if (label) label.textContent = `STAGE ${stage} CLEAR!`;
-    const details = [];
-    if (boardGrew && rows > 0 && cols > 0) details.push(`${cols}×${rows} OPEN`);
-    if (timeBonus > 0) details.push(`+${timeBonus}초`);
-    if (reward) reward.textContent = details.slice(0, 2).join(' · ') || `STAGE ${nextStage} GO!`;
     clear.dataset.stage = String(stage);
     clear.dataset.nextStage = String(nextStage);
     clear.classList.toggle('is-milestone', timeBonus > 0 || boardGrew);
@@ -1503,15 +1342,16 @@ export class GameUI {
     const amount = Math.max(0, Math.round(Number(seconds) || 0));
     if (!amount || !this.elements.timePill) return;
     this.elements.playScreen.querySelector('.stage-time-bonus')?.remove();
-    const pill = this.elements.timePill.getBoundingClientRect();
     const screen = this.elements.playScreen.getBoundingClientRect();
+    // Centred over the time gauge — the surface that actually shows the
+    // gain — instead of under the timer pill, where it was clipped by the
+    // HUD art and covered whatever sat beneath it.
+    const gauge = this.elements.boardTimeGauge?.getBoundingClientRect();
     const pop = document.createElement('div');
     pop.className = 'stage-time-bonus';
-    // Korean, like the rest of the HUD: "+6 SEC" is the one place the game
-    // asked the player to read English to know it had just been given time.
     pop.textContent = `+${amount}초`;
-    pop.style.left = `${pill.left + pill.width / 2 - screen.left}px`;
-    pop.style.top = `${pill.bottom - screen.top + 4}px`;
+    pop.style.left = `${gauge ? gauge.left + gauge.width / 2 - screen.left : screen.width / 2}px`;
+    pop.style.top = `${gauge ? gauge.top - screen.top - 6 : 120}px`;
     this.elements.playScreen.appendChild(pop);
     this.elements.timePill.classList.remove('is-bonus-awarded');
     void this.elements.timePill.offsetWidth;
@@ -1550,16 +1390,13 @@ export class GameUI {
     void this.elements.roundMini.offsetWidth;
     this.elements.roundMini.classList.add('is-advancing');
     this.boardFrame.classList.add('is-round-arriving');
+    // One line of plain glowing text, like the original's board-change pop.
     const entry = document.createElement('div');
     entry.className = 'stage-entry';
-    const kicker = document.createElement('small');
-    kicker.textContent = intro.kicker || 'LEVEL UP';
     const title = document.createElement('strong');
     title.textContent = intro.title || `STAGE ${nextRound}`;
-    const detail = document.createElement('span');
-    detail.textContent = intro.detail || '새 보드 시작';
     entry.classList.toggle('is-milestone', Boolean(intro.boardGrew));
-    entry.append(kicker, title, detail, document.createElement('i'), document.createElement('i'));
+    entry.append(title);
     this.boardFrame.appendChild(entry);
     await delay(460);
     entry.remove();
@@ -1613,7 +1450,6 @@ export class GameUI {
   }
 
   async animateGameEnd({ score = 0, maxCombo = 0, newRecord = false, answers = [] } = {}) {
-    this.dismissComboCelebration();
     this.clearSelection();
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
@@ -1737,7 +1573,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, stageMission = null, stageMissionBonus = 0 }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0 }) {
     this.elements.round.textContent = String(round);
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
@@ -1837,44 +1673,6 @@ export class GameUI {
     // Same length-band pattern as the score figure: the counter box is narrow
     // and the text is nowrap-centred, so long values shrink one step.
     this.elements.goal.dataset.digits = goalText.length > 3 ? 'l' : 'm';
-    const mission = this.elements.stageMission;
-    if (mission) {
-      const wasCompleted = mission.dataset.completed === '1';
-      mission.hidden = !stageMission;
-      mission.classList.toggle('is-complete', Boolean(stageMission?.completed));
-      mission.dataset.kind = stageMission?.kind || '';
-      mission.dataset.completed = stageMission?.completed ? '1' : '0';
-      if (stageMission) {
-        const iconByKind = {
-          wide: 'assets/decor/sparkle.webp',
-          cat: 'assets/decor/paw.webp',
-          chain: 'assets/decor/star.webp',
-        };
-        this.elements.stageMissionIcon.src = iconByKind[stageMission.kind] || iconByKind.wide;
-        const activeCopy = stageMission.kind === 'wide'
-          ? `${stageMission.requirement}칸 묶기`
-          : stageMission.kind === 'cat'
-            ? '고양이 찾기'
-            : `${stageMission.label} ${stageMission.progress}/${stageMission.target}`;
-        this.elements.stageMissionValue.textContent = stageMission.completed
-          ? `${stageMission.label} 완료`
-          : activeCopy;
-        mission.setAttribute('aria-label', stageMission.completed
-          ? `${stageMission.label} 미션 완료, ${Math.max(0, Math.round(stageMissionBonus)).toLocaleString('ko-KR')}점 보너스`
-          : stageMission.kind === 'wide'
-            ? `${stageMission.requirement}칸을 한 번에 묶는 미션`
-            : stageMission.kind === 'cat'
-              ? '고양이를 한 마리 찾는 미션'
-              : `${stageMission.label} 미션, ${stageMission.progress}/${stageMission.target}`);
-        if (!wasCompleted && stageMission.completed) {
-          clearTimeout(this.stageMissionPulseTimer);
-          mission.classList.remove('is-rewarded');
-          void mission.offsetWidth;
-          mission.classList.add('is-rewarded');
-          this.stageMissionPulseTimer = setTimeout(() => mission.classList.remove('is-rewarded'), 760);
-        }
-      }
-    }
   }
 
   updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true }) {

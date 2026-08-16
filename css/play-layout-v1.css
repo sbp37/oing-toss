@@ -2275,3 +2275,105 @@
 @media (prefers-reduced-motion: reduce) {
   .play-ui-v4 .board-frame.is-size-morphing { animation: none; }
 }
+
+/* Text-only celebration language ----------------------------------------
+   The original announces everything—milestones, board changes, time up—as
+   one line of glowing Jua text with no card behind it. Every boxed banner
+   below adopts that: background chrome gone, text and glow kept. */
+
+/* Combo milestone: the original's "N combo 🔥" line, ported verbatim. */
+.combo-text-pop {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: 30%;
+  color: #da9845;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 900;
+  text-shadow: 0 0 12px rgba(218, 152, 69, .8);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: combo-text-float 1.2s ease forwards;
+}
+
+@keyframes combo-text-float {
+  0% { opacity: 0; transform: translate(-50%, 6px); }
+  18% { opacity: 1; transform: translate(-50%, 0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -26px); }
+}
+
+.play-ui-v4 .round-clear,
+.play-ui-v4 .round-clear.is-milestone {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.play-ui-v4 .round-clear strong {
+  color: #2aa88f;
+  font-family: var(--font-display);
+  font-size: clamp(17px, 5vw, 21px);
+  font-weight: 400;
+  text-shadow: 0 0 12px rgba(42, 168, 143, .55), 0 2px 0 rgba(255, 255, 255, .9);
+  white-space: nowrap;
+}
+
+.play-ui-v4 .time-up {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.play-ui-v4 .time-up strong {
+  color: #e0566e;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 9.5vw, 42px);
+  font-weight: 400;
+  text-shadow: 0 0 16px rgba(224, 86, 110, .6), 0 2px 0 rgba(255, 255, 255, .9);
+  white-space: nowrap;
+}
+
+.play-ui-v4 .stage-entry,
+.play-ui-v4 .stage-entry.is-milestone {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.play-ui-v4 .stage-entry strong {
+  color: #4f9fd6;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 8vw, 36px);
+  font-weight: 400;
+  letter-spacing: .02em;
+  text-shadow: 0 0 16px rgba(79, 159, 214, .55), 0 2px 0 rgba(255, 255, 255, .92);
+  white-space: nowrap;
+}
+
+.play-ui-v4 .stage-entry.is-milestone strong {
+  color: #38b099;
+  text-shadow: 0 0 16px rgba(56, 176, 153, .6), 0 2px 0 rgba(255, 255, 255, .92);
+}
+
+/* The clock flight is a line of text now, not a boxed icon. */
+.play-ui-v4 .clock-flight {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.play-ui-v4 .clock-flight img { display: none; }
+
+.play-ui-v4 .clock-flight strong {
+  color: #2c9e8a;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 400;
+  text-shadow: 0 0 10px rgba(44, 158, 138, .55), 0 2px 0 rgba(255, 255, 255, .9);
+}

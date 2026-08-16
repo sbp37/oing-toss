@@ -1880,8 +1880,10 @@ img {
 .board-item-icon {
   position: relative;
   z-index: 3;
-  width: clamp(27px, 58%, 49px);
-  height: clamp(27px, 58%, 49px);
+  /* The item should read like the cat art does — filling its cell. At 58%
+     the bomb looked like a misrendered thumbnail next to full-bleed cats. */
+  width: clamp(36px, 78%, 62px);
+  height: clamp(36px, 78%, 62px);
   object-fit: contain;
   pointer-events: none;
   filter: drop-shadow(0 3px 4px rgba(128,76,61,0.18));

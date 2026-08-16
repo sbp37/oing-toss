@@ -85,17 +85,12 @@ test('result reactions reward records, progress and streaks without a losing aft
   for (const reaction of [record, rising, stage]) assert.doesNotMatch(reaction.message, /아쉽|실패|봐준다|못했/);
 });
 
-test('stage intro copy gives every board-size milestone a visible identity', () => {
-  assert.equal(stageIntroForStage(2).detail, '4×5 OPEN');
-  assert.equal(stageIntroForStage(3).detail, '폭탄 해금');
-  assert.equal(stageIntroForStage(5).detail, '시계 해금');
-  assert.equal(stageIntroForStage(6).kicker, 'MISSION ON');
-  assert.equal(stageIntroForStage(7).kicker, 'CAT CHANCE');
-  assert.equal(stageIntroForStage(8).kicker, 'CHAIN FEVER');
-  assert.match(stageIntroForStage(8).detail, /보너스/);
-  // Stages have no success target, so no intro line may promise one.
-  for (const stage of [1, 2, 3, 4, 5, 6, 7, 8, 9, 12]) {
-    assert.doesNotMatch(stageIntroForStage(stage).detail, /목표/, `stage ${stage} intro must not mention a target`);
+test('stage intros are a single plain title with no goal or mission copy', () => {
+  for (const stage of [1, 2, 5, 6, 9, 12]) {
+    const intro = stageIntroForStage(stage);
+    assert.equal(intro.title, `STAGE ${stage}`);
+    assert.equal(intro.kicker, undefined, 'no kicker line');
+    assert.equal(intro.detail, undefined, 'no detail line');
   }
 });
 

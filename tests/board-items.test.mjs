@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -113,35 +113,6 @@ test('bomb and clock inventory unlock only when their teaching stages begin', ()
   assert.equal(isItemUnlockedAtStage('clock', 5), true);
 });
 
-test('late stages rotate optional skill bonuses without replacing the main goal', () => {
-  assert.equal(stageChallengeForStage(5), null);
-  assert.equal(stageChallengeForStage(6).kind, 'wide');
-  assert.equal(stageChallengeForStage(7).kind, 'cat');
-  assert.equal(stageChallengeForStage(8).kind, 'chain');
-  assert.equal(stageChallengeForStage(9).kind, 'wide');
-  assert.equal(completesStageChallenge(stageChallengeForStage(6), { cellCount: 4 }), false);
-  assert.equal(completesStageChallenge(stageChallengeForStage(6), { cellCount: 5 }), true);
-  assert.equal(completesStageChallenge(stageChallengeForStage(7), { catCount: 1 }), true);
-  assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 2 }), false);
-  assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 3 }), true);
-  assert.ok(stageChallengeBonus(10) > stageChallengeBonus(6));
-});
-
-test('late-stage mission HUD exposes actionable progress and completion', () => {
-  const wide = stageChallengeForStage(6);
-  const chain = stageChallengeForStage(8);
-  assert.deepEqual(stageChallengeProgress(null), null);
-  assert.deepEqual(stageChallengeProgress(wide), {
-    kind: 'wide', label: '큰 조합', requirement: 5, progress: 0, target: 1, completed: false,
-  });
-  assert.deepEqual(stageChallengeProgress(chain, { stageStreak: 2 }), {
-    kind: 'chain', label: '연속 성공', requirement: 3, progress: 2, target: 3, completed: false,
-  });
-  assert.deepEqual(stageChallengeProgress(chain, { completed: true, stageStreak: 1 }), {
-    kind: 'chain', label: '연속 성공', requirement: 3, progress: 3, target: 3, completed: true,
-  });
-});
-
 test('a wrong rectangle trims combo by thirty percent instead of erasing it', () => {
   assert.equal(comboAfterFailure(1), 0);
   assert.equal(comboAfterFailure(5), 3);
@@ -205,7 +176,6 @@ test('a combo milestone always ranks at least 3, so "딱 10!" never shows alongs
   assert.equal(successFeedbackLevel({}), 1, 'a plain clear with no other signal ranks 1');
   assert.equal(successFeedbackLevel({ catCount: 1 }), 2, 'a cat bonus ranks 2');
   assert.equal(successFeedbackLevel({ wow: true }), 4, 'a WOW clear owns the frame');
-  assert.equal(successFeedbackLevel({ challengeCompleted: true }), 4);
   assert.equal(successFeedbackLevel({ earnedDrop: { id: 'megabomb' } }), 4, 'a rare drop outranks an ordinary one');
   assert.equal(successFeedbackLevel({ emptiesBoard: true, wow: true, comboMilestone: 8 }), 5, 'emptying the board always wins');
 });

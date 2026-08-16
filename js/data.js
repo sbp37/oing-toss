@@ -35,7 +35,7 @@ export function recordEligibleForStartStage(stage = 1) {
 // the column count, so width steps (the moments tiles visibly shrink) happen
 // exactly twice — at 5 and at 6 columns — each cushioned by a rows-only stage
 // before and after. Past 6x7 the board never changes again; late difficulty
-// comes from the value mix, challenges, time and drop pressure. 7x7+ remains
+// comes from the value mix, time and drop pressure. 7x7+ remains
 // reserved for a future hard mode. `size` doubles as the column count for the
 // board generator.
 //
@@ -262,73 +262,13 @@ export function isItemUnlockedAtStage(itemId, stage = 1) {
   return ['hint', 'shuffle'].includes(itemId);
 }
 
+// The stage-entry card is one line of plain text, like the original's
+// board-change pop — the stage number is the only information a transition
+// needs to convey. Everything else (unlocks, bonuses) announces itself when
+// it actually happens.
 export function stageIntroForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
-  const config = getStageConfig(level);
-  const board = `${config.cols}×${config.rows}`;
-  if (level === 1) return Object.freeze({ kicker: 'WARM UP', title: 'STAGE 1', detail: '4×4 START' });
-  if (level === 2) return Object.freeze({ kicker: 'BOARD UP', title: 'STAGE 2', detail: '4×5 OPEN' });
-  if (level === 3) return Object.freeze({ kicker: 'BOMB OPEN', title: 'STAGE 3', detail: '폭탄 해금' });
-  if (level === 4) return Object.freeze({ kicker: 'SPECIAL DROP', title: 'STAGE 4', detail: '희귀 아이템 체험' });
-  if (level === 5) return Object.freeze({ kicker: 'CLOCK OPEN', title: 'STAGE 5', detail: '시계 해금' });
-  if (level === 6) return Object.freeze({ kicker: 'MISSION ON', title: 'STAGE 6', detail: '큰 조합 보너스' });
-  if (level === 7) return Object.freeze({ kicker: 'CAT CHANCE', title: 'STAGE 7', detail: '고양이 수집 보너스' });
-  if (level === 8) return Object.freeze({ kicker: 'CHAIN FEVER', title: 'STAGE 8', detail: '연속 성공 보너스' });
-  const challenge = stageChallengeForStage(level);
-  const detail = challenge ? `${challenge.label} 보너스` : `${board} BOARD`;
-  return Object.freeze({
-    kicker: level >= 8 ? 'OING FEVER' : 'LEVEL UP',
-    title: `STAGE ${level}`,
-    detail,
-  });
-}
-
-export function stageChallengeForStage(stage = 1) {
-  const level = Math.max(1, Math.round(Number(stage) || 1));
-  if (level < 6) return null;
-  const kind = ['wide', 'cat', 'chain'][(level - 6) % 3];
-  if (kind === 'wide') return Object.freeze({ kind, label: '큰 조합', requirement: 5 });
-  if (kind === 'cat') return Object.freeze({ kind, label: '고양이 수집', requirement: 1 });
-  return Object.freeze({ kind, label: '연속 성공', requirement: 3 });
-}
-
-export function stageChallengeBonus(stage = 1) {
-  const level = Math.max(1, Math.round(Number(stage) || 1));
-  return 450 + level * 75;
-}
-
-export function completesStageChallenge(challenge, {
-  cellCount = 0,
-  catCount = 0,
-  stageStreak = 0,
-} = {}) {
-  if (!challenge) return false;
-  if (challenge.kind === 'wide') return Math.max(0, Number(cellCount) || 0) >= challenge.requirement;
-  if (challenge.kind === 'cat') return Math.max(0, Number(catCount) || 0) >= challenge.requirement;
-  if (challenge.kind === 'chain') return Math.max(0, Number(stageStreak) || 0) >= challenge.requirement;
-  return false;
-}
-
-export function stageChallengeProgress(challenge, {
-  completed = false,
-  stageStreak = 0,
-} = {}) {
-  if (!challenge) return null;
-  const requirement = Math.max(1, Math.round(Number(challenge.requirement) || 1));
-  const target = challenge.kind === 'chain' ? requirement : 1;
-  const progress = completed
-    ? target
-    : challenge.kind === 'chain'
-      ? Math.min(target, Math.max(0, Math.round(Number(stageStreak) || 0)))
-      : 0;
-  return Object.freeze({
-    kind: challenge.kind,
-    label: challenge.label,
-    requirement,
-    progress,
-    target,
-    completed: Boolean(completed),
-  });
+  return Object.freeze({ title: `STAGE ${level}` });
 }
 
 // The single source of truth for "did this success cross a combo
@@ -374,7 +314,7 @@ export function isWowClear(cellCount) {
   return Math.max(0, Math.round(Number(cellCount) || 0)) >= 5;
 }
 
-// LEVEL 5 board emptied · 4 WOW, rare item or challenge · 3 combo milestone
+// LEVEL 5 board emptied · 4 WOW or rare item · 3 combo milestone
 // or an ordinary drop · 2 cat bonus · 1 plain clear. Higher ranks own the
 // frame for a success; lower-ranked flourishes (the "딱 10!" pop, the combo
 // banner) stand down for whichever rank actually applies. This is a pure
@@ -384,14 +324,13 @@ export function isWowClear(cellCount) {
 export function successFeedbackLevel({
   emptiesBoard = false,
   wow = false,
-  challengeCompleted = false,
   earnedDrop = null,
   comboMilestone = 0,
   catCount = 0,
 } = {}) {
   if (emptiesBoard) return 5;
   const rareDrop = Boolean(earnedDrop) && RARE_BOARD_DROP_IDS.includes(earnedDrop.id);
-  if (wow || rareDrop || challengeCompleted) return 4;
+  if (wow || rareDrop) return 4;
   if (comboMilestone || earnedDrop) return 3;
   if (catCount > 0) return 2;
   return 1;
@@ -576,10 +515,6 @@ export const MESSAGES = Object.freeze({
   cloverSuccess: Object.freeze(['행운 점수까지 챙겼다냥!', '클로버 보너스 성공!', '이번 조합은 점수가 더 붙는다냥!']),
   clutch: Object.freeze(['막판 집중력 인정!', '끝까지 잡았다냥!', '마지막까지 깔끔했다냥!']),
   itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
-  challengeWide: Object.freeze(['큰 조합 노려보자냥!', '5칸 묶으면 보너스!']),
-  challengeCat: Object.freeze(['고양이 한 마리 찾아봐!', '숨은 고양이 챙겨보라냥!']),
-  challengeChain: Object.freeze(['연속 세 번 가보자냥!', '실수 없이 세 번, 할 수 있지?']),
-  challengeComplete: Object.freeze(['보너스까지 챙겼다냥!', '이번 미션도 깔끔하게 성공!', '오, 보너스 인정.']),
   bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
   clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),
   catBonus: Object.freeze(['보너스 고양이까지 챙겼다냥!', '야옹! 점수 더 얹어준다냥!', '고양이 보너스도 놓치지 않았다냥!']),
