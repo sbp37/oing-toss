@@ -103,6 +103,11 @@ export class GameUI {
       combo: document.querySelector('#combo-value'),
       comboChip: document.querySelector('#combo-chip'),
       comboTimerFill: document.querySelector('#combo-timer-fill'),
+      comboItemLabel: document.querySelector('#combo-item-label'),
+      comboItemTrack: document.querySelector('#combo-item-track'),
+      comboItemFill: document.querySelector('#combo-item-fill'),
+      boardTimeGauge: document.querySelector('#board-time-gauge'),
+      boardTimeFill: document.querySelector('#board-time-fill'),
       goal: document.querySelector('#goal-value'),
       goalLabel: document.querySelector('#goal-label'),
       stageMission: document.querySelector('#stage-mission'),
@@ -1519,10 +1524,28 @@ export class GameUI {
 
   async animateRoundTransition(nextRound, swapBoard, intro = {}) {
     this.clearTransientBoardFeedback();
+    const previousTileWidth = this.board.querySelector('.tile')?.getBoundingClientRect().width || 0;
     this.boardFrame.classList.add('is-round-leaving');
     await delay(140);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
+    // When the ladder grows an axis the tiles drop a size in one frame,
+    // which read as the board being replaced rather than growing. Arriving
+    // scaled so the new tiles start at the old tile size, then settling to
+    // 1, keeps it one continuous board. Measured from real widths so the
+    // same code handles every step (and does nothing when size is equal).
+    const nextTileWidth = this.board.querySelector('.tile')?.getBoundingClientRect().width || 0;
+    clearTimeout(this.sizeMorphTimer);
+    this.boardFrame.classList.remove('is-size-morphing');
+    if (previousTileWidth && nextTileWidth && Math.abs(previousTileWidth - nextTileWidth) > 1.5) {
+      const scale = clamp(previousTileWidth / nextTileWidth, 0.6, 1.6);
+      this.boardFrame.style.setProperty('--arrive-scale', String(Math.round(scale * 1000) / 1000));
+      void this.boardFrame.offsetWidth;
+      this.boardFrame.classList.add('is-size-morphing');
+      this.sizeMorphTimer = window.setTimeout(() => {
+        this.boardFrame.classList.remove('is-size-morphing');
+      }, 680);
+    }
     this.elements.roundMini.classList.remove('is-advancing');
     void this.elements.roundMini.offsetWidth;
     this.elements.roundMini.classList.add('is-advancing');
@@ -1535,10 +1558,8 @@ export class GameUI {
     title.textContent = intro.title || `STAGE ${nextRound}`;
     const detail = document.createElement('span');
     detail.textContent = intro.detail || '새 보드 시작';
-    const goal = document.createElement('b');
-    goal.textContent = `목표 ${Math.max(1, Math.round(Number(intro.target) || 1))}`;
     entry.classList.toggle('is-milestone', Boolean(intro.boardGrew));
-    entry.append(kicker, title, detail, goal, document.createElement('i'), document.createElement('i'));
+    entry.append(kicker, title, detail, document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(entry);
     await delay(460);
     entry.remove();
@@ -1735,6 +1756,19 @@ export class GameUI {
       : '';
     this.elements.timePill.style.setProperty('--time-progress', String(timed ? clamp(timeLeft / Math.max(1, duration), 0, 1) : 1));
     const isFrozen = freezeRemaining > 0;
+    // The gauge above the numbers: remaining time as a shrinking bar in the
+    // original's green-to-red language, readable in peripheral vision while
+    // the eyes stay on the board. Bands match the timer pill's thresholds.
+    if (this.elements.boardTimeGauge) {
+      this.elements.boardTimeGauge.hidden = !timed;
+      if (timed) {
+        this.elements.boardTimeFill.style.width = `${clamp(timeLeft / Math.max(1, duration), 0, 1) * 100}%`;
+        this.elements.boardTimeGauge.dataset.band = isFrozen ? 'frozen'
+          : time <= 10 ? 'low'
+            : time <= 30 ? 'mid'
+              : 'high';
+      }
+    }
     this.elements.timePill.classList.toggle('is-low-time', timed && !isFrozen && time > 10 && time <= 30);
     this.elements.timePill.classList.toggle('is-warning', timed && !isFrozen && time <= 10);
     this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
@@ -1766,6 +1800,18 @@ export class GameUI {
     const rewardUnlocked = rewardRemaining > 0;
     const rewardProgress = !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
     this.elements.comboTimerFill.style.transform = `scaleX(${rewardProgress})`;
+    // The centre compartment's visible gauge: the original's "아이템까지 N"
+    // readout. Item drops only start at stage 3, so before that the line
+    // stays hidden and the compartment is just the combo figure.
+    const showItemGauge = rewardUnlocked;
+    if (this.elements.comboItemTrack) {
+      this.elements.comboItemTrack.hidden = !showItemGauge;
+      this.elements.comboItemLabel.hidden = !showItemGauge;
+      if (showItemGauge) {
+        this.elements.comboItemFill.style.width = `${Math.round(rewardProgress * 100)}%`;
+        this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
+      }
+    }
     this.elements.comboChip.classList.toggle('is-active', combo > 0);
     const comboUrgency = combo > 0 ? clamp(comboRemainingMs / Math.max(1, comboWindowMs), 0, 1) : 1;
     const comboExpiring = combo >= 3 && comboUrgency > 0 && comboUrgency <= 0.24;

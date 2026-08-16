@@ -8100,19 +8100,6 @@ img {
   100% { opacity:0; transform:translate(calc(-50% + var(--growth-x) * 3.2),calc(-50% + var(--growth-y) * 3.1)) scale(.92) rotate(110deg); }
 }
 
-.stage-entry b {
-  margin-top: 5px;
-  padding: 3px 9px 2px;
-  border: 1px solid rgba(255,255,255,.92);
-  border-radius: 999px;
-  background: rgba(255,255,249,.84);
-  box-shadow: 0 2px 5px rgba(117,88,59,.08);
-  color: #9a7862;
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1;
-}
 
 .stage-entry.is-milestone {
   background: linear-gradient(180deg, rgba(248,255,251,.98), rgba(211,247,236,.97));
@@ -8121,12 +8108,10 @@ img {
 
 .stage-entry.is-milestone small,
 .stage-entry.is-milestone strong { color: #369b87; }
-.stage-entry.is-milestone b { color: #437d72; }
 
 @media (max-width: 340px) {
   .low-time-alert { top: calc(40px + var(--safe-top)); min-width: 122px; min-height: 32px; }
   .low-time-alert strong { font-size: 16px; }
-  .stage-entry b { margin-top: 4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

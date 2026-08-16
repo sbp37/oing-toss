@@ -103,6 +103,13 @@
             <img src="assets/icons/hud/score.webp" width="294" height="296" decoding="async" alt="">
             <span>점수</span><strong id="score-value">0</strong>
           </div>
+          <div class="combo-readout" id="combo-chip">
+            <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
+            <span>콤보</span><strong id="combo-value">0</strong>
+            <i class="combo-item-label" id="combo-item-label" hidden>아이템까지 7</i>
+            <div class="combo-item-track" id="combo-item-track" aria-hidden="true" hidden><b id="combo-item-fill"></b></div>
+            <div class="combo-timer" aria-hidden="true"><i id="combo-timer-fill"></i></div>
+          </div>
           <div class="goal-status">
             <div class="goal-meta">
               <span class="goal-copy"><b id="goal-value">0</b> <em id="goal-label">성공</em></span>
@@ -111,11 +118,6 @@
                 <strong id="stage-mission-value">큰 조합 0/1</strong>
               </span>
             </div>
-          </div>
-          <div class="combo-readout" id="combo-chip">
-            <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
-            <span>콤보</span><strong id="combo-value">0</strong>
-            <div class="combo-timer" aria-hidden="true"><i id="combo-timer-fill"></i></div>
           </div>
         </div>
       </section>
@@ -135,6 +137,7 @@
       </div>
 
       <section class="board-zone" aria-label="숫자 보드">
+        <div class="board-time-gauge" id="board-time-gauge" aria-hidden="true"><i id="board-time-fill"></i></div>
         <div class="board-frame" id="board-frame">
           <div class="sum-bubble" id="sum-bubble" aria-live="off"><span>합</span><strong id="sum-value">0</strong></div>
           <div class="board" id="board" data-size="4" role="grid" aria-label="합이 10이 되는 직사각형을 드래그하세요"></div>

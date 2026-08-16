@@ -2137,3 +2137,128 @@
     filter: drop-shadow(0 0 5px rgba(224, 49, 80, .45));
   }
 }
+
+/* HUD swap: 콤보 to the wide centre, 성공 to the right ------------------
+   The combo is the HUD's only live, second-by-second figure, so it earns
+   the widest painted compartment plus the gauge line the goal track used
+   to occupy — now filled with progress toward the next combo item, the
+   original's "아이템까지 N" readout. The success tally is a quiet count
+   and sits happily in the narrow corner. */
+.play-ui-v4 .play-status-bar .combo-readout { grid-column: 2; }
+.play-ui-v4 .play-status-bar .goal-status,
+.screen-play.play-ui-v4 .play-status-bar .goal-status { grid-column: 3; }
+
+/* Centre compartment: star icon left, "콤보" label and countdown on the
+   top line, the number beside the star, the track along the bottom. */
+.play-ui-v4 .play-status-bar .combo-readout img {
+  left: 7%;
+  right: auto;
+  top: 24%;
+  width: auto;
+  height: 46%;
+  aspect-ratio: 266 / 256;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout span {
+  left: 26%;
+  right: auto;
+  top: 18%;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout strong {
+  left: 26%;
+  right: auto;
+  top: 40%;
+  text-align: left;
+}
+
+.play-ui-v4 .play-status-bar .combo-item-label {
+  position: absolute;
+  right: 6%;
+  top: 18%;
+  color: #8a7d76;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.3vw, 10px);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .play-status-bar .combo-item-track {
+  position: absolute;
+  left: 48%;
+  right: 6%;
+  top: 47%;
+  height: 17%;
+  min-height: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(197, 167, 123, .46);
+  border-radius: 999px;
+  background: #f1e7d5;
+  box-shadow: inset 0 1px 2px rgba(93, 69, 43, .09);
+}
+
+.play-ui-v4 .play-status-bar .combo-item-track b {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffc75e, #ff9d54);
+  transition: width .28s ease;
+}
+
+/* Right compartment: the tally alone, centred like the other values. */
+.play-ui-v4 .play-status-bar .goal-copy b { color: #ef5477; }
+
+/* Board time gauge -------------------------------------------------------
+   The original's green-to-red bar, sitting right on top of the numbers so
+   the remaining time reads in peripheral vision while the eyes stay on
+   the board. Colour bands match the timer pill: amber under 30s, red
+   under 10s, icy while frozen. */
+.play-ui-v4 .board-time-gauge {
+  justify-self: center;
+  width: min(92%, 352px);
+  height: 7px;
+  margin-bottom: clamp(3px, .8dvh, 7px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .42);
+  box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14);
+}
+
+.play-ui-v4 .board-time-gauge i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4fd98a, #2bbd6e);
+  transition: width .45s linear, background-color .4s ease;
+}
+
+.play-ui-v4 .board-time-gauge[data-band="mid"] i { background: linear-gradient(90deg, #ffcd5e, #f5a742); }
+.play-ui-v4 .board-time-gauge[data-band="low"] i { background: linear-gradient(90deg, #ff8f8f, #ef4d68); }
+.play-ui-v4 .board-time-gauge[data-band="frozen"] i { background: linear-gradient(90deg, #9fdcff, #5db7f0); }
+.play-ui-v4 .board-time-gauge[hidden] { display: none; }
+
+/* Board size morph -------------------------------------------------------
+   When the ladder grows a column the tiles drop a size (82px to 65px at
+   the 4-to-5 step), and an instant swap read as "someone replaced my
+   board". The new board instead arrives scaled so its tiles match the old
+   tile size, then settles into place — one board reflowing, not two
+   boards traded. --arrive-scale is measured in JS from real tile widths. */
+.play-ui-v4 .board-frame.is-size-morphing {
+  animation: board-size-morph 620ms cubic-bezier(.2, .8, .24, 1) both;
+  transform-origin: 50% 12%;
+}
+
+@keyframes board-size-morph {
+  0% { transform: scale(var(--arrive-scale, 1.18)); opacity: .35; }
+  55% { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .board-frame.is-size-morphing { animation: none; }
+}
