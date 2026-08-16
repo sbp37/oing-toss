@@ -140,10 +140,13 @@ export class GameUI {
       rankingTrend: document.querySelector('#ranking-trend'),
       rankingBars: document.querySelector('#ranking-bars'),
       rankingEmpty: document.querySelector('#ranking-empty'),
+      rankingCatsLine: document.querySelector('#ranking-cats-line'),
+      rankingCatsTotal: document.querySelector('#ranking-cats-total'),
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
       finalCats: document.querySelector('#final-cats'),
+      finalCatsTotal: document.querySelector('#final-cats-total'),
       newRecord: document.querySelector('#new-record'),
       resultBestCompare: document.querySelector('#result-best-compare'),
       resultPreviousCompare: document.querySelector('#result-previous-compare'),
@@ -1869,6 +1872,13 @@ export class GameUI {
     }
   }
 
+  updateCatsRescued(total = 0) {
+    const count = Math.max(0, Math.round(Number(total) || 0));
+    if (!this.elements.rankingCatsLine || !this.elements.rankingCatsTotal) return;
+    this.elements.rankingCatsTotal.textContent = count.toLocaleString('ko-KR');
+    this.elements.rankingCatsLine.hidden = count <= 0;
+  }
+
   renderRanking({ summary } = {}) {
     const record = summary || { recent: [], best: 0, average: 0, last: 0, count: 0, trendTone: 'new', trendText: '첫 판을 기다리고 있다냥!' };
     const format = (value) => Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR');
@@ -1932,6 +1942,7 @@ export class GameUI {
 
   showResult({
     score, maxCombo, round, progress = 0, target = 1, catsCollected = 0,
+    catsRescuedTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
@@ -1948,6 +1959,14 @@ export class GameUI {
       round,
     });
     this.elements.finalCats.textContent = String(catsCollected);
+    // The running total turns the per-run count into a visible collection.
+    // On a first run (or none rescued yet) the total equals the run count
+    // and would just repeat the number, so the line stays hidden.
+    const total = Math.max(0, Math.round(Number(catsRescuedTotal) || 0));
+    if (this.elements.finalCatsTotal) {
+      this.elements.finalCatsTotal.textContent = `모두 ${total.toLocaleString('ko-KR')}마리`;
+      this.elements.finalCatsTotal.hidden = !(total > catsCollected);
+    }
     this.elements.newRecord.hidden = !newRecord;
     this.elements.resultDecor.classList.toggle('is-record', newRecord);
 

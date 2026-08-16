@@ -1643,6 +1643,26 @@
   background-repeat: no-repeat;
 }
 
+/* The garden artwork is one tall scene — flower field and paw-print path at
+   the bottom, the cat lying by the fences in the middle, the leafy arch and
+   open sky at the top. Each stage band opens its windows onto a different
+   part of it, so a run climbs the garden: STAGE 3-4 uncovers the flower
+   beds, 5-7 reaches the cat by the fence, and the fever stages look up at
+   the arch. Same asset, three views. The band changes while the board is
+   fully tiled (and the transition cover hides the garden anyway), so the
+   shift itself is never visible. */
+.screen-play.play-ui-v4[data-stage-band="rising"]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center 100%;
+}
+
+.screen-play.play-ui-v4[data-stage-band="wide"]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center 55%;
+}
+
+.screen-play.play-ui-v4[data-stage-band="fever"]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center 0%;
+}
+
 /* A cleared board is entirely empty tiles, so the reveal logic above shows
    the whole picture at once for the instant between "round cleared" and the
    next board's tiles landing. `updateHUD` can also flip `data-stage-band` to
@@ -1928,6 +1948,18 @@
   grid-row: 3;
   font-size: 19px;
   line-height: 1.05;
+}
+
+/* Running total under the per-run rescue count. It only shows from the
+   second run on (the JS hides it while total == this run), so first-run
+   cards keep their three matching rows. */
+.screen-result .result-grid .result-cats-total {
+  grid-row: 4;
+  color: #b08894;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* The record meter is the one element that has a label and a bar; centre

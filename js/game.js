@@ -1568,6 +1568,12 @@ class OingGame {
     if (!this.runtime.testMode && newRecord) storageAdapter.saveBestScore(this.state.score);
     if (!this.runtime.testMode && recordEligible) storageAdapter.saveBestCombo(this.state.maxCombo);
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(this.state.round);
+    // Rescued cats accumulate across runs — the result card's per-run count
+    // reads as part of a growing collection instead of a number that
+    // evaporates when the screen closes.
+    const catsRescuedTotal = this.runtime.testMode
+      ? this.state.catsCollected
+      : storageAdapter.addCatsRescued(this.state.catsCollected);
     this.ui.updateBestScore(recordEligible ? Math.max(oldBest, this.state.score) : oldBest);
     this.lastResultSummary = {
       score: this.state.score,
@@ -1577,6 +1583,7 @@ class OingGame {
       target: config.target,
       maxClearCells: this.state.maxClearCells,
       catsCollected: this.state.catsCollected,
+      catsRescuedTotal,
       newRecord,
       previousBest: oldBest,
       previousScore,
@@ -1622,6 +1629,7 @@ class OingGame {
     const records = await rankingAdapter.open();
     this.ui.updateBestScore(storageAdapter.getBestScore());
     this.ui.renderRanking(records);
+    this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     this.ui.setOverlay('ranking-overlay', true);
   }
 

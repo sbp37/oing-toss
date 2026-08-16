@@ -4788,6 +4788,25 @@ img {
 .record-stats span { color: #97887a; font-size: 11px; font-weight: 850; white-space: nowrap; }
 .record-stats strong { overflow: hidden; color: #52627c; font-family: var(--font-sans); font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; text-overflow: ellipsis; }
 
+.record-cats-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 7px 0 0;
+  color: #97887a;
+  font-size: 12px;
+  font-weight: 850;
+}
+.record-cats-line img { width: 15px; height: 15px; object-fit: contain; }
+.record-cats-line strong {
+  color: #d96474;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
 .record-history {
   position: relative;
   margin-top: 8px;

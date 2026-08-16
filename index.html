@@ -200,7 +200,7 @@
         <div class="result-grid">
           <div><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><span>최고 콤보</span><b id="final-combo">0</b></div>
           <div><img src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>도달 스테이지</span><b id="final-round">1</b></div>
-          <div><img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>고양이 구조</span><b><i id="final-cats">0</i>마리</b></div>
+          <div><img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>고양이 구조</span><b><i id="final-cats">0</i>마리</b><small class="result-cats-total" id="final-cats-total" hidden>모두 0마리</small></div>
         </div>
       </article>
       <div class="result-cat-row">
@@ -268,6 +268,7 @@
           <div><span>평균 점수</span><strong id="ranking-average-score">0</strong></div>
           <div><span>저장된 판</span><strong id="ranking-run-count">0/7</strong></div>
         </div>
+        <p class="record-cats-line" id="ranking-cats-line" hidden><img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt="">지금까지 구조한 고양이 <strong id="ranking-cats-total">0</strong>마리</p>
         <section class="record-history" aria-labelledby="record-history-title">
           <div class="record-history-title"><span id="record-history-title">최근 점수 흐름</span><b id="ranking-trend">첫 판을 기다리고 있다냥!</b></div>
           <div class="record-bars" id="ranking-bars" role="img" aria-label="최근 7판 점수 그래프"></div>

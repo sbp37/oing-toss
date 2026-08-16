@@ -7,6 +7,7 @@ const HIGHEST_STAGE_KEY = 'oing_toss_v2_highest_stage';
 const BEST_COMBO_KEY = 'oing_toss_v2_best_combo';
 const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v2_recent_result_messages';
 const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v2_rare_showcase_count';
+const CATS_RESCUED_KEY = 'oing_toss_v2_cats_rescued';
 
 function safeRead(key, fallback) {
   try {
@@ -90,6 +91,15 @@ export const storageAdapter = {
   markRareShowcaseSeen() {
     const next = Math.min(3, this.getRareShowcaseCount() + 1);
     try { localStorage.setItem(RARE_SHOWCASE_COUNT_KEY, String(next)); } catch {}
+    return next;
+  },
+  getCatsRescued() {
+    const value = Number(safeRead(CATS_RESCUED_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  addCatsRescued(count) {
+    const next = this.getCatsRescued() + Math.max(0, Math.round(Number(count) || 0));
+    try { localStorage.setItem(CATS_RESCUED_KEY, String(next)); } catch {}
     return next;
   },
   getRecentResultMessages() {

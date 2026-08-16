@@ -35,6 +35,21 @@ test('stage and combo progression only move forward while legacy score keys stay
   }
 });
 
+test('rescued cats accumulate across runs and never go backwards', () => {
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = new MemoryStorage();
+  try {
+    assert.equal(storageAdapter.getCatsRescued(), 0);
+    assert.equal(storageAdapter.addCatsRescued(7), 7);
+    assert.equal(storageAdapter.addCatsRescued(0), 7, 'a catless run keeps the total');
+    assert.equal(storageAdapter.addCatsRescued(-3), 7, 'negative counts must not shrink the collection');
+    assert.equal(storageAdapter.addCatsRescued(12), 19);
+    assert.equal(storageAdapter.getCatsRescued(), 19);
+  } finally {
+    globalThis.localStorage = previous;
+  }
+});
+
 test('new players start with music on while an explicit saved preference remains compatible', () => {
   const previous = globalThis.localStorage;
   globalThis.localStorage = new MemoryStorage();
