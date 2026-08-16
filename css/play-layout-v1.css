@@ -330,27 +330,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.play-ui-v4 .play-status-bar .goal-track,
-.screen-play.play-ui-v4 .play-status-bar .goal-track {
-  position: absolute;
-  left: 14%;
-  right: 14%;
-  bottom: 18%;
-  width: auto;
-  height: 20%;
-  min-height: 5px;
-  overflow: hidden;
-  border: 1px solid rgba(197, 167, 123, .46);
-  border-radius: 999px;
-  background: #f1e7d5;
-  box-shadow: inset 0 1px 2px rgba(93, 69, 43, .09);
-}
 
-.play-ui-v4 .play-status-bar .goal-track i {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #72ddc8, #20bea5);
-}
 
 .play-ui-v4 .play-status-bar .stage-mission:not([hidden]) {
   position: absolute;
@@ -863,11 +843,6 @@
 }
 
 .play-ui-v4 .play-status-bar .goal-meta { top: 14%; }
-.play-ui-v4 .play-status-bar .goal-track,
-.screen-play.play-ui-v4 .play-status-bar .goal-track {
-  bottom: 16%;
-  height: 18%;
-}
 
 .play-ui-v4 .board-frame,
 .play-ui-v4 .board-frame[data-round] {
@@ -1144,23 +1119,7 @@
   line-height: 1;
 }
 
-.play-ui-v4 .play-status-bar .goal-track,
-.screen-play.play-ui-v4 .play-status-bar .goal-track {
-  left: 43%;
-  right: 8%;
-  bottom: 29%;
-  width: auto;
-  height: 30%;
-  min-height: 8px;
-  border: 1px solid rgba(181, 158, 131, .48);
-  background: #eadfce;
-  box-shadow: inset 0 2px 3px rgba(91, 67, 42, .11), 0 1px 0 rgba(255,255,255,.86);
-}
 
-.play-ui-v4 .play-status-bar .goal-track i {
-  background: linear-gradient(90deg, #63d8bf, #17b99f);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.45);
-}
 
 .play-ui-v4 .play-status-bar .stage-mission:not([hidden]) {
   right: 2%;
@@ -1513,7 +1472,7 @@
 .play-ui-v4 .play-status-bar .goal-copy em {
   position: absolute;
   left: 6%;
-  right: 55%;
+  right: 6%;
   top: 22%;
   color: #554b49;
   font-family: var(--font-sans);
@@ -1528,7 +1487,7 @@
 .play-ui-v4 .play-status-bar .goal-copy b {
   position: absolute;
   left: 6%;
-  right: 55%;
+  right: 6%;
   top: 45.5%;
   font-family: var(--font-display);
   font-size: clamp(19px, 5.6vw, 25px);
@@ -1538,22 +1497,25 @@
   white-space: nowrap;
 }
 
-/* Two-digit progress ("16 / 17") is 7 characters; at full size the centred
-   nowrap text spills out of its box and under the progress track on every
-   width. One band down keeps the worst case clear of the track. */
+/* The counter is a bare tally now, so it only needs the smaller band once it
+   reaches four digits — a length no real run gets near, but the guard keeps
+   the number inside its box if one ever does. */
 .play-ui-v4 .play-status-bar .goal-copy b[data-digits="l"] {
   top: 47.5%;
   font-size: clamp(14px, 4.2vw, 19px);
 }
 
-.play-ui-v4 .play-status-bar .goal-track,
-.screen-play.play-ui-v4 .play-status-bar .goal-track {
-  left: 49%;
-  right: 6%;
-  top: 49.5%;
-  bottom: auto;
-  height: 25%;
+/* Every clear pulses the tally, the way the goal track used to pulse. */
+.play-ui-v4 .play-status-bar .goal-copy b.is-rewarded {
+  animation: goalTallyPulse .5s cubic-bezier(.22, 1.2, .4, 1);
 }
+
+@keyframes goalTallyPulse {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
 
 @media (max-height: 780px) {
   .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
@@ -2140,4 +2102,38 @@
   box-shadow:
     0 0 0 2px rgba(255,254,246,.8),
     0 4px 16px rgba(233,171,64,.26);
+}
+
+/* Timer readability -----------------------------------------------------
+   The v4 pill is a painted image, so the shared .time-readout warning
+   styles in styles.css (which colour the element's own border and
+   background) are hidden behind the artwork, and this file's own
+   `strong { color: #183f6e }` outranked the warning colour — leaving the
+   figure the same calm navy at three seconds left as at two minutes. The
+   colour has to live here, at this specificity, to be seen at all. */
+.play-ui-v4 .play-top-controls .time-readout.is-low-time strong {
+  color: #c9741a;
+}
+
+.play-ui-v4 .play-top-controls .time-readout.is-warning strong {
+  color: #e03150;
+}
+
+/* Under ten seconds the pill itself keeps a steady halo, so the clock is
+   findable in peripheral vision while the eyes are down on the board. The
+   per-second `is-counting` scale pulse rides on top of this. */
+.play-ui-v4 .play-top-controls .time-readout.is-warning {
+  animation: play-timer-urgent 1s ease-in-out infinite;
+}
+
+@keyframes play-timer-urgent {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(224, 49, 80, 0)); }
+  50% { filter: drop-shadow(0 0 7px rgba(224, 49, 80, .55)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .play-top-controls .time-readout.is-warning {
+    animation: none;
+    filter: drop-shadow(0 0 5px rgba(224, 49, 80, .45));
+  }
 }

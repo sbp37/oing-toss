@@ -22,7 +22,7 @@ import {
   adjacentSeedCountForRound,
   rectStats,
 } from '../js/board.js';
-import { comboGainForClear, comboMultiplier, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForCloverBonus, scoreForClutch, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint, stageProgressGainForClear } from '../js/data.js';
+import { comboGainForClear, comboMultiplier, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForCloverBonus, scoreForClutch, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint } from '../js/data.js';
 
 const originalRandom = Math.random;
 let randomState = 20260809;
@@ -139,16 +139,16 @@ assert.equal(boardAssistForPerformance({ stage: 6, successCount: 8, failureCount
 assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 assert.equal(EASY_BOARD_BONUS.minimumAnswers, 1);
 
-assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, bombChance: 0 });
+assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, timeLimit: 120, bombChance: 0 });
 // The ladder grows one axis per stage, rows first: tile size on a phone is
 // set by the column count, so the two width steps (to 5 and to 6 columns)
 // each sit between rows-only stages that hold tile size steady.
 assert.deepEqual(
   [1, 2, 3, 4, 5].map((stage) => {
     const config = getRoundConfig(stage);
-    return [config.cols, config.rows, config.target];
+    return [config.cols, config.rows];
   }),
-  [[4, 4, 3], [4, 5, 5], [5, 5, 7], [5, 6, 8], [6, 6, 10]],
+  [[4, 4], [4, 5], [5, 5], [5, 6], [6, 6]],
 );
 // The board stops growing at 6x7 so the late-stage numerals stay readable and
 // the cell keeps its near-square proportion; difficulty rides on `target` and
@@ -156,33 +156,30 @@ assert.deepEqual(
 assert.deepEqual(
   [6, 7, 8, 9, 10].map((stage) => {
     const config = getRoundConfig(stage);
-    return [config.cols, config.rows, config.target];
+    return [config.cols, config.rows];
   }),
-  [[6, 7, 12], [6, 7, 13], [6, 7, 14], [6, 7, 15], [6, 7, 16]],
+  [[6, 7], [6, 7], [6, 7], [6, 7], [6, 7]],
 );
 {
-  const targets = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1).target);
-  // The authored stages must climb every step: STAGE 5 once asked for 11 and
-  // STAGE 6 for 10, so the board grew while the goal shrank.
-  targets.slice(0, 10).forEach((target, index) => {
-    if (index === 0) return;
-    assert.ok(target > targets[index - 1], `STAGE ${index + 1} target must exceed STAGE ${index}`);
-  });
-  // Extrapolated stages keep climbing until the target cap, then hold flat.
-  targets.forEach((target, index) => {
-    if (index === 0) return;
-    assert.ok(target >= targets[index - 1], `STAGE ${index + 1} target must not drop`);
-  });
-  // Both caps guard the numerals: `rows` sets the type size, and `cols` past 6
-  // both clutters the board and flattens the square tile art.
+  // The board never shrinks and never passes its caps: `rows` sets the type
+  // size, and `cols` past 6 both clutters the board and flattens the square
+  // tile art. Stages carry no target at all — a board runs until it is dry.
   const dimensions = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1));
+  dimensions.forEach((config, index) => {
+    if (index === 0) return;
+    const previous = dimensions[index - 1];
+    assert.ok(config.cols >= previous.cols && config.rows >= previous.rows,
+      `STAGE ${index + 1} must not shrink the board`);
+    assert.ok(config.cols === previous.cols || config.rows === previous.rows,
+      `STAGE ${index + 1} may grow only one axis, so tiles shrink as rarely as possible`);
+  });
   assert.ok(dimensions.every((config) => config.rows <= 7), 'no stage may exceed seven rows');
   assert.ok(dimensions.every((config) => config.cols <= 6), 'no stage may exceed six columns');
 }
 assert.equal(getRoundConfig(20).size, 6);
 assert.equal(getRoundConfig(20).rows, 7);
 assert.equal(getRoundConfig(20).timeLimit, 120);
-assert.ok(getRoundConfig(20).target > getRoundConfig(10).target);
+assert.equal(getRoundConfig(20).target, undefined, 'extrapolated stages must not reintroduce a target');
 // The clock tile is retired: no stage config may carry a chance for it, and
 // the board must refuse to place one even if a caller asks.
 assert.equal(getRoundConfig(20).clockChance, undefined, 'no stage may define a clock-tile chance');
@@ -286,8 +283,6 @@ assert.equal(comboMultiplier(10), comboMultiplier(80), 'combo score multiplier r
 assert.ok(scoreForClear(4, 1) > scoreForClear(2, 1) * 2, 'large rectangles must earn a meaningful bonus');
 assert.equal(comboGainForClear(3), 1, 'small clears advance one combo');
 assert.equal(comboGainForClear(4), 2, 'four-cell clears advance two combo');
-assert.equal(stageProgressGainForClear(4), 1, 'ordinary clears advance one goal step');
-assert.equal(stageProgressGainForClear(5), 2, 'five-cell clears advance two goal steps');
 assert.equal(scoreForWideClear(4, 8), 0, 'four-cell clears do not receive WOW score');
 assert.equal(scoreForWideClear(5, 1), 120, 'five-cell clears receive a visible WOW score');
 assert.ok(scoreForWideClear(6, 5) > scoreForWideClear(5, 5), 'wider clears increase the WOW reward');

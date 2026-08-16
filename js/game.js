@@ -34,7 +34,6 @@ import {
   stageChallengeBonus,
   stageChallengeForStage,
   stageChallengeProgress,
-  stageProgressGainForClear,
   stageShowcaseBoardDrop,
   stageIntroForStage,
   stageClearBonus,
@@ -48,7 +47,7 @@ import {
   shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
   shouldAdvanceRound,
-  stageGoalJustReached,
+  isWowClear,
 } from './data.js';
 import { BoardModel, boardAssistForPerformance } from './board.js';
 import { BoardItemField } from './board-items.js';
@@ -170,7 +169,6 @@ class OingGame {
     this.stageDuration = 0;
     this.retryStage = 1;
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
-    this.autoShuffleUsed = false;
     this.state = this.freshState();
     this.input = attachStickyRectangleInput({
       boardEl: this.ui.board,
@@ -239,7 +237,6 @@ class OingGame {
       round: stage,
       startStage: stage,
       recordEligible: eligible,
-      progress: 0,
       timeLeft: this.runtime?.duration || GAME_DURATION_SECONDS,
       comboExpiresAt: 0,
       successCount: 0,
@@ -402,7 +399,6 @@ class OingGame {
     this.finishGraceTimer = null;
     this.finishPending = false;
     this.finishing = false;
-    this.autoShuffleUsed = false;
     this.lastCountdownSecond = null;
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
     this.ui.setOverlay('pause-overlay', false);
@@ -759,49 +755,53 @@ class OingGame {
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
-    const previousProgress = this.state.progress;
-    this.state.progress += stageProgressGainForClear(clearedCellCount);
-    const goalReached = stageGoalJustReached(previousProgress, this.state.progress, getRoundConfig(this.state.round).target);
+    // Cells still on the board once this clear (and any bomb blast) is gone.
+    // Emptying the board outright is the run's peak moment now that stages
+    // have no target to hit, so it takes the top rank.
+    const emptiesBoard = this.model.remainingPlayableCells() - clearedCellCount - blastCells.length <= 0;
+    const wow = isWowClear(clearedCellCount);
 
     // One rank for the whole moment, so the celebrations stop competing.
     // Every system used to fire independently, which made the best clears the
     // busiest frames on screen — measured at nine simultaneous effects. The
     // rank decides who is the lead and who steps back; it never suppresses a
-    // number, so score, combo and goal keep updating in the HUD regardless.
+    // number, so score and combo keep updating in the HUD regardless.
     const successLevel = successFeedbackLevel({
-      goalReached,
+      emptiesBoard,
+      wow,
       challengeCompleted,
       earnedDrop,
       comboMilestone,
-      comboGain,
       catCount,
     });
     this.completeTutorial();
     successHaptic(this.state.combo);
-    duckMusic(comboGain > 1 ? 560 : 390, comboGain > 1 ? 0.48 : 0.64);
-    if (comboGain > 1) playWideClearSound();
-    else if (this.state.combo >= 2) playComboSound(this.state.combo);
+    duckMusic(wow ? 560 : 390, wow ? 0.48 : 0.64);
+    // playWideClearSound is a port of the original's WOW fanfare — a rising
+    // three-chord arpeggio and a sparkle — so it fires on the same five-cell
+    // threshold the original used, alongside the centred WOW! card.
+    if (wow) {
+      playWideClearSound();
+      this.ui.showWowMoment();
+    } else if (this.state.combo >= 2) playComboSound(this.state.combo);
     else playSuccessSound();
     if (catCount > 0) {
       const catSoundOffset = blastCells.length
         ? 0.36
-        : comboGain > 1 ? 0.25 : 0.17;
+        : wow ? 0.25 : 0.17;
       playCatBonusSound(catSoundOffset);
     }
     if (earnedDrop) this.ui.showComboReward(earnedDrop, comboMilestone ? 300 : 40);
-    const scoreFeedback = () => this.ui.showScoreBurst(points, rect, { rows: this.model.rows, cols: this.model.cols }, this.state.combo, clearedCellCount, {
-      catCount,
-      catBonusPoints,
-      comboGain,
-      wideBonusPoints,
-      specialBonusPoints,
-      challengeBonusPoints,
-      cloverBonusPoints,
-      clutchBonusPoints,
-    });
+    const scoreFeedback = () => this.ui.showScoreBurst(
+      points,
+      rect,
+      { rows: this.model.rows, cols: this.model.cols },
+      this.state.combo,
+      clearedCellCount,
+    );
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
-    this.speakForSuccess(catCount, comboGain, successLevel);
+    this.speakForSuccess(catCount, wow, successLevel);
     if (challengeCompleted) {
       this.ui.setPlayCharacter('success', 1000);
       this.showCatMessage('challengeComplete');
@@ -844,18 +844,12 @@ class OingGame {
       return;
     }
 
-    const config = getRoundConfig(this.state.round);
     const remainingAnswer = this.model.findAnswer();
     const perfect = this.model.remainingPlayableCells() === 0;
-    // A fully emptied board always advances, even below target — shuffling
-    // nothing helps nobody. Otherwise the target is only the floor: the
-    // board stays until its answers genuinely run out.
-    if (perfect || shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
+    if (shouldAdvanceRound({ hasAnswer: Boolean(remainingAnswer), boardEmpty: perfect })) {
       this.renderBoard({ preserveScoreBurst: true });
       if (comboMilestone) await delay(220);
       await this.clearRound({ perfect });
-    } else if (!remainingAnswer) {
-      await this.handleNoAnswers();
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard({ preserveScoreBurst: true });
@@ -880,24 +874,6 @@ class OingGame {
     this.updateHUD();
     if (source && gainedTime > 0) this.ui.animateClock(gainedTime, source);
     return gainedTime > 0;
-  }
-
-  async handleNoAnswers() {
-    this.autoShuffleUsed = true;
-    this.showCatMessage('noAnswer');
-    this.ui.setPlayCharacter('wave', 1000);
-    duckMusic(420, 0.66);
-    playShuffleSound();
-    itemHaptic();
-    await this.ui.animateShuffleOut();
-    const shuffled = this.model.shuffleRemaining();
-    let carried = [];
-    if (!shuffled) carried = this.buildRound();
-    else this.renderBoard();
-    await this.ui.animateShuffleIn();
-    itemHaptic();
-    if (carried.length) this.announceBoardItems(carried, { playSound: false });
-    this.inputGuardUntil = performance.now() + 140;
   }
 
   async handleFailure(rect, stats = {}) {
@@ -931,22 +907,19 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
-  speakForSuccess(catCount = 0, comboGain = 1, successLevel = 1) {
+  speakForSuccess(catCount = 0, wow = false, successLevel = 1) {
     // The cat used to have a line for literally every clear, which measured
     // at 3.67 message changes per success — it talked over the game instead
     // of reacting to it. It now speaks for moments with feeling behind them:
-    // the first clear, a big or lucky one, the last step before a goal or a
-    // reward, and the combo milestones. An ordinary clear passes in silence,
-    // which is what makes the next line worth reading.
+    // the first clear, a big or lucky one, the step before a reward, and the
+    // combo milestones. An ordinary clear passes in silence, which is what
+    // makes the next line worth reading.
     if (catCount > 0) {
       this.ui.setPlayCharacter('success', 950);
       this.showCatMessage('catBonus');
-    } else if (comboGain > 1) {
+    } else if (wow) {
       this.ui.setPlayCharacter('success', 1000);
       this.showCatMessage('wow');
-    } else if (getRoundConfig(this.state.round).target - this.state.progress === 1) {
-      this.ui.setPlayCharacter('wave', 900);
-      this.showCatMessage('nearGoal');
     } else if (this.state.successCount === 1) {
       this.ui.setPlayCharacter('success', 800);
       this.showCatMessage('firstSuccess');
@@ -1005,10 +978,8 @@ class OingGame {
       delay(760),
     ]);
     this.state.round = nextRound;
-    this.state.progress = 0;
     this.state.stageChallengeComplete = false;
     this.state.stageChallengeStreak = 0;
-    this.autoShuffleUsed = false;
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
@@ -1045,7 +1016,6 @@ class OingGame {
       carriedItems = this.buildRound();
     }, {
       ...stageIntroForStage(nextRound),
-      target: nextConfig.target,
       boardGrew: nextConfig.rows !== clearedConfig.rows || nextConfig.cols !== clearedConfig.cols,
     });
     this.state.inputLocked = false;
@@ -1231,14 +1201,11 @@ class OingGame {
 
   async finishBlast(boardItemKey = null) {
     if (boardItemKey) this.boardItems.delete(boardItemKey);
-    const config = getRoundConfig(this.state.round);
     const remainingAnswer = this.model.findAnswer();
     const perfect = this.model.remainingPlayableCells() === 0;
-    if (perfect || shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
+    if (shouldAdvanceRound({ hasAnswer: Boolean(remainingAnswer), boardEmpty: perfect })) {
       this.renderBoard();
       await this.clearRound({ perfect });
-    } else if (!remainingAnswer) {
-      await this.handleNoAnswers();
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
@@ -1646,8 +1613,7 @@ class OingGame {
       score: this.state.score,
       maxCombo: this.state.maxCombo,
       round: this.state.round,
-      progress: this.state.progress,
-      target: config.target,
+      successCount: this.state.successCount,
       maxClearCells: this.state.maxClearCells,
       catsCollected: this.state.catsCollected,
       catsRescuedTotal,
@@ -1737,7 +1703,6 @@ class OingGame {
         ? Math.max(0, this.state.comboExpiresAt - performance.now())
         : 0,
       comboWindowMs,
-      target: config.target,
       duration: this.stageDuration,
       timed: this.stageDuration > 0,
       freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),
@@ -1782,6 +1747,7 @@ if (game.runtime.testMode) {
     getBoard: () => game.model.grid.map((row) => row.slice()),
     getBoardItems: () => game.boardItems.snapshot(),
     findAnswer: () => game.model.findAnswer(),
+    findAnswers: () => game.model.findAnswers(),
     setCombo: (combo) => {
       game.state.combo = Math.max(0, Math.floor(Number(combo) || 0));
       game.refreshComboDeadline();
@@ -1814,18 +1780,10 @@ if (game.runtime.testMode) {
     setStage: (stage = 1) => {
       game.stopTimer();
       game.state.round = Math.max(1, Math.floor(Number(stage) || 1));
-      game.state.progress = 0;
-      game.autoShuffleUsed = false;
       game.buildRound();
       game.state.inputLocked = false;
       game.beginCountdown();
       return game.state.round;
-    },
-    setProgress: (progress = 0) => {
-      const target = getRoundConfig(game.state.round).target;
-      game.state.progress = Math.max(0, Math.min(target, Math.floor(Number(progress) || 0)));
-      game.updateHUD();
-      return game.state.progress;
     },
     commit: (rect) => game.commit(rect),
   };

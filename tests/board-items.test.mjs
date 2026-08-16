@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, stageGoalJustReached, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -94,11 +94,11 @@ test('combo grace tightens by stage and idle decay stays forgiving early', () =>
   assert.equal(comboAfterIdle(20, 9), 17);
 });
 
-test('large five-cell answers accelerate the goal without making ordinary answers ambiguous', () => {
-  assert.equal(stageProgressGainForClear(2), 1);
-  assert.equal(stageProgressGainForClear(4), 1);
-  assert.equal(stageProgressGainForClear(5), 2);
-  assert.equal(stageProgressGainForClear(8), 2);
+test('five cells in one clear is the WOW threshold, matching the original', () => {
+  assert.equal(isWowClear(2), false);
+  assert.equal(isWowClear(4), false, 'four cells already pay a wide bonus but do not stop the screen');
+  assert.equal(isWowClear(5), true);
+  assert.equal(isWowClear(8), true);
 });
 
 test('bomb and clock inventory unlock only when their teaching stages begin', () => {
@@ -190,12 +190,12 @@ test('a combo milestone always ranks at least 3, so "딱 10!" never shows alongs
   // milestone could ever produce rank <= 2 the two would render together;
   // this is the invariant that guarantees they cannot.
   for (const comboMilestone of [3, 5, 8, 16, 24, 32]) {
-    const level = successFeedbackLevel({ comboMilestone, comboGain: 1, catCount: 0 });
+    const level = successFeedbackLevel({ comboMilestone, catCount: 0 });
     assert.ok(level >= 3, `milestone ${comboMilestone} produced rank ${level}, which would show 딱 10!`);
   }
-  // The same must hold when a milestone lands alongside a wide clear or a
-  // cat bonus — those alone would only earn rank 2.
-  assert.equal(successFeedbackLevel({ comboMilestone: 8, comboGain: 2, catCount: 1 }), 3);
+  // The same must hold when a milestone lands alongside a cat bonus — that
+  // alone would only earn rank 2.
+  assert.equal(successFeedbackLevel({ comboMilestone: 8, catCount: 1 }), 3);
 
   // An ordinary drop without a milestone also ranks 3, for the same reason:
   // showComboReward's pop would otherwise share the frame with 딱 10!.
@@ -203,11 +203,11 @@ test('a combo milestone always ranks at least 3, so "딱 10!" never shows alongs
 
   // Full ladder, sanity-checked end to end.
   assert.equal(successFeedbackLevel({}), 1, 'a plain clear with no other signal ranks 1');
-  assert.equal(successFeedbackLevel({ comboGain: 2 }), 2, 'a wide clear ranks 2');
   assert.equal(successFeedbackLevel({ catCount: 1 }), 2, 'a cat bonus ranks 2');
+  assert.equal(successFeedbackLevel({ wow: true }), 4, 'a WOW clear owns the frame');
   assert.equal(successFeedbackLevel({ challengeCompleted: true }), 4);
   assert.equal(successFeedbackLevel({ earnedDrop: { id: 'megabomb' } }), 4, 'a rare drop outranks an ordinary one');
-  assert.equal(successFeedbackLevel({ goalReached: true, comboMilestone: 8 }), 5, 'securing the stage goal always wins');
+  assert.equal(successFeedbackLevel({ emptiesBoard: true, wow: true, comboMilestone: 8 }), 5, 'emptying the board always wins');
 });
 
 test('the garden reveal percentage and its run-best both move only the right way', () => {
@@ -330,21 +330,21 @@ test('the reward countdown makes the sixth combo an explicit one-more moment', (
   assert.equal(itemRewardCountdown(13, 5), 1);
 });
 
-test('the stage target is a floor: the board only turns over once its answers run out', () => {
-  // Target met but answers remain — the board stays. This is the "잉? 아직
-  // 지울 수 있는데" fix: the game never steals a board mid-flow.
-  assert.equal(shouldAdvanceRound(3, 3, true), false);
-  assert.equal(shouldAdvanceRound(5, 3, true), false);
-  // Answers exhausted: advance once the target is met, shuffle otherwise.
-  assert.equal(shouldAdvanceRound(3, 3, false), true);
-  assert.equal(shouldAdvanceRound(5, 3, false), true);
-  assert.equal(shouldAdvanceRound(2, 3, false), false);
+test('only the board decides when a stage ends — there is no success target', () => {
+  // Answers remain, so the board stays no matter how much has been cleared.
+  // This is the "잉? 아직 지울 수 있는데" fix: the game never takes a board
+  // away while the player can still see something to clear.
+  assert.equal(shouldAdvanceRound({ hasAnswer: true }), false);
+  assert.equal(shouldAdvanceRound({ hasAnswer: true, boardEmpty: false }), false);
+  // Answers exhausted, or the board emptied outright: next stage.
+  assert.equal(shouldAdvanceRound({ hasAnswer: false }), true);
+  assert.equal(shouldAdvanceRound({ hasAnswer: true, boardEmpty: true }), true);
+  assert.equal(shouldAdvanceRound({}), true, 'a board with no answer at all advances');
 
-  // The goal celebration fires exactly once, on the crossing clear.
-  assert.equal(stageGoalJustReached(2, 3, 3), true);
-  assert.equal(stageGoalJustReached(2, 4, 3), true, 'a wide clear can jump the line');
-  assert.equal(stageGoalJustReached(3, 4, 3), false, 'bonus clears after the goal do not re-fire it');
-  assert.equal(stageGoalJustReached(0, 1, 3), false);
+  // No stage config carries a target any more; nothing may reintroduce one.
+  for (const stage of [1, 3, 5, 10, 16]) {
+    assert.equal(getRoundConfig(stage).target, undefined, `stage ${stage} must not define a target`);
+  }
 });
 
 test('combo-seven rewards unlock variety gradually while board actions stay dominant', () => {

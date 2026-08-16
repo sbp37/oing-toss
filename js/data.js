@@ -35,20 +35,24 @@ export function recordEligibleForStartStage(stage = 1) {
 // the column count, so width steps (the moments tiles visibly shrink) happen
 // exactly twice — at 5 and at 6 columns — each cushioned by a rows-only stage
 // before and after. Past 6x7 the board never changes again; late difficulty
-// comes from the value mix, targets, challenges, time and drop pressure.
-// 7x7+ remains reserved for a future hard mode. `size` doubles as the column
-// count for the board generator.
+// comes from the value mix, challenges, time and drop pressure. 7x7+ remains
+// reserved for a future hard mode. `size` doubles as the column count for the
+// board generator.
+//
+// There is deliberately no success target here. A stage runs until its board
+// has no sum-ten answer left, exactly like the original OING: the only things
+// a player chases are score, combo and how many stages they reach.
 export const STAGE_CONFIG = Object.freeze([
-  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, bombChance: 0 },
-  { stage: 2, round: 2, size: 4, cols: 4, rows: 5, target: 5, timeLimit: 120, bombChance: 0 },
-  { stage: 3, round: 3, size: 5, cols: 5, rows: 5, target: 7, timeLimit: 120, bombChance: 0 },
-  { stage: 4, round: 4, size: 5, cols: 5, rows: 6, target: 8, timeLimit: 120, bombChance: 0.08 },
-  { stage: 5, round: 5, size: 6, cols: 6, rows: 6, target: 10, timeLimit: 120, bombChance: 0.12 },
-  { stage: 6, round: 6, size: 6, cols: 6, rows: 7, target: 12, timeLimit: 120, bombChance: 0.16 },
-  { stage: 7, round: 7, size: 6, cols: 6, rows: 7, target: 13, timeLimit: 120, bombChance: 0.2 },
-  { stage: 8, round: 8, size: 6, cols: 6, rows: 7, target: 14, timeLimit: 120, bombChance: 0.24 },
-  { stage: 9, round: 9, size: 6, cols: 6, rows: 7, target: 15, timeLimit: 120, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, target: 16, timeLimit: 120, bombChance: 0.32 },
+  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, timeLimit: 120, bombChance: 0 },
+  { stage: 2, round: 2, size: 4, cols: 4, rows: 5, timeLimit: 120, bombChance: 0 },
+  { stage: 3, round: 3, size: 5, cols: 5, rows: 5, timeLimit: 120, bombChance: 0 },
+  { stage: 4, round: 4, size: 5, cols: 5, rows: 6, timeLimit: 120, bombChance: 0.08 },
+  { stage: 5, round: 5, size: 6, cols: 6, rows: 6, timeLimit: 120, bombChance: 0.12 },
+  { stage: 6, round: 6, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -261,18 +265,17 @@ export function isItemUnlockedAtStage(itemId, stage = 1) {
 export function stageIntroForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const config = getStageConfig(level);
-  if (level === 1) return Object.freeze({ kicker: 'WARM UP', title: 'STAGE 1', detail: '4×4 · 목표 3' });
-  if (level === 2) return Object.freeze({ kicker: 'BOARD UP', title: 'STAGE 2', detail: '5×5 OPEN' });
-  if (level === 3) return Object.freeze({ kicker: 'BOMB OPEN', title: 'STAGE 3', detail: '폭탄 해금 · 목표 8' });
+  const board = `${config.cols}×${config.rows}`;
+  if (level === 1) return Object.freeze({ kicker: 'WARM UP', title: 'STAGE 1', detail: '4×4 START' });
+  if (level === 2) return Object.freeze({ kicker: 'BOARD UP', title: 'STAGE 2', detail: '4×5 OPEN' });
+  if (level === 3) return Object.freeze({ kicker: 'BOMB OPEN', title: 'STAGE 3', detail: '폭탄 해금' });
   if (level === 4) return Object.freeze({ kicker: 'SPECIAL DROP', title: 'STAGE 4', detail: '희귀 아이템 체험' });
-  if (level === 5) return Object.freeze({ kicker: 'CLOCK OPEN', title: 'STAGE 5', detail: '시계 해금 · 목표 11' });
-  if (level === 6) return Object.freeze({ kicker: 'MISSION ON', title: 'STAGE 6', detail: `큰 조합 보너스 · 목표 ${config.target}` });
-  if (level === 7) return Object.freeze({ kicker: 'CAT CHANCE', title: 'STAGE 7', detail: `고양이 수집 보너스 · 목표 ${config.target}` });
-  if (level === 8) return Object.freeze({ kicker: 'CHAIN FEVER', title: 'STAGE 8', detail: `연속 성공 보너스 · 목표 ${config.target}` });
+  if (level === 5) return Object.freeze({ kicker: 'CLOCK OPEN', title: 'STAGE 5', detail: '시계 해금' });
+  if (level === 6) return Object.freeze({ kicker: 'MISSION ON', title: 'STAGE 6', detail: '큰 조합 보너스' });
+  if (level === 7) return Object.freeze({ kicker: 'CAT CHANCE', title: 'STAGE 7', detail: '고양이 수집 보너스' });
+  if (level === 8) return Object.freeze({ kicker: 'CHAIN FEVER', title: 'STAGE 8', detail: '연속 성공 보너스' });
   const challenge = stageChallengeForStage(level);
-  const detail = challenge
-    ? `${challenge.label} 보너스 · 목표 ${config.target}`
-    : `${config.cols}×${config.rows} · 목표 ${config.target}`;
+  const detail = challenge ? `${challenge.label} 보너스` : `${board} BOARD`;
   return Object.freeze({
     kicker: level >= 8 ? 'OING FEVER' : 'LEVEL UP',
     title: `STAGE ${level}`,
@@ -362,28 +365,35 @@ export function nextGardenRevealBest(previousBest, percent) {
 // at, so they outrank an ordinary combo-7 drop in successFeedbackLevel.
 export const RARE_BOARD_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
 
-// LEVEL 5 stage goal secured · 4 rare item or challenge · 3 combo milestone
-// or an ordinary drop · 2 wide clear or cat bonus · 1 plain clear. Higher
-// ranks own the frame for a success; lower-ranked flourishes (the "딱 10!"
-// pop, the combo banner) stand down for whichever rank actually applies.
-// This is a pure function specifically so the ranking and the combo banner's
-// milestone check can share one answer — comboMilestone here must already
-// be comboMilestoneCrossed's result, not recomputed. goalReached is the
-// crossing moment from stageGoalJustReached, not "target currently met" —
-// bonus clears after the goal rank like any other clear.
+// The original OING's one signature moment: five or more cells in a single
+// sum-ten clear earns the big centred "WOW!" and its fanfare. Four-cell
+// clears already pay a wide-clear bonus and a double combo step, but five is
+// where the original stopped the screen, and that threshold is what makes it
+// feel earned rather than routine.
+export function isWowClear(cellCount) {
+  return Math.max(0, Math.round(Number(cellCount) || 0)) >= 5;
+}
+
+// LEVEL 5 board emptied · 4 WOW, rare item or challenge · 3 combo milestone
+// or an ordinary drop · 2 cat bonus · 1 plain clear. Higher ranks own the
+// frame for a success; lower-ranked flourishes (the "딱 10!" pop, the combo
+// banner) stand down for whichever rank actually applies. This is a pure
+// function specifically so the ranking and the combo banner's milestone
+// check can share one answer — comboMilestone here must already be
+// comboMilestoneCrossed's result, not recomputed.
 export function successFeedbackLevel({
-  goalReached = false,
+  emptiesBoard = false,
+  wow = false,
   challengeCompleted = false,
   earnedDrop = null,
   comboMilestone = 0,
-  comboGain = 1,
   catCount = 0,
 } = {}) {
-  if (goalReached) return 5;
+  if (emptiesBoard) return 5;
   const rareDrop = Boolean(earnedDrop) && RARE_BOARD_DROP_IDS.includes(earnedDrop.id);
-  if (rareDrop || challengeCompleted) return 4;
+  if (wow || rareDrop || challengeCompleted) return 4;
   if (comboMilestone || earnedDrop) return 3;
-  if (comboGain > 1 || catCount > 0) return 2;
+  if (catCount > 0) return 2;
   return 1;
 }
 
@@ -405,25 +415,15 @@ export function itemRewardCountdown(combo, stage = 1) {
   return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
 }
 
-// The stage target is a floor, not a ceiling: reaching it secures the clear,
-// but the board keeps serving answers until they genuinely run out. The
-// original OING only ever swapped boards when no move was left, and cutting
-// a board short while answers remained read as the game stealing tiles.
-export function shouldAdvanceRound(progress, target, hasAnswer) {
-  const met = Math.max(0, Number(progress) || 0) >= Math.max(1, Number(target) || 1);
-  return met && !hasAnswer;
+// The board itself decides when a stage ends, exactly like the original OING:
+// it runs dry (no sum-ten answer left) or the player empties it outright.
+// There is no success target to reach and none to fall short of, so a stage
+// never ends while the player can still see something to clear.
+export function shouldAdvanceRound({ hasAnswer = false, boardEmpty = false } = {}) {
+  return boardEmpty || !hasAnswer;
 }
 
 export const shouldAdvanceStage = shouldAdvanceRound;
-
-// True only on the clear that crosses the target line — the one moment worth
-// the stage-goal celebration. Later bonus clears on the same board rank on
-// their own merits.
-export function stageGoalJustReached(previousProgress, progress, target) {
-  const goal = Math.max(1, Number(target) || 1);
-  return Math.max(0, Number(previousProgress) || 0) < goal
-    && Math.max(0, Number(progress) || 0) >= goal;
-}
 
 export function shouldShowBeginnerAutoHint({
   running = false, inputLocked = false, tutorialActive = false, alreadyShown = false,
@@ -564,12 +564,10 @@ export const MESSAGES = Object.freeze({
   fail: Object.freeze(['어라?', '10이 아닌데냥...', '다시 봐봐.', '앗.', '그건 내가 못 본 걸로 한다냥.']),
   nearMiss: Object.freeze(['아깝다냥, 거의 10!', '하나 차이다냥!', '오, 거의 맞았는데?']),
   struggleHint: Object.freeze(['이건 내가 살짝 보여줄게냥!', '잠깐, 여기부터 다시 봐봐!', '이 조합은 서비스다냥.']),
-  nearGoal: Object.freeze(['하나만 더!', '거의 다 왔다냥!', '조금만 더!', '끝이 보인다냥!']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
   perfect: Object.freeze(['퍼펙트! 힌트 하나 챙겼다냥!', '판을 싹 비웠다냥! 선물이다냥!']),
   shuffle: Object.freeze(['판 좀 뒤집어볼까냥?', '숫자들 자리 바꾼다!', '내가 한번 섞어주지냥.']),
-  noAnswer: Object.freeze(['어라? 없네.', '이건 내가 섞어줄게냥!', '잠깐, 판 좀 뒤집자냥.', '내가 섞어줘야겠네.']),
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
   clock: Object.freeze(['시간 +5초!', '5초 더 달려보자냥!', '시간은 내가 챙겼다.']),
@@ -899,7 +897,6 @@ export function getStageConfig(stageNumber) {
     size: last.size,
     cols: last.cols,
     rows: last.rows,
-    target: Math.min(30, last.target + extra * 2),
     timeLimit: GAME_DURATION_SECONDS,
     bombChance: Math.min(0.58, last.bombChance + extra * 0.02),
   };

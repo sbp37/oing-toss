@@ -3,9 +3,9 @@ import {
   BOARD_DROP_ITEMS,
   GARDEN_MILESTONES,
   buildScoreComparisons,
-  comboMultiplier,
   gardenProgress,
   isRecordInReach,
+  isWowClear,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
@@ -105,8 +105,6 @@ export class GameUI {
       comboTimerFill: document.querySelector('#combo-timer-fill'),
       goal: document.querySelector('#goal-value'),
       goalLabel: document.querySelector('#goal-label'),
-      goalFill: document.querySelector('#goal-fill'),
-      goalTrack: document.querySelector('#goal-track'),
       stageMission: document.querySelector('#stage-mission'),
       stageMissionIcon: document.querySelector('#stage-mission-icon'),
       stageMissionValue: document.querySelector('#stage-mission-value'),
@@ -116,6 +114,7 @@ export class GameUI {
       marquee: document.querySelector('#selection-marquee'),
       tutorial: document.querySelector('#tutorial-guide'),
       tutorialCallout: document.querySelector('#tutorial-callout'),
+      wowMoment: document.querySelector('#wow-moment'),
       catMessage: document.querySelector('#cat-message'),
       playCat: document.querySelector('#play-cat'),
       resultCat: document.querySelector('#result-cat'),
@@ -554,14 +553,15 @@ export class GameUI {
   }
 
   pulseGoal(combo = 1) {
-    const track = this.elements.goalTrack;
+    const counter = this.elements.goal;
+    if (!counter) return;
     clearTimeout(this.goalPulseTimer);
-    track.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
-    track.classList.remove('is-rewarded');
-    void track.offsetWidth;
-    track.classList.add('is-rewarded');
+    counter.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
+    counter.classList.remove('is-rewarded');
+    void counter.offsetWidth;
+    counter.classList.add('is-rewarded');
     this.goalPulseTimer = window.setTimeout(() => {
-      track.classList.remove('is-rewarded');
+      counter.classList.remove('is-rewarded');
     }, 520);
   }
 
@@ -1116,7 +1116,7 @@ export class GameUI {
     icon.src = 'assets/icons/hud/time.webp';
     icon.alt = '';
     const label = document.createElement('strong');
-    label.textContent = `+${seconds} SEC`;
+    label.textContent = `+${seconds}초`;
     flight.append(icon, label);
     sourceElement?.classList.add('is-casting');
     this.elements.playScreen.classList.toggle('is-time-rescued', urgent);
@@ -1247,34 +1247,24 @@ export class GameUI {
     }, 660);
   }
 
-  showScoreBurst(points, rect, dimensions, combo, cellCount, bonus = {}) {
+  showScoreBurst(points, rect, dimensions, combo, cellCount) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
-    const isWide = bonus.comboGain > 1;
-    primary.textContent = isWide ? `WOW! +${points}` : `+${points}`;
+    primary.textContent = `+${points}`;
+    // The original OING's entire score readout is "+48 ×7", and that is all a
+    // clear needs to say: the total already contains every bonus, and each
+    // bonus announces itself elsewhere (the cat pop, the bomb blast, the
+    // mission chip, the cat's line). Naming them here as well stacked up to
+    // seven different labels onto one pop and turned a reward into homework.
+    // The combo prints as a plain integer — the internal multiplier is
+    // fractional, and "콤보 ×1.15" made the game read like algebra.
     const detail = document.createElement('span');
-    const rewardLabels = [];
-    if (bonus.challengeBonusPoints > 0) rewardLabels.push(`미션 +${bonus.challengeBonusPoints}`);
-    if (bonus.cloverBonusPoints > 0) rewardLabels.push(`클로버 +${bonus.cloverBonusPoints}`);
-    if (bonus.clutchBonusPoints > 0) rewardLabels.push(`막판 +${bonus.clutchBonusPoints}`);
-    if (bonus.catBonusPoints > 0) rewardLabels.push(`고양이 +${bonus.catBonusPoints}`);
-    if (bonus.specialBonusPoints > 0) rewardLabels.push(`폭탄 +${bonus.specialBonusPoints}`);
-    if (bonus.wideBonusPoints > 0) rewardLabels.push(`큰 조합 +${bonus.wideBonusPoints}`);
-    // The total is the only information needed on every clear. Show at most
-    // one label: an exceptional reward first, else the wide-clear callout.
-    // When neither claims the slot and a combo is running, it teaches the
-    // multiplier instead — "combo = bigger points" is the game's core
-    // strategy, and nothing else on screen ever states it.
-    const multiplier = comboMultiplier(combo);
-    const comboLabel = combo >= 3 && multiplier > 1
-      ? `콤보 ×${(Math.round(multiplier * 100) / 100).toLocaleString('ko-KR', { maximumFractionDigits: 2 })}`
-      : '';
-    detail.textContent = rewardLabels[0] || (isWide ? '큰 조합!' : comboLabel);
+    detail.textContent = combo >= 2 ? `×${combo}` : '';
     detail.hidden = !detail.textContent;
     burst.replaceChildren(primary, detail);
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
-    burst.dataset.wide = String(isWide);
+    burst.dataset.wide = String(isWowClear(cellCount));
     if (bounds) {
       burst.style.left = `${clamp((bounds.left + bounds.right) / 2, 82, bounds.frameWidth - 82)}px`;
       burst.style.top = `${clamp((bounds.top + bounds.bottom) / 2, 52, bounds.frameHeight - 34)}px`;
@@ -1335,6 +1325,19 @@ export class GameUI {
   // with the rank calculation's crossing check (e.g. 15 -> 17 skips 16 by
   // landing but still crosses it), so a banner could fire at the same time
   // successFeedbackLevel had already decided this was a plain clear.
+  // Five-plus cells in one clear. The original stops the screen for this and
+  // nothing else, which is exactly what makes hunting a big rectangle worth
+  // the extra seconds of looking.
+  showWowMoment() {
+    const wow = this.elements.wowMoment;
+    if (!wow) return;
+    clearTimeout(this.wowMomentTimer);
+    wow.classList.remove('is-visible');
+    void wow.offsetWidth;
+    wow.classList.add('is-visible');
+    this.wowMomentTimer = window.setTimeout(() => wow.classList.remove('is-visible'), 940);
+  }
+
   showComboMoment(combo, { allowCelebration = true, milestone = 0 } = {}) {
     // The chip carries every step of the climb — it punches on each combo and
     // its band keeps rising past 8, so the escalation lives in the HUD rather
@@ -1499,7 +1502,9 @@ export class GameUI {
     const screen = this.elements.playScreen.getBoundingClientRect();
     const pop = document.createElement('div');
     pop.className = 'stage-time-bonus';
-    pop.textContent = `+${amount} SEC`;
+    // Korean, like the rest of the HUD: "+6 SEC" is the one place the game
+    // asked the player to read English to know it had just been given time.
+    pop.textContent = `+${amount}초`;
     pop.style.left = `${pill.left + pill.width / 2 - screen.left}px`;
     pop.style.top = `${pill.bottom - screen.top + 4}px`;
     this.elements.playScreen.appendChild(pop);
@@ -1711,7 +1716,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, progress, target, stageMission = null, stageMissionBonus = 0 }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, stageMission = null, stageMissionBonus = 0 }) {
     this.elements.round.textContent = String(round);
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
@@ -1776,21 +1781,14 @@ export class GameUI {
     this.elements.comboChip.dataset.level = comboLevel;
     this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
-    const goalMet = progress >= target;
-    // After the target the board stays open for bonus clears, so the goal box
-    // flips from countdown to reward tally — the player should read "secured,
-    // now stacking extra", not a number that keeps outgrowing its target.
-    this.elements.goalLabel.textContent = goalMet ? '달성!' : '성공';
-    const goalText = goalMet
-      ? (progress > target ? `+${progress - target}` : `${progress} / ${target}`)
-      : `${progress} / ${target}`;
+    // Stages have no target any more, so this is a plain running tally of
+    // answers found — something that only ever goes up, with nothing to fall
+    // short of and no bar to read.
+    const goalText = String(successCount);
     this.elements.goal.textContent = goalText;
-    // Same length-band pattern as the score figure: the goal box is narrow
-    // and the text is nowrap-centred, so "16 / 17" at full size ran under
-    // the progress track on every width (11.8px deep on a 280px Fold).
-    this.elements.goal.dataset.digits = goalText.length > 6 ? 'l' : 'm';
-    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', goalMet);
-    this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
+    // Same length-band pattern as the score figure: the counter box is narrow
+    // and the text is nowrap-centred, so long values shrink one step.
+    this.elements.goal.dataset.digits = goalText.length > 3 ? 'l' : 'm';
     const mission = this.elements.stageMission;
     if (mission) {
       const wasCompleted = mission.dataset.completed === '1';
@@ -2027,7 +2025,7 @@ export class GameUI {
   }
 
   showResult({
-    score, maxCombo, round, progress = 0, target = 1, catsCollected = 0,
+    score, maxCombo, round, successCount = 0, catsCollected = 0,
     catsRescuedTotal = 0, gardenReveal = 0, gardenRevealRecord = false,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
   }) {
@@ -2035,7 +2033,7 @@ export class GameUI {
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
     this.elements.resultKicker.textContent = '이번 판 기록';
-    this.elements.resultStageProgress.textContent = `STAGE ${round} 도달 · 목표 ${progress} / ${target}`;
+    this.elements.resultStageProgress.textContent = `STAGE ${round} 도달 · 성공 ${successCount}회`;
     this.elements.retryButton.textContent = resultRetryLabel({
       score,
       previousBest,

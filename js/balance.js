@@ -30,7 +30,6 @@ import {
   scoreForWideClear,
   stageChallengeBonus,
   stageChallengeForStage,
-  stageProgressGainForClear,
   stageShowcaseBoardDrop,
 } from './data.js';
 
@@ -114,7 +113,6 @@ export function simulateRun({
       combo: 0,
       maxCombo: 0,
       round: 1,
-      progress: 0,
       clears: 0,
       errors: 0,
       simpleClears: 0,
@@ -201,17 +199,12 @@ export function simulateRun({
       state.boardClearCounts.push(clearsOnBoard);
       if (model.remainingPlayableCells() === 0) state.perfectClears += 1;
     };
-    const replaceBoard = () => {
-      closeBoard();
-      buildBoard();
-    };
     const completeStage = () => {
       closeBoard();
       const bonus = roundTimeBonusSeconds(state.round);
       state.roundTimeBonus += bonus;
       state.timeLeft = cappedSessionTime(state.timeLeft, bonus);
       state.round += 1;
-      state.progress = 0;
       state.stageChallengeComplete = false;
       state.stageChallengeStreak = 0;
       refreshComboDeadline();
@@ -274,7 +267,7 @@ export function simulateRun({
 
       const answers = model.findAnswers();
       if (!answers.length) {
-        replaceBoard();
+        completeStage();
         continue;
       }
       if (random() < settings.errorRate) {
@@ -314,7 +307,6 @@ export function simulateRun({
       state.clutchBonusScore += clutchPoints;
       state.score += clearPoints + widePoints + catPoints + challengePoints + cloverPoints + clutchPoints;
       state.clears += 1;
-      state.progress += stageProgressGainForClear(clearedCells);
       clearsOnBoard += 1;
       state.catBonuses += stats.catCount;
       if (answer.count >= 3) state.richClears += 1;
@@ -339,9 +331,8 @@ export function simulateRun({
           useDrop(drop);
         }
       }
-      const config = getRoundConfig(state.round);
-      if (state.progress >= config.target) completeStage();
-      else if (!model.findAnswers().length) replaceBoard();
+      // A stage ends when its board runs dry — there is no success target.
+      if (!model.findAnswers().length) completeStage();
     }
     state.capped = state.elapsedSeconds >= maximumElapsedSeconds || actions >= 600;
     state.elapsedSeconds = Math.round(state.elapsedSeconds * 10) / 10;

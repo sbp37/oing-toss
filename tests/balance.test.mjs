@@ -26,11 +26,15 @@ assert.ok(suite.expert.initialOrientationsMean >= suite.novice.initialOrientatio
 assert.ok(suite.novice.maxComboMean < suite.regular.maxComboMean);
 assert.ok(suite.regular.maxComboMean < suite.expert.maxComboMean, 'tighter late windows still reward genuinely fast play');
 assert.ok(suite.expert.challengeBonusMean > suite.regular.challengeBonusMean);
-assert.ok(suite.novice.roundMean >= 3 && suite.novice.roundMean <= 5.5, 'novices should usually finish around stages 3-5');
-assert.ok(suite.regular.roundMean >= 5 && suite.regular.roundMean <= 7.5, 'regular players should usually finish around stages 5-7');
-assert.ok(suite.expert.roundMean >= 7.5 && suite.expert.roundMean <= 10.5, 'experts should usually reach stages 8-10+');
-assert.ok(suite.expert.roundTimeBonusMean <= 52,
-  'stage time stays bounded: 26s of growth milestones plus at most 4s per flat clear');
+// A stage now lasts exactly as long as its board has answers, so the stage
+// number counts boards emptied rather than targets met — the same run reaches
+// a higher number than it did under the old target gate, and the bands below
+// are calibrated to that meaning.
+assert.ok(suite.novice.roundMean >= 4 && suite.novice.roundMean <= 7, 'novices should clear a handful of boards');
+assert.ok(suite.regular.roundMean >= 6.5 && suite.regular.roundMean <= 11, 'regular players should roughly double that');
+assert.ok(suite.expert.roundMean >= 11 && suite.expert.roundMean <= 20, 'experts should keep boards turning over');
+assert.ok(suite.expert.roundTimeBonusMean <= 90,
+  'stage time stays bounded: small per-growth bonuses plus at most 4s per flat board');
 assert.ok(suite.expert.itemTimeBonusMean <= 15, 'rare clock and freeze rewards must not dominate survival time');
 assert.equal(suite.novice.cappedRuns, 0);
 

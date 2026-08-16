@@ -9164,3 +9164,49 @@ img {
   .play-ui-v4 .hud-mini-button,
   .play-ui-v4 .item-button { transition: none; }
 }
+
+/* WOW! ------------------------------------------------------------------
+   The original OING's signature moment: five or more cells in one sum-ten
+   clear stops the screen with a big lemon-gold "WOW!" over the board. It
+   deliberately borrows the original's colour and Jua face; the fanfare that
+   goes with it is playWideClearSound(), itself a port of the original's
+   rising three-chord arpeggio. */
+.wow-moment {
+  position: absolute;
+  z-index: 15;
+  left: 50%;
+  top: 42%;
+  font-family: var(--font-display), 'Jua', sans-serif;
+  font-size: clamp(38px, 13vw, 56px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .01em;
+  color: #f7b23c;
+  text-shadow:
+    0 0 14px rgba(247, 178, 60, .85),
+    0 0 34px rgba(214, 128, 32, .5),
+    0 3px 0 rgba(255, 255, 255, .92);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(.6);
+}
+
+.wow-moment.is-visible { animation: wow-pop 900ms cubic-bezier(.16, .84, .26, 1.1) both; }
+
+@keyframes wow-pop {
+  0% { opacity: 0; transform: translate(-50%, -42%) scale(.55) rotate(-7deg); }
+  22% { opacity: 1; transform: translate(-50%, -52%) scale(1.16) rotate(2deg); }
+  42% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -76%) scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wow-moment.is-visible { animation: wow-fade 700ms ease both; }
+  @keyframes wow-fade {
+    0% { opacity: 0; }
+    25% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}
