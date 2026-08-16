@@ -369,6 +369,25 @@ export function needsRescueShuffle({ hasAnswer = false, boardEmpty = false } = {
   return !boardEmpty && !hasAnswer;
 }
 
+// The last few cells of a dead-ended board are leftovers, not gameplay:
+// shuffling a whole board over them reads as the game playing itself. Up
+// to this many remaining playable cells (numbers plus cats), a dry board
+// gets a short soft sweep instead of the rescue shuffle.
+export const SOFT_CLEAR_MAX_TAIL = 6;
+
+// How a stage step resolves once a selection settles:
+//  'advance'  — board empty, stage clears (CLEAN when nothing intervened);
+//  'continue' — answers remain, play on;
+//  'soft'     — dry board, tiny tail: sweep it and clear (not PERFECT);
+//  'rescue'   — dry board, real cells left: rescue shuffle steps in.
+export function stageEndDecision({
+  hasAnswer = false, boardEmpty = false, remaining = 0, threshold = SOFT_CLEAR_MAX_TAIL,
+} = {}) {
+  if (boardEmpty) return 'advance';
+  if (hasAnswer) return 'continue';
+  return remaining <= threshold ? 'soft' : 'rescue';
+}
+
 export function shouldShowBeginnerAutoHint({
   running = false, inputLocked = false, tutorialActive = false, alreadyShown = false,
   timeLeft = 0, idleMs = 0, bestScore = 0, completedRuns = 0,
@@ -512,6 +531,7 @@ export const MESSAGES = Object.freeze({
   autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
   perfect: Object.freeze(['퍼펙트! 한 번도 안 막혔다냥!', '싹 비웠다냥, 최고다냥!']),
   rescue: Object.freeze(['막혔네, 내가 살짝 섞어줄게냥!', '잠깐, 판 좀 다듬는다냥!', '요렇게 섞으면 된다냥!']),
+  softclear: Object.freeze(['마무리는 내가 할게냥!', '요 정도는 치워줄게냥!']),
   shuffle: Object.freeze(['판 좀 뒤집어볼까냥?', '숫자들 자리 바꾼다!', '내가 한번 섞어주지냥.']),
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),

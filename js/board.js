@@ -512,17 +512,29 @@ export function rolloutClearOnce(sourceGrid, sourceCats = new Set(), picker = pi
   };
 }
 
+// Keep in sync with SOFT_CLEAR_MAX_TAIL in data.js: a dead end at or
+// below this many remaining cells resolves as a soft sweep in the game,
+// so a rollout landing there counts as a smooth finish, not a failure.
+const SOFT_CLEAR_TAIL = 6;
+
 function robustnessScore(grid, cats, tries = 6) {
   let fullClears = 0;
+  let smoothFinishes = 0;
   let clearedShare = 0;
   let certificate = null;
   for (let attempt = 0; attempt < tries; attempt += 1) {
     const result = rolloutClearOnce(grid, cats);
     if (result.fullClear && !certificate) certificate = result.sequence;
     fullClears += result.fullClear ? 1 : 0;
+    smoothFinishes += (result.fullClear || result.remaining <= SOFT_CLEAR_TAIL) ? 1 : 0;
     clearedShare += result.clearedShare;
   }
-  return { fullClearRate: fullClears / tries, clearedShare: clearedShare / tries, certificate };
+  return {
+    fullClearRate: fullClears / tries,
+    smoothRate: smoothFinishes / tries,
+    clearedShare: clearedShare / tries,
+    certificate,
+  };
 }
 
 // Bounded DFS full-clear solver over the real game rules (rectangle
@@ -590,12 +602,17 @@ function optimizeNaturalBoard(grid, cats, round, pacing, iterationBudget, target
   // field.
   const withinCaps = () => adjacentPairCount(grid) <= pacing.maximumAdjacentPairs + 2
     && countTrainLines(grid) <= pacing.maximumTrainLines + 1;
+  // A full clear scores 1 and a soft-clearable tail (the game sweeps it)
+  // scores 0.65, so the search still prefers true clears — CLEAN CLEAR
+  // must stay reachable — while a tiny leftover no longer reads as a
+  // failed board.
   const rate = (tries) => {
-    let full = 0;
+    let score = 0;
     for (let attempt = 0; attempt < tries; attempt += 1) {
-      if (rolloutClearOnce(grid, cats).fullClear) full += 1;
+      const roll = rolloutClearOnce(grid, cats);
+      score += roll.fullClear ? 1 : roll.remaining <= SOFT_CLEAR_TAIL ? 0.65 : 0;
     }
-    return full / tries;
+    return score / tries;
   };
   const swap = (a, b) => {
     const tmp = grid[a.r][a.c];
@@ -1031,12 +1048,16 @@ export class BoardModel {
     // stays inside the adjacent-pair/train caps — random to the eye,
     // mostly finishable underneath.
     const stage = difficultyPhaseForStage(round);
-    // Targets follow what natural-looking boards can actually reach: the
-    // blind clear rate is capped by how few obvious pairs the board may
-    // show, so mid and late stages settle lower and lean on the rescue.
-    const targetRate = stage <= 1 ? 0.7 : stage <= 3 ? 0.5 : stage <= 5 ? 0.35 : 0.25;
+    // Targets follow the soft-clear game loop: a rollout that reaches a
+    // sweepable tail counts 0.65 and a true full clear 1, so the search
+    // chases boards where blind play ends smoothly and still prefers real
+    // clears. Rescue is only the > tail case, which this directly minimizes.
+    const targetRate = stage <= 1 ? 0.85 : stage <= 3 ? 0.75 : stage <= 5 ? 0.62 : 0.55;
     const cellCount = this.rows * this.cols;
-    let budget = cellCount <= 16 ? 60 : cellCount <= 25 ? 90 : 110;
+    // Large boards pay 3-4x more per iteration (bigger rect enumeration),
+    // so they get a smaller budget: the soft-clear loop tolerates a lower
+    // smooth rate better than a 400ms stage transition.
+    let budget = cellCount <= 16 ? 60 : cellCount <= 25 ? 80 : 70;
     const catsCollectable = (grid, cats) => {
       const answers = findAllSumTenRects(grid);
       return answers.length > 0 && [...cats].every((key) => {
@@ -1056,24 +1077,24 @@ export class BoardModel {
       if (!catsCollectable(candidate.grid, candidate.cats)) continue;
       const confirmed = robustnessScore(candidate.grid, candidate.cats, 6);
       const mix = answerMix(candidate.grid, findAllSumTenRects(candidate.grid));
-      const score = confirmed.fullClearRate * 100 + confirmed.clearedShare * 20
-        - pacingPenalty(mix, pacing) * 0.3;
+      const score = confirmed.fullClearRate * 60 + confirmed.smoothRate * 60
+        + confirmed.clearedShare * 20 - pacingPenalty(mix, pacing) * 0.3;
       if (!best || score > best.score) {
-        best = { candidate, score, rate: confirmed.fullClearRate, certificate: confirmed.certificate };
+        best = { candidate, score, rate: confirmed.smoothRate, certificate: confirmed.certificate };
       }
       if (best.rate >= targetRate) break;
     }
     // A board no blind rollout ever finished must not ship if avoidable:
     // some natural multisets are genuinely near-unclearable, so keep
     // drawing fresh bags until one takes to optimization.
-    for (let emergency = 0; emergency < 3 && (!best || best.rate === 0); emergency += 1) {
+    for (let emergency = 0; emergency < 2 && (!best || best.rate === 0); emergency += 1) {
       const retry = makeNaturalGrid(this.rows, this.cols, round, catTarget);
       if (!retry || !findAllSumTenRects(retry.grid).length) continue;
-      optimizeNaturalBoard(retry.grid, retry.cats, round, pacing, 30, targetRate);
+      optimizeNaturalBoard(retry.grid, retry.cats, round, pacing, 20, targetRate);
       if (!catsCollectable(retry.grid, retry.cats)) continue;
       const confirmed = robustnessScore(retry.grid, retry.cats, 6);
-      if (confirmed.fullClearRate > 0) {
-        best = { candidate: retry, rate: confirmed.fullClearRate, certificate: confirmed.certificate };
+      if (confirmed.smoothRate > 0) {
+        best = { candidate: retry, rate: confirmed.smoothRate, certificate: confirmed.certificate };
       }
     }
     if (best) {

@@ -42,8 +42,7 @@ import {
   scoreForMegaBomb,
   shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
-  shouldAdvanceRound,
-  needsRescueShuffle,
+  stageEndDecision,
   isWowClear,
 } from './data.js';
 import { BoardModel, boardAssistForPerformance } from './board.js';
@@ -243,6 +242,10 @@ class OingGame {
       maxGardenReveal: 0,
       rescueShuffles: 0,
       stageRescues: 0,
+      softClears: 0,
+      stageSoftClears: 0,
+      stageBombUsed: false,
+      softClearNoticeShown: false,
       cleanClears: 0,
       catsCollected: 0,
       catBonusScore: 0,
@@ -822,12 +825,20 @@ class OingGame {
     }
 
     const remainingAnswer = this.model.findAnswer();
-    const boardEmpty = this.model.remainingPlayableCells() === 0;
-    if (shouldAdvanceRound({ boardEmpty })) {
+    const remaining = this.model.remainingPlayableCells();
+    const decision = stageEndDecision({
+      hasAnswer: Boolean(remainingAnswer),
+      boardEmpty: remaining === 0,
+      remaining,
+    });
+    if (decision === 'advance') {
       this.renderBoard({ preserveScoreBurst: true });
       if (comboMilestone) await delay(220);
       await this.clearRound();
-    } else if (needsRescueShuffle({ hasAnswer: Boolean(remainingAnswer), boardEmpty })) {
+    } else if (decision === 'soft') {
+      this.renderBoard({ preserveScoreBurst: true });
+      await this.softClearTail();
+    } else if (decision === 'rescue') {
       this.renderBoard({ preserveScoreBurst: true });
       await this.rescueShuffle();
     } else {
@@ -846,6 +857,29 @@ class OingGame {
   // refilled, and the shuffle item's count is never touched. If fewer than
   // two numbers remain, nothing can ever sum to ten again: the leftovers
   // are swept off as blast debris and the stage completes.
+  // The soft clear: a dead-ended board whose few leftover cells cannot make
+  // ten anymore. Instead of shuffling a nearly finished board (which reads
+  // as the game playing itself), the leftovers pop away in a short sweep
+  // and the stage clears normally — visibly a full clear, but not PERFECT.
+  async softClearTail() {
+    const numbers = this.model.grid.flat().filter((value) => value > 0).length;
+    const reason = numbers <= 1 ? 'orphanTail' : this.state.stageBombUsed ? 'bombDeadEnd' : 'naturalDeadEnd';
+    this.state.softClears += 1;
+    this.state.stageSoftClears += 1;
+    this.telemetry?.softClear?.(reason);
+    // The cat mentions the tidy-up once per run; repeats stay wordless.
+    if (!this.state.softClearNoticeShown) {
+      this.state.softClearNoticeShown = true;
+      this.showCatMessage('softclear');
+      this.ui.setPlayCharacter('wave', 900);
+    }
+    const sweep = this.model.sweepRemaining();
+    if (sweep.length) await this.ui.animateSweep(sweep);
+    this.renderBoard({ preserveScoreBurst: true });
+    this.trackGardenReveal();
+    await this.clearRound();
+  }
+
   async rescueShuffle() {
     this.state.rescueShuffles += 1;
     this.state.stageRescues += 1;
@@ -957,9 +991,9 @@ class OingGame {
   }
 
   async clearRound() {
-    // Every clear is a full clear now; PERFECT means the board emptied
-    // without a single rescue shuffle.
-    const perfect = this.state.stageRescues === 0;
+    // Every clear still empties the board; PERFECT means the player did it
+    // alone — no rescue shuffle AND no soft sweep of a leftover tail.
+    const perfect = this.state.stageRescues === 0 && this.state.stageSoftClears === 0;
     this.state.inputLocked = true;
     this.telemetry?.roundCleared({ perfect });
     this.stopTimer();
@@ -998,6 +1032,8 @@ class OingGame {
     ]);
     this.state.round = nextRound;
     this.state.stageRescues = 0;
+    this.state.stageSoftClears = 0;
+    this.state.stageBombUsed = false;
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
     this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
@@ -1207,12 +1243,21 @@ class OingGame {
 
   async finishBlast(boardItemKey = null) {
     if (boardItemKey) this.boardItems.delete(boardItemKey);
+    this.state.stageBombUsed = true;
     const remainingAnswer = this.model.findAnswer();
-    const boardEmpty = this.model.remainingPlayableCells() === 0;
-    if (shouldAdvanceRound({ boardEmpty })) {
+    const remaining = this.model.remainingPlayableCells();
+    const decision = stageEndDecision({
+      hasAnswer: Boolean(remainingAnswer),
+      boardEmpty: remaining === 0,
+      remaining,
+    });
+    if (decision === 'advance') {
       this.renderBoard();
       await this.clearRound();
-    } else if (needsRescueShuffle({ hasAnswer: Boolean(remainingAnswer), boardEmpty })) {
+    } else if (decision === 'soft') {
+      this.renderBoard();
+      await this.softClearTail();
+    } else if (decision === 'rescue') {
       this.renderBoard();
       await this.rescueShuffle();
     } else {

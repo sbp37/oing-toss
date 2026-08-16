@@ -815,10 +815,10 @@ export class GameUI {
       .map(({ r, c }) => this.tileAt(r, c))
       .filter(Boolean);
     tiles.forEach((tile, index) => {
-      tile.style.setProperty('--sweep-delay', `${index * 45}ms`);
+      tile.style.setProperty('--sweep-delay', `${index * 40}ms`);
       tile.classList.add('is-sweeping');
     });
-    await delay(360 + cells.length * 45);
+    await delay(300 + cells.length * 40);
   }
 
   // The full-clear payoff: the board is empty, so the garden art beneath it
