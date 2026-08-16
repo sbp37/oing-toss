@@ -68,9 +68,6 @@ const ORIGINAL_PAIR_WEIGHTS = Object.freeze([
 ]);
 const COMPLEMENT_PAIRS = Object.freeze([[1, 9], [2, 8], [3, 7], [4, 6], [5, 5]]);
 const TEN_TRIPLES = Object.freeze([[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]]);
-const TEN_QUADS = Object.freeze([[1, 2, 3, 4], [1, 1, 3, 5], [2, 2, 2, 4], [1, 2, 2, 5], [1, 1, 2, 6], [2, 2, 3, 3], [1, 1, 4, 4], [1, 3, 3, 3]]);
-const TEN_QUINTS = Object.freeze([[1, 1, 2, 2, 4], [2, 2, 2, 2, 2], [1, 2, 2, 2, 3], [1, 1, 1, 3, 4], [1, 1, 2, 3, 3]]);
-const TEN_SEXTS = Object.freeze([[1, 1, 1, 2, 2, 3], [1, 1, 2, 2, 2, 2], [1, 1, 1, 1, 2, 4], [1, 1, 1, 1, 3, 3]]);
 
 // Splits a value list into groups that each sum to exactly ten, or returns
 // null when no such partition exists. Backtracking over descending values
@@ -298,31 +295,33 @@ export function adjacentSeedCountForRound(round = 1) {
 
 export function boardPacingForRound(round = 1, assist = 'standard') {
   const stage = difficultyPhaseForStage(round);
-  // maximumTrainLines/minimumBoxAnswers steer the tiling mix: from stage 2
-  // on, sweeping one line must stop working and 2D rectangles must be part
-  // of the reading. Pair tiles keep a few honest adjacent pairs alive even
-  // late — the difficulty is finding shapes, not starving choices.
+  // Bands calibrated to natural bag placements: a random complement-rich
+  // board simply shows 4-6 adjacent pairs and 5-7 two-cell answers at any
+  // stage, so the caps reflect that reality instead of an authored
+  // composition. Train lines stay hard-capped — line sweeping must never
+  // come back — and late difficulty rides on the value mix (triples) and
+  // density, not on starving obvious pairs below what randomness allows.
   const base = stage === 1
     ? { targetAnswers: 6, maximumAnswers: 9, minimumAnswers: 4, maximumSimpleAnswers: 7, minimumAdjacentPairs: 3, maximumAdjacentPairs: 6, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2, maximumTrainLines: 2, minimumBoxAnswers: 0 }
     : stage === 2
-      ? { targetAnswers: 8, maximumAnswers: 11, minimumAnswers: 6, maximumSimpleAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 }
+      ? { targetAnswers: 8, maximumAnswers: 12, minimumAnswers: 6, maximumSimpleAnswers: 7, minimumAdjacentPairs: 2, maximumAdjacentPairs: 6, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 0 }
       : stage === 3
-        ? { targetAnswers: 10, maximumAnswers: 13, minimumAnswers: 7, maximumSimpleAnswers: 5, minimumAdjacentPairs: 2, maximumAdjacentPairs: 4, minimumRichAnswers: 3, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 2 }
+        ? { targetAnswers: 10, maximumAnswers: 14, minimumAnswers: 7, maximumSimpleAnswers: 9, minimumAdjacentPairs: 1, maximumAdjacentPairs: 5, minimumRichAnswers: 3, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 }
         : stage === 4
-          ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, maximumSimpleAnswers: 5, minimumAdjacentPairs: 1, maximumAdjacentPairs: 3, minimumRichAnswers: 4, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 3 }
+          ? { targetAnswers: 11, maximumAnswers: 16, minimumAnswers: 8, maximumSimpleAnswers: 9, minimumAdjacentPairs: 1, maximumAdjacentPairs: 5, minimumRichAnswers: 4, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 }
           : stage === 5
-            ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 3, minimumRichAnswers: 5, minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 3 }
+            ? { targetAnswers: 12, maximumAnswers: 17, minimumAnswers: 9, maximumSimpleAnswers: 9, minimumAdjacentPairs: 0, maximumAdjacentPairs: 5, minimumRichAnswers: 5, minimumShapePatterns: 6, minimumValuePatterns: 6, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 }
             : stage <= 7
-              ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 4 }
+              ? { targetAnswers: 12, maximumAnswers: 18, minimumAnswers: 9, maximumSimpleAnswers: 9, minimumAdjacentPairs: 0, maximumAdjacentPairs: 5, minimumRichAnswers: 6, minimumShapePatterns: 7, minimumValuePatterns: 7, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 }
               : stage <= 9
-                ? { targetAnswers: 13, maximumAnswers: 16, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3, maximumTrainLines: 1, minimumBoxAnswers: 4 }
-                : { targetAnswers: 14, maximumAnswers: 17, minimumAnswers: 10, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3, maximumTrainLines: 1, minimumBoxAnswers: 5 };
+                ? { targetAnswers: 13, maximumAnswers: 19, minimumAnswers: 9, maximumSimpleAnswers: 9, minimumAdjacentPairs: 0, maximumAdjacentPairs: 5, minimumRichAnswers: 7, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 }
+                : { targetAnswers: 14, maximumAnswers: 20, minimumAnswers: 10, maximumSimpleAnswers: 9, minimumAdjacentPairs: 0, maximumAdjacentPairs: 5, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 };
   const assistAdjacentBonus = assist === 'starter' ? 1 : 0;
   return Object.freeze({
     ...base,
     minimumAdjacentPairs: base.minimumAdjacentPairs + assistAdjacentBonus,
-    minimumAnswerZones: stage <= 2 ? 3 : 4,
-    maximumDominantCellShare: stage <= 2 ? 0.52 : stage <= 4 ? 0.46 : stage <= 7 ? 0.38 : 0.32,
+    minimumAnswerZones: stage <= 3 ? 3 : 4,
+    maximumDominantCellShare: stage <= 2 ? 0.52 : stage <= 4 ? 0.46 : 0.4,
   });
 }
 
@@ -420,150 +419,78 @@ function pacingPenalty(mix, pacing) {
     + above(imbalance, 0.55) * 70;
 }
 
-// Full-clear tiling: every board is built as a partition of the grid into
-// small rectangles that each sum to exactly ten. A tile's bounding
-// rectangle is the tile itself, so it contains no foreign number and is
-// selectable at any moment, in any order — the board always has a complete
-// clear path by construction, and unlike the one-line backbone this path
-// is made of mixed shapes (horizontal, vertical, 2x2, 2x3) scattered over
-// the board instead of trains the eye can sweep along a single line.
-function tileShapeWeightsForStage(round) {
-  const stage = difficultyPhaseForStage(round);
-  if (stage <= 1) return [[[1, 2], 4], [[2, 1], 4], [[1, 3], 1], [[3, 1], 1]];
-  if (stage === 2) return [[[1, 2], 3], [[2, 1], 3], [[1, 3], 1.5], [[3, 1], 1.5], [[2, 2], 2]];
-  if (stage === 3) return [[[1, 2], 2], [[2, 1], 2], [[1, 3], 2], [[3, 1], 2], [[2, 2], 2.5], [[2, 3], 0.7], [[3, 2], 0.7]];
-  if (stage === 4) return [[[1, 2], 1.5], [[2, 1], 1.5], [[1, 3], 2], [[3, 1], 2], [[2, 2], 3], [[2, 3], 1], [[3, 2], 1]];
-  if (stage === 5) return [[[1, 2], 1.2], [[2, 1], 1.2], [[1, 3], 2], [[3, 1], 2], [[2, 2], 3], [[2, 3], 1.3], [[3, 2], 1.3]];
-  if (stage <= 7) return [[[1, 2], 1], [[2, 1], 1], [[1, 3], 2], [[3, 1], 2], [[2, 2], 3], [[2, 3], 1.6], [[3, 2], 1.6]];
-  return [[[1, 2], 0.8], [[2, 1], 0.8], [[1, 3], 1.8], [[3, 1], 1.8], [[2, 2], 3], [[2, 3], 2], [[3, 2], 2]];
-}
+// ── Natural generation ────────────────────────────────────────────────
+// The board is a plain random placement of the original OING number bag —
+// no planted sum-ten blocks, no tiling, no backbone. Full clearability is
+// then earned, not designed in: a failure-guided local search permutes
+// cell positions (never values, so the value histogram stays exactly the
+// natural bag's) until plan-blind human-like play finishes the board most
+// of the time. Acceptance is capped by adjacent-pair and train-line
+// limits, so the search cannot quietly rebuild an authored-looking board.
 
-// Draws the pool into a try-order, sampling by weight without replacement,
-// so the backtracker prefers the stage's shape mix but can fall through.
-function weightedShapeOrder(pool) {
-  const entries = pool.map(([shape, weight]) => ({ shape, weight }));
-  const order = [];
-  while (entries.length) {
-    const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
-    let roll = Math.random() * total;
-    let index = 0;
-    for (; index < entries.length - 1; index += 1) {
-      roll -= entries[index].weight;
-      if (roll <= 0) break;
-    }
-    order.push(entries.splice(index, 1)[0].shape);
+function makeNaturalGrid(rows, cols, round, catTarget) {
+  const cats = new Set();
+  while (cats.size < catTarget) {
+    cats.add(cellKey(Math.floor(Math.random() * rows), Math.floor(Math.random() * cols)));
   }
-  return order;
+  const bag = numberBagForRound(rows * cols - catTarget, round);
+  let index = 0;
+  const grid = Array.from({ length: rows }, (_, r) => Array.from({ length: cols }, (_, c) => (
+    cats.has(cellKey(r, c)) ? null : bag[index++]
+  )));
+  return { grid, cats };
 }
 
-// A sum-ten multiset of the given size. Pairs keep the original stage
-// weighting; sizes past the pattern tables (only reachable through cat
-// gluing) fall back to ones plus a closer.
-function tenGroupValues(count, round) {
-  if (count === 2) {
-    const weights = pairWeightsForRound(round);
-    const total = weights.reduce((sum, value) => sum + value, 0);
-    let roll = Math.random() * total;
-    for (let index = 0; index < COMPLEMENT_PAIRS.length; index += 1) {
-      roll -= weights[index];
-      if (roll <= 0) return COMPLEMENT_PAIRS[index].slice();
+function adjacentPairCount(grid) {
+  let count = 0;
+  for (let row = 0; row < grid.length; row += 1) {
+    for (let col = 0; col < (grid[row]?.length || 0); col += 1) {
+      const value = grid[row][col];
+      if (!(value > 0)) continue;
+      if ((grid[row]?.[col + 1] ?? 0) > 0 && value + grid[row][col + 1] === 10) count += 1;
+      if ((grid[row + 1]?.[col] ?? 0) > 0 && value + grid[row + 1][col] === 10) count += 1;
     }
-    return COMPLEMENT_PAIRS.at(-1).slice();
   }
-  const pool = count === 3 ? TEN_TRIPLES : count === 4 ? TEN_QUADS : count === 5 ? TEN_QUINTS : count === 6 ? TEN_SEXTS : null;
-  if (pool) return pool[Math.floor(Math.random() * pool.length)].slice();
-  return [...new Array(count - 1).fill(1), 11 - count];
+  return count;
 }
 
-// Partitions the whole grid into stage-weighted rectangles, each holding
-// at least two numbers (cats ride inside tiles and count zero). Standard
-// first-open-cell backtracking: the first uncovered cell in row-major
-// order must be a tile's top-left corner, so the search stays small.
-function tileGridOnce(rows, cols, cats, round) {
-  const covered = Array.from({ length: rows }, () => new Array(cols).fill(false));
-  const tiles = [];
-  const pool = tileShapeWeightsForStage(round);
-  let budget = 6000;
-
-  const firstOpen = () => {
-    for (let r = 0; r < rows; r += 1) {
-      for (let c = 0; c < cols; c += 1) {
-        if (!covered[r][c]) return { r, c };
-      }
-    }
-    return null;
-  };
-  const numbersInside = (r, c, h, w) => {
-    if (r + h > rows || c + w > cols) return null;
-    let catCount = 0;
-    for (let rr = r; rr < r + h; rr += 1) {
-      for (let cc = c; cc < c + w; cc += 1) {
-        if (covered[rr][cc]) return null;
-        if (cats.has(cellKey(rr, cc))) catCount += 1;
-      }
-    }
-    const numbers = h * w - catCount;
-    return numbers >= 2 && numbers <= 9 ? numbers : null;
-  };
-  const mark = (r, c, h, w, value) => {
-    for (let rr = r; rr < r + h; rr += 1) {
-      for (let cc = c; cc < c + w; cc += 1) covered[rr][cc] = value;
-    }
-  };
-  const solve = () => {
-    if (budget <= 0) return false;
-    budget -= 1;
-    const open = firstOpen();
-    if (!open) return true;
-    for (const [h, w] of weightedShapeOrder(pool)) {
-      const numbers = numbersInside(open.r, open.c, h, w);
-      if (numbers === null) continue;
-      mark(open.r, open.c, h, w, true);
-      tiles.push({ r: open.r, c: open.c, h, w, numbers });
-      if (solve()) return true;
-      tiles.pop();
-      mark(open.r, open.c, h, w, false);
-    }
-    return false;
-  };
-  return solve() ? tiles : null;
-}
-
-function makeTilingGrid(rows, cols, round, catTarget) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    const cats = new Set();
-    while (cats.size < catTarget) {
-      cats.add(cellKey(Math.floor(Math.random() * rows), Math.floor(Math.random() * cols)));
-    }
-    const tiles = tileGridOnce(rows, cols, cats, round);
-    if (!tiles) continue;
-    const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
-    for (const tile of tiles) {
-      const values = shuffleArray(tenGroupValues(tile.numbers, round));
-      let position = 0;
-      for (let r = tile.r; r < tile.r + tile.h; r += 1) {
-        for (let c = tile.c; c < tile.c + tile.w; c += 1) {
-          if (!cats.has(cellKey(r, c))) grid[r][c] = values[position++];
-        }
-      }
-    }
-    return { grid, cats, tiles };
+// How a human eye ranks the visible answers: adjacent pairs jump out
+// first, one-line runs next, 2D boxes last. Shared by the rollouts here
+// and the human-like balance agent.
+function pickAnswerLikeHuman(answers) {
+  let total = 0;
+  const weights = answers.map((answer) => {
+    const height = answer.r2 - answer.r1 + 1;
+    const width = answer.c2 - answer.c1 + 1;
+    const weight = (answer.count === 2 && height * width === 2) ? 2.4
+      : (height >= 2 && width >= 2) ? 0.9
+        : answer.count === 2 ? 1.6 : 1.1;
+    total += weight;
+    return weight;
+  });
+  let roll = Math.random() * total;
+  for (let index = 0; index < answers.length; index += 1) {
+    roll -= weights[index];
+    if (roll <= 0) return answers[index];
   }
-  return null;
+  return answers.at(-1);
 }
 
-// One no-lookahead rollout: keep committing uniformly random legal answers
-// until the board dries up — a stand-in for a player who cannot see the
-// future. Measures how much of the board such play clears.
-export function rolloutClearOnce(sourceGrid, sourceCats = new Set()) {
+// One no-lookahead rollout: keep committing legal answers a plan-blind
+// player would pick until the board dries up. Records the sequence, so a
+// successful rollout doubles as a constructive full-clear certificate.
+export function rolloutClearOnce(sourceGrid, sourceCats = new Set(), picker = pickAnswerLikeHuman) {
   const grid = sourceGrid.map((row) => row.slice());
   const cats = new Set(sourceCats);
   const total = grid.flat().filter((value) => value > 0).length + cats.size;
+  const sequence = [];
+  const stranded = [];
   let removed = 0;
   while (true) {
     const answers = findAllSumTenRects(grid);
     if (!answers.length) break;
-    const pick = answers[Math.floor(Math.random() * answers.length)];
+    const pick = picker(answers);
+    sequence.push({ r1: pick.r1, c1: pick.c1, r2: pick.r2, c2: pick.c2 });
     for (let r = pick.r1; r <= pick.r2; r += 1) {
       for (let c = pick.c1; c <= pick.c2; c += 1) {
         if (grid[r][c] > 0) removed += 1;
@@ -572,19 +499,171 @@ export function rolloutClearOnce(sourceGrid, sourceCats = new Set()) {
       }
     }
   }
-  const remaining = grid.flat().filter((value) => value > 0).length + cats.size;
-  return { fullClear: remaining === 0, remaining, clearedShare: total ? removed / total : 1 };
+  grid.forEach((row, r) => row.forEach((value, c) => {
+    if (value > 0) stranded.push({ r, c });
+  }));
+  const remaining = stranded.length + cats.size;
+  return {
+    fullClear: remaining === 0,
+    remaining,
+    stranded,
+    sequence,
+    clearedShare: total ? removed / total : 1,
+  };
 }
 
 function robustnessScore(grid, cats, tries = 6) {
   let fullClears = 0;
   let clearedShare = 0;
+  let certificate = null;
   for (let attempt = 0; attempt < tries; attempt += 1) {
     const result = rolloutClearOnce(grid, cats);
+    if (result.fullClear && !certificate) certificate = result.sequence;
     fullClears += result.fullClear ? 1 : 0;
     clearedShare += result.clearedShare;
   }
-  return { fullClearRate: fullClears / tries, clearedShare: clearedShare / tries };
+  return { fullClearRate: fullClears / tries, clearedShare: clearedShare / tries, certificate };
+}
+
+// Bounded DFS full-clear solver over the real game rules (rectangle
+// selection, sum ten, cats count zero but must be collected). Returns a
+// clearing sequence or null within the node budget. Used as the backup
+// certificate when no rollout happened to finish, and by tests.
+export function solveFullClear(sourceGrid, sourceCats = new Set(), budget = 4000) {
+  const grid = sourceGrid.map((row) => row.slice());
+  const cats = new Set(sourceCats);
+  const failed = new Set();
+  const sequence = [];
+  let nodes = budget;
+
+  const stateKey = () => grid.flat().map((value) => (value > 0 ? value : 0)).join('') + '|' + [...cats].sort().join(',');
+  const empty = () => grid.flat().every((value) => !(value > 0)) && cats.size === 0;
+
+  const search = () => {
+    if (empty()) return true;
+    if (nodes <= 0) return false;
+    nodes -= 1;
+    const key = stateKey();
+    if (failed.has(key)) return false;
+    const answers = shuffleArray(findAllSumTenRects(grid));
+    for (const answer of answers) {
+      const removedCells = [];
+      const removedCats = [];
+      for (let r = answer.r1; r <= answer.r2; r += 1) {
+        for (let c = answer.c1; c <= answer.c2; c += 1) {
+          if (grid[r][c] > 0) {
+            removedCells.push({ r, c, value: grid[r][c] });
+            grid[r][c] = null;
+          }
+          const catKey = cellKey(r, c);
+          if (cats.delete(catKey)) removedCats.push(catKey);
+        }
+      }
+      sequence.push({ r1: answer.r1, c1: answer.c1, r2: answer.r2, c2: answer.c2 });
+      if (search()) return true;
+      sequence.pop();
+      removedCells.forEach(({ r, c, value }) => { grid[r][c] = value; });
+      removedCats.forEach((catKey) => cats.add(catKey));
+    }
+    failed.add(key);
+    return false;
+  };
+
+  return search() ? sequence : null;
+}
+
+// Failure-guided local search: run a blind rollout, find where it
+// strands, and nudge the arrangement — pull a complement next to a
+// stranded cell, or swap the stranded cell somewhere else. Only positions
+// ever move; the value multiset stays the natural bag. Moves that push
+// the board over its adjacent-pair or train-line caps are rejected, so
+// the search cannot converge back to an authored-looking layout.
+function optimizeNaturalBoard(grid, cats, round, pacing, iterationBudget, targetRate) {
+  const cells = [];
+  grid.forEach((row, r) => row.forEach((value, c) => {
+    if (value > 0) cells.push({ r, c });
+  }));
+  // The productive move is exactly "put a complement near a stranded
+  // value", which raises obvious adjacency — the measured trade-off is
+  // steep (uncapped search nearly triples adjacent pairs for +0.3 clear
+  // rate). cap+2 is the compromise: some earned robustness, no domino
+  // field.
+  const withinCaps = () => adjacentPairCount(grid) <= pacing.maximumAdjacentPairs + 2
+    && countTrainLines(grid) <= pacing.maximumTrainLines + 1;
+  const rate = (tries) => {
+    let full = 0;
+    for (let attempt = 0; attempt < tries; attempt += 1) {
+      if (rolloutClearOnce(grid, cats).fullClear) full += 1;
+    }
+    return full / tries;
+  };
+  const swap = (a, b) => {
+    const tmp = grid[a.r][a.c];
+    grid[a.r][a.c] = grid[b.r][b.c];
+    grid[b.r][b.c] = tmp;
+  };
+
+  // A fresh natural placement can start above the adjacent-pair cap, and
+  // withinCaps would then freeze the search (every move rejected). Break
+  // obvious pairs down to the cap first by pushing one member elsewhere.
+  for (let attempt = 0; attempt < 60 && adjacentPairCount(grid) > pacing.maximumAdjacentPairs; attempt += 1) {
+    const first = cells[Math.floor(Math.random() * cells.length)];
+    const neighbours = cells.filter(({ r, c }) => Math.abs(r - first.r) + Math.abs(c - first.c) === 1
+      && grid[first.r][first.c] + grid[r][c] === 10);
+    if (!neighbours.length) continue;
+    const second = cells[Math.floor(Math.random() * cells.length)];
+    if (first.r === second.r && first.c === second.c) continue;
+    const before = adjacentPairCount(grid);
+    swap(first, second);
+    if (adjacentPairCount(grid) >= before) swap(first, second);
+  }
+
+  // Iteration-bounded (not wall-clock) so a seeded Math.random reproduces
+  // the exact same board — the balance simulator depends on that.
+  let current = rate(3);
+  for (let iteration = 0; iteration < iterationBudget && current < targetRate; iteration += 1) {
+    const trace = rolloutClearOnce(grid, cats);
+    if (trace.fullClear || !trace.stranded.length) {
+      current = Math.min(1, current + 0.15);
+      continue;
+    }
+    const strandedCell = trace.stranded[Math.floor(Math.random() * trace.stranded.length)];
+    let first = null;
+    let second = null;
+    if (Math.random() < 0.65) {
+      // Bring a complement of the stranded value into its neighbourhood.
+      const want = 10 - grid[strandedCell.r][strandedCell.c];
+      const donors = cells.filter(({ r, c }) => grid[r][c] === want
+        && !(r === strandedCell.r && c === strandedCell.c)
+        && !trace.stranded.some((cell) => cell.r === r && cell.c === c));
+      const neighbours = cells.filter(({ r, c }) => Math.abs(r - strandedCell.r) + Math.abs(c - strandedCell.c) === 1);
+      if (donors.length && neighbours.length) {
+        first = donors[Math.floor(Math.random() * donors.length)];
+        second = neighbours[Math.floor(Math.random() * neighbours.length)];
+      }
+    }
+    if (!first) {
+      first = strandedCell;
+      second = cells[Math.floor(Math.random() * cells.length)];
+    }
+    if (first.r === second.r && first.c === second.c) continue;
+    swap(first, second);
+    if (!withinCaps()) {
+      swap(first, second);
+      continue;
+    }
+    const next = rate(3);
+    if (next >= current) current = next;
+    else swap(first, second);
+    // Three samples quantize to thirds, so "one lucky clear" can fake a
+    // met target — confirm before stopping, and keep climbing otherwise.
+    if (current >= targetRate) {
+      const confirmed = rate(5);
+      if (confirmed < targetRate) current = Math.min(current, confirmed);
+      else current = confirmed;
+    }
+  }
+  return current;
 }
 
 function isAdjacentPair(answer) {
@@ -929,7 +1008,8 @@ export class BoardModel {
     this.bonusCats = new Set();
     this.specialTiles = new Map();
     this.round = 1;
-    this.lastTiling = [];
+    this.lastClearPlan = null;
+    this.lastBlindClearRate = 0;
     this.generate(size);
   }
 
@@ -944,45 +1024,80 @@ export class BoardModel {
     const assist = options.assist || (options.easy ? 'guided' : 'standard');
     const catTarget = bonusCatTargetForDimensions(this.rows, this.cols);
     const pacing = boardPacingForRound(round, assist);
-    // Two-phase candidate selection: shape pacing first (cheap), then a
-    // handful of no-lookahead rollouts on the shortlist. The tiling makes
-    // every candidate fully clearable by construction; the rollouts pick
-    // the one that also survives plan-blind play — the board a real player
-    // can finish without knowing the hidden tiling.
-    const candidates = [];
-    for (let attempt = 0; attempt < GENERATION_ATTEMPTS; attempt += 1) {
-      const candidate = makeTilingGrid(this.rows, this.cols, round, catTarget);
-      if (!candidate) continue;
-      const answers = findAllSumTenRects(candidate.grid);
-      if (!answers.length) continue;
-      const mix = answerMix(candidate.grid, answers);
-      candidate.penalty = pacingPenalty(mix, pacing);
-      candidates.push(candidate);
-      if (candidates.filter((entry) => entry.penalty <= 6).length >= 4) break;
-      if (candidates.length >= 28) break;
-    }
-    if (candidates.length) {
-      candidates.sort((a, b) => a.penalty - b.penalty);
-      let best = null;
-      for (const candidate of candidates.slice(0, 4)) {
-        const robust = robustnessScore(candidate.grid, candidate.cats, 6);
-        const score = robust.fullClearRate * 100 + robust.clearedShare * 30 - candidate.penalty * 0.6;
-        if (!best || score > best.score) best = { candidate, score };
+    // Natural board first, certification after: place the original number
+    // bag at random, then let the failure-guided search raise the blind
+    // full-clear rate to the stage's target within a hard time budget.
+    // The board the player sees keeps the bag's value distribution and
+    // stays inside the adjacent-pair/train caps — random to the eye,
+    // mostly finishable underneath.
+    const stage = difficultyPhaseForStage(round);
+    // Targets follow what natural-looking boards can actually reach: the
+    // blind clear rate is capped by how few obvious pairs the board may
+    // show, so mid and late stages settle lower and lean on the rescue.
+    const targetRate = stage <= 1 ? 0.7 : stage <= 3 ? 0.5 : stage <= 5 ? 0.35 : 0.25;
+    const cellCount = this.rows * this.cols;
+    let budget = cellCount <= 16 ? 60 : cellCount <= 25 ? 90 : 110;
+    const catsCollectable = (grid, cats) => {
+      const answers = findAllSumTenRects(grid);
+      return answers.length > 0 && [...cats].every((key) => {
+        const [row, col] = key.split(':').map(Number);
+        return answers.some((answer) => row >= answer.r1 && row <= answer.r2
+          && col >= answer.c1 && col <= answer.c2);
+      });
+    };
+    let best = null;
+    for (let restart = 0; restart < 4 && budget >= 10; restart += 1) {
+      const candidate = makeNaturalGrid(this.rows, this.cols, round, catTarget);
+      if (!candidate || !findAllSumTenRects(candidate.grid).length) continue;
+      const slice = Math.max(15, Math.ceil(budget * 0.55));
+      optimizeNaturalBoard(candidate.grid, candidate.cats, round, pacing, slice, targetRate);
+      budget -= slice;
+      // The optimizer moves values around, so the cat check comes after.
+      if (!catsCollectable(candidate.grid, candidate.cats)) continue;
+      const confirmed = robustnessScore(candidate.grid, candidate.cats, 6);
+      const mix = answerMix(candidate.grid, findAllSumTenRects(candidate.grid));
+      const score = confirmed.fullClearRate * 100 + confirmed.clearedShare * 20
+        - pacingPenalty(mix, pacing) * 0.3;
+      if (!best || score > best.score) {
+        best = { candidate, score, rate: confirmed.fullClearRate, certificate: confirmed.certificate };
       }
+      if (best.rate >= targetRate) break;
+    }
+    // A board no blind rollout ever finished must not ship if avoidable:
+    // some natural multisets are genuinely near-unclearable, so keep
+    // drawing fresh bags until one takes to optimization.
+    for (let emergency = 0; emergency < 3 && (!best || best.rate === 0); emergency += 1) {
+      const retry = makeNaturalGrid(this.rows, this.cols, round, catTarget);
+      if (!retry || !findAllSumTenRects(retry.grid).length) continue;
+      optimizeNaturalBoard(retry.grid, retry.cats, round, pacing, 30, targetRate);
+      if (!catsCollectable(retry.grid, retry.cats)) continue;
+      const confirmed = robustnessScore(retry.grid, retry.cats, 6);
+      if (confirmed.fullClearRate > 0) {
+        best = { candidate: retry, rate: confirmed.fullClearRate, certificate: confirmed.certificate };
+      }
+    }
+    if (best) {
       this.grid = best.candidate.grid;
       this.bonusCats = best.candidate.cats;
-      this.lastTiling = best.candidate.tiles;
+      // A successful rollout is a constructive certificate; when none of
+      // the confirm rollouts finished, the bounded solver looks for one.
+      this.lastClearPlan = best.certificate
+        || solveFullClear(this.grid, this.bonusCats, 2500);
+      this.lastBlindClearRate = best.rate;
       return this.grid;
     }
 
-    // Safety fallback: even without a pacing-approved candidate the board
-    // must keep the full-clear guarantee, so it stays a tiling build.
+    // Safety fallback: a plain natural board with collectable cats. The
+    // rescue shuffle remains the runtime safety net for whatever play
+    // does to it.
     while (true) {
-      const candidate = makeTilingGrid(this.rows, this.cols, round, catTarget);
+      const candidate = makeNaturalGrid(this.rows, this.cols, round, catTarget);
       if (!candidate || candidate.cats.size !== catTarget) continue;
+      if (!catsCollectable(candidate.grid, candidate.cats)) continue;
       this.grid = candidate.grid;
       this.bonusCats = candidate.cats;
-      this.lastTiling = candidate.tiles;
+      this.lastClearPlan = solveFullClear(this.grid, this.bonusCats, 900);
+      this.lastBlindClearRate = 0;
       return this.grid;
     }
   }
@@ -1164,14 +1279,52 @@ export class BoardModel {
     }
     if (numbered.length < 2) return null;
 
-    // The strong path: plan the tail as geometry-safe groups, deal sum-ten
-    // value sets into them, and prove by simulation that clearing the
-    // groups in order drains everything. Several randomized variants are
-    // tried — row-run plans and transposed (column-run) plans — and each
-    // survivor is scored with no-lookahead rollouts plus a cat-coverage
-    // check, because the player never sees the hidden plan: the layout must
-    // survive natural play, not just its own scripted order.
     const values = numbered.map(({ r, c }) => this.grid[r][c]);
+
+    // First choice: keep the player's values untouched and only shuffle
+    // their positions, accepting an arrangement once plan-blind rollouts
+    // actually finish the tail (cats included — a full clear collects
+    // them). Only when no arrangement of the existing values can work is
+    // the minimal value repair tried, and only after that the geometric
+    // planner — so a rescued board keeps looking like the same board,
+    // not a freshly authored puzzle.
+    const certifyArrangement = (candidateValues) => {
+      let bestArrangement = null;
+      for (let variant = 0; variant < 8; variant += 1) {
+        const arrangement = shuffleArray(candidateValues.slice());
+        const clone = this.grid.map((row) => row.slice());
+        numbered.forEach(({ r, c }, index) => { clone[r][c] = arrangement[index]; });
+        let clears = 0;
+        let sequence = null;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const roll = rolloutClearOnce(clone, this.bonusCats);
+          if (roll.fullClear) {
+            clears += 1;
+            if (!sequence) sequence = roll.sequence;
+          }
+        }
+        if (clears && (!bestArrangement || clears > bestArrangement.clears)) {
+          bestArrangement = { arrangement, sequence, clears };
+        }
+        if (bestArrangement && bestArrangement.clears >= 3) break;
+      }
+      return bestArrangement;
+    };
+
+    let valuesRepaired = false;
+    let certified = certifyArrangement(values);
+    if (!certified) {
+      const repairedValues = repairValuesForPartition(values);
+      if (repairedValues && repairedValues.changed > 0) {
+        certified = certifyArrangement(repairedValues.values);
+        if (certified) valuesRepaired = true;
+      }
+    }
+    if (certified) {
+      numbered.forEach(({ r, c }, index) => { this.grid[r][c] = certified.arrangement[index]; });
+      this.assignSpecialTiles([...this.specialTiles.values()]);
+      if (this.findAnswer()) return { repaired: valuesRepaired, plan: certified.sequence };
+    }
     let best = null;
     for (let variant = 0; variant < 6; variant += 1) {
       const transposed = variant % 2 === 1;
