@@ -89,8 +89,21 @@ const ORIGINAL_PAIR_WEIGHTS = Object.freeze([
 const COMPLEMENT_PAIRS = Object.freeze([[1, 9], [2, 8], [3, 7], [4, 6], [5, 5]]);
 const TEN_TRIPLES = Object.freeze([[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]]);
 
+// The stage ladder grew gentler (one axis per stage, 6x7 cap), but the
+// difficulty bands below were all tuned against the old 4x4→5x5→6x6→6x7
+// ladder where the board hit full size by stage 5. This maps a stage onto
+// that old scale by matching cell counts (S3 now deals 25 cells like old
+// S2, S5 deals 36 like old S4, ...), so the value mix, seeded pairs and
+// pacing keep following the board actually on screen instead of running
+// ahead of it.
+export function difficultyPhaseForStage(stage = 1) {
+  const level = Math.max(1, Math.round(Number(stage) || 1));
+  const phases = [1, 2, 2, 3, 4, 5, 6, 7, 8, 9];
+  return phases[level - 1] ?? level - 1;
+}
+
 function pairWeightsForRound(round = 1) {
-  const stage = Math.max(1, Math.round(Number(round) || 1));
+  const stage = difficultyPhaseForStage(round);
   if (stage === 1) return ORIGINAL_PAIR_WEIGHTS[0];
   if (stage <= 3) return ORIGINAL_PAIR_WEIGHTS[1];
   if (stage === 4) return ORIGINAL_PAIR_WEIGHTS[2];
@@ -132,7 +145,7 @@ export function numberBagForRound(numberCount, round = 1) {
 
 export function tripleUnitCountForRound(numberCount, round = 1) {
   const count = Math.max(2, Math.round(Number(numberCount) || 2));
-  const stage = Math.max(1, Math.round(Number(round) || 1));
+  const stage = difficultyPhaseForStage(round);
   const ratio = stage <= 2
     ? 0
     : stage === 3
@@ -152,7 +165,7 @@ export function tripleUnitCountForRound(numberCount, round = 1) {
 }
 
 export function adjacentSeedCountForRound(round = 1) {
-  const stage = Math.max(1, Math.round(Number(round) || 1));
+  const stage = difficultyPhaseForStage(round);
   if (stage === 1) return 4;
   if (stage === 2) return 3;
   if (stage === 3) return 2;
@@ -161,7 +174,7 @@ export function adjacentSeedCountForRound(round = 1) {
 }
 
 export function boardPacingForRound(round = 1, assist = 'standard') {
-  const stage = Math.max(1, Math.round(Number(round) || 1));
+  const stage = difficultyPhaseForStage(round);
   const base = stage === 1
     ? { targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4, maximumSimpleAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2 }
     : stage === 2
@@ -338,7 +351,7 @@ function makeBalancedGrid(rows, cols, round, catTarget, pacing) {
     catIndexes.has(row * cols + col) ? null : bag[bagIndex++]
   )));
   seedAdjacentPairsInGrid(grid, adjacentSeedCountForRound(round));
-  if (round >= 3) reduceAdjacentPairsInGrid(grid, pacing.maximumAdjacentPairs);
+  if (difficultyPhaseForStage(round) >= 3) reduceAdjacentPairsInGrid(grid, pacing.maximumAdjacentPairs);
   return { grid, catIndexes };
 }
 

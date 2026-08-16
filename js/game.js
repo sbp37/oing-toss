@@ -48,6 +48,7 @@ import {
   shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
   shouldAdvanceRound,
+  stageGoalJustReached,
 } from './data.js';
 import { BoardModel, boardAssistForPerformance } from './board.js';
 import { BoardItemField } from './board-items.js';
@@ -758,7 +759,9 @@ class OingGame {
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
+    const previousProgress = this.state.progress;
     this.state.progress += stageProgressGainForClear(clearedCellCount);
+    const goalReached = stageGoalJustReached(previousProgress, this.state.progress, getRoundConfig(this.state.round).target);
 
     // One rank for the whole moment, so the celebrations stop competing.
     // Every system used to fire independently, which made the best clears the
@@ -766,7 +769,7 @@ class OingGame {
     // rank decides who is the lead and who steps back; it never suppresses a
     // number, so score, combo and goal keep updating in the HUD regardless.
     const successLevel = successFeedbackLevel({
-      willClearStage: shouldAdvanceRound(this.state.progress, getRoundConfig(this.state.round).target, true),
+      goalReached,
       challengeCompleted,
       earnedDrop,
       comboMilestone,
@@ -844,7 +847,10 @@ class OingGame {
     const config = getRoundConfig(this.state.round);
     const remainingAnswer = this.model.findAnswer();
     const perfect = this.model.remainingPlayableCells() === 0;
-    if (shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
+    // A fully emptied board always advances, even below target — shuffling
+    // nothing helps nobody. Otherwise the target is only the floor: the
+    // board stays until its answers genuinely run out.
+    if (perfect || shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
       this.renderBoard({ preserveScoreBurst: true });
       if (comboMilestone) await delay(220);
       await this.clearRound({ perfect });
@@ -1227,9 +1233,10 @@ class OingGame {
     if (boardItemKey) this.boardItems.delete(boardItemKey);
     const config = getRoundConfig(this.state.round);
     const remainingAnswer = this.model.findAnswer();
-    if (shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
+    const perfect = this.model.remainingPlayableCells() === 0;
+    if (perfect || shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
       this.renderBoard();
-      await this.clearRound();
+      await this.clearRound({ perfect });
     } else if (!remainingAnswer) {
       await this.handleNoAnswers();
     } else {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, stageGoalJustReached, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -46,12 +46,16 @@ test('background pause rebases game, freeze and combo deadlines together', () =>
   });
 });
 
-test('board growth pays big time bonuses, later flat clears pay small ones', () => {
+test('board growth pays time bonuses scaled to the step, flat clears pay small ones', () => {
+  // The one-axis ladder grows five times in small steps (+4~6 cells), so
+  // each growth pays the small six-second bonus; a nine-cell-plus jump
+  // would still pay the full ten.
   assert.equal(roundTimeBonusSeconds(1), 6);
-  assert.equal(roundTimeBonusSeconds(2), 10);
-  assert.equal(roundTimeBonusSeconds(3), 4, 'same-size clears from stage 3 pay a small bonus');
-  assert.equal(roundTimeBonusSeconds(4), 10);
-  assert.equal(roundTimeBonusSeconds(5), 4);
+  assert.equal(roundTimeBonusSeconds(2), 6);
+  assert.equal(roundTimeBonusSeconds(3), 6);
+  assert.equal(roundTimeBonusSeconds(4), 6);
+  assert.equal(roundTimeBonusSeconds(5), 6);
+  assert.equal(roundTimeBonusSeconds(6), 4, 'same-size clears at the 6x7 cap pay a small bonus');
   assert.equal(roundTimeBonusSeconds(10), 4);
   assert.equal(cappedSessionTime(90, 5), 95);
   assert.equal(cappedSessionTime(117, 10), 120);
@@ -203,7 +207,7 @@ test('a combo milestone always ranks at least 3, so "딱 10!" never shows alongs
   assert.equal(successFeedbackLevel({ catCount: 1 }), 2, 'a cat bonus ranks 2');
   assert.equal(successFeedbackLevel({ challengeCompleted: true }), 4);
   assert.equal(successFeedbackLevel({ earnedDrop: { id: 'megabomb' } }), 4, 'a rare drop outranks an ordinary one');
-  assert.equal(successFeedbackLevel({ willClearStage: true, comboMilestone: 8 }), 5, 'stage clear always wins');
+  assert.equal(successFeedbackLevel({ goalReached: true, comboMilestone: 8 }), 5, 'securing the stage goal always wins');
 });
 
 test('the garden reveal percentage and its run-best both move only the right way', () => {
@@ -326,11 +330,21 @@ test('the reward countdown makes the sixth combo an explicit one-more moment', (
   assert.equal(itemRewardCountdown(13, 5), 1);
 });
 
-test('stage advances only when its explicit success target is reached', () => {
-  assert.equal(shouldAdvanceRound(3, 3, true), true);
-  assert.equal(shouldAdvanceRound(2, 3, false), false);
+test('the stage target is a floor: the board only turns over once its answers run out', () => {
+  // Target met but answers remain — the board stays. This is the "잉? 아직
+  // 지울 수 있는데" fix: the game never steals a board mid-flow.
+  assert.equal(shouldAdvanceRound(3, 3, true), false);
+  assert.equal(shouldAdvanceRound(5, 3, true), false);
+  // Answers exhausted: advance once the target is met, shuffle otherwise.
   assert.equal(shouldAdvanceRound(3, 3, false), true);
   assert.equal(shouldAdvanceRound(5, 3, false), true);
+  assert.equal(shouldAdvanceRound(2, 3, false), false);
+
+  // The goal celebration fires exactly once, on the crossing clear.
+  assert.equal(stageGoalJustReached(2, 3, 3), true);
+  assert.equal(stageGoalJustReached(2, 4, 3), true, 'a wide clear can jump the line');
+  assert.equal(stageGoalJustReached(3, 4, 3), false, 'bonus clears after the goal do not re-fire it');
+  assert.equal(stageGoalJustReached(0, 1, 3), false);
 });
 
 test('combo-seven rewards unlock variety gradually while board actions stay dominant', () => {

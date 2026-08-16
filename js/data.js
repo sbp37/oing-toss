@@ -30,22 +30,25 @@ export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
-// Main-mode board growth is intentionally capped at 6x7. The play layout
-// derives its frame from cols/rows instead of subdividing a fixed artwork
-// recess, so every stage keeps square cells while the board itself grows:
-// 4x4 -> 5x5 -> 6x6 -> 6x7. Later difficulty comes from targets, challenges,
-// time and drop pressure; 7x7+ remains reserved for a future hard mode.
+// Main-mode board growth is intentionally capped at 6x7, and the ladder only
+// ever grows ONE axis per stage, columns last: tile size on a phone is set by
+// the column count, so width steps (the moments tiles visibly shrink) happen
+// exactly twice — at 5 and at 6 columns — each cushioned by a rows-only stage
+// before and after. Past 6x7 the board never changes again; late difficulty
+// comes from the value mix, targets, challenges, time and drop pressure.
+// 7x7+ remains reserved for a future hard mode. `size` doubles as the column
+// count for the board generator.
 export const STAGE_CONFIG = Object.freeze([
   { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, bombChance: 0 },
-  { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, bombChance: 0 },
-  { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, bombChance: 0 },
-  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, bombChance: 0.08 },
-  { stage: 5, round: 5, size: 6, cols: 6, rows: 7, target: 11, timeLimit: 120, bombChance: 0.12 },
+  { stage: 2, round: 2, size: 4, cols: 4, rows: 5, target: 5, timeLimit: 120, bombChance: 0 },
+  { stage: 3, round: 3, size: 5, cols: 5, rows: 5, target: 7, timeLimit: 120, bombChance: 0 },
+  { stage: 4, round: 4, size: 5, cols: 5, rows: 6, target: 8, timeLimit: 120, bombChance: 0.08 },
+  { stage: 5, round: 5, size: 6, cols: 6, rows: 6, target: 10, timeLimit: 120, bombChance: 0.12 },
   { stage: 6, round: 6, size: 6, cols: 6, rows: 7, target: 12, timeLimit: 120, bombChance: 0.16 },
   { stage: 7, round: 7, size: 6, cols: 6, rows: 7, target: 13, timeLimit: 120, bombChance: 0.2 },
   { stage: 8, round: 8, size: 6, cols: 6, rows: 7, target: 14, timeLimit: 120, bombChance: 0.24 },
   { stage: 9, round: 9, size: 6, cols: 6, rows: 7, target: 15, timeLimit: 120, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, target: 17, timeLimit: 120, bombChance: 0.32 },
+  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, target: 16, timeLimit: 120, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -359,22 +362,24 @@ export function nextGardenRevealBest(previousBest, percent) {
 // at, so they outrank an ordinary combo-7 drop in successFeedbackLevel.
 export const RARE_BOARD_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
 
-// LEVEL 5 stage clear · 4 rare item or challenge · 3 combo milestone or an
-// ordinary drop · 2 wide clear or cat bonus · 1 plain clear. Higher ranks
-// own the frame for a success; lower-ranked flourishes (the "딱 10!" pop,
-// the combo banner) stand down for whichever rank actually applies. This is
-// a pure function specifically so the ranking and the combo banner's
+// LEVEL 5 stage goal secured · 4 rare item or challenge · 3 combo milestone
+// or an ordinary drop · 2 wide clear or cat bonus · 1 plain clear. Higher
+// ranks own the frame for a success; lower-ranked flourishes (the "딱 10!"
+// pop, the combo banner) stand down for whichever rank actually applies.
+// This is a pure function specifically so the ranking and the combo banner's
 // milestone check can share one answer — comboMilestone here must already
-// be comboMilestoneCrossed's result, not recomputed.
+// be comboMilestoneCrossed's result, not recomputed. goalReached is the
+// crossing moment from stageGoalJustReached, not "target currently met" —
+// bonus clears after the goal rank like any other clear.
 export function successFeedbackLevel({
-  willClearStage = false,
+  goalReached = false,
   challengeCompleted = false,
   earnedDrop = null,
   comboMilestone = 0,
   comboGain = 1,
   catCount = 0,
 } = {}) {
-  if (willClearStage) return 5;
+  if (goalReached) return 5;
   const rareDrop = Boolean(earnedDrop) && RARE_BOARD_DROP_IDS.includes(earnedDrop.id);
   if (rareDrop || challengeCompleted) return 4;
   if (comboMilestone || earnedDrop) return 3;
@@ -400,11 +405,25 @@ export function itemRewardCountdown(combo, stage = 1) {
   return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
 }
 
+// The stage target is a floor, not a ceiling: reaching it secures the clear,
+// but the board keeps serving answers until they genuinely run out. The
+// original OING only ever swapped boards when no move was left, and cutting
+// a board short while answers remained read as the game stealing tiles.
 export function shouldAdvanceRound(progress, target, hasAnswer) {
-  return Math.max(0, Number(progress) || 0) >= Math.max(1, Number(target) || 1);
+  const met = Math.max(0, Number(progress) || 0) >= Math.max(1, Number(target) || 1);
+  return met && !hasAnswer;
 }
 
 export const shouldAdvanceStage = shouldAdvanceRound;
+
+// True only on the clear that crosses the target line — the one moment worth
+// the stage-goal celebration. Later bonus clears on the same board rank on
+// their own merits.
+export function stageGoalJustReached(previousProgress, progress, target) {
+  const goal = Math.max(1, Number(target) || 1);
+  return Math.max(0, Number(previousProgress) || 0) < goal
+    && Math.max(0, Number(progress) || 0) >= goal;
+}
 
 export function shouldShowBeginnerAutoHint({
   running = false, inputLocked = false, tutorialActive = false, alreadyShown = false,
@@ -451,8 +470,11 @@ export function roundTimeBonusSeconds(round = 1) {
   // strong runs actually reach the late-stage content; the 120s session
   // cap still bounds total run length.
   if (!grew) return current.stage >= 3 ? 4 : 0;
-  // The opening 4x4 -> 5x5 step is small and comes with plenty of clock left.
-  return current.stage === 1 ? 6 : 10;
+  // The one-axis ladder grows in small steps (+4~6 cells), so each growth
+  // pays the small bonus; a big jump (a future mode, or a config change back
+  // to two-axis growth) still earns the full ten. Scaling by the actual step
+  // keeps total refill time bounded now that growth happens five times.
+  return next.cols * next.rows - current.cols * current.rows >= 9 ? 10 : 6;
 }
 
 export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {

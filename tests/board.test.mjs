@@ -72,8 +72,13 @@ for (const bag of [easyBag]) {
 }
 assert.equal(tripleUnitCountForRound(110, 1), 0);
 assert.ok(tripleUnitCountForRound(110, 8) >= 7, 'late bags replace some obvious pairs with sum-ten triples');
+// Seeding and pacing follow difficultyPhaseForStage: the gentler one-axis
+// ladder maps each stage onto the old band scale by matching cell counts,
+// so stage 3 (25 cells, like the old stage 2) still seeds three pairs and
+// stage 5 (36 cells, like the old stage 4) gets the old stage-4 pacing.
 assert.equal(adjacentSeedCountForRound(1), 4);
-assert.equal(adjacentSeedCountForRound(3), 2);
+assert.equal(adjacentSeedCountForRound(3), 3);
+assert.equal(adjacentSeedCountForRound(5), 1);
 assert.equal(adjacentSeedCountForRound(6), 0);
 assert.deepEqual(boardPacingForRound(1), {
   targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4,
@@ -83,11 +88,11 @@ assert.deepEqual(boardPacingForRound(1), {
   minimumAnswerZones: 3, maximumDominantCellShare: 0.52,
 });
 assert.deepEqual(boardPacingForRound(5), {
-  targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9,
-  maximumSimpleAnswers: 4,
-  minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5,
-  minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2,
-  minimumAnswerZones: 4, maximumDominantCellShare: 0.38,
+  targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8,
+  maximumSimpleAnswers: 5,
+  minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 4,
+  minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2,
+  minimumAnswerZones: 4, maximumDominantCellShare: 0.46,
 });
 assert.equal(boardPacingForRound(7, 'starter').minimumAdjacentPairs, 1);
 
@@ -135,22 +140,25 @@ assert.equal(BOARD_ASSIST_PROFILES.starter.minimumAdjacentPairs, 3);
 assert.equal(EASY_BOARD_BONUS.minimumAnswers, 1);
 
 assert.deepEqual(getRoundConfig(1), { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, bombChance: 0 });
+// The ladder grows one axis per stage, rows first: tile size on a phone is
+// set by the column count, so the two width steps (to 5 and to 6 columns)
+// each sit between rows-only stages that hold tile size steady.
 assert.deepEqual(
   [1, 2, 3, 4, 5].map((stage) => {
     const config = getRoundConfig(stage);
     return [config.cols, config.rows, config.target];
   }),
-  [[4, 4, 3], [5, 5, 5], [6, 6, 8], [6, 6, 9], [6, 7, 11]],
+  [[4, 4, 3], [4, 5, 5], [5, 5, 7], [5, 6, 8], [6, 6, 10]],
 );
 // The board stops growing at 6x7 so the late-stage numerals stay readable and
 // the cell keeps its near-square proportion; difficulty rides on `target` and
-// the clock/bomb odds from STAGE 6 on instead of a bigger board.
+// the value mix and bomb odds from STAGE 6 on instead of a bigger board.
 assert.deepEqual(
   [6, 7, 8, 9, 10].map((stage) => {
     const config = getRoundConfig(stage);
     return [config.cols, config.rows, config.target];
   }),
-  [[6, 7, 12], [6, 7, 13], [6, 7, 14], [6, 7, 15], [6, 7, 17]],
+  [[6, 7, 12], [6, 7, 13], [6, 7, 14], [6, 7, 15], [6, 7, 16]],
 );
 {
   const targets = Array.from({ length: 20 }, (_, index) => getRoundConfig(index + 1).target);

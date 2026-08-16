@@ -1776,14 +1776,20 @@ export class GameUI {
     this.elements.comboChip.dataset.level = comboLevel;
     this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
-    this.elements.goalLabel.textContent = '성공';
-    const goalText = `${progress} / ${target}`;
+    const goalMet = progress >= target;
+    // After the target the board stays open for bonus clears, so the goal box
+    // flips from countdown to reward tally — the player should read "secured,
+    // now stacking extra", not a number that keeps outgrowing its target.
+    this.elements.goalLabel.textContent = goalMet ? '달성!' : '성공';
+    const goalText = goalMet
+      ? (progress > target ? `+${progress - target}` : `${progress} / ${target}`)
+      : `${progress} / ${target}`;
     this.elements.goal.textContent = goalText;
     // Same length-band pattern as the score figure: the goal box is narrow
     // and the text is nowrap-centred, so "16 / 17" at full size ran under
     // the progress track on every width (11.8px deep on a 280px Fold).
     this.elements.goal.dataset.digits = goalText.length > 6 ? 'l' : 'm';
-    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', progress >= target);
+    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', goalMet);
     this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
     const mission = this.elements.stageMission;
     if (mission) {
