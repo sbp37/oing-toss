@@ -83,6 +83,32 @@ function chooseAnswer(answers, profile, random, model = null) {
   return pool[Math.floor(random() * pool.length)];
 }
 
+// The human-like agent: no lookahead of any kind — it never previews what
+// the board looks like after a clear. It picks among the answers currently
+// visible, weighted by how quickly each shape catches a human eye:
+// adjacent pairs first, one-line runs next, 2D boxes last (novices barely
+// spot those). Real-play feel is judged against this agent, not the
+// strategic one.
+function chooseAnswerHumanlike(answers, profile, random) {
+  const weightFor = (answer) => {
+    const height = answer.r2 - answer.r1 + 1;
+    const width = answer.c2 - answer.c1 + 1;
+    const adjacentPair = answer.count === 2 && height * width === 2;
+    const box = height >= 2 && width >= 2;
+    if (profile.id === 'novice') return adjacentPair ? 4 : box ? 0.5 : answer.count === 2 ? 2 : 1;
+    if (profile.id === 'regular') return adjacentPair ? 2.4 : box ? 0.9 : answer.count === 2 ? 1.6 : 1.1;
+    return adjacentPair ? 1.6 : box ? 1.1 : 1.2;
+  };
+  const weights = answers.map(weightFor);
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let roll = random() * total;
+  for (let index = 0; index < answers.length; index += 1) {
+    roll -= weights[index];
+    if (roll <= 0) return answers[index];
+  }
+  return answers.at(-1);
+}
+
 function bestMegaBombTarget(model) {
   let best = null;
   for (let row = 0; row < model.rows; row += 1) {
@@ -113,6 +139,7 @@ export function simulateRun({
   maximumElapsedSeconds = 300,
   showcaseEligible = false,
   showcaseIndex = 0,
+  agent = 'strategic',
 } = {}) {
   const settings = typeof profile === 'string' ? PLAYER_PROFILES[profile] : profile;
   if (!settings) throw new Error(`Unknown player profile: ${profile}`);
@@ -309,7 +336,9 @@ export function simulateRun({
         continue;
       }
 
-      const answer = chooseAnswer(answers, settings, random, model);
+      const answer = agent === 'humanlike'
+        ? chooseAnswerHumanlike(answers, settings, random)
+        : chooseAnswer(answers, settings, random, model);
       const stats = model.stats(answer);
       const clearedCells = stats.count + stats.catCount;
       const previousCombo = state.combo;
@@ -404,13 +433,14 @@ export function summarizeRuns(runs) {
   };
 }
 
-export function simulateBalanceSuite({ runsPerProfile = 40, seed = 20260808 } = {}) {
+export function simulateBalanceSuite({ runsPerProfile = 40, seed = 20260808, agent = 'strategic' } = {}) {
   return Object.fromEntries(Object.keys(PLAYER_PROFILES).map((profile, profileIndex) => {
     const runs = Array.from({ length: runsPerProfile }, (_, index) => simulateRun({
       profile,
       seed: seed + profileIndex * 100000 + index,
       showcaseEligible: index < 3,
       showcaseIndex: index,
+      agent,
     }));
     return [profile, summarizeRuns(runs)];
   }));

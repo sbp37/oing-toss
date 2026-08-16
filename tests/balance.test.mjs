@@ -47,4 +47,20 @@ assert.ok(suite.expert.roundTimeBonusMean <= 90,
 assert.ok(suite.expert.itemTimeBonusMean <= 20, 'rare clock and freeze rewards must not dominate survival time');
 assert.equal(suite.novice.cappedRuns, 0);
 
+// The human-like agent never previews the post-clear board — real-play
+// feel is judged against it. Even without lookahead the tiling boards must
+// keep rescues an exception and clean clears a reachable skill reward.
+const humanlike = simulateBalanceSuite({ runsPerProfile: 8, seed: 99, agent: 'humanlike' });
+for (const profile of ['novice', 'regular', 'expert']) {
+  const s = humanlike[profile];
+  assert.ok(s.rescueMean / Math.max(1, s.boardsClearedMean) <= 1.1,
+    `${profile} (humanlike): rescues stay around 0-1 per fully cleared board`);
+  assert.ok(s.cleanClearRate >= 0.1,
+    `${profile} (humanlike): clean clears are a skill reward, not a lottery`);
+}
+assert.ok(humanlike.novice.roundMean >= 3 && humanlike.novice.roundMean <= 5,
+  'humanlike novices land around stages 3-4');
+assert.ok(humanlike.expert.roundMean >= 7,
+  'humanlike experts still reach the late stages');
+
 console.log('balance.test.mjs: seeded novice/regular/expert progression passed');

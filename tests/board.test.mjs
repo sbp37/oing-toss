@@ -80,17 +80,19 @@ assert.equal(adjacentSeedCountForRound(3), 2);
 assert.equal(adjacentSeedCountForRound(5), 0);
 assert.equal(adjacentSeedCountForRound(6), 0);
 assert.deepEqual(boardPacingForRound(1), {
-  targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4,
-  maximumSimpleAnswers: 6,
-  minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1,
+  targetAnswers: 6, maximumAnswers: 9, minimumAnswers: 4,
+  maximumSimpleAnswers: 7,
+  minimumAdjacentPairs: 3, maximumAdjacentPairs: 6, minimumRichAnswers: 1,
   minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2,
+  maximumTrainLines: 2, minimumBoxAnswers: 0,
   minimumAnswerZones: 3, maximumDominantCellShare: 0.52,
 });
 assert.deepEqual(boardPacingForRound(5), {
   targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9,
   maximumSimpleAnswers: 4,
-  minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5,
+  minimumAdjacentPairs: 0, maximumAdjacentPairs: 3, minimumRichAnswers: 5,
   minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2,
+  maximumTrainLines: 1, minimumBoxAnswers: 3,
   minimumAnswerZones: 4, maximumDominantCellShare: 0.38,
 });
 assert.equal(boardPacingForRound(7, 'starter').minimumAdjacentPairs, 1);
@@ -346,29 +348,60 @@ console.log('board.test.mjs: 750 regular and 300 early-assist boards plus scorin
   assert.equal(orphan.remainingPlayableCells(), 0, 'the sweep finishes the board');
 }
 
-// ── Backbone generation: every board carries a full-clear path ───────────
+// ── Tiling generation: every board carries a full-clear path of mixed
+// shapes, and one-line "train" patterns stay rare ────────────────────────
 {
-  const { BoardModel: Model, gridDrainsByLines, bonusCatTargetForDimensions } = await import('../js/board.js');
+  const {
+    BoardModel: Model, bonusCatTargetForDimensions, boardPacingForRound: pacingFor,
+    countTrainLines, rolloutClearOnce,
+  } = await import('../js/board.js');
   for (const [cols, rows, round] of [[4, 4, 1], [5, 5, 2], [5, 5, 3], [6, 6, 4], [6, 6, 5], [6, 7, 6], [6, 7, 9]]) {
-    for (let run = 0; run < 12; run += 1) {
+    let trains = 0;
+    let boxTiles = 0;
+    let fullClears = 0;
+    let rollouts = 0;
+    const runsPerStage = 10;
+    for (let run = 0; run < runsPerStage; run += 1) {
       const model = new Model(cols);
       model.generate(cols, { cols, rows, round });
-      assert.ok(gridDrainsByLines(model.grid),
-        `stage ${round} (${cols}x${rows}) board must split into one-line sum-ten runs`);
       const total = model.grid.flat().reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
       assert.equal(total % 10, 0, 'a full-clearable board total must divide into tens');
       assert.equal(model.bonusCats.size, bonusCatTargetForDimensions(rows, cols));
-      const answers = model.findAnswers();
-      for (const key of model.bonusCats) {
-        const [r, c] = key.split(':').map(Number);
-        assert.ok(answers.some((a) => r >= a.r1 && r <= a.r2 && c >= a.c1 && c <= a.c2),
-          'every cat sits inside a segment rectangle and stays collectable');
+
+      // The tiling is the full-clear certificate: it must partition the
+      // grid exactly, and every tile must be a selectable sum-ten
+      // rectangle holding at least two numbers (cats ride inside tiles,
+      // so every cat is collectable through its own tile).
+      const covered = new Set();
+      for (const tile of model.lastTiling) {
+        const rect = { r1: tile.r, c1: tile.c, r2: tile.r + tile.h - 1, c2: tile.c + tile.w - 1 };
+        const stats = model.stats(rect);
+        assert.equal(stats.sum, 10, `stage ${round}: every tile sums to ten`);
+        assert.ok(stats.count >= 2, 'every tile holds at least two numbers');
+        for (let r = rect.r1; r <= rect.r2; r += 1) {
+          for (let c = rect.c1; c <= rect.c2; c += 1) {
+            const key = `${r}:${c}`;
+            assert.ok(!covered.has(key), 'tiles never overlap');
+            covered.add(key);
+          }
+        }
+        if (tile.h >= 2 && tile.w >= 2) boxTiles += 1;
+      }
+      assert.equal(covered.size, rows * cols, 'tiles cover the whole board');
+
+      trains += countTrainLines(model.grid);
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        rollouts += 1;
+        if (rolloutClearOnce(model.grid, model.bonusCats).fullClear) fullClears += 1;
       }
     }
+    const pacing = pacingFor(round);
+    assert.ok(trains / runsPerStage <= pacing.maximumTrainLines + 0.7,
+      `stage ${round}: line-sweep trains stay rare (${(trains / runsPerStage).toFixed(2)} per board)`);
+    if (round >= 3) assert.ok(boxTiles > 0, `stage ${round}: 2D tiles appear in the clear path`);
+    assert.ok(fullClears / rollouts >= 0.5,
+      `stage ${round}: plan-blind random play still finishes most boards (${fullClears}/${rollouts})`);
   }
-  assert.equal(gridDrainsByLines([[9, 1], [2, 2]]), false, 'a board without one-line runs is not certified');
-  assert.ok(gridDrainsByLines([[9, 1], [8, 2]]), 'row runs certify');
-  assert.ok(gridDrainsByLines([[9, 8], [1, 2]]), 'column runs certify too');
 }
 
 // ── Sized partition: values deal into prescribed group sizes ─────────────
@@ -423,4 +456,19 @@ console.log('board.test.mjs: 750 regular and 300 early-assist boards plus scorin
     assert.equal(model.grid.flat().filter((v) => v > 0).length, 0,
       `${name}: the plan drains the whole tail with zero further rescues`);
   }
+
+  // Cats ride through the rescue: a tail whose bonus cats sit between its
+  // numbers must come out of the planned drain with the cats collected
+  // too, not stranded on an otherwise empty board.
+  const catTail = makeTail(6, 6, [[2, 0, 3], [2, 3, 7], [4, 1, 5], [4, 4, 5]]);
+  catTail.bonusCats.add('2:1');
+  catTail.bonusCats.add('4:2');
+  const catOutcome = catTail.rescueRemaining();
+  assert.ok(catOutcome && catOutcome.plan, 'a cat-holding tail still gets a strong rescue plan');
+  for (const rect of catOutcome.plan) {
+    assert.equal(catTail.stats(rect).sum, 10);
+    catTail.remove(rect);
+  }
+  assert.equal(catTail.remainingPlayableCells(), 0,
+    'the planned drain collects the bonus cats along with the numbers');
 }

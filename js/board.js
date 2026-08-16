@@ -188,27 +188,32 @@ export function partitionIntoSizedTens(values, sizes) {
   return groups.map((group) => group.values.slice());
 }
 
-// True when every line (all rows, or all columns) splits into consecutive
-// runs of numbers that each sum to exactly ten. Such a board always drains
-// to empty: each run is a one-line rectangle containing only its own
-// numbers, so it is selectable at any moment, in any order. This is the
-// invariant the backbone generator establishes and the tests verify.
-export function gridDrainsByLines(grid) {
+// Counts lines (rows and columns) that split entirely into two or more
+// consecutive sum-ten runs — the "train" pattern a player clears by
+// sweeping along one line without ever scanning the rest of the board.
+// The generator penalizes boards that show these.
+export function countTrainLines(grid) {
   const rows = grid.length;
   const cols = grid[0]?.length || 0;
-  const drains = (lines) => lines.every((line) => {
+  const isTrain = (line) => {
     let acc = 0;
+    let runs = 0;
     for (const value of line) {
       if (!(value > 0)) continue;
       acc += value;
-      if (acc === 10) acc = 0;
-      else if (acc > 10) return false;
+      if (acc === 10) {
+        acc = 0;
+        runs += 1;
+      } else if (acc > 10) return false;
     }
-    return acc === 0;
-  });
-  if (drains(grid)) return true;
-  const columns = Array.from({ length: cols }, (_, c) => Array.from({ length: rows }, (_, r) => grid[r]?.[c] ?? 0));
-  return drains(columns);
+    return acc === 0 && runs >= 2;
+  };
+  let trains = 0;
+  for (const row of grid) trains += isTrain(row) ? 1 : 0;
+  for (let c = 0; c < cols; c += 1) {
+    trains += isTrain(Array.from({ length: rows }, (_, r) => grid[r]?.[c] ?? 0)) ? 1 : 0;
+  }
+  return trains;
 }
 
 // The ladder holds each size for two stages (4x4 / 5x5 / 5x5 / 6x6 / 6x6 /
@@ -293,21 +298,25 @@ export function adjacentSeedCountForRound(round = 1) {
 
 export function boardPacingForRound(round = 1, assist = 'standard') {
   const stage = difficultyPhaseForStage(round);
+  // maximumTrainLines/minimumBoxAnswers steer the tiling mix: from stage 2
+  // on, sweeping one line must stop working and 2D rectangles must be part
+  // of the reading. Pair tiles keep a few honest adjacent pairs alive even
+  // late — the difficulty is finding shapes, not starving choices.
   const base = stage === 1
-    ? { targetAnswers: 6, maximumAnswers: 8, minimumAnswers: 4, maximumSimpleAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2 }
+    ? { targetAnswers: 6, maximumAnswers: 9, minimumAnswers: 4, maximumSimpleAnswers: 7, minimumAdjacentPairs: 3, maximumAdjacentPairs: 6, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2, maximumTrainLines: 2, minimumBoxAnswers: 0 }
     : stage === 2
-      ? { targetAnswers: 8, maximumAnswers: 11, minimumAnswers: 6, maximumSimpleAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 4, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2 }
+      ? { targetAnswers: 8, maximumAnswers: 11, minimumAnswers: 6, maximumSimpleAnswers: 6, minimumAdjacentPairs: 3, maximumAdjacentPairs: 5, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 1 }
       : stage === 3
-        ? { targetAnswers: 10, maximumAnswers: 13, minimumAnswers: 7, maximumSimpleAnswers: 5, minimumAdjacentPairs: 2, maximumAdjacentPairs: 3, minimumRichAnswers: 3, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
+        ? { targetAnswers: 10, maximumAnswers: 13, minimumAnswers: 7, maximumSimpleAnswers: 5, minimumAdjacentPairs: 2, maximumAdjacentPairs: 4, minimumRichAnswers: 3, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 2 }
         : stage === 4
-          ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, maximumSimpleAnswers: 5, minimumAdjacentPairs: 1, maximumAdjacentPairs: 2, minimumRichAnswers: 4, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2 }
+          ? { targetAnswers: 11, maximumAnswers: 14, minimumAnswers: 8, maximumSimpleAnswers: 5, minimumAdjacentPairs: 1, maximumAdjacentPairs: 3, minimumRichAnswers: 4, minimumShapePatterns: 5, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 3 }
           : stage === 5
-            ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 5, minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2 }
+            ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 3, minimumRichAnswers: 5, minimumShapePatterns: 5, minimumValuePatterns: 6, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 3 }
             : stage <= 7
-              ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 3, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2 }
+              ? { targetAnswers: 12, maximumAnswers: 15, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 7, minimumShapePatterns: 7, minimumValuePatterns: 6, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 4 }
               : stage <= 9
-                ? { targetAnswers: 13, maximumAnswers: 16, minimumAnswers: 9, maximumSimpleAnswers: 3, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3 }
-                : { targetAnswers: 14, maximumAnswers: 17, minimumAnswers: 10, maximumSimpleAnswers: 3, minimumAdjacentPairs: 0, maximumAdjacentPairs: 1, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3 };
+                ? { targetAnswers: 13, maximumAnswers: 16, minimumAnswers: 9, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 8, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3, maximumTrainLines: 1, minimumBoxAnswers: 4 }
+                : { targetAnswers: 14, maximumAnswers: 17, minimumAnswers: 10, maximumSimpleAnswers: 4, minimumAdjacentPairs: 0, maximumAdjacentPairs: 2, minimumRichAnswers: 9, minimumShapePatterns: 8, minimumValuePatterns: 8, minimumOrientations: 3, maximumTrainLines: 1, minimumBoxAnswers: 5 };
   const assistAdjacentBonus = assist === 'starter' ? 1 : 0;
   return Object.freeze({
     ...base,
@@ -363,11 +372,25 @@ export function analyzeAnswerDiversity(grid, answers = findAllSumTenRects(grid))
 function answerMix(grid, answers) {
   const diversity = analyzeAnswerDiversity(grid, answers);
   const spread = analyzeAnswerSpread(grid, answers);
+  let horizontal = 0;
+  let vertical = 0;
+  let box = 0;
+  answers.forEach((answer) => {
+    const height = answer.r2 - answer.r1 + 1;
+    const width = answer.c2 - answer.c1 + 1;
+    if (height >= 2 && width >= 2) box += 1;
+    else if (height === 1) horizontal += 1;
+    else vertical += 1;
+  });
   return {
     total: answers.length,
     simple: answers.filter((answer) => answer.count === 2).length,
     adjacent: answers.filter(isAdjacentPair).length,
     rich: answers.filter((answer) => answer.count >= 3).length,
+    horizontal,
+    vertical,
+    box,
+    trainLines: countTrainLines(grid),
     ...diversity,
     ...spread,
   };
@@ -376,6 +399,10 @@ function answerMix(grid, answers) {
 function pacingPenalty(mix, pacing) {
   const below = (value, minimum) => Math.max(0, minimum - value);
   const above = (value, maximum) => Math.max(0, value - maximum);
+  // A board where one direction dominates the 1D answers reads as stripes;
+  // the imbalance term pushes candidates toward a mixed reading direction.
+  const oneD = mix.horizontal + mix.vertical;
+  const imbalance = oneD ? Math.abs(mix.horizontal - mix.vertical) / oneD : 0;
   return Math.abs(mix.total - pacing.targetAnswers)
     + below(mix.total, pacing.minimumAnswers) * 18
     + above(mix.total, pacing.maximumAnswers) * 5
@@ -387,35 +414,46 @@ function pacingPenalty(mix, pacing) {
     + below(mix.valuePatterns, pacing.minimumValuePatterns) * 12
     + below(mix.orientations, pacing.minimumOrientations) * 34
     + below(mix.answerZones, pacing.minimumAnswerZones) * 22
-    + above(mix.dominantCellShare, pacing.maximumDominantCellShare) * 80;
+    + above(mix.dominantCellShare, pacing.maximumDominantCellShare) * 80
+    + above(mix.trainLines, pacing.maximumTrainLines) * 40
+    + below(mix.box, pacing.minimumBoxAnswers) * 22
+    + above(imbalance, 0.55) * 70;
 }
 
-// Full-clear backbone: every board is built as a tiling of one-line
-// segments that each sum to exactly ten. A segment's numbers sit in a
-// single row (or column), so its bounding rectangle contains no foreign
-// number and is selectable at any moment — the board always has a
-// complete clear path by construction. Difficulty still comes from the
-// value mix: later stages use longer, harder-to-spot segments.
-function backboneSizeMix(round) {
+// Full-clear tiling: every board is built as a partition of the grid into
+// small rectangles that each sum to exactly ten. A tile's bounding
+// rectangle is the tile itself, so it contains no foreign number and is
+// selectable at any moment, in any order — the board always has a complete
+// clear path by construction, and unlike the one-line backbone this path
+// is made of mixed shapes (horizontal, vertical, 2x2, 2x3) scattered over
+// the board instead of trains the eye can sweep along a single line.
+function tileShapeWeightsForStage(round) {
   const stage = difficultyPhaseForStage(round);
-  if (stage <= 1) return [[2, 8], [3, 2]];
-  if (stage === 2) return [[2, 7], [3, 3]];
-  if (stage === 3) return [[2, 11], [3, 7], [4, 2]];
-  if (stage === 4) return [[2, 9], [3, 8], [4, 3]];
-  if (stage === 5) return [[2, 8], [3, 8], [4, 4]];
-  if (stage <= 7) return [[2, 6], [3, 9], [4, 5]];
-  if (stage <= 9) return [[2, 5], [3, 9], [4, 6]];
-  return [[2, 4], [3, 9], [4, 7]];
+  if (stage <= 1) return [[[1, 2], 4], [[2, 1], 4], [[1, 3], 1], [[3, 1], 1]];
+  if (stage === 2) return [[[1, 2], 3], [[2, 1], 3], [[1, 3], 1.5], [[3, 1], 1.5], [[2, 2], 2]];
+  if (stage === 3) return [[[1, 2], 2], [[2, 1], 2], [[1, 3], 2], [[3, 1], 2], [[2, 2], 2.5], [[2, 3], 0.7], [[3, 2], 0.7]];
+  if (stage === 4) return [[[1, 2], 1.5], [[2, 1], 1.5], [[1, 3], 2], [[3, 1], 2], [[2, 2], 3], [[2, 3], 1], [[3, 2], 1]];
+  if (stage === 5) return [[[1, 2], 1.2], [[2, 1], 1.2], [[1, 3], 2], [[3, 1], 2], [[2, 2], 3], [[2, 3], 1.3], [[3, 2], 1.3]];
+  if (stage <= 7) return [[[1, 2], 1], [[2, 1], 1], [[1, 3], 2], [[3, 1], 2], [[2, 2], 3], [[2, 3], 1.6], [[3, 2], 1.6]];
+  return [[[1, 2], 0.8], [[2, 1], 0.8], [[1, 3], 1.8], [[3, 1], 1.8], [[2, 2], 3], [[2, 3], 2], [[3, 2], 2]];
 }
 
-function sampleBackboneSize(mix) {
-  const total = mix.reduce((sum, [, weight]) => sum + weight, 0);
-  let roll = Math.random() * total;
-  for (const [size, weight] of mix) {
-    roll -= weight;
-    if (roll <= 0) return size;
+// Draws the pool into a try-order, sampling by weight without replacement,
+// so the backtracker prefers the stage's shape mix but can fall through.
+function weightedShapeOrder(pool) {
+  const entries = pool.map(([shape, weight]) => ({ shape, weight }));
+  const order = [];
+  while (entries.length) {
+    const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * total;
+    let index = 0;
+    for (; index < entries.length - 1; index += 1) {
+      roll -= entries[index].weight;
+      if (roll <= 0) break;
+    }
+    order.push(entries.splice(index, 1)[0].shape);
   }
-  return mix.at(-1)[0];
+  return order;
 }
 
 // A sum-ten multiset of the given size. Pairs keep the original stage
@@ -437,95 +475,116 @@ function tenGroupValues(count, round) {
   return [...new Array(count - 1).fill(1), 11 - count];
 }
 
-// Partitions one line's number cells into consecutive segments of 2..9
-// numbers. Cats glue their neighbours together (a split across a cat would
-// leave that cat outside every segment rectangle, stranding it), and a cat
-// past the line's first or last number can never be covered — the caller
-// re-rolls cat placement in that case.
-function lineRangePlan(width, catCols, round) {
-  const positions = [];
-  for (let col = 0; col < width; col += 1) {
-    if (!catCols.has(col)) positions.push(col);
-  }
-  if (positions.length < 2) return null;
-  for (const col of catCols) {
-    if (col < positions[0] || col > positions.at(-1)) return null;
-  }
-  const blocks = [[positions[0]]];
-  for (let index = 1; index < positions.length; index += 1) {
-    let glued = false;
-    for (let col = positions[index - 1] + 1; col < positions[index]; col += 1) {
-      if (catCols.has(col)) glued = true;
+// Partitions the whole grid into stage-weighted rectangles, each holding
+// at least two numbers (cats ride inside tiles and count zero). Standard
+// first-open-cell backtracking: the first uncovered cell in row-major
+// order must be a tile's top-left corner, so the search stays small.
+function tileGridOnce(rows, cols, cats, round) {
+  const covered = Array.from({ length: rows }, () => new Array(cols).fill(false));
+  const tiles = [];
+  const pool = tileShapeWeightsForStage(round);
+  let budget = 6000;
+
+  const firstOpen = () => {
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        if (!covered[r][c]) return { r, c };
+      }
     }
-    if (glued) blocks.at(-1).push(positions[index]);
-    else blocks.push([positions[index]]);
-  }
-  const mix = backboneSizeMix(round);
-  const ranges = [];
-  let index = 0;
-  while (index < blocks.length) {
-    const range = [];
-    const targetSize = sampleBackboneSize(mix);
-    while (index < blocks.length) {
-      range.push(...blocks[index]);
-      index += 1;
-      const rest = blocks.slice(index).reduce((sum, block) => sum + block.length, 0);
-      if (rest === 0) break;
-      if (range.length >= Math.max(2, targetSize) && rest !== 1) break;
-      if (range.length > 9) return null;
+    return null;
+  };
+  const numbersInside = (r, c, h, w) => {
+    if (r + h > rows || c + w > cols) return null;
+    let catCount = 0;
+    for (let rr = r; rr < r + h; rr += 1) {
+      for (let cc = c; cc < c + w; cc += 1) {
+        if (covered[rr][cc]) return null;
+        if (cats.has(cellKey(rr, cc))) catCount += 1;
+      }
     }
-    if (range.length < 2 || range.length > 9) return null;
-    ranges.push(range);
-  }
-  return ranges;
+    const numbers = h * w - catCount;
+    return numbers >= 2 && numbers <= 9 ? numbers : null;
+  };
+  const mark = (r, c, h, w, value) => {
+    for (let rr = r; rr < r + h; rr += 1) {
+      for (let cc = c; cc < c + w; cc += 1) covered[rr][cc] = value;
+    }
+  };
+  const solve = () => {
+    if (budget <= 0) return false;
+    budget -= 1;
+    const open = firstOpen();
+    if (!open) return true;
+    for (const [h, w] of weightedShapeOrder(pool)) {
+      const numbers = numbersInside(open.r, open.c, h, w);
+      if (numbers === null) continue;
+      mark(open.r, open.c, h, w, true);
+      tiles.push({ r: open.r, c: open.c, h, w, numbers });
+      if (solve()) return true;
+      tiles.pop();
+      mark(open.r, open.c, h, w, false);
+    }
+    return false;
+  };
+  return solve() ? tiles : null;
 }
 
-function makeBackboneGrid(rows, cols, round, catTarget) {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const alongRows = attempt % 2 === 0;
-    const lineCount = alongRows ? rows : cols;
-    const lineWidth = alongRows ? cols : rows;
+function makeTilingGrid(rows, cols, round, catTarget) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     const cats = new Set();
-    if (attempt < 40) {
-      while (cats.size < catTarget) {
-        cats.add(cellKey(Math.floor(Math.random() * rows), Math.floor(Math.random() * cols)));
-      }
-    } else {
-      // Safety net: one interior cat per distinct line always segments.
-      for (let index = 0; index < catTarget; index += 1) {
-        const line = index % lineCount;
-        const offset = 1 + Math.floor(Math.random() * (lineWidth - 2));
-        cats.add(alongRows ? cellKey(line, offset) : cellKey(offset, line));
-      }
-      if (cats.size < catTarget) continue;
+    while (cats.size < catTarget) {
+      cats.add(cellKey(Math.floor(Math.random() * rows), Math.floor(Math.random() * cols)));
     }
-    const plans = [];
-    let feasible = true;
-    for (let line = 0; line < lineCount && feasible; line += 1) {
-      const catCols = new Set();
-      cats.forEach((key) => {
-        const [r, c] = key.split(':').map(Number);
-        if ((alongRows ? r : c) === line) catCols.add(alongRows ? c : r);
-      });
-      const plan = lineRangePlan(lineWidth, catCols, round);
-      if (!plan) feasible = false;
-      else plans.push(plan);
-    }
-    if (!feasible) continue;
+    const tiles = tileGridOnce(rows, cols, cats, round);
+    if (!tiles) continue;
     const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
-    plans.forEach((ranges, line) => {
-      ranges.forEach((range) => {
-        const values = shuffleArray(tenGroupValues(range.length, round));
-        range.forEach((offset, position) => {
-          const r = alongRows ? line : offset;
-          const c = alongRows ? offset : line;
-          grid[r][c] = values[position];
-        });
-      });
-    });
-    return { grid, cats };
+    for (const tile of tiles) {
+      const values = shuffleArray(tenGroupValues(tile.numbers, round));
+      let position = 0;
+      for (let r = tile.r; r < tile.r + tile.h; r += 1) {
+        for (let c = tile.c; c < tile.c + tile.w; c += 1) {
+          if (!cats.has(cellKey(r, c))) grid[r][c] = values[position++];
+        }
+      }
+    }
+    return { grid, cats, tiles };
   }
   return null;
+}
+
+// One no-lookahead rollout: keep committing uniformly random legal answers
+// until the board dries up — a stand-in for a player who cannot see the
+// future. Measures how much of the board such play clears.
+export function rolloutClearOnce(sourceGrid, sourceCats = new Set()) {
+  const grid = sourceGrid.map((row) => row.slice());
+  const cats = new Set(sourceCats);
+  const total = grid.flat().filter((value) => value > 0).length + cats.size;
+  let removed = 0;
+  while (true) {
+    const answers = findAllSumTenRects(grid);
+    if (!answers.length) break;
+    const pick = answers[Math.floor(Math.random() * answers.length)];
+    for (let r = pick.r1; r <= pick.r2; r += 1) {
+      for (let c = pick.c1; c <= pick.c2; c += 1) {
+        if (grid[r][c] > 0) removed += 1;
+        grid[r][c] = null;
+        if (cats.delete(cellKey(r, c))) removed += 1;
+      }
+    }
+  }
+  const remaining = grid.flat().filter((value) => value > 0).length + cats.size;
+  return { fullClear: remaining === 0, remaining, clearedShare: total ? removed / total : 1 };
+}
+
+function robustnessScore(grid, cats, tries = 6) {
+  let fullClears = 0;
+  let clearedShare = 0;
+  for (let attempt = 0; attempt < tries; attempt += 1) {
+    const result = rolloutClearOnce(grid, cats);
+    fullClears += result.fullClear ? 1 : 0;
+    clearedShare += result.clearedShare;
+  }
+  return { fullClearRate: fullClears / tries, clearedShare: clearedShare / tries };
 }
 
 function isAdjacentPair(answer) {
@@ -540,10 +599,6 @@ export function bonusCatTargetForSize(size) {
 
 export function bonusCatTargetForDimensions(rows, cols = rows) {
   return Math.max(1, Math.round(rows * cols * BONUS_CAT_RATIO));
-}
-
-function rectContainsCell(rect, row, col) {
-  return row >= rect.r1 && row <= rect.r2 && col >= rect.c1 && col <= rect.c2;
 }
 
 export function normalizeRect(a, b) {
@@ -874,6 +929,7 @@ export class BoardModel {
     this.bonusCats = new Set();
     this.specialTiles = new Map();
     this.round = 1;
+    this.lastTiling = [];
     this.generate(size);
   }
 
@@ -888,56 +944,45 @@ export class BoardModel {
     const assist = options.assist || (options.easy ? 'guided' : 'standard');
     const catTarget = bonusCatTargetForDimensions(this.rows, this.cols);
     const pacing = boardPacingForRound(round, assist);
-    let bestCandidate = null;
-    let bestPenalty = Number.POSITIVE_INFINITY;
-    for (let attempt = 0; attempt < GENERATION_ATTEMPTS * 2; attempt += 1) {
-      const candidate = makeBackboneGrid(this.rows, this.cols, round, catTarget);
+    // Two-phase candidate selection: shape pacing first (cheap), then a
+    // handful of no-lookahead rollouts on the shortlist. The tiling makes
+    // every candidate fully clearable by construction; the rollouts pick
+    // the one that also survives plan-blind play — the board a real player
+    // can finish without knowing the hidden tiling.
+    const candidates = [];
+    for (let attempt = 0; attempt < GENERATION_ATTEMPTS; attempt += 1) {
+      const candidate = makeTilingGrid(this.rows, this.cols, round, catTarget);
       if (!candidate) continue;
       const answers = findAllSumTenRects(candidate.grid);
       if (!answers.length) continue;
-      const cats = candidate.cats;
-      const everyCatCollectable = [...cats].every((key) => {
-        const [row, col] = key.split(':').map(Number);
-        return answers.some((answer) => rectContainsCell(answer, row, col));
-      });
-      if (!everyCatCollectable) continue;
       const mix = answerMix(candidate.grid, answers);
-      const penalty = pacingPenalty(mix, pacing);
-      if (penalty < bestPenalty) {
-        bestPenalty = penalty;
-        bestCandidate = { grid: candidate.grid, cats };
-      }
-      const ideal = mix.total >= pacing.minimumAnswers
-        && mix.total <= pacing.maximumAnswers
-        && mix.simple <= pacing.maximumSimpleAnswers
-        && mix.adjacent >= pacing.minimumAdjacentPairs
-        && mix.adjacent <= pacing.maximumAdjacentPairs
-        && mix.rich >= pacing.minimumRichAnswers
-        && mix.shapePatterns >= pacing.minimumShapePatterns
-        && mix.valuePatterns >= pacing.minimumValuePatterns
-        && mix.orientations >= pacing.minimumOrientations
-        && mix.answerZones >= pacing.minimumAnswerZones
-        && mix.dominantCellShare <= pacing.maximumDominantCellShare;
-      if (ideal) {
-        this.grid = candidate.grid;
-        this.bonusCats = cats;
-        return this.grid;
-      }
+      candidate.penalty = pacingPenalty(mix, pacing);
+      candidates.push(candidate);
+      if (candidates.filter((entry) => entry.penalty <= 6).length >= 4) break;
+      if (candidates.length >= 28) break;
     }
-
-    if (bestCandidate) {
-      this.grid = bestCandidate.grid;
-      this.bonusCats = bestCandidate.cats;
+    if (candidates.length) {
+      candidates.sort((a, b) => a.penalty - b.penalty);
+      let best = null;
+      for (const candidate of candidates.slice(0, 4)) {
+        const robust = robustnessScore(candidate.grid, candidate.cats, 6);
+        const score = robust.fullClearRate * 100 + robust.clearedShare * 30 - candidate.penalty * 0.6;
+        if (!best || score > best.score) best = { candidate, score };
+      }
+      this.grid = best.candidate.grid;
+      this.bonusCats = best.candidate.cats;
+      this.lastTiling = best.candidate.tiles;
       return this.grid;
     }
 
     // Safety fallback: even without a pacing-approved candidate the board
-    // must keep the full-clear guarantee, so it stays a backbone build.
+    // must keep the full-clear guarantee, so it stays a tiling build.
     while (true) {
-      const candidate = makeBackboneGrid(this.rows, this.cols, round, catTarget);
+      const candidate = makeTilingGrid(this.rows, this.cols, round, catTarget);
       if (!candidate || candidate.cats.size !== catTarget) continue;
       this.grid = candidate.grid;
       this.bonusCats = candidate.cats;
+      this.lastTiling = candidate.tiles;
       return this.grid;
     }
   }
@@ -1119,16 +1164,57 @@ export class BoardModel {
     }
     if (numbered.length < 2) return null;
 
-    // The strong path: plan the tail as geometry-safe groups (row runs plus
-    // an endgame for single-cell rows), deal sum-ten value sets into them,
-    // and verify by simulation that clearing the groups in order drains the
-    // board completely. One rescue then guarantees the whole tail can be
-    // finished without another rescue — laying values out in row-major
-    // order used to promise nothing about the rectangles being selectable.
+    // The strong path: plan the tail as geometry-safe groups, deal sum-ten
+    // value sets into them, and prove by simulation that clearing the
+    // groups in order drains everything. Several randomized variants are
+    // tried — row-run plans and transposed (column-run) plans — and each
+    // survivor is scored with no-lookahead rollouts plus a cat-coverage
+    // check, because the player never sees the hidden plan: the layout must
+    // survive natural play, not just its own scripted order.
     const values = numbered.map(({ r, c }) => this.grid[r][c]);
-    const plan = planRescueLayout(numbered, values);
-    if (plan && this.applyRescuePlan(plan)) {
-      return { repaired: plan.changed > 0, plan: plan.slots.map((slot) => slotRect(slot)) };
+    let best = null;
+    for (let variant = 0; variant < 6; variant += 1) {
+      const transposed = variant % 2 === 1;
+      const cellsIn = transposed ? numbered.map(({ r, c }) => ({ r: c, c: r })) : numbered;
+      const plan = planRescueLayout(cellsIn, values);
+      if (!plan) continue;
+      const slots = plan.slots.map((slot) => ({
+        cells: transposed ? slot.cells.map(({ r, c }) => ({ r: c, c: r })) : slot.cells,
+        values: slot.values,
+      }));
+
+      // Prove the scripted drain on a copy, tracking cats swept along.
+      const laid = this.grid.map((row) => row.slice());
+      slots.forEach((slot) => slot.cells.forEach(({ r, c }, index) => {
+        laid[r][c] = slot.values[index];
+      }));
+      const work = laid.map((row) => row.slice());
+      const catsLeft = new Set(this.bonusCats);
+      let sound = true;
+      for (const slot of slots) {
+        const rect = slotRect(slot);
+        const stats = rectStats(work, rect);
+        if (stats.sum !== 10 || stats.count !== slot.cells.length) { sound = false; break; }
+        cellsInRect(rect).forEach(({ r, c }) => {
+          if (work[r][c] > 0) work[r][c] = null;
+          catsLeft.delete(cellKey(r, c));
+        });
+      }
+      if (!sound || work.flat().some((value) => value > 0)) continue;
+
+      const robust = robustnessScore(laid, this.bonusCats, 4);
+      const score = robust.fullClearRate * 100 + robust.clearedShare * 20
+        - catsLeft.size * 60 - plan.changed * 2;
+      if (!best || score > best.score) best = { slots, changed: plan.changed, score };
+    }
+    if (best) {
+      best.slots.forEach((slot) => slot.cells.forEach(({ r, c }, index) => {
+        this.grid[r][c] = slot.values[index];
+      }));
+      this.assignSpecialTiles([...this.specialTiles.values()]);
+      if (this.findAnswer()) {
+        return { repaired: best.changed > 0, plan: best.slots.map((slot) => slotRect(slot)) };
+      }
     }
 
     // Degraded path: at least put one answer back on the board.
@@ -1139,35 +1225,6 @@ export class BoardModel {
     const keep = Math.min(9, Math.max(1, this.grid[first.r][first.c]));
     this.grid[second.r][second.c] = 10 - keep;
     return this.findAnswer() ? { repaired: true } : null;
-  }
-
-  // Writes a rescue plan's values into the grid, then proves the promise on
-  // a copy: each group's rectangle must hold exactly its own numbers summing
-  // to ten at its turn, and the final copy must be empty. Any miss restores
-  // the previous values and reports failure so the degraded path can run.
-  applyRescuePlan(plan) {
-    const backup = this.grid.map((row) => row.slice());
-    plan.slots.forEach((slot) => slot.cells.forEach(({ r, c }, index) => {
-      this.grid[r][c] = slot.values[index];
-    }));
-    const clone = this.grid.map((row) => row.slice());
-    for (const slot of plan.slots) {
-      const rect = slotRect(slot);
-      const stats = rectStats(clone, rect);
-      if (stats.sum !== 10 || stats.count !== slot.cells.length) {
-        this.grid = backup;
-        return false;
-      }
-      cellsInRect(rect).forEach(({ r, c }) => {
-        if (clone[r][c] > 0) clone[r][c] = null;
-      });
-    }
-    if (clone.flat().some((value) => value > 0)) {
-      this.grid = backup;
-      return false;
-    }
-    this.assignSpecialTiles([...this.specialTiles.values()]);
-    return Boolean(this.findAnswer());
   }
 
   // Blast debris: fewer than two numbers can never sum to ten again, so the
