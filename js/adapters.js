@@ -9,6 +9,9 @@ const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v3_recent_result_messages';
 const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v3_rare_showcase_count';
 const CATS_RESCUED_KEY = 'oing_toss_v3_cats_rescued';
 const CLEAN_CLEARS_KEY = 'oing_toss_v3_clean_clears';
+// Classic mode scores live on the original's scale (cells × combo), an
+// order of magnitude below the stage mode's — they keep their own record.
+const CLASSIC_BEST_SCORE_KEY = 'oing_toss_v3_classic_best_score';
 
 function safeRead(key, fallback) {
   try {
@@ -26,6 +29,13 @@ export const storageAdapter = {
   },
   saveBestScore(score) {
     try { localStorage.setItem(BEST_SCORE_KEY, String(Math.max(0, Math.round(score)))); } catch {}
+  },
+  getClassicBestScore() {
+    const value = Number(safeRead(CLASSIC_BEST_SCORE_KEY, '0'));
+    return Number.isFinite(value) ? value : 0;
+  },
+  saveClassicBestScore(score) {
+    try { localStorage.setItem(CLASSIC_BEST_SCORE_KEY, String(Math.max(0, Math.round(score)))); } catch {}
   },
   getLastScore() {
     const raw = safeRead(LAST_SCORE_KEY, '');

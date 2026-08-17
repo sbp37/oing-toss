@@ -48,6 +48,10 @@
       </div>
       <div class="home-actions">
         <button class="btn btn-primary btn-start" id="start-button" type="button"><img class="start-button-sparkle" src="assets/decor/sparkle.webp" width="278" height="296" alt=""><span>시작하기</span><img class="start-button-sparkle" src="assets/decor/star.webp" width="266" height="256" alt=""></button>
+        <div class="classic-mode-row" aria-label="클래식 모드 — 원조 스타일 2분 스코어 어택">
+          <button class="btn btn-cream classic-mode-button" id="classic-button" type="button"><span>⏱ 클래식</span><b>6×7</b></button>
+          <button class="btn btn-cream classic-mode-button" id="classic-wide-button" type="button"><span>⏱ 클래식</span><b>와이드 7×9</b></button>
+        </div>
         <button class="btn btn-cream home-ranking-button" id="home-ranking-button" type="button">
           <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>랭킹 보기</span>
         </button>
@@ -183,7 +187,7 @@
             <p class="score-compare-primary" id="result-best-compare">첫 기록을 만들었다냥!</p>
           </div>
           <dl class="result-stats">
-            <div><dt>도달 스테이지</dt><dd id="final-round">1</dd></div>
+            <div><dt id="final-round-label">도달 스테이지</dt><dd id="final-round">1</dd></div>
             <div><dt>최고 콤보</dt><dd id="final-combo">0</dd></div>
           </dl>
         </div>

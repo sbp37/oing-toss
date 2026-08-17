@@ -247,6 +247,53 @@ export function comboAfterIdle(combo, stage = 1) {
   return Math.max(0, current - decay);
 }
 
+// ── Classic mode (원조 스타일 프로토타입) ─────────────────────────────
+// The original OING is one continuous two-minute score attack: a fixed
+// board, a board reset with +15s whenever the answers dry up, and a score
+// that is literally cells × combo where the combo never times out — only a
+// wrong answer cuts it to 70%. These helpers reproduce those rules on the
+// original's own number scale, so the mode can be felt side by side with
+// the stage ladder without touching the ladder's tuning.
+export const CLASSIC_COMBO_CAP = 25;
+export const CLASSIC_BOARD_BONUS_SECONDS = 15;
+export const CLASSIC_TIME_CAP_SECONDS = 300;
+export const CLASSIC_VARIANTS = Object.freeze({
+  standard: Object.freeze({ key: 'standard', rows: 7, cols: 6, label: '6×7' }),
+  wide: Object.freeze({ key: 'wide', rows: 9, cols: 7, label: '7×9' }),
+});
+
+export function classicComboGain(cellCount) {
+  return Math.round(Number(cellCount) || 0) >= 5 ? 2 : 1;
+}
+
+export function classicComboAfterFailure(combo) {
+  return Math.floor(Math.max(0, Math.round(Number(combo) || 0)) * 0.7);
+}
+
+// 원조 공식 그대로: (지운 칸수 + 고양이×5) × min(콤보, 25). cellCount는
+// 고양이 칸을 포함한 전체 칸수(원조의 totalCells와 동일)이고, 5칸 이상
+// WOW는 4칸 초과분마다 +10 보너스가 따로 붙는다.
+export function classicScoreForClear(cellCount, catCount, combo) {
+  const cells = Math.max(0, Math.round(Number(cellCount) || 0));
+  const cats = Math.max(0, Math.round(Number(catCount) || 0));
+  const multiplier = Math.min(Math.max(1, Math.round(Number(combo) || 0)), CLASSIC_COMBO_CAP);
+  const wideBonus = cells >= 5 ? (cells - 4) * 10 : 0;
+  return (cells + cats * 5) * multiplier + wideBonus;
+}
+
+// 판갈이마다 숫자 구성이 한 단계 깊어진다: 첫 판은 중반 분포(round 5),
+// 이후 +1씩 최심 분포(round 10)까지.
+export function classicRoundForBoard(boardIndex = 0) {
+  return Math.min(10, 5 + Math.max(0, Math.round(Number(boardIndex) || 0)));
+}
+
+export function classicTimeAfterBoardChange(timeLeft = 0) {
+  return Math.min(
+    Math.max(0, Number(timeLeft) || 0) + CLASSIC_BOARD_BONUS_SECONDS,
+    CLASSIC_TIME_CAP_SECONDS,
+  );
+}
+
 export function itemUnlockGrantForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   if (level === 3) return Object.freeze({ bomb: 1 });

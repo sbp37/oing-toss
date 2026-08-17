@@ -466,6 +466,34 @@ img {
   grid-column: 1 / -1;
 }
 
+/* 클래식 모드(원조 스타일 2분 스코어 어택) 진입 — 프로토타입 비교용으로
+   보드 두 크기를 나란히 노출한다. */
+.classic-mode-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.classic-mode-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.classic-mode-button b {
+  font-size: 12px;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #5f8f87;
+  background: rgba(102, 185, 167, 0.16);
+}
+
 .home-ranking-button {
   min-height: 49px;
 }

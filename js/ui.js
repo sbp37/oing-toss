@@ -144,6 +144,7 @@ export class GameUI {
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
+      finalRoundLabel: document.querySelector('#final-round-label'),
       newRecord: document.querySelector('#new-record'),
       resultBestCompare: document.querySelector('#result-best-compare'),
       resultPreviousCompare: document.querySelector('#result-previous-compare'),
@@ -1894,13 +1895,22 @@ export class GameUI {
     score, maxCombo, round, successCount = 0, catsCollected = 0,
     catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
+    classic = null,
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
-    this.elements.resultKicker.textContent = '이번 판 기록';
-    this.elements.resultStageProgress.textContent = `STAGE ${round} 도달 · 성공 ${successCount}회`;
-    this.elements.retryButton.textContent = resultRetryLabel({
+    // Classic reads its own sheet: the round figure is boards survived, and
+    // the kicker names the mode so the score's smaller scale isn't read
+    // against stage-mode records.
+    if (this.elements.finalRoundLabel) {
+      this.elements.finalRoundLabel.textContent = classic ? '판갈이 수' : '도달 스테이지';
+    }
+    this.elements.resultKicker.textContent = classic ? `클래식 모드 ${classic.label}` : '이번 판 기록';
+    this.elements.resultStageProgress.textContent = classic
+      ? `클래식 ${classic.label} · ${classic.boards}판 진행 · 성공 ${successCount}회`
+      : `STAGE ${round} 도달 · 성공 ${successCount}회`;
+    this.elements.retryButton.textContent = classic ? '클래식 한 판 더!' : resultRetryLabel({
       score,
       previousBest,
       newRecord,

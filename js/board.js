@@ -1176,6 +1176,33 @@ export class BoardModel {
     }
   }
 
+  // Classic mode board: the natural number bag placed at random, nothing
+  // engineered on top. 판갈이 is the loop's safety net, so there is no
+  // clearability target to certify — the only gate is that the opening
+  // board has enough to find — and the whole thing must return instantly,
+  // because board changes happen while the timer keeps running.
+  generateClassic(cols, rows = cols, round = 1) {
+    this.cols = Math.max(1, Math.round(cols));
+    this.rows = Math.max(1, Math.round(rows));
+    this.size = this.cols;
+    this.specialTiles.clear();
+    this.round = Math.max(1, Math.round(Number(round) || 1));
+    const catTarget = bonusCatTargetForDimensions(this.rows, this.cols);
+    const wanted = Math.max(4, Math.round((this.rows * this.cols) / 9));
+    let best = null;
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      const candidate = makeNaturalGrid(this.rows, this.cols, this.round, catTarget);
+      const answers = findAllSumTenRects(candidate.grid).length;
+      if (!best || answers > best.answers) best = { candidate, answers };
+      if (best.answers >= wanted) break;
+    }
+    this.grid = best.candidate.grid;
+    this.bonusCats = best.candidate.cats;
+    this.lastClearPlan = null;
+    this.lastBlindClearRate = 0;
+    return this.grid;
+  }
+
   valueAt(r, c) {
     return this.grid[r]?.[c] ?? 0;
   }
