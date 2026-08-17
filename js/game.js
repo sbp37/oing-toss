@@ -1939,6 +1939,7 @@ class OingGame {
       duration: this.classic ? Math.max(this.stageDuration, this.state.timeLeft) : this.stageDuration,
       timed: this.stageDuration > 0,
       freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),
+      gardenFromStart: Boolean(this.classic),
     });
   }
 
@@ -1990,6 +1991,13 @@ if (game.runtime.testMode) {
       return structuredClone(game.state);
     },
     getClassic: () => (game.classic ? { ...game.classic } : null),
+    classicJumpBoard: (boardIndex = 0) => {
+      if (!game.classic) return null;
+      game.classic.boardIndex = Math.max(0, Math.floor(Number(boardIndex) || 0));
+      game.state.round = classicRoundForBoard(game.classic.boardIndex);
+      game.buildRound();
+      return game.classic.boardIndex;
+    },
     getState: () => structuredClone(game.state),
     getBoard: () => game.model.grid.map((row) => row.slice()),
     getBoardItems: () => game.boardItems.snapshot(),

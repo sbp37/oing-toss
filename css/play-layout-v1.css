@@ -364,8 +364,10 @@
   position: relative;
   z-index: 1;
   display: block;
-  /* Height budget: 100dvh minus the five fixed chrome rows (~340px). */
-  width: min(91cqw, calc((100dvh - 370px) * var(--board-cols) / var(--board-rows)), 400px);
+  /* Height budget: 100dvh minus the fixed chrome rows. The reserve tracks
+     the tightened tall-board chrome below (rail/gauge/coach) - grow one
+     without shrinking the other and the board overlaps the cat coach. */
+  width: min(98cqw, calc((100dvh - 340px) * var(--board-cols) / var(--board-rows)), 430px);
   height: auto;
   max-width: 100%;
   max-height: 100%;
@@ -2860,4 +2862,23 @@
 .play-ui-v4 .play-feedback-rail .round-clear[data-perfect="1"] strong {
   -webkit-text-stroke-color: #d9a021;
   text-shadow: 0 0 16px rgba(217, 160, 33, .75), 0 3px 0 rgba(160, 112, 18, .35);
+}
+
+/* Bigger-board pass (실기기 피드백): from the tall boards on, the tiles were
+   shrinking faster than the chrome around them. The rail and the gauge give
+   back their spare air, the coach row tucks in, and the height budget in the
+   board-frame width formula above hands every reclaimed pixel to the tiles.
+   The gauge also moves up against the status bar, where the player's eye
+   already lives. */
+.play-ui-v4.is-tall-board .play-feedback-rail,
+.play-ui-v4.is-tall-board.is-stage-clearing .play-feedback-rail {
+  height: clamp(12px, 1.7dvh, 16px);
+}
+
+.play-ui-v4.is-tall-board .board-time-gauge {
+  margin-block: 0 clamp(6px, 1.2dvh, 10px);
+}
+
+.play-ui-v4.is-tall-board .cat-coach {
+  height: clamp(46px, 6.9dvh, 58px);
 }

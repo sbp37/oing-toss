@@ -1594,7 +1594,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0 }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false }) {
     this.elements.round.textContent = String(round);
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
@@ -1635,7 +1635,12 @@ export class GameUI {
     const isFinalCountdown = timed && !isFrozen && time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
     this.elements.playScreen.dataset.round = String(round);
-    this.elements.playScreen.dataset.stageBand = round >= 8 ? 'fever' : round >= 5 ? 'wide' : round >= 3 ? 'rising' : 'warmup';
+    // The warmup band hides the hidden-garden art; classic runs skip it so
+    // the picture peeks through from the very first cleared cell.
+    this.elements.playScreen.dataset.stageBand = round >= 8 ? 'fever'
+      : round >= 5 ? 'wide'
+        : round >= 3 || gardenFromStart ? 'rising'
+          : 'warmup';
     this.boardFrame.dataset.round = String(round);
     this.elements.timePill.dataset.urgency = time <= 3 ? 'high' : time <= 5 ? 'medium' : 'low';
     if (isFinalCountdown && time !== this.lastCountdownSecond) {
