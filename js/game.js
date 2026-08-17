@@ -281,7 +281,7 @@ class OingGame {
       document.querySelector('#start-button'),
       document.querySelector('#retry-button'),
       document.querySelector('#ranking-play-button'),
-      document.querySelector('#classic-button'),
+      document.querySelector('#garden-play-button'),
     ].filter(Boolean);
     const primePlay = () => { preloadPlayAssets({ urgent: true }); };
     playButtons.forEach((button) => {
@@ -289,8 +289,10 @@ class OingGame {
       button.addEventListener('pointerenter', primePlay, { passive: true, once: true });
       button.addEventListener('focus', primePlay, { passive: true, once: true });
     });
-    document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
-    document.querySelector('#classic-button')?.addEventListener('click', () => this.start(1, { classic: true }));
+    // Classic is the only mode reachable from the UI now — every "play"
+    // entry point launches it. The stage ladder stays in the codebase (test
+    // harness, tests/) but nothing on screen starts it any more.
+    document.querySelector('#start-button').addEventListener('click', () => this.start(1, { classic: true }));
     document.querySelector('#retry-button').addEventListener('click', () => this.startCurrentMode({ quickCountdown: true }));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
@@ -315,13 +317,13 @@ class OingGame {
     document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
-      this.start(this.runtime.forcedRound || 1);
+      this.start(1, { classic: true });
     });
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
     document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
     document.querySelector('#garden-play-button').addEventListener('click', () => {
       this.ui.setOverlay('garden-overlay', false);
-      this.start(this.runtime.forcedRound || 1);
+      this.start(1, { classic: true });
     });
     const toggleSound = () => {
       this.settings.sound = !this.settings.sound;

@@ -466,33 +466,6 @@ img {
   grid-column: 1 / -1;
 }
 
-/* Classic mode entry (the original-style two-minute score attack) — the
-   prototype exposes both board sizes side by side for comparison. */
-.classic-mode-row {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.classic-mode-button {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.classic-mode-button b {
-  font-size: 12px;
-  line-height: 1;
-  padding: 3px 7px;
-  border-radius: 999px;
-  color: #5f8f87;
-  background: rgba(102, 185, 167, 0.16);
-}
-
 .home-ranking-button {
   min-height: 49px;
 }
