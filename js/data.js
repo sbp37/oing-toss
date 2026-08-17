@@ -247,7 +247,7 @@ export function comboAfterIdle(combo, stage = 1) {
   return Math.max(0, current - decay);
 }
 
-// ── Classic mode (원조 스타일 프로토타입) ─────────────────────────────
+// ── Classic mode (원조 스타일 2분 모드) ──────────────────────────────
 // The original OING is one continuous two-minute score attack: a fixed
 // board, a board reset with +15s whenever the answers dry up, and a score
 // that is literally cells × combo where the combo never times out — only a
@@ -270,9 +270,9 @@ export function classicComboAfterFailure(combo) {
   return Math.floor(Math.max(0, Math.round(Number(combo) || 0)) * 0.7);
 }
 
-// 원조 공식 그대로: (지운 칸수 + 고양이×5) × min(콤보, 25). cellCount는
-// 고양이 칸을 포함한 전체 칸수(원조의 totalCells와 동일)이고, 5칸 이상
-// WOW는 4칸 초과분마다 +10 보너스가 따로 붙는다.
+// The original's exact formula: (cells + cats×5) × min(combo, 25), where
+// cellCount already counts the cat cells (the original's totalCells), and
+// a five-cell-plus WOW adds a flat +10 per cell beyond four.
 export function classicScoreForClear(cellCount, catCount, combo) {
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
   const cats = Math.max(0, Math.round(Number(catCount) || 0));
@@ -281,8 +281,8 @@ export function classicScoreForClear(cellCount, catCount, combo) {
   return (cells + cats * 5) * multiplier + wideBonus;
 }
 
-// 판갈이마다 숫자 구성이 한 단계 깊어진다: 첫 판은 중반 분포(round 5),
-// 이후 +1씩 최심 분포(round 10)까지.
+// Each 판갈이 deepens the number mix one step: the first board draws the
+// mid-run bag (round 5), then +1 per board up to the deepest (round 10).
 export function classicRoundForBoard(boardIndex = 0) {
   return Math.min(10, 5 + Math.max(0, Math.round(Number(boardIndex) || 0)));
 }

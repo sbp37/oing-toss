@@ -466,8 +466,8 @@ img {
   grid-column: 1 / -1;
 }
 
-/* 클래식 모드(원조 스타일 2분 스코어 어택) 진입 — 프로토타입 비교용으로
-   보드 두 크기를 나란히 노출한다. */
+/* Classic mode entry (the original-style two-minute score attack) — the
+   prototype exposes both board sizes side by side for comparison. */
 .classic-mode-row {
   grid-column: 1 / -1;
   display: grid;

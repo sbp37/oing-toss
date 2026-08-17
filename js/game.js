@@ -415,8 +415,8 @@ class OingGame {
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
     this.inventory = createRunInventory();
     this.ui.resetItemAvailabilityHistory();
-    // Classic mode: state.round is the generation depth (원조식 분포 램프),
-    // not a stage — the ladder machinery is bypassed at every branch below.
+    // Classic mode: state.round is the generation depth ramp, not a stage —
+    // the ladder machinery is bypassed at every branch below.
     this.classic = options.classic
       ? {
         key: options.classic.key,
@@ -1008,8 +1008,8 @@ class OingGame {
     playRoundClearSound();
     duckMusic(420, 0.6);
     if (emptied) {
-      // 원조의 perfect-clear carry(힌트 3개)의 축소판: 스스로 판을 비우면
-      // 힌트 하나가 따라온다.
+      // A scaled-down take on the original's perfect-clear carry (3 hints):
+      // emptying the board yourself earns one hint.
       this.grantItems({ hint: 1 });
       this.ui.showMessage('싹 비웠다냥! 힌트 +1', 1800, 'classicClear');
       this.ui.setPlayCharacter('cheer', 1000);
