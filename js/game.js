@@ -91,7 +91,7 @@ import {
   playClockSound,
   playCloverSound,
   playFreezeSound,
-  playCountdownTick,
+  playTimeWarnBeeps,
   playFailSound,
   playGameOverSound,
   playHintSound,
@@ -158,6 +158,7 @@ class OingGame {
     this.frozenTimeLeft = 0;
     this.pauseStartedAt = 0;
     this.lowTimeSpoken = false;
+    this.timeWarned = false;
     this.lastCountdownSecond = null;
     this.inputGuardUntil = 0;
     this.tutorialActive = false;
@@ -474,6 +475,7 @@ class OingGame {
     this.state.running = true;
     this.state.inputLocked = true;
     this.lowTimeSpoken = false;
+    this.timeWarned = false;
     this.beginnerAutoHintShown = false;
     this.lastInteractionAt = performance.now();
     this.activeResolution = false;
@@ -1696,11 +1698,19 @@ class OingGame {
       this.showCatMessage('lowTime');
       this.ui.setPlayCharacter('cheer', 1800);
     }
+    // The original sounds the alarm once as the clock crosses ten and then
+    // leaves the player alone, re-arming only if a bonus lifts time back
+    // above twelve. A tick every second was the part that grated.
+    if (!isFrozen && this.state.timeLeft > 0 && this.state.timeLeft <= 10 && !this.timeWarned) {
+      this.timeWarned = true;
+      playTimeWarnBeeps();
+      countdownHaptic(3);
+    } else if (this.state.timeLeft > 12) {
+      this.timeWarned = false;
+    }
     const countdownSecond = Math.ceil(this.state.timeLeft);
     if (!isFrozen && countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
       this.lastCountdownSecond = countdownSecond;
-      playCountdownTick(countdownSecond);
-      countdownHaptic(countdownSecond);
       if (countdownSecond <= 3) this.ui.showFinalSecond(countdownSecond);
     }
     this.updateHUD();

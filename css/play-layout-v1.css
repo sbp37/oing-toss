@@ -878,10 +878,10 @@
   border-radius: calc(clamp(15px, 4vw, 22px) - 4px);
   background-color: rgba(225,246,252,.34);
   background-image:
-    linear-gradient(to right, rgba(46,84,112,.16) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(46,84,112,.16) 1px, transparent 1px);
+    linear-gradient(to right, rgba(104,116,192,.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(104,116,192,.09) 1px, transparent 1px);
   box-shadow:
-    inset 0 0 12px rgba(64,132,168,.14),
+    inset 0 0 12px rgba(104,132,196,.12),
     inset 0 0 0 1px rgba(255,255,255,.26);
 }
 
@@ -3151,14 +3151,35 @@
   gap: clamp(1.5px, .52vw, 2.6px);
 }
 
-.play-ui-v4 .tile[class*="value-"]:not(.is-hint):not(.is-tutorial):not(.is-end-answer),
-.play-ui-v4 .tile.is-bonus-cat:not(.is-hint):not(.is-tutorial):not(.is-end-answer),
-.play-ui-v4 .tile.is-board-item:not(.is-hint):not(.is-tutorial):not(.is-end-answer) {
-  box-shadow:
-    0 0 0 1px rgba(52, 90, 120, .44),
-    0 2.5px 4px rgba(36, 70, 96, .28),
-    inset 0 -4px 6px rgba(44, 86, 116, .24),
-    inset 0 1.5px 0 rgba(255, 255, 255, .62);
+/* Separation used to ride box-shadow, which quietly erased every state that
+   owns the tile's shadow — the clover hint's green ring, the hint glow, the
+   success and fail flashes. The rim is an outline instead: nothing else in
+   the stylesheet sets one, so it can never overwrite a state again. The
+   shading moved into background layers for the same reason.
+
+   The palette also went the wrong way. A cool-grey rim over the mint art
+   read muddy and heavy enough to look cramped. The rim is now
+   a soft violet-blue and the wash on the tile face tints the same way, so
+   the board reads cooler and the seams read lighter while still separating. */
+.play-ui-v4 .tile[class*="value-"],
+.play-ui-v4 .tile.is-bonus-cat,
+.play-ui-v4 .tile.is-board-item {
+  outline: 1px solid rgba(118, 130, 206, .42);
+  outline-offset: -1px;
+}
+
+/* The syrup art is translucent, so the colour a tile reads as comes from the
+   bed underneath it. Tinting that bed shifts the whole cell violet-blue
+   without laying anything over the art — a pale wash on top only bleached
+   the face and cost the separation the rim had just bought. The selector
+   matches the garden-mode bed rule so it wins on the stages where the
+   hidden picture is showing through. */
+.play-ui-v4 .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"] {
+  background-color: rgba(221, 227, 252, .97);
+  background-image:
+    linear-gradient(to bottom, rgba(92, 106, 186, 0) 64%, rgba(92, 106, 186, .1) 100%),
+    var(--tile-art);
 }
 
 /* The tile's own cast shadow, deepened to match. It rides `filter` (which
@@ -3166,12 +3187,12 @@
    hint veil's saturate() has to repeat it or the shadows would pop off the
    moment a hint appears. */
 .play-ui-v4 .tile {
-  filter: drop-shadow(0 2px 3px rgba(42, 78, 104, .26));
+  filter: drop-shadow(0 2px 3px rgba(78, 88, 158, .24));
 }
 
 .play-ui-v4 .board.is-hinting .tile:not(.is-hint),
 .play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
-  filter: saturate(.72) drop-shadow(0 2px 3px rgba(42, 78, 104, .26));
+  filter: saturate(.72) drop-shadow(0 2px 3px rgba(78, 88, 158, .24));
 }
 
 /* Deep boards (8-9 rows): the run's payoff boards, and the ones the height
@@ -3195,40 +3216,43 @@
    the 판갈이 that buys the run more time, and the scene a deep run earns.
    ========================================================================== */
 
-/* The last thirty seconds draw the edges in. It reads in peripheral vision
-   while the eyes stay on the numbers, and the vignette is on a pseudo
-   element so nothing in the layout moves as it appears. */
+/* The original's #timeDangerFx, values intact: a red rim and a soft inner
+   glow that breathe between half and full opacity, and only inside the last
+   ten seconds. An earlier pass lit this from thirty seconds out, which put
+   the screen in alarm for a quarter of the run and stopped meaning
+   anything. */
 .screen-play.play-ui-v4::after {
   content: "";
   position: absolute;
   z-index: 40;
   inset: 0;
-  background: radial-gradient(
-    ellipse 72% 56% at 50% 45%,
-    transparent 38%,
-    rgba(226, 104, 88, .22) 66%,
-    rgba(198, 62, 62, .46) 88%,
-    rgba(168, 44, 52, .6) 100%
-  );
+  box-shadow:
+    inset 0 0 0 3px rgba(239, 68, 68, .5),
+    inset 0 0 70px 20px rgba(239, 68, 68, .24);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 520ms ease;
+  transition: opacity .4s ease;
 }
 
-.screen-play.play-ui-v4.is-time-pressure::after {
-  opacity: .82;
-}
-
-/* Inside ten the ticks are already sounding, so the vignette only deepens
-   and starts to breathe with them rather than introducing a new signal. */
 .screen-play.play-ui-v4.is-final-countdown::after {
-  opacity: 1;
-  animation: time-pressure-breathe .95s ease-in-out infinite alternate;
+  animation: time-danger-breathe .8s ease-in-out infinite;
 }
 
-@keyframes time-pressure-breathe {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: .74; transform: scale(1.035); }
+@keyframes time-danger-breathe {
+  0%, 100% { opacity: .5; }
+  50% { opacity: 1; }
+}
+
+/* And the original's danger-pulse on the digits themselves — the same two
+   vermilions alternating twice a second. */
+.play-ui-v4 .time-readout.is-warning strong,
+.screen-play.play-ui-v4 .time-readout.is-warning strong {
+  animation: time-danger-pulse .5s infinite;
+}
+
+@keyframes time-danger-pulse {
+  0%, 100% { color: #DD6032; }
+  50% { color: #f08050; }
 }
 
 /* Combo tiers. The fever band tops out at 8, which classic passes in the
@@ -3375,4 +3399,16 @@
   0% { transform: scale(1); }
   30% { transform: scale(1.08); }
   100% { transform: scale(1); }
+}
+
+/* Clover hint: the player has just spent an item to be shown where to look,
+   so the answer needs a line they cannot miss. The green frame is drawn on
+   the tile's own outline as well as its ring, which also survives whatever
+   the separation pass above does to ordinary tiles. */
+.play-ui-v4 .tile.is-clover-hint,
+.play-ui-v4 .tile.is-clover-hint[class*="value-"],
+.play-ui-v4 .tile.is-clover-hint.is-bonus-cat {
+  z-index: 8;
+  outline: 2.5px solid rgba(46, 176, 96, .92);
+  outline-offset: -2px;
 }

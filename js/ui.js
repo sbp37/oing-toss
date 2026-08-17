@@ -1653,10 +1653,6 @@ export class GameUI {
     this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
     const isFinalCountdown = timed && !isFrozen && time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
-    // The last thirty seconds close a vignette in from the screen edges, so
-    // the pressure is readable in peripheral vision while the eyes stay on
-    // the board. It deepens again inside ten, where the ticks already are.
-    this.elements.playScreen.classList.toggle('is-time-pressure', timed && !isFrozen && time > 0 && time <= 30);
     this.elements.playScreen.dataset.round = String(round);
     // The warmup band hides the hidden-garden art; classic runs skip it so
     // the picture peeks through from the very first cleared cell.

@@ -394,6 +394,30 @@ export function playRoundClearSound() {
   scheduleTone(ctx, 2093, now + 0.3, 0.2, 0.06, 'sine', 0.008);
 }
 
+// Original OING playTimeWarnBeeps(): one burst at ten seconds and then
+// silence: three groups 0.56s apart, a high 1180Hz lead followed
+// by two softer 940Hz taps. Ours used to tick every second with a rising
+// pitch, which read as nagging rather than urgent.
+export function playTimeWarnBeeps() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  for (let group = 0; group < 3; group += 1) {
+    const base = now + group * 0.56;
+    [0, 0.13, 0.26].forEach((offset, index) => {
+      scheduleTone(
+        ctx,
+        index === 0 ? 1180 : 940,
+        base + offset,
+        0.12,
+        index === 0 ? 0.05 : 0.035,
+        'sine',
+        0.025,
+      );
+    });
+  }
+}
+
 export function playCountdownTick(seconds) {
   const remaining = Math.min(Math.max(Math.ceil(Number(seconds) || 0), 1), 10);
   const urgent = remaining <= 3;
