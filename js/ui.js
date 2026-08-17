@@ -139,6 +139,8 @@ export class GameUI {
       gardenProgressLabel: document.querySelector('#garden-progress-label'),
       gardenProgressFill: document.querySelector('#garden-progress-fill'),
       gardenTiers: document.querySelector('#garden-tiers'),
+      chapterGallery: document.querySelector('#chapter-gallery'),
+      chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
       gardenRevealBest: document.querySelector('#garden-reveal-best'),
       gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
       finalScore: document.querySelector('#final-score'),
@@ -1771,6 +1773,23 @@ export class GameUI {
     this.elements.rankingBest.textContent = text;
   }
 
+  // Which scene of 고양이의 모험 is painted behind the board. The art itself
+  // lives in CSS (one rule per chapter) so a missing file falls back to the
+  // original garden painting instead of leaving a blank frame.
+  setChapter(key, artUrl = null) {
+    const screen = this.elements.playScreen;
+    if (key) screen.dataset.chapter = key;
+    else delete screen.dataset.chapter;
+    if (artUrl) screen.style.setProperty('--chapter-art', `url("${artUrl}")`);
+    else screen.style.removeProperty('--chapter-art');
+  }
+
+  updateAdventureProgress(label) {
+    if (this.elements.homeBestStage) {
+      this.elements.homeBestStage.textContent = label || '모험 시작 전';
+    }
+  }
+
   updateHighestStage(stage) {
     if (this.elements.homeBestStage) {
       this.elements.homeBestStage.textContent = `STAGE ${Math.max(1, Math.round(Number(stage) || 1))}`;
@@ -1789,7 +1808,8 @@ export class GameUI {
     }
   }
 
-  renderGarden(total = 0, cleanClears = 0) {
+  renderGarden(total = 0, cleanClears = 0, chapters = []) {
+    this.renderChapterGallery(chapters);
     const cleared = Math.max(0, Math.round(Number(cleanClears) || 0));
     if (this.elements.gardenRevealBest && this.elements.gardenRevealBestValue) {
       this.elements.gardenRevealBestValue.textContent = cleared.toLocaleString('ko-KR');
@@ -1843,6 +1863,38 @@ export class GameUI {
         return item;
       });
       this.elements.gardenTiers.replaceChildren(...tiers);
+    }
+  }
+
+  // The adventure gallery: every scene the run can travel to, with the ones
+  // still ahead shown as silhouettes so there is something to aim at. Art is
+  // applied by CSS class, so scenes without a file yet render as a plain
+  // locked card rather than a broken image.
+  renderChapterGallery(chapters = []) {
+    if (!this.elements.chapterGallery) return;
+    const list = Array.isArray(chapters) ? chapters : [];
+    const cards = list.map((chapter) => {
+      const item = document.createElement('li');
+      item.className = 'chapter-card';
+      item.dataset.chapter = chapter.key;
+      item.classList.toggle('is-unlocked', Boolean(chapter.unlocked));
+      item.classList.toggle('is-secret', Boolean(chapter.secret));
+      const label = document.createElement('strong');
+      label.textContent = chapter.unlocked ? chapter.label : '???';
+      const requirement = document.createElement('span');
+      requirement.textContent = chapter.unlocked ? '수집 완료' : chapter.requirement;
+      item.append(label, requirement);
+      item.setAttribute('aria-label', chapter.unlocked
+        ? `${chapter.label} 수집 완료`
+        : `잠긴 장면, ${chapter.requirement} 필요`);
+      return item;
+    });
+    this.elements.chapterGallery.replaceChildren(...cards);
+    if (this.elements.chapterGalleryNote) {
+      const found = list.filter((chapter) => chapter.unlocked).length;
+      this.elements.chapterGalleryNote.textContent = list.length
+        ? `장면 ${found}/${list.length} 수집`
+        : '';
     }
   }
 

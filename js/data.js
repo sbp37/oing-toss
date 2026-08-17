@@ -303,6 +303,77 @@ export function classicRoundForBoard(boardIndex = 0) {
   return Math.min(10, 5 + Math.max(0, Math.round(Number(boardIndex) || 0)));
 }
 
+// ── 고양이의 모험 (classic chapters) ──────────────────────────────────
+// The hidden picture behind the board is one leg of a journey, and the
+// journey is the run: every second 판갈이 moves the cat to the next scene,
+// so how far a player got is something they *saw*, not just a number. The
+// last scene is score-gated instead — a place only a high score reaches.
+// `art` is the asset stem; a scene whose file is not in place yet simply
+// falls back to the original garden painting (see the chapter background
+// rules in play-layout-v1.css), so chapters can ship art one at a time.
+export const CLASSIC_CHAPTERS = Object.freeze([
+  Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: false }),
+  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 2, art: 'chapter-forest', hasArt: false }),
+  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 4, art: 'chapter-stream', hasArt: false }),
+  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 6, art: 'chapter-village', hasArt: false }),
+  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 8, art: 'chapter-sunset', hasArt: false }),
+  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 10, art: 'chapter-night', hasArt: false }),
+]);
+
+// A scene goes live in two steps: drop assets/backgrounds/<art>.webp, then
+// flip its hasArt to true. Until then the board falls back to the garden
+// painting and never requests the missing file.
+export function classicChapterArtUrl(chapter) {
+  return chapter?.hasArt && chapter.art ? `assets/backgrounds/${chapter.art}.webp` : null;
+}
+
+// Reached by score alone, so it stays visible as a goal for players who
+// already know every scene the ladder can show them.
+export const CLASSIC_SECRET_CHAPTER = Object.freeze({
+  key: 'aurora',
+  label: '오로라 항구',
+  minScore: 5000,
+  art: 'chapter-aurora',
+  hasArt: false,
+});
+
+export function classicChapterForBoard(boardIndex = 0) {
+  const index = Math.max(0, Math.round(Number(boardIndex) || 0));
+  let chapter = CLASSIC_CHAPTERS[0];
+  for (const candidate of CLASSIC_CHAPTERS) {
+    if (index >= candidate.fromBoard) chapter = candidate;
+  }
+  return chapter;
+}
+
+// One row per scene for the gallery: unlocked once seen in play (the ladder
+// chapters) or once the score bar is cleared (the secret one).
+export function classicChapterGallery({ seenKeys = [], bestScore = 0 } = {}) {
+  const seen = new Set(seenKeys);
+  const best = Math.max(0, Math.round(Number(bestScore) || 0));
+  const ladder = CLASSIC_CHAPTERS.map((chapter) => ({
+    ...chapter,
+    unlocked: seen.has(chapter.key),
+    requirement: `${chapter.fromBoard + 1}번째 판`,
+    secret: false,
+  }));
+  return [...ladder, {
+    ...CLASSIC_SECRET_CHAPTER,
+    fromBoard: null,
+    unlocked: best >= CLASSIC_SECRET_CHAPTER.minScore,
+    requirement: `${CLASSIC_SECRET_CHAPTER.minScore.toLocaleString('ko-KR')}점`,
+    secret: true,
+  }];
+}
+
+// The deepest scene a player has actually reached — the home card's one-line
+// answer to "how far did the cat get?".
+export function classicDeepestChapterLabel({ seenKeys = [], bestScore = 0 } = {}) {
+  const gallery = classicChapterGallery({ seenKeys, bestScore });
+  const unlocked = gallery.filter((chapter) => chapter.unlocked);
+  return unlocked.length ? unlocked.at(-1).label : '모험 시작 전';
+}
+
 export function classicTimeAfterBoardChange(timeLeft = 0, bonusSeconds = 15) {
   return Math.min(
     Math.max(0, Number(timeLeft) || 0) + Math.max(0, Number(bonusSeconds) || 0),

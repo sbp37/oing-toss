@@ -3024,3 +3024,42 @@
   -webkit-text-stroke: 2px currentColor;
   text-shadow: 0 0 6px #DA9845, 0 0 14px #DA9845;
 }
+
+/* 고양이의 모험: one scene per chapter ------------------------------------
+   The chapter's own painting arrives as --chapter-art, which ui.setChapter
+   only sets for chapters whose art has actually shipped (see hasArt in
+   CLASSIC_CHAPTERS). Until then the layer resolves to `none` and the
+   original garden painting below it shows through - the scene still reads,
+   and the board never requests a file that isn't there. */
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-image:
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,245,247,.1)),
+    linear-gradient(rgba(255,252,250,.2), rgba(255,250,248,.2)),
+    var(--chapter-art, none),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+  background-size: auto, auto, cover, cover;
+  background-position: center, center, center, center 100%;
+  background-repeat: no-repeat;
+}
+
+/* Without art of its own, each chapter still shifts the view up the one
+   painting, so consecutive scenes never look like the same frame. */
+.screen-play.play-ui-v4[data-chapter="forest"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 72%;
+}
+
+.screen-play.play-ui-v4[data-chapter="stream"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 55%;
+}
+
+.screen-play.play-ui-v4[data-chapter="village"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 38%;
+}
+
+.screen-play.play-ui-v4[data-chapter="sunset"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 18%;
+}
+
+.screen-play.play-ui-v4[data-chapter="night"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 0%;
+}

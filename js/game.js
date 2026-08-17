@@ -13,6 +13,10 @@ import {
   cappedSessionTime,
   chooseBoardDrop,
   classicBoardForIndex,
+  classicChapterArtUrl,
+  classicChapterForBoard,
+  classicChapterGallery,
+  classicDeepestChapterLabel,
   classicComboAfterFailure,
   classicComboGain,
   classicRoundForBoard,
@@ -219,8 +223,7 @@ class OingGame {
     this.bindEvents();
     this.applySettings();
     this.renderBoard();
-    this.ui.updateBestScore(storageAdapter.getBestScore());
-    this.ui.updateHighestStage(storageAdapter.getHighestStage());
+    this.refreshClassicRecordSurfaces();
     this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     this.ui.showScreen('home');
     schedulePlayAssetsPreload();
@@ -380,6 +383,19 @@ class OingGame {
       : options);
   }
 
+  // The scene behind the board for the board the run is on. Reaching it is
+  // what unlocks it in the gallery, so the mark happens here — at the moment
+  // the player actually sees it — not when a run ends.
+  applyClassicChapter() {
+    const chapter = classicChapterForBoard(this.classic.boardIndex);
+    if (this.classic.chapterKey === chapter.key) return chapter;
+    this.classic.chapterKey = chapter.key;
+    this.classic.chapterLabel = chapter.label;
+    this.ui.setChapter(chapter.key, classicChapterArtUrl(chapter));
+    if (!this.runtime.testMode) storageAdapter.markChapterSeen(chapter.key);
+    return chapter;
+  }
+
   // Classic hides the ladder's item unlock schedule: bomb/clock stay at
   // stage-1 locked art, and the clock is out of play entirely.
   itemHudState() {
@@ -407,7 +423,8 @@ class OingGame {
     this.ui.resetItemAvailabilityHistory();
     // Classic mode: state.round is the generation depth ramp, not a stage —
     // the ladder machinery is bypassed at every branch below.
-    this.classic = options.classic ? { boardIndex: 0 } : null;
+    this.classic = options.classic ? { boardIndex: 0, chapterKey: null, chapterLabel: '' } : null;
+    if (!this.classic) this.ui.setChapter(null);
     this.state = this.freshState(this.classic ? classicRoundForBoard(0) : startStage, options);
     if (this.classic) this.state.recordEligible = true;
     this.retryStage = 1;
@@ -515,6 +532,7 @@ class OingGame {
     this.boardItems.carry();
     this.itemTapCandidate = null;
     const classicBoard = this.classic ? classicBoardForIndex(this.classic.boardIndex) : null;
+    if (this.classic) this.applyClassicChapter();
     const config = classicBoard
       ? { size: classicBoard.cols, cols: classicBoard.cols, rows: classicBoard.rows }
       : getRoundConfig(this.state.round);
@@ -990,6 +1008,10 @@ class OingGame {
     this.state.timeLeft = classicTimeAfterBoardChange(previousTime, clearedBoard.timeBonus);
     const gainedTime = Math.round(this.state.timeLeft - previousTime);
     const boardGrew = nextBoard.rows * nextBoard.cols > clearedBoard.rows * clearedBoard.cols;
+    // buildRound applies the chapter further down; compare against the one
+    // still on screen so a new scene can announce itself as it arrives.
+    const nextChapter = classicChapterForBoard(this.classic.boardIndex);
+    const enteredChapter = nextChapter.key !== this.classic.chapterKey ? nextChapter : null;
     if (this.timer) this.endAt += (this.state.timeLeft - previousTime) * 1000;
     if (this.state.timeLeft > 10) {
       this.lowTimeSpoken = false;
@@ -1003,6 +1025,11 @@ class OingGame {
       // emptying the board yourself earns one hint.
       this.grantItems({ hint: 1 });
       this.ui.showMessage('싹 비웠다냥! 힌트 +1', 1800, 'classicClear');
+      this.ui.setPlayCharacter('cheer', 1000);
+    } else if (enteredChapter) {
+      // A new scene is the run's own milestone — it outranks the board-grew
+      // line, which the player can see for themselves.
+      this.ui.showMessage(`${enteredChapter.label}에 도착했다냥!`, 1900, 'classicChapter');
       this.ui.setPlayCharacter('cheer', 1000);
     } else if (boardGrew) {
       this.ui.showMessage(gainedTime > 0 ? `판이 커졌다냥! +${gainedTime}초` : '판이 커졌다냥!', 1600, 'classicBoard');
@@ -1784,7 +1811,9 @@ class OingGame {
     const cleanClearsTotal = this.runtime.testMode
       ? cleanClears
       : storageAdapter.addCleanClears(cleanClears);
-    this.ui.updateBestScore(recordEligible ? Math.max(oldBest, this.state.score) : oldBest);
+    // The home figure belongs to classic, so a stage run refreshes it from
+    // storage rather than writing its own (much larger) score into it.
+    this.refreshClassicRecordSurfaces();
     this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
       score: this.state.score,
@@ -1833,14 +1862,13 @@ class OingGame {
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
     this.ui.setOverlay('pause-overlay', false);
-    this.ui.updateBestScore(storageAdapter.getBestScore());
-    this.ui.updateHighestStage(storageAdapter.getHighestStage());
+    this.refreshClassicRecordSurfaces();
     this.ui.showScreen('home');
   }
 
   async openRanking() {
     const records = await rankingAdapter.open();
-    this.ui.updateBestScore(storageAdapter.getBestScore());
+    this.refreshClassicRecordSurfaces();
     this.ui.renderRanking(records);
     this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     this.ui.setOverlay('ranking-overlay', true);
@@ -1849,7 +1877,10 @@ class OingGame {
   openGarden() {
     const total = storageAdapter.getCatsRescued();
     this.ui.updateCatsRescued(total);
-    this.ui.renderGarden(total, storageAdapter.getCleanClears());
+    this.ui.renderGarden(total, storageAdapter.getCleanClears(), classicChapterGallery({
+      seenKeys: storageAdapter.getSeenChapters(),
+      bestScore: storageAdapter.getClassicBestScore(),
+    }));
     this.ui.setOverlay('garden-overlay', true);
   }
 
@@ -1920,8 +1951,20 @@ class OingGame {
       classic: { boards: this.classic.boardIndex + 1 },
     };
     this.retryStage = 1;
+    if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
+    this.refreshClassicRecordSurfaces();
     this.ui.showResult(this.lastResultSummary);
     this.finishing = false;
+  }
+
+  // The home card and the records sheet are about classic now: the figure is
+  // the classic best, and the line under it is how far the cat has actually
+  // travelled — the adventure's own progress read.
+  refreshClassicRecordSurfaces() {
+    const bestScore = storageAdapter.getClassicBestScore();
+    const seenKeys = storageAdapter.getSeenChapters();
+    this.ui.updateBestScore(bestScore);
+    this.ui.updateAdventureProgress(classicDeepestChapterLabel({ seenKeys, bestScore }));
   }
 
   updateHUD() {

@@ -118,3 +118,50 @@ test('generateClassic is instant enough for a mid-timer board change', () => {
   // certified stage generator being invoked by mistake (it costs ~100ms+).
   assert.ok(elapsed < 2000, `30 full-size classic boards took ${elapsed.toFixed(0)}ms`);
 });
+
+test('classic chapters open by board depth, and the last one by score', async () => {
+  const {
+    CLASSIC_CHAPTERS, CLASSIC_SECRET_CHAPTER,
+    classicChapterForBoard, classicChapterGallery, classicDeepestChapterLabel,
+  } = await import('../js/data.js');
+
+  // 첫 판은 정원, 두 판마다 다음 장면.
+  assert.equal(classicChapterForBoard(0).key, 'garden');
+  assert.equal(classicChapterForBoard(1).key, 'garden');
+  assert.equal(classicChapterForBoard(2).key, 'forest');
+  assert.equal(classicChapterForBoard(9).key, 'sunset');
+  assert.equal(classicChapterForBoard(10).key, 'night');
+  // 사다리 끝을 넘어도 마지막 장면에 머문다.
+  assert.equal(classicChapterForBoard(40).key, 'night');
+  assert.equal(classicChapterForBoard(-3).key, 'garden');
+  // Thresholds must stay ordered, or a deeper board could show an earlier scene.
+  CLASSIC_CHAPTERS.forEach((chapter, index) => {
+    if (index > 0) assert.ok(chapter.fromBoard > CLASSIC_CHAPTERS[index - 1].fromBoard);
+  });
+
+  const fresh = classicChapterGallery({ seenKeys: [], bestScore: 0 });
+  assert.equal(fresh.length, CLASSIC_CHAPTERS.length + 1);
+  assert.ok(fresh.every((chapter) => !chapter.unlocked));
+  assert.equal(fresh.at(-1).key, CLASSIC_SECRET_CHAPTER.key);
+  assert.equal(fresh.at(-1).secret, true);
+
+  const seen = classicChapterGallery({ seenKeys: ['garden', 'forest'], bestScore: 900 });
+  assert.deepEqual(
+    seen.filter((chapter) => chapter.unlocked).map((chapter) => chapter.key),
+    ['garden', 'forest'],
+  );
+  // 점수 장면은 판을 아무리 넘겨도 안 열리고, 점수로만 열린다.
+  const scored = classicChapterGallery({ seenKeys: ['garden'], bestScore: CLASSIC_SECRET_CHAPTER.minScore });
+  assert.equal(scored.at(-1).unlocked, true);
+
+  assert.equal(classicDeepestChapterLabel({ seenKeys: [], bestScore: 0 }), '모험 시작 전');
+  assert.equal(
+    classicDeepestChapterLabel({ seenKeys: ['garden', 'forest'], bestScore: 0 }),
+    CLASSIC_CHAPTERS[1].label,
+  );
+  // 점수 장면이 열리면 그게 가장 깊은 도달점이다.
+  assert.equal(
+    classicDeepestChapterLabel({ seenKeys: ['garden'], bestScore: CLASSIC_SECRET_CHAPTER.minScore }),
+    CLASSIC_SECRET_CHAPTER.label,
+  );
+});

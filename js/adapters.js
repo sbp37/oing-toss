@@ -12,6 +12,8 @@ const CLEAN_CLEARS_KEY = 'oing_toss_v3_clean_clears';
 // Classic mode scores live on the original's scale (cells × combo), an
 // order of magnitude below the stage mode's — they keep their own record.
 const CLASSIC_BEST_SCORE_KEY = 'oing_toss_v3_classic_best_score';
+const CLASSIC_RECENT_SCORES_KEY = 'oing_toss_v3_classic_recent_scores';
+const CLASSIC_CHAPTERS_SEEN_KEY = 'oing_toss_v3_classic_chapters_seen';
 
 function safeRead(key, fallback) {
   try {
@@ -36,6 +38,40 @@ export const storageAdapter = {
   },
   saveClassicBestScore(score) {
     try { localStorage.setItem(CLASSIC_BEST_SCORE_KEY, String(Math.max(0, Math.round(score)))); } catch {}
+  },
+  getClassicRecentScores() {
+    try {
+      const values = JSON.parse(safeRead(CLASSIC_RECENT_SCORES_KEY, '[]'));
+      return Array.isArray(values)
+        ? values.filter(Number.isFinite).map((value) => Math.max(0, Math.round(value))).slice(-7)
+        : [];
+    } catch {
+      return [];
+    }
+  },
+  saveClassicRunScore(score) {
+    const value = Math.max(0, Math.round(Number(score) || 0));
+    const recent = [...this.getClassicRecentScores(), value].slice(-7);
+    try { localStorage.setItem(CLASSIC_RECENT_SCORES_KEY, JSON.stringify(recent)); } catch {}
+  },
+  // Chapters a player has actually reached in play. Stored as keys rather
+  // than a count so reordering or inserting a scene later cannot silently
+  // re-lock somebody's gallery.
+  getSeenChapters() {
+    try {
+      const values = JSON.parse(safeRead(CLASSIC_CHAPTERS_SEEN_KEY, '[]'));
+      return Array.isArray(values) ? values.filter((value) => typeof value === 'string') : [];
+    } catch {
+      return [];
+    }
+  },
+  markChapterSeen(key) {
+    if (typeof key !== 'string' || !key) return this.getSeenChapters();
+    const seen = this.getSeenChapters();
+    if (seen.includes(key)) return seen;
+    const next = [...seen, key];
+    try { localStorage.setItem(CLASSIC_CHAPTERS_SEEN_KEY, JSON.stringify(next)); } catch {}
+    return next;
   },
   getLastScore() {
     const raw = safeRead(LAST_SCORE_KEY, '');
@@ -181,9 +217,11 @@ export const rankingAdapter = {
   async open() {
     return {
       connected: false,
+      // Classic is the mode the records screen is about now, so the trend
+      // bars and the average read the classic run history.
       summary: buildLocalRecordSummary(
-        storageAdapter.getRecentScores(),
-        storageAdapter.getBestScore(),
+        storageAdapter.getClassicRecentScores(),
+        storageAdapter.getClassicBestScore(),
       ),
     };
   },
