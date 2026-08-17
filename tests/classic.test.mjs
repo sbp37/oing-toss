@@ -39,17 +39,21 @@ test('classic combo: +2 only from five cells, wrong answer cuts to 70%', () => {
   assert.equal(classicComboAfterFailure(0), 0);
 });
 
-test('classic board ladder grows 5×5 → 6×6 → 6×7 and stays at the cap', () => {
-  assert.equal(CLASSIC_BOARD_LADDER.length, 3);
+test('classic ladder: one 5×5 opener, then a row per 판갈이 to the 9-row cap', () => {
   assert.deepEqual(
     CLASSIC_BOARD_LADDER.map((step) => [step.rows, step.cols]),
-    [[5, 5], [6, 6], [7, 6]],
+    [[5, 5], [6, 6], [7, 6], [8, 6], [9, 6]],
   );
   // 워밍업 판일수록 판갈이 시간 보상이 작다 — 작은 판은 금방 마르니까.
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [8, 11, 15]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [8, 11, 15, 15, 15]);
+  // 6×6부터는 가로 고정, 세로만 +1씩.
+  CLASSIC_BOARD_LADDER.slice(1).forEach((step, index) => {
+    assert.equal(step.cols, 6);
+    assert.equal(step.rows, 6 + index);
+  });
   assert.equal(classicBoardForIndex(0), CLASSIC_BOARD_LADDER[0]);
-  assert.equal(classicBoardForIndex(2), CLASSIC_BOARD_LADDER[2]);
-  assert.equal(classicBoardForIndex(9), CLASSIC_BOARD_LADDER[2]);
+  assert.equal(classicBoardForIndex(4), CLASSIC_BOARD_LADDER[4]);
+  assert.equal(classicBoardForIndex(9), CLASSIC_BOARD_LADDER[4]);
   assert.equal(classicBoardForIndex(-1), CLASSIC_BOARD_LADDER[0]);
 });
 

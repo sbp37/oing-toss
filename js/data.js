@@ -257,16 +257,20 @@ export function comboAfterIdle(combo, stage = 1) {
 export const CLASSIC_COMBO_CAP = 25;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
 // The board ladder folds the stage mode's onboarding ramp into the classic
-// loop itself: two warm-up boards, then the full board for the rest of the
-// run. With a combo that never times out, the small boards become the safe
-// stretch where the multiplier spools up and the big board is where it
-// pays out — and skilled players reach the payout sooner and stay longer.
-// Each step carries its own 판갈이 bonus: small boards dry fast, so a flat
-// +15s would turn the opening into a time fountain.
+// loop itself: one 5×5 opener so a first-timer is never dropped onto a
+// wall of numbers (a skilled player clears it in seconds), then 6×6, and
+// from there one extra row per 판갈이 until the vertical cap. With a combo
+// that never times out, the small boards are where the multiplier spools
+// up and the tall boards are where it pays out — the scan field a player
+// earns grows with how deep they got. Each step carries its own 판갈이
+// bonus: small boards dry fast, so a flat +15s would turn the opening
+// into a time fountain.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
   Object.freeze({ rows: 5, cols: 5, timeBonus: 8 }),
   Object.freeze({ rows: 6, cols: 6, timeBonus: 11 }),
   Object.freeze({ rows: 7, cols: 6, timeBonus: 15 }),
+  Object.freeze({ rows: 8, cols: 6, timeBonus: 15 }),
+  Object.freeze({ rows: 9, cols: 6, timeBonus: 15 }),
 ]);
 
 export function classicBoardForIndex(boardIndex = 0) {
