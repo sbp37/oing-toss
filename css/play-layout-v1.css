@@ -3187,3 +3187,192 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
   width: min(82%, 340px);
 }
+
+/* ==========================================================================
+   Pressure and payoff pass
+   A two-minute score attack needs its stakes visible without shouting over
+   the board. Four beats: the clock closing in, the multiplier's own tiers,
+   the 판갈이 that buys the run more time, and the scene a deep run earns.
+   ========================================================================== */
+
+/* The last thirty seconds draw the edges in. It reads in peripheral vision
+   while the eyes stay on the numbers, and the vignette is on a pseudo
+   element so nothing in the layout moves as it appears. */
+.screen-play.play-ui-v4::after {
+  content: "";
+  position: absolute;
+  z-index: 40;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 72% 56% at 50% 45%,
+    transparent 38%,
+    rgba(226, 104, 88, .22) 66%,
+    rgba(198, 62, 62, .46) 88%,
+    rgba(168, 44, 52, .6) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 520ms ease;
+}
+
+.screen-play.play-ui-v4.is-time-pressure::after {
+  opacity: .82;
+}
+
+/* Inside ten the ticks are already sounding, so the vignette only deepens
+   and starts to breathe with them rather than introducing a new signal. */
+.screen-play.play-ui-v4.is-final-countdown::after {
+  opacity: 1;
+  animation: time-pressure-breathe .95s ease-in-out infinite alternate;
+}
+
+@keyframes time-pressure-breathe {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: .74; transform: scale(1.035); }
+}
+
+/* Combo tiers. The fever band tops out at 8, which classic passes in the
+   first few clears; these are keyed to the figures that pay — the score cap
+   at 25 and the two steps past it. Rim only, so the numbers stay clean. */
+.play-ui-v4 .board-frame[data-combo-tier="25"] {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .78),
+    0 0 0 6px rgba(255, 214, 122, .5),
+    0 8px 18px rgba(25, 111, 156, .15),
+    inset 0 0 12px rgba(255, 255, 255, .38);
+}
+
+.play-ui-v4 .board-frame[data-combo-tier="40"] {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .82),
+    0 0 0 7px rgba(255, 168, 92, .58),
+    0 0 22px rgba(255, 150, 74, .32),
+    inset 0 0 12px rgba(255, 255, 255, .4);
+}
+
+.play-ui-v4 .board-frame[data-combo-tier="60"] {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .88),
+    0 0 0 8px rgba(255, 110, 138, .62),
+    0 0 30px rgba(255, 96, 128, .42),
+    inset 0 0 14px rgba(255, 255, 255, .46);
+  animation: combo-tier-pulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes combo-tier-pulse {
+  from { filter: saturate(1); }
+  to { filter: saturate(1.14) brightness(1.03); }
+}
+
+/* 판갈이: the one lifeline in the loop, so it lands as a beat instead of a
+   quiet swap — a bright wash across the frame and a single kick. */
+.play-ui-v4 .board-frame.is-board-change {
+  animation: board-change-kick 620ms cubic-bezier(.2, .78, .26, 1.1) both;
+}
+
+.play-ui-v4 .board-frame.is-board-change::after {
+  content: "";
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 46%, rgba(255,255,255,.72), rgba(255,244,212,.28) 58%, transparent 78%);
+  pointer-events: none;
+  animation: board-change-flash 620ms ease-out both;
+}
+
+@keyframes board-change-kick {
+  0% { transform: scale(1); }
+  22% { transform: scale(1.028); }
+  55% { transform: scale(.994); }
+  100% { transform: scale(1); }
+}
+
+@keyframes board-change-flash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Chapter reveal. Held in the gap where the old tiles have faded and the new
+   board has not arrived: the art behind the board is briefly the whole
+   frame, so the scene gets one uninterrupted look. */
+.play-ui-v4 .board-frame.is-chapter-reveal .board {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* The .board step is here to outrank the tutorial's own tile-opacity rule,
+   which is otherwise more specific and would keep the tiles visible over
+   the reveal. In the live flow animateShuffleOut has already hidden them,
+   so this is the belt to that braces. */
+.play-ui-v4 .board-frame.is-chapter-reveal .board .tile {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.play-ui-v4 .chapter-reveal {
+  position: absolute;
+  z-index: 34;
+  inset-inline: 6%;
+  top: 50%;
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  padding: 13px 16px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 18px;
+  background: rgba(255, 252, 243, .9);
+  box-shadow: 0 10px 26px rgba(52, 96, 118, .22), inset 0 2px 0 rgba(255,255,255,.94);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(.9);
+}
+
+.play-ui-v4 .chapter-reveal small {
+  color: #b39a72;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.play-ui-v4 .chapter-reveal strong {
+  color: #5d7f74;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 6.4vw, 27px);
+  line-height: 1.05;
+  text-align: center;
+}
+
+.play-ui-v4 .chapter-reveal.is-visible {
+  animation: chapter-reveal-in 1050ms cubic-bezier(.18, .82, .24, 1.1) both;
+}
+
+@keyframes chapter-reveal-in {
+  0% { opacity: 0; transform: translateY(-50%) scale(.86); }
+  16% { opacity: 1; transform: translateY(-50%) scale(1.04); }
+  30% { transform: translateY(-50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-50%) scale(1.02); }
+}
+
+/* The record slot: quiet while it is a target, lit once the run is past it. */
+.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy b,
+.screen-play.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy b {
+  color: #e8734a;
+}
+
+.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy em,
+.screen-play.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy em {
+  color: #e8734a;
+}
+
+.play-ui-v4 .play-status-bar .goal-status.is-ahead {
+  animation: record-ahead-pop 620ms ease both;
+}
+
+@keyframes record-ahead-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}

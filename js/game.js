@@ -12,6 +12,7 @@ import {
   buildResultReaction,
   cappedSessionTime,
   chooseBoardDrop,
+  classicBoardChangeSeconds,
   classicBoardForIndex,
   classicChapterArtUrl,
   classicChapterForBoard,
@@ -19,8 +20,11 @@ import {
   classicDeepestChapterLabel,
   classicComboAfterFailure,
   classicComboGain,
+  classicDropStage,
   classicRoundForBoard,
+  classicScoreForBlast,
   classicScoreForClear,
+  classicStartBoardIndex,
   classicTimeAfterBoardChange,
   comboAfterIdle,
   comboAfterIncorrectSelection,
@@ -400,11 +404,24 @@ class OingGame {
 
   // Classic hides the ladder's item unlock schedule: bomb/clock stay at
   // stage-1 locked art, and the clock is out of play entirely.
+  // Item payouts have to speak the same currency as a clear, or a bomb reads
+  // as a different game. Classic pays blasts on its own cells×combo scale;
+  // the stage mode keeps its tuned figures.
+  // Classic scores sit an order of magnitude below the stage mode's, so the
+  // consolation for a time item that can no longer add time scales with it.
+  timeItemCapScore() {
+    return this.classic ? Math.round(TIME_ITEM_CAP_SCORE * 0.1) : TIME_ITEM_CAP_SCORE;
+  }
+
+  classicBlastScore(cellCount, catCount) {
+    return classicScoreForBlast(cellCount, catCount, this.state.combo);
+  }
+
   itemHudState() {
     return {
       ...this.state.items,
-      stage: this.classic ? 1 : this.state.round,
-      clockAvailable: !this.classic && this.stageDuration > 0,
+      stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
+      clockAvailable: this.stageDuration > 0,
     };
   }
 
@@ -425,9 +442,23 @@ class OingGame {
     this.ui.resetItemAvailabilityHistory();
     // Classic mode: state.round is the generation depth ramp, not a stage —
     // the ladder machinery is bypassed at every branch below.
-    this.classic = options.classic ? { boardIndex: 0, chapterKey: null, chapterLabel: '' } : null;
+    // A personal best buys a later starting board, permanently — the only
+    // progress in the game that outlives a run. boardsPlayed is tracked
+    // separately from boardIndex so an unlocked start does not inflate the
+    // result sheet's 판갈이 count.
+    this.classic = options.classic
+      ? {
+        boardIndex: this.runtime.testMode ? 0 : classicStartBoardIndex(storageAdapter.getClassicBestScore()),
+        boardsPlayed: 1,
+        chapterKey: null,
+        chapterLabel: '',
+      }
+      : null;
     if (!this.classic) this.ui.setChapter(null);
-    this.state = this.freshState(this.classic ? classicRoundForBoard(0) : startStage, options);
+    this.state = this.freshState(
+      this.classic ? classicRoundForBoard(this.classic.boardIndex) : startStage,
+      options,
+    );
     if (this.classic) this.state.recordEligible = true;
     this.retryStage = 1;
     this.stageDuration = this.runtime?.duration || GAME_DURATION_SECONDS;
@@ -539,10 +570,11 @@ class OingGame {
       ? { size: classicBoard.cols, cols: classicBoard.cols, rows: classicBoard.rows }
       : getRoundConfig(this.state.round);
     this.generateBoard(config.size, config.rows);
-    // Classic keeps the board bare: no special tiles, no board-drop items —
-    // the original's field is numbers and cats only.
+    // Classic keeps the numbers themselves clean — no special tiles baked
+    // into the grid — but earned board drops land on it like they do in the
+    // stage mode, so a combo past the score cap still buys something.
     if (!this.classic) this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round));
-    const placed = this.classic ? [] : this.boardItems.place(this.model.grid, this.model.bonusCats);
+    const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
     this.renderBoard();
     this.updateHUD();
     return placed;
@@ -673,13 +705,18 @@ class OingGame {
       bestComboBefore: previousMaxCombo,
     });
     let earnedDrop = null;
-    if (reward && !this.classic && this.state.round >= 3) {
+    // The original paid an item at every seventh combo, which is what kept a
+    // combo above the score cap worth having. Classic dropped items to keep
+    // the score scale clean and lost that valve with them; it is back, gated
+    // on board depth rather than on the number mix so an unlocked start does
+    // not open the late-run rarities on its first board.
+    if (reward && this.state.round >= 3) {
       const drop = chooseBoardDrop(this.state.combo, Math.random, {
         cloverGiven: this.state.cloverDropped,
         pity: this.state.boardDropPity,
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
-        stage: this.state.round,
+        stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
         timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
       });
       if (drop) {
@@ -905,7 +942,14 @@ class OingGame {
     const remainingAnswer = this.model.findAnswer();
     const remaining = this.model.remainingPlayableCells();
     if (this.classic) {
+      // Drops land on cells the player has cleared, and a freshly generated
+      // board has none — so the placement pass belongs here, after every
+      // success, not only at 판갈이.
+      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard({ preserveScoreBurst: true });
+      if (placed.length) {
+        this.announceBoardItems(placed, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
+      }
       if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
       this.state.inputLocked = false;
       this.updateHUD();
@@ -1003,11 +1047,20 @@ class OingGame {
     // The bonus is earned by the board just finished — a dried 5×5 pays its
     // own small refund, not the full board's.
     const clearedBoard = classicBoardForIndex(this.classic.boardIndex);
+    // How much of the board the player actually got through. This is what
+    // the refund is paid on, so the stubborn last corner of a 6×9 is worth
+    // real seconds and a tidy finish beats breaking a few and moving on.
+    const initial = Math.max(1, this.state.initialPlayableCells);
+    const clearedRatio = Math.min(1, Math.max(0, 1 - this.model.remainingPlayableCells() / initial));
     this.classic.boardIndex += 1;
+    this.classic.boardsPlayed += 1;
     const nextBoard = classicBoardForIndex(this.classic.boardIndex);
     this.state.round = classicRoundForBoard(this.classic.boardIndex);
     const previousTime = this.state.timeLeft;
-    this.state.timeLeft = classicTimeAfterBoardChange(previousTime, clearedBoard.timeBonus);
+    this.state.timeLeft = classicTimeAfterBoardChange(
+      previousTime,
+      classicBoardChangeSeconds(clearedBoard, clearedRatio),
+    );
     const gainedTime = Math.round(this.state.timeLeft - previousTime);
     const boardGrew = nextBoard.rows * nextBoard.cols > clearedBoard.rows * clearedBoard.cols;
     // buildRound applies the chapter further down; compare against the one
@@ -1041,8 +1094,16 @@ class OingGame {
       this.ui.setPlayCharacter('wave', 900);
     }
     if (gainedTime > 0) this.ui.showStageTimeBonus(gainedTime);
+    this.ui.flashBoardChange();
     this.updateHUD();
     await this.ui.animateShuffleOut();
+    // The tiles are gone and the chapter art is the whole frame, so a new
+    // scene announces itself here rather than behind a fresh board. Paint the
+    // new skin first — buildRound's own call then finds nothing to change.
+    if (enteredChapter) {
+      this.applyClassicChapter();
+      await this.ui.revealChapter(enteredChapter.label);
+    }
     this.buildRound();
     await this.ui.animateShuffleIn();
     itemHaptic();
@@ -1346,8 +1407,10 @@ class OingGame {
       await delay(130);
     }
     const catCount = Number(stats.catCount) || 0;
-    const catBonusPoints = scoreForCatBonus(catCount, Math.max(1, this.state.combo));
-    const points = scoreForBomb(stats.sum, stats.count) + catBonusPoints;
+    const catBonusPoints = this.classic ? 0 : scoreForCatBonus(catCount, Math.max(1, this.state.combo));
+    const points = this.classic
+      ? this.classicBlastScore(stats.count + catCount, catCount)
+      : scoreForBomb(stats.sum, stats.count) + catBonusPoints;
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
@@ -1366,8 +1429,10 @@ class OingGame {
 
   async resolveMegaBomb({ row, col, rect, cells, stats }, boardItemKey) {
     const catCount = cells.reduce((count, cell) => count + (this.model.hasBonusCat(cell.r, cell.c) ? 1 : 0), 0);
-    const catBonusPoints = scoreForCatBonus(catCount, Math.max(1, this.state.combo));
-    const points = scoreForMegaBomb(stats.sum, stats.count) + catBonusPoints;
+    const catBonusPoints = this.classic ? 0 : scoreForCatBonus(catCount, Math.max(1, this.state.combo));
+    const points = this.classic
+      ? this.classicBlastScore(stats.count + catCount, catCount)
+      : scoreForMegaBomb(stats.sum, stats.count) + catBonusPoints;
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
@@ -1390,7 +1455,9 @@ class OingGame {
     const remainingAnswer = this.model.findAnswer();
     const remaining = this.model.remainingPlayableCells();
     if (this.classic) {
+      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
+      if (placed.length) this.announceBoardItems(placed);
       if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
       this.inputGuardUntil = performance.now() + 180;
       this.state.inputLocked = false;
@@ -1444,13 +1511,13 @@ class OingGame {
     const previousTime = this.state.timeLeft;
     const requestedTime = availableItemTimeBonus(this.state.itemTimeBonusUsed, 5);
     if (requestedTime <= 0) {
-      this.state.score += TIME_ITEM_CAP_SCORE;
+      this.state.score += this.timeItemCapScore();
       if (boardItemKey) {
         this.boardItems.delete(boardItemKey);
         this.renderBoard();
       }
       this.updateHUD();
-      this.ui.toast(`시간 보너스 MAX · +${TIME_ITEM_CAP_SCORE}점`);
+      this.ui.toast(`시간 보너스 MAX · +${this.timeItemCapScore()}점`);
       this.inputGuardUntil = performance.now() + 100;
       this.state.inputLocked = false;
       return;
@@ -1490,11 +1557,11 @@ class OingGame {
       : Math.max(0, this.timer ? (this.endAt - now) / 1000 : this.state.timeLeft);
     const freezeSeconds = availableItemTimeBonus(this.state.itemTimeBonusUsed, TIME_FREEZE_SECONDS);
     if (freezeSeconds <= 0) {
-      this.state.score += TIME_ITEM_CAP_SCORE;
+      this.state.score += this.timeItemCapScore();
       this.boardItems.delete(boardItemKey);
       this.renderBoard();
       this.updateHUD();
-      this.ui.toast(`시간 보너스 MAX · +${TIME_ITEM_CAP_SCORE}점`);
+      this.ui.toast(`시간 보너스 MAX · +${this.timeItemCapScore()}점`);
       this.inputGuardUntil = performance.now() + 80;
       this.state.inputLocked = false;
       return;
@@ -1937,7 +2004,7 @@ class OingGame {
     this.lastResultSummary = {
       score: this.state.score,
       maxCombo: this.state.maxCombo,
-      round: this.classic.boardIndex + 1,
+      round: this.classic.boardsPlayed,
       successCount: this.state.successCount,
       maxClearCells: this.state.maxClearCells,
       catsCollected: this.state.catsCollected,
@@ -1950,7 +2017,7 @@ class OingGame {
       previousScore: null,
       recordEligible: true,
       resultMessage: newRecord ? '클래식 신기록이다냥!' : '',
-      classic: { boards: this.classic.boardIndex + 1 },
+      classic: { boards: this.classic.boardsPlayed },
     };
     this.retryStage = 1;
     if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
@@ -1976,7 +2043,7 @@ class OingGame {
       // Classic HUD: the badge counts boards (판갈이), the item countdown is
       // out of play, and the combo urgency bar sits full — there is no
       // timeout to drain it.
-      round: this.classic ? this.classic.boardIndex + 1 : this.state.round,
+      round: this.classic ? this.classic.boardsPlayed : this.state.round,
       rewardRemaining: this.classic ? 0 : itemRewardCountdown(this.state.combo, this.state.round),
       comboRemainingMs: this.classic
         ? comboWindowMs
@@ -1988,6 +2055,7 @@ class OingGame {
       timed: this.stageDuration > 0,
       freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),
       gardenFromStart: Boolean(this.classic),
+      bestScore: this.classic ? storageAdapter.getClassicBestScore() : storageAdapter.getBestScore(),
     });
   }
 
@@ -2072,6 +2140,11 @@ if (game.runtime.testMode) {
       game.ui.setFreezeActive(true);
       game.updateHUD();
       return game.freezeEndsAt;
+    },
+    setScore: (points = 0) => {
+      game.state.score = Math.max(0, Math.round(Number(points) || 0));
+      game.updateHUD();
+      return game.state.score;
     },
     setTimeLeft: (seconds = 3) => {
       game.state.timeLeft = Math.max(0, Number(seconds) || 0);

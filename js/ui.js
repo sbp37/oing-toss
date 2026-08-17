@@ -67,6 +67,7 @@ export class GameUI {
     this.hintTimer = null;
     this.roundReadyTimer = null;
     this.countdownPulseTimer = null;
+    this.boardChangeFlashTimer = null;
     this.goalPulseTimer = null;
     this.itemRewardPreviewTimer = null;
     this.comboLossTimer = null;
@@ -139,6 +140,8 @@ export class GameUI {
       gardenProgressLabel: document.querySelector('#garden-progress-label'),
       gardenProgressFill: document.querySelector('#garden-progress-fill'),
       gardenTiers: document.querySelector('#garden-tiers'),
+      chapterReveal: document.querySelector('#chapter-reveal'),
+      chapterRevealName: document.querySelector('#chapter-reveal-name'),
       chapterGallery: document.querySelector('#chapter-gallery'),
       chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
       gardenRevealBest: document.querySelector('#garden-reveal-best'),
@@ -1610,7 +1613,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false, bestScore = 0 }) {
     this.elements.round.textContent = String(round);
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
@@ -1650,6 +1653,10 @@ export class GameUI {
     this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
     const isFinalCountdown = timed && !isFrozen && time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
+    // The last thirty seconds close a vignette in from the screen edges, so
+    // the pressure is readable in peripheral vision while the eyes stay on
+    // the board. It deepens again inside ten, where the ticks already are.
+    this.elements.playScreen.classList.toggle('is-time-pressure', timed && !isFrozen && time > 0 && time <= 30);
     this.elements.playScreen.dataset.round = String(round);
     // The warmup band hides the hidden-garden art; classic runs skip it so
     // the picture peeks through from the very first cleared cell.
@@ -1706,12 +1713,21 @@ export class GameUI {
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
     this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
+    // Classic multipliers keep climbing long after the fever band tops out,
+    // so the board carries a second, coarser tier keyed to the figures that
+    // actually matter there: the score cap and the two steps past it.
+    this.boardFrame.dataset.comboTier = combo >= 60 ? '60' : combo >= 40 ? '40' : combo >= 25 ? '25' : '';
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
-    // Stages have no target any more, so this is a plain running tally of
-    // answers found — something that only ever goes up, with nothing to fall
-    // short of and no bar to read.
-    const goalText = String(successCount);
+    // The third compartment used to count answers found, which never changed
+    // a decision — it only ever went up. In a score attack the figure worth
+    // carrying there is the record being chased, and once the run passes it
+    // the slot flips into a live "you are ahead" readout.
+    const best = Math.max(0, Math.round(Number(bestScore) || 0));
+    const ahead = best > 0 && score > best;
+    const goalText = (ahead ? score : best).toLocaleString('ko-KR');
     this.elements.goal.textContent = goalText;
+    if (this.elements.goalLabel) this.elements.goalLabel.textContent = ahead ? '신기록' : '최고';
+    this.elements.goal.closest('.goal-status')?.classList.toggle('is-ahead', ahead);
     // Same length-band pattern as the score figure: the counter box is narrow
     // and the text is nowrap-centred, so long values shrink one step.
     this.elements.goal.dataset.digits = goalText.length > 3 ? 'l' : 'm';
@@ -1873,6 +1889,34 @@ export class GameUI {
   // still ahead shown as silhouettes so there is something to aim at. Art is
   // applied by CSS class, so scenes without a file yet render as a plain
   // locked card rather than a broken image.
+  // Held between the old board fading out and the new one landing: the
+  // tiles are already gone, so the chapter art behind them is briefly the
+  // whole screen. One card names the scene, then play resumes.
+  async revealChapter(label) {
+    const card = this.elements.chapterReveal;
+    if (!card || !label) return;
+    this.elements.chapterRevealName.textContent = label;
+    this.boardFrame.classList.add('is-chapter-reveal');
+    card.classList.remove('is-visible');
+    void card.offsetWidth;
+    card.classList.add('is-visible');
+    await delay(1050);
+    card.classList.remove('is-visible');
+    this.boardFrame.classList.remove('is-chapter-reveal');
+  }
+
+  // 판갈이 is the loop's only lifeline, so it gets a real beat: the frame
+  // flashes and kicks once as the seconds land.
+  flashBoardChange() {
+    this.boardFrame.classList.remove('is-board-change');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-board-change');
+    clearTimeout(this.boardChangeFlashTimer);
+    this.boardChangeFlashTimer = window.setTimeout(() => {
+      this.boardFrame.classList.remove('is-board-change');
+    }, 620);
+  }
+
   renderChapterGallery(chapters = []) {
     if (!this.elements.chapterGallery) return;
     const list = Array.isArray(chapters) ? chapters : [];

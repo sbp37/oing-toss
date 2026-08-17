@@ -3,12 +3,19 @@ import assert from 'node:assert/strict';
 import {
   CLASSIC_BOARD_LADDER,
   CLASSIC_COMBO_CAP,
+  CLASSIC_COMBO_SOFT_RATE,
+  CLASSIC_START_UNLOCKS,
   CLASSIC_TIME_CAP_SECONDS,
+  classicBoardChangeSeconds,
   classicBoardForIndex,
   classicComboAfterFailure,
   classicComboGain,
+  classicComboMultiplier,
+  classicDropStage,
   classicRoundForBoard,
+  classicScoreForBlast,
   classicScoreForClear,
+  classicStartBoardIndex,
   classicTimeAfterBoardChange,
 } from '../js/data.js';
 import { BoardModel, bonusCatTargetForDimensions, findAllSumTenRects } from '../js/board.js';
@@ -18,8 +25,11 @@ test('classic score is the original formula: (cells + cats×5) × min(combo, 25)
   assert.equal(classicScoreForClear(3, 0, 4), 12);
   // 고양이 칸은 totalCells에 이미 있고 +5가 따로 붙는다 (원조의 cBonus).
   assert.equal(classicScoreForClear(3, 1, 2), (3 + 5) * 2);
-  // 콤보 배율은 25에서 캡.
-  assert.equal(classicScoreForClear(2, 0, CLASSIC_COMBO_CAP + 5), 2 * CLASSIC_COMBO_CAP);
+  // 캡을 넘으면 초과분이 1/4씩만 붙는다 (하드캡 아님).
+  assert.equal(
+    classicScoreForClear(2, 0, CLASSIC_COMBO_CAP + 5),
+    Math.round(2 * (CLASSIC_COMBO_CAP + 5 * CLASSIC_COMBO_SOFT_RATE)),
+  );
   // 콤보 0(첫 클리어)도 최소 ×1은 보장된다.
   assert.equal(classicScoreForClear(2, 0, 0), 2);
 });
@@ -30,13 +40,39 @@ test('classic WOW pays +10 per cell beyond four, outside the multiplier', () => 
   assert.equal(classicScoreForClear(4, 0, 3), 12);
 });
 
-test('classic combo: +2 only from five cells, wrong answer cuts to 70%', () => {
+test('classic combo: +2 only from five cells', () => {
   assert.equal(classicComboGain(2), 1);
   assert.equal(classicComboGain(4), 1);
   assert.equal(classicComboGain(5), 2);
+});
+
+test('the combo multiplier keeps climbing past the cap, at a quarter rate', () => {
+  assert.equal(classicComboMultiplier(1), 1);
+  assert.equal(classicComboMultiplier(10), 10);
+  assert.equal(classicComboMultiplier(CLASSIC_COMBO_CAP), CLASSIC_COMBO_CAP);
+  assert.equal(classicComboMultiplier(CLASSIC_COMBO_CAP + 20), CLASSIC_COMBO_CAP + 5);
+  // 콤보 0(첫 클리어 직전)도 최소 ×1.
+  assert.equal(classicComboMultiplier(0), 1);
+  // 단조 증가여야 한다 — 어느 지점에서도 콤보를 더 쌓아 손해 볼 일은 없다.
+  for (let combo = 1; combo < 120; combo += 1) {
+    assert.ok(classicComboMultiplier(combo + 1) > classicComboMultiplier(combo));
+  }
+});
+
+test('a wrong answer always costs multiplier, above the cap as well as below', () => {
+  // 캡 아래는 원조 그대로 30% 삭감.
   assert.equal(classicComboAfterFailure(10), 7);
   assert.equal(classicComboAfterFailure(1), 0);
   assert.equal(classicComboAfterFailure(0), 0);
+  // 캡 위는 절반. 하드캡 시절 콤보 36 이상에서 오답이 완전 무료였던 구간을
+  // 없애는 것이 이 규칙의 목적이므로, 그 성질을 직접 검증한다.
+  assert.equal(classicComboAfterFailure(40), 20);
+  assert.equal(classicComboAfterFailure(74), 37);
+  for (const combo of [26, 30, 36, 40, 60, 74, 100]) {
+    const before = classicComboMultiplier(combo);
+    const after = classicComboMultiplier(classicComboAfterFailure(combo));
+    assert.ok(after < before, `combo ${combo}: ${after} should be below ${before}`);
+  }
 });
 
 test('classic ladder: one 5×5 opener, then a row per 판갈이 to the 9-row cap', () => {
@@ -44,8 +80,10 @@ test('classic ladder: one 5×5 opener, then a row per 판갈이 to the 9-row cap
     CLASSIC_BOARD_LADDER.map((step) => [step.rows, step.cols]),
     [[5, 5], [6, 6], [7, 6], [8, 6], [9, 6]],
   );
-  // 워밍업 판일수록 판갈이 시간 보상이 작다 — 작은 판은 금방 마르니까.
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [8, 11, 15, 15, 15]);
+  // 워밍업 판일수록 판갈이 보상이 작다 — 작은 판은 금방 마르니까.
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 6, 6, 6]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [11, 14, 19, 19, 19]);
+  CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
   // 6×6부터는 가로 고정, 세로만 +1씩.
   CLASSIC_BOARD_LADDER.slice(1).forEach((step, index) => {
     assert.equal(step.cols, 6);
@@ -164,4 +202,61 @@ test('classic chapters open by board depth, and the last one by score', async ()
     classicDeepestChapterLabel({ seenKeys: ['garden'], bestScore: CLASSIC_SECRET_CHAPTER.minScore }),
     CLASSIC_SECRET_CHAPTER.label,
   );
+});
+
+test('판갈이 pays in proportion to how much of the board was cleared', () => {
+  const small = CLASSIC_BOARD_LADDER[0];
+  const big = classicBoardForIndex(4);
+  // 아무것도 못 지우고 막히면 floor, 다 비우면 ceiling.
+  assert.equal(classicBoardChangeSeconds(small, 0), small.timeFloor);
+  assert.equal(classicBoardChangeSeconds(small, 1), small.timeBonus);
+  assert.equal(classicBoardChangeSeconds(big, 0), big.timeFloor);
+  assert.equal(classicBoardChangeSeconds(big, 1), big.timeBonus);
+  // 중간은 단조 증가 — "대충 부수고 넘어가기"가 이득이 되는 구간이 없어야 한다.
+  let previous = -1;
+  for (let step = 0; step <= 10; step += 1) {
+    const paid = classicBoardChangeSeconds(big, step / 10);
+    assert.ok(paid >= previous, `ratio ${step / 10} paid ${paid} after ${previous}`);
+    previous = paid;
+  }
+  // 범위를 벗어난 비율도 잘라서 처리한다.
+  assert.equal(classicBoardChangeSeconds(big, -1), big.timeFloor);
+  assert.equal(classicBoardChangeSeconds(big, 4), big.timeBonus);
+  // 완전 클리어는 대충 넘긴 판보다 확실히 많이 받아야 의미가 있다.
+  assert.ok(classicBoardChangeSeconds(big, 1) - classicBoardChangeSeconds(big, 0.4) >= 6);
+});
+
+test('blast payouts share the clear scale, minus the WOW bonus', () => {
+  assert.equal(classicScoreForBlast(4, 0, 3), 12);
+  assert.equal(classicScoreForBlast(3, 1, 2), (3 + 5) * 2);
+  // 폭발은 찾아낸 답이 아니므로 5칸 이상 보너스는 붙지 않는다.
+  assert.equal(classicScoreForBlast(6, 0, 1), 6);
+  assert.equal(classicScoreForClear(6, 0, 1), 6 + 20);
+});
+
+test('a personal best permanently buys a later starting board', () => {
+  assert.equal(classicStartBoardIndex(0), 0);
+  assert.equal(classicStartBoardIndex(1499), 0);
+  assert.equal(classicStartBoardIndex(1500), 1);
+  assert.equal(classicStartBoardIndex(3999), 1);
+  assert.equal(classicStartBoardIndex(4000), 2);
+  assert.equal(classicStartBoardIndex(99999), 2);
+  // 해금 문턱은 오름차순이어야 하고, 사다리 밖을 가리켜서는 안 된다.
+  CLASSIC_START_UNLOCKS.forEach((unlock, index) => {
+    assert.ok(unlock.boardIndex < CLASSIC_BOARD_LADDER.length);
+    if (index > 0) {
+      assert.ok(unlock.minScore > CLASSIC_START_UNLOCKS[index - 1].minScore);
+      assert.ok(unlock.boardIndex > CLASSIC_START_UNLOCKS[index - 1].boardIndex);
+    }
+  });
+});
+
+test('drops ramp with board depth, so an unlocked start is not a rarity handout', () => {
+  // 첫 판은 스테이지 3 수준 — 폭탄만.
+  assert.equal(classicDropStage(0), 3);
+  assert.equal(classicDropStage(2), 5);
+  assert.equal(classicDropStage(7), 10);
+  assert.equal(classicDropStage(30), 10);
+  // 해금으로 3번째 판에서 시작해도 최심 풀이 바로 열리지는 않는다.
+  assert.ok(classicDropStage(classicStartBoardIndex(4000)) < 10);
 });

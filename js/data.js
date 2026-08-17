@@ -255,6 +255,7 @@ export function comboAfterIdle(combo, stage = 1) {
 // original's own number scale, so the mode can be felt side by side with
 // the stage ladder without touching the ladder's tuning.
 export const CLASSIC_COMBO_CAP = 25;
+export const CLASSIC_COMBO_SOFT_RATE = 0.25;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
 // The board ladder folds the stage mode's onboarding ramp into the classic
 // loop itself: one 5×5 opener so a first-timer is never dropped onto a
@@ -265,13 +266,29 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // earns grows with how deep they got. Each step carries its own 판갈이
 // bonus: small boards dry fast, so a flat +15s would turn the opening
 // into a time fountain.
+// timeFloor is what a board pays for merely drying up; timeBonus is what a
+// board pays when it is emptied outright. Everything between is earned in
+// proportion to how much of the board the player actually cleared — see
+// classicBoardChangeSeconds. A flat refund made "clear it properly" and
+// "break a few and move on" worth the same number of seconds, which is
+// the one thing a puzzle game cannot afford.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 5, timeBonus: 8 }),
-  Object.freeze({ rows: 6, cols: 6, timeBonus: 11 }),
-  Object.freeze({ rows: 7, cols: 6, timeBonus: 15 }),
-  Object.freeze({ rows: 8, cols: 6, timeBonus: 15 }),
-  Object.freeze({ rows: 9, cols: 6, timeBonus: 15 }),
+  Object.freeze({ rows: 5, cols: 5, timeFloor: 4, timeBonus: 11 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
+  Object.freeze({ rows: 7, cols: 6, timeFloor: 6, timeBonus: 19 }),
+  Object.freeze({ rows: 8, cols: 6, timeFloor: 6, timeBonus: 19 }),
+  Object.freeze({ rows: 9, cols: 6, timeFloor: 6, timeBonus: 19 }),
 ]);
+
+// Seconds the finished board pays out. The ratio is how much of it the
+// player cleared, so the last stubborn corner of a 6×9 is worth real time
+// and the difference between a tidy finish and a messy one is felt.
+export function classicBoardChangeSeconds(board, clearedRatio = 0) {
+  const floor = Math.max(0, Number(board?.timeFloor) || 0);
+  const ceiling = Math.max(floor, Number(board?.timeBonus) || 0);
+  const ratio = Math.min(1, Math.max(0, Number(clearedRatio) || 0));
+  return Math.round(floor + (ceiling - floor) * ratio);
+}
 
 export function classicBoardForIndex(boardIndex = 0) {
   const index = Math.max(0, Math.round(Number(boardIndex) || 0));
@@ -282,8 +299,24 @@ export function classicComboGain(cellCount) {
   return Math.round(Number(cellCount) || 0) >= 5 ? 2 : 1;
 }
 
+// A hard cap at 25 meant a skilled run spent most of its length with the
+// combo doing nothing — the HUD read ×74 while the maths used 25, and the
+// WOW bonus was decoration. Past the cap each combo is still worth a
+// quarter of one, so the ceiling keeps runaway scores in check while the
+// number on screen never stops mattering.
+export function classicComboMultiplier(combo) {
+  const value = Math.max(1, Math.round(Number(combo) || 0));
+  return Math.min(value, CLASSIC_COMBO_CAP)
+    + Math.max(0, value - CLASSIC_COMBO_CAP) * CLASSIC_COMBO_SOFT_RATE;
+}
+
+// Above the cap a 30% cut was free — 36×0.7 still lands on 25.2, so a
+// mistake cost a strong player literally nothing. It halves up there
+// instead. Below the cap the original's 30% stands, because that is where
+// a learner lives and where the penalty already stings.
 export function classicComboAfterFailure(combo) {
-  return Math.floor(Math.max(0, Math.round(Number(combo) || 0)) * 0.7);
+  const value = Math.max(0, Math.round(Number(combo) || 0));
+  return Math.floor(value * (value > CLASSIC_COMBO_CAP ? 0.5 : 0.7));
 }
 
 // The original's exact formula: (cells + cats×5) × min(combo, 25), where
@@ -292,9 +325,16 @@ export function classicComboAfterFailure(combo) {
 export function classicScoreForClear(cellCount, catCount, combo) {
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
   const cats = Math.max(0, Math.round(Number(catCount) || 0));
-  const multiplier = Math.min(Math.max(1, Math.round(Number(combo) || 0)), CLASSIC_COMBO_CAP);
   const wideBonus = cells >= 5 ? (cells - 4) * 10 : 0;
-  return (cells + cats * 5) * multiplier + wideBonus;
+  return Math.round((cells + cats * 5) * classicComboMultiplier(combo) + wideBonus);
+}
+
+// Bombs pay on the same scale as a clear so an item never reads as a
+// different currency, minus the WOW bonus — a blast is not a found answer.
+export function classicScoreForBlast(cellCount, catCount, combo) {
+  const cells = Math.max(0, Math.round(Number(cellCount) || 0));
+  const cats = Math.max(0, Math.round(Number(catCount) || 0));
+  return Math.round((cells + cats * 5) * classicComboMultiplier(combo));
 }
 
 // Each 판갈이 deepens the number mix one step: the first board draws the
@@ -336,6 +376,29 @@ export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   art: 'chapter-aurora',
   hasArt: false,
 });
+
+// The 5×5 opener is a ramp for a first-timer and a toll for everybody
+// else, so a personal best buys the right to start further in. This is the
+// only progress in the game that survives a run ending.
+export const CLASSIC_START_UNLOCKS = Object.freeze([
+  Object.freeze({ boardIndex: 1, minScore: 1500 }),
+  Object.freeze({ boardIndex: 2, minScore: 4000 }),
+]);
+
+export function classicStartBoardIndex(bestScore = 0) {
+  const best = Math.max(0, Math.round(Number(bestScore) || 0));
+  let index = 0;
+  for (const unlock of CLASSIC_START_UNLOCKS) {
+    if (best >= unlock.minScore) index = unlock.boardIndex;
+  }
+  return index;
+}
+
+// Board drops ramp with depth rather than with the number mix, so an
+// unlocked start does not hand out late-run rarities on its first board.
+export function classicDropStage(boardIndex = 0) {
+  return Math.min(10, 3 + Math.max(0, Math.round(Number(boardIndex) || 0)));
+}
 
 export function classicChapterForBoard(boardIndex = 0) {
   const index = Math.max(0, Math.round(Number(boardIndex) || 0));
