@@ -720,11 +720,21 @@ function isAdjacentPair(answer) {
 const cellKey = (row, col) => `${row}:${col}`;
 
 export function bonusCatTargetForSize(size) {
-  return Math.max(1, Math.round(size * size * BONUS_CAT_RATIO));
+  return bonusCatTargetForDimensions(size, size);
 }
 
+// Late boards carry one cat more than the flat ratio used to give them:
+// with only three on a 36-42 cell board they were background decoration,
+// collected in passing. A fourth cat measurably turns cat-aware play into
+// a rewarded strategy (chasing them raises the PERFECT rate instead of
+// costing it), while five made stranding so common that PERFECT suffered
+// — measured, not guessed. The learning sizes keep their light sprinkle.
 export function bonusCatTargetForDimensions(rows, cols = rows) {
-  return Math.max(1, Math.round(rows * cols * BONUS_CAT_RATIO));
+  const cells = Math.max(1, Math.round(rows)) * Math.max(1, Math.round(cols));
+  if (cells <= 16) return 1;
+  if (cells <= 25) return 2;
+  if (cells <= 36) return 4;
+  return 4;
 }
 
 export function normalizeRect(a, b) {
@@ -1106,9 +1116,22 @@ export class BoardModel {
       // The optimizer moves values around, so the cat check comes after.
       if (!catsCollectable(candidate.grid, candidate.cats)) continue;
       const confirmed = robustnessScore(candidate.grid, candidate.cats, 6);
-      const mix = answerMix(candidate.grid, findAllSumTenRects(candidate.grid));
+      const answers = findAllSumTenRects(candidate.grid);
+      const mix = answerMix(candidate.grid, answers);
+      // A cat covered by only a few answers is a destination — the player
+      // must find and choose that combo to collect it. A cat sitting under
+      // six answers is collected by accident and directs nothing, so only
+      // the focused kind scores.
+      let focusedCats = 0;
+      for (const key of candidate.cats) {
+        const [row, col] = key.split(':').map(Number);
+        const coverage = answers.filter((answer) => row >= answer.r1 && row <= answer.r2
+          && col >= answer.c1 && col <= answer.c2).length;
+        if (coverage >= 1 && coverage <= 3) focusedCats += 1;
+      }
       const score = confirmed.fullClearRate * 60 + confirmed.smoothRate * 60
-        + confirmed.clearedShare * 20 - pacingPenalty(mix, pacing) * 0.3;
+        + confirmed.clearedShare * 20 + focusedCats * 5
+        - pacingPenalty(mix, pacing) * 0.3;
       if (!best || score > best.score) {
         best = { candidate, score, rate: confirmed.smoothRate, certificate: confirmed.certificate };
       }
