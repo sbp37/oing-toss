@@ -2815,7 +2815,32 @@
 .play-ui-v4 .board.is-hinting .tile:not(.is-hint),
 .play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
   opacity: 1;
-  filter: brightness(.86) saturate(.5) contrast(.96);
+  filter: saturate(.72);
+}
+
+/* Dimming the tiles themselves forced a choice between two bad options:
+   opacity let the hidden garden bleed through a live board, and a
+   brightness filter strong enough to read as "dimmed" made the numerals
+   look switched off. The veil sits *over* the board instead - one
+   translucent sheet between the ordinary tiles (z-index 1) and the
+   highlighted ones (5+), so the faded-back look is the pale wash the
+   pre-fix version had while every tile face stays fully opaque and keeps
+   hiding the art underneath it. */
+.play-ui-v4 .board.is-hinting::after,
+.play-ui-v4 .board.is-tutorial-active::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 253, 249, .44);
+  pointer-events: none;
+  animation: hint-veil-in 140ms ease-out both;
+}
+
+@keyframes hint-veil-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .play-ui-v4 .board.is-hinting .tile.is-hint,
@@ -2881,4 +2906,121 @@
 
 .play-ui-v4.is-tall-board .cat-coach {
   height: clamp(46px, 6.9dvh, 58px);
+}
+
+/* Start countdown: the original OING's own 3-2-1-GO! ----------------------
+   Ported from the reference build verbatim - the dark scrim, Jua at 120px
+   with a 3px self-coloured stroke, the amber/vermilion/blue digits, the
+   glow that spreads twice per digit (6px then 14px), and the pop that
+   overshoots to 1.2 before settling. The pacing is the original's too:
+   650ms per digit and 500ms on GO!, where ours ran nearly twice as fast
+   and never let a digit finish its bloom. */
+.screen-play.play-ui-v4 .start-countdown {
+  background: rgba(8, 17, 31, .88);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-visible {
+  animation: classic-countdown-in 130ms ease-out both;
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-leaving {
+  animation: classic-countdown-out 150ms ease-in both;
+}
+
+@keyframes classic-countdown-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes classic-countdown-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* The original's overlay is bare: no cloud decor, no paper blob, no kicker
+   line - just the digit on the scrim. */
+.screen-play.play-ui-v4 .start-countdown::before,
+.screen-play.play-ui-v4 .start-countdown::after,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-copy::before,
+.screen-play.play-ui-v4 .start-countdown small,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-burst,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-paws,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-cat {
+  display: none;
+}
+
+.screen-play.play-ui-v4 .start-countdown .start-countdown-copy {
+  min-width: 0;
+  min-height: 0;
+}
+
+.play-ui-v4 ~ .start-countdown strong,
+.screen-play.play-ui-v4 .start-countdown strong,
+.screen-play.play-ui-v4 .start-countdown[data-step="3"] strong,
+.screen-play.play-ui-v4 .start-countdown[data-step="2"] strong,
+.screen-play.play-ui-v4 .start-countdown[data-step="1"] strong {
+  font-family: var(--font-display);
+  font-size: clamp(96px, 30vw, 120px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -4px;
+  -webkit-text-stroke: 3px currentColor;
+  paint-order: normal;
+  transition: none;
+  transform-origin: 50% 50%;
+  animation: none;
+}
+
+/* animateStartCountdown re-adds .is-popping after a forced reflow, so
+   scoping the pop here is what restarts it on every beat. */
+.screen-play.play-ui-v4 .start-countdown strong.is-popping {
+  animation: classic-countpop .85s ease forwards;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="3"] strong {
+  color: #DA9845;
+  text-shadow: 0 0 6px #DA9845, 0 0 14px #DA9845;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="2"] strong {
+  color: #DD6032;
+  text-shadow: 0 0 6px #DD6032, 0 0 14px #DD6032;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="1"] strong {
+  color: #2f7ec9;
+  text-shadow: 0 0 6px #2f7ec9, 0 0 14px #2f7ec9;
+}
+
+@keyframes classic-countpop {
+  0% { opacity: 0; transform: scale(.3); }
+  30% { opacity: 1; transform: scale(1.2); }
+  60% { transform: scale(.95); }
+  80% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-go strong {
+  color: #7fe895;
+  font-size: clamp(62px, 20vw, 80px);
+  letter-spacing: -2px;
+  -webkit-text-stroke: 2px currentColor;
+  text-shadow: 0 0 8px #7fe895, 0 0 16px #3fa855;
+  animation: none;
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-go strong.is-popping {
+  animation: classic-gopop .7s ease forwards;
+}
+
+@keyframes classic-gopop {
+  0% { opacity: 0; transform: scale(.5) rotate(-5deg); }
+  40% { opacity: 1; transform: scale(1.25) rotate(2deg); }
+  70% { transform: scale(.95); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* The retry countdown keeps the same skin, but READY is a word rather than
+   a digit and would otherwise run off a 360px screen. */
+.screen-play.play-ui-v4 .start-countdown[data-step="READY"] strong {
+  color: #DA9845;
+  font-size: clamp(44px, 14vw, 58px);
+  letter-spacing: -2px;
+  -webkit-text-stroke: 2px currentColor;
+  text-shadow: 0 0 6px #DA9845, 0 0 14px #DA9845;
 }

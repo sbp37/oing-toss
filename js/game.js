@@ -757,6 +757,9 @@ class OingGame {
 
   async handleSuccess(rect, stats) {
     this.state.inputLocked = true;
+    // The hint is spent the moment its answer is played — drop the veil now
+    // rather than leaving it over the clear animation and the next move.
+    this.ui.clearHint();
     const specials = stats.specials || [];
     const bombSpecials = specials.filter(({ type }) => type === 'bomb');
     const blastCells = this.model.specialBombCells(bombSpecials, rect, 4);

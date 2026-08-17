@@ -188,12 +188,15 @@ export class GameUI {
       void this.elements.startCountdownValue.offsetWidth;
       this.elements.startCountdownValue.classList.add('is-popping');
       onStep(step);
-      await delay(compact ? (isGo ? 320 : 240) : (isGo ? 500 : 420));
+      // The original OING holds each digit for 650ms and GO! for 500ms —
+      // long enough for the bloom to overshoot and settle before the next
+      // beat lands. Ours ran at 420/500 and read as a stutter.
+      await delay(compact ? (isGo ? 380 : 420) : (isGo ? 500 : 650));
     }
 
     if (token !== this.startCountdownToken) return false;
     overlay.classList.add('is-leaving');
-    await delay(compact ? 110 : 170);
+    await delay(compact ? 110 : 150);
     overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
     overlay.setAttribute('aria-hidden', 'true');
     return true;
@@ -682,13 +685,21 @@ export class GameUI {
       this.boardFrame.appendChild(region);
       window.setTimeout(() => region.remove(), 2200);
     }
-    this.hintTimer = setTimeout(() => {
-      tiles.forEach((tile) => {
-        tile.classList.remove('is-hint');
-        tile.style.removeProperty('--hint-index');
-      });
-      this.board.classList.remove('is-hinting');
-    }, 2200);
+    this.hintTimer = setTimeout(() => this.clearHint(), 2200);
+  }
+
+  // Once the hinted answer is actually played the hint has done its job, so
+  // the board must come back instantly. Waiting out the 2.2s display timer
+  // left the veil and the region sitting over the next move.
+  clearHint() {
+    clearTimeout(this.hintTimer);
+    this.hintTimer = null;
+    this.board.querySelectorAll('.tile.is-hint').forEach((tile) => {
+      tile.classList.remove('is-hint');
+      tile.style.removeProperty('--hint-index');
+    });
+    this.board.classList.remove('is-hinting');
+    this.boardFrame.querySelector('.hint-region')?.remove();
   }
 
   previewBombTarget(rect) {
