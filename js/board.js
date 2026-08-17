@@ -59,15 +59,36 @@ export function boardAssistForPerformance({
 }
 
 
+// Pair weights per difficulty phase, in COMPLEMENT_PAIRS order. Late stages
+// lean on 1+9 and 2+8 for a measured reason: nine cannot appear in any
+// sum-ten triple (9+1 leaves nothing for a third cell), so as the triple
+// share climbs, pairs are the only place the big, instantly readable
+// numbers can live. Left alone, stage 10 fell to 2.6% nines and 2.6%
+// eights and the board turned into small-number addition.
 const ORIGINAL_PAIR_WEIGHTS = Object.freeze([
   Object.freeze([8, 8, 13, 15, 11]),
-  Object.freeze([9, 9, 13, 14, 10]),
   Object.freeze([10, 10, 13, 13, 9]),
-  Object.freeze([11, 11, 13, 12, 8]),
-  Object.freeze([12, 11, 13, 12, 7]),
+  Object.freeze([12, 12, 13, 11, 7]),
+  Object.freeze([13, 12, 13, 11, 6]),
+  Object.freeze([15, 14, 12, 9, 5]),
+  Object.freeze([16, 15, 12, 8, 4]),
 ]);
 const COMPLEMENT_PAIRS = Object.freeze([[1, 9], [2, 8], [3, 7], [4, 6], [5, 5]]);
-const TEN_TRIPLES = Object.freeze([[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]]);
+
+// Sum-ten triples. The early pool is the original four; once the triple
+// share starts to dominate, the pool swaps in 1+2+7. What matters for feel
+// is whether a triple has a big anchor: spotting a 7 and hunting its 1+2 is
+// recognition, while 3+3+4 is pure addition. Anchored sets keep the late
+// board readable without making it easier — difficulty still rides on shape
+// and density, not on how much mental arithmetic each answer costs.
+const TEN_TRIPLES_EARLY = Object.freeze([[2, 3, 5], [1, 4, 5], [1, 3, 6], [2, 2, 6]]);
+const TEN_TRIPLES_LATE = Object.freeze([
+  [1, 2, 7], [1, 3, 6], [2, 2, 6], [1, 4, 5], [2, 3, 5], [3, 3, 4],
+]);
+
+function tripleGroupsForRound(round = 1) {
+  return difficultyPhaseForStage(round) <= 4 ? TEN_TRIPLES_EARLY : TEN_TRIPLES_LATE;
+}
 
 // Splits a value list into groups that each sum to exactly ten, or returns
 // null when no such partition exists. Backtracking over descending values
@@ -228,7 +249,8 @@ function pairWeightsForRound(round = 1) {
   if (stage <= 3) return ORIGINAL_PAIR_WEIGHTS[1];
   if (stage === 4) return ORIGINAL_PAIR_WEIGHTS[2];
   if (stage === 5) return ORIGINAL_PAIR_WEIGHTS[3];
-  return ORIGINAL_PAIR_WEIGHTS[4];
+  if (stage <= 7) return ORIGINAL_PAIR_WEIGHTS[4];
+  return ORIGINAL_PAIR_WEIGHTS[5];
 }
 
 function apportionedPairCounts(unitCount, weights) {
@@ -257,8 +279,16 @@ export function numberBagForRound(numberCount, round = 1) {
   apportionedPairCounts(pairUnits, pairWeightsForRound(round)).forEach((units, index) => {
     for (let unit = 0; unit < units; unit += 1) bag.push(...COMPLEMENT_PAIRS[index]);
   });
+  // The walk starts at a random point rather than at the stage number: a
+  // fixed start made a stage's composition depend on where its index landed
+  // in the table, so single stages swung between big-number and all-small
+  // boards for no design reason. Walking consecutively from a random start
+  // keeps one board's triples spread across the pool while every stage
+  // averages out to the pool's own mix.
+  const triples = tripleGroupsForRound(round);
+  const start = Math.floor(Math.random() * triples.length);
   for (let unit = 0; unit < tripleUnits; unit += 1) {
-    bag.push(...TEN_TRIPLES[(Math.max(0, round - 1) + unit) % TEN_TRIPLES.length]);
+    bag.push(...triples[(start + unit) % triples.length]);
   }
   return shuffleArray(bag);
 }
