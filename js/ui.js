@@ -226,6 +226,9 @@ export class GameUI {
     this.boardFrame.dataset.cols = String(cols);
     this.boardFrame.dataset.rows = String(rows);
     this.elements.playScreen.classList.toggle('is-tall-board', rows > cols);
+    // The deepest ladder steps (8 and 9 rows) need more height than the tall
+    // board's chrome trim frees up, so they get their own tighter tier.
+    this.elements.playScreen.dataset.boardRows = String(rows);
     this.board.style.setProperty('--board-cols', cols);
     this.board.style.setProperty('--board-rows', rows);
     this.boardFrame.style.setProperty('--board-cols', cols);

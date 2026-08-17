@@ -878,10 +878,10 @@
   border-radius: calc(clamp(15px, 4vw, 22px) - 4px);
   background-color: rgba(225,246,252,.34);
   background-image:
-    linear-gradient(to right, rgba(255,255,255,.3) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,.3) 1px, transparent 1px);
+    linear-gradient(to right, rgba(46,84,112,.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(46,84,112,.16) 1px, transparent 1px);
   box-shadow:
-    inset 0 0 12px rgba(91,174,211,.1),
+    inset 0 0 12px rgba(64,132,168,.14),
     inset 0 0 0 1px rgba(255,255,255,.26);
 }
 
@@ -3062,4 +3062,128 @@
 
 .screen-play.play-ui-v4[data-chapter="night"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
   background-position: center, center, center, center 0%;
+}
+
+/* ==========================================================================
+   Bigger boards, pass 2 (실기기 피드백)
+   The row-growth ladder made the tall boards *narrower*: with a fixed
+   height budget, 6x9 could only be 336px wide where 6x7 got 365px, so the
+   deepest board - the one a good run earns - had the smallest tiles and
+   the widest empty margins beside it. The height budget is now a variable,
+   and the tall boards trim the chrome around them to fund a bigger board,
+   so every step of the ladder fills the column instead of shrinking away
+   from it. Keep --board-chrome in sync with the trims below: raise one
+   without the other and the board overlaps the cat coach.
+   ========================================================================== */
+.screen-play.play-ui-v4 {
+  --board-chrome: 336px;
+  --board-fill: 98cqw;
+}
+
+/* Measured, not guessed: at 390x844 the fixed chrome around a tall board
+   bottoms out near 326px once the flex spacers are squeezed flat, so a
+   smaller budget than that pushes the board straight through the cat
+   coach. The deepest two steps buy their extra height from the coach and
+   the dock instead (see the deep-board tier below). */
+/* Part of the chrome scales with the viewport (every clamp above is dvh
+   based) and part is fixed, so a single pixel budget only ever fits one
+   screen: measured against both 360x740 and 390x844, the fixed half is
+   ~258px and the elastic half ~8dvh. The deep tier is 18px lower because
+   its coach and dock rows are shorter. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(258px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(244px + 8dvh);
+}
+
+.screen-play.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4 .board-frame[data-round],
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame,
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-round] {
+  width: min(
+    var(--board-fill),
+    calc((100dvh - var(--board-chrome)) * var(--board-cols) / var(--board-rows)),
+    430px
+  );
+}
+
+/* The pixels the formula above spends, reclaimed - tall boards only, so the
+   opening 5x5 and 6x6 keep the roomier chrome they already fit. */
+.play-ui-v4.is-tall-board .cat-coach {
+  height: clamp(40px, 5.6dvh, 50px);
+}
+
+.play-ui-v4.is-tall-board .play-footer {
+  width: min(89%, 368px);
+}
+
+.play-ui-v4.is-tall-board .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band].is-tall-board .play-top-controls {
+  height: clamp(48px, 7dvh, 58px);
+}
+
+.play-ui-v4.is-tall-board .play-feedback-rail,
+.play-ui-v4.is-tall-board.is-stage-clearing .play-feedback-rail {
+  height: clamp(10px, 1.4dvh, 13px);
+}
+
+.screen-play.play-ui-v4.is-tall-board {
+  padding-top: calc(var(--safe-top) + clamp(3px, 0.6dvh, 7px));
+}
+
+/* ==========================================================================
+   Tile separation (실기기 피드백: 칸 구분이 안 된다)
+   The syrup tile is deliberately one pale mint for every cell, which rests
+   the eye over two minutes but left neighbouring tiles bleeding into each
+   other - the only thing between them was a bright hairline. Colour and
+   the lit face stay exactly as tuned; the fix is entirely in the dark end:
+   a crisp cool rim, a real drop under the tile, and a deeper bottom edge
+   inside it, so each cell reads as its own raised button.
+
+   The highlight states (hint / tutorial / end-of-run answers) own the
+   tile's box-shadow themselves and are excluded - otherwise this rule,
+   being later and more specific, would erase their glow.
+   ========================================================================== */
+.play-ui-v4 .board {
+  gap: clamp(1.5px, .52vw, 2.6px);
+}
+
+.play-ui-v4 .tile[class*="value-"]:not(.is-hint):not(.is-tutorial):not(.is-end-answer),
+.play-ui-v4 .tile.is-bonus-cat:not(.is-hint):not(.is-tutorial):not(.is-end-answer),
+.play-ui-v4 .tile.is-board-item:not(.is-hint):not(.is-tutorial):not(.is-end-answer) {
+  box-shadow:
+    0 0 0 1px rgba(52, 90, 120, .44),
+    0 2.5px 4px rgba(36, 70, 96, .28),
+    inset 0 -4px 6px rgba(44, 86, 116, .24),
+    inset 0 1.5px 0 rgba(255, 255, 255, .62);
+}
+
+/* The tile's own cast shadow, deepened to match. It rides `filter` (which
+   follows the rounded shape) rather than another box-shadow layer, and the
+   hint veil's saturate() has to repeat it or the shadows would pop off the
+   moment a hint appears. */
+.play-ui-v4 .tile {
+  filter: drop-shadow(0 2px 3px rgba(42, 78, 104, .26));
+}
+
+.play-ui-v4 .board.is-hinting .tile:not(.is-hint),
+.play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
+  filter: saturate(.72) drop-shadow(0 2px 3px rgba(42, 78, 104, .26));
+}
+
+/* Deep boards (8-9 rows): the run's payoff boards, and the ones the height
+   budget squeezes hardest. The cat keeps speaking but takes a shorter row,
+   and the painted dock gives up its outer margin - both are chrome, and the
+   board is the game. */
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  height: clamp(34px, 4.6dvh, 42px);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  width: min(82%, 340px);
 }
