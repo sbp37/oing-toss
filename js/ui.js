@@ -1906,9 +1906,9 @@ export class GameUI {
     if (this.elements.finalRoundLabel) {
       this.elements.finalRoundLabel.textContent = classic ? '판갈이 수' : '도달 스테이지';
     }
-    this.elements.resultKicker.textContent = classic ? `클래식 모드 ${classic.label}` : '이번 판 기록';
+    this.elements.resultKicker.textContent = classic ? '클래식 모드 기록' : '이번 판 기록';
     this.elements.resultStageProgress.textContent = classic
-      ? `클래식 ${classic.label} · ${classic.boards}판 진행 · 성공 ${successCount}회`
+      ? `클래식 · ${classic.boards}판 진행 · 성공 ${successCount}회`
       : `STAGE ${round} 도달 · 성공 ${successCount}회`;
     this.elements.retryButton.textContent = classic ? '클래식 한 판 더!' : resultRetryLabel({
       score,

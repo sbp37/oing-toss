@@ -471,8 +471,7 @@ img {
 .classic-mode-row {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
+  grid-template-columns: 1fr;
 }
 
 .classic-mode-button {

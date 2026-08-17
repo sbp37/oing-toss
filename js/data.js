@@ -255,12 +255,24 @@ export function comboAfterIdle(combo, stage = 1) {
 // original's own number scale, so the mode can be felt side by side with
 // the stage ladder without touching the ladder's tuning.
 export const CLASSIC_COMBO_CAP = 25;
-export const CLASSIC_BOARD_BONUS_SECONDS = 15;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
-export const CLASSIC_VARIANTS = Object.freeze({
-  standard: Object.freeze({ key: 'standard', rows: 7, cols: 6, label: '6×7' }),
-  wide: Object.freeze({ key: 'wide', rows: 9, cols: 7, label: '7×9' }),
-});
+// The board ladder folds the stage mode's onboarding ramp into the classic
+// loop itself: two warm-up boards, then the full board for the rest of the
+// run. With a combo that never times out, the small boards become the safe
+// stretch where the multiplier spools up and the big board is where it
+// pays out — and skilled players reach the payout sooner and stay longer.
+// Each step carries its own 판갈이 bonus: small boards dry fast, so a flat
+// +15s would turn the opening into a time fountain.
+export const CLASSIC_BOARD_LADDER = Object.freeze([
+  Object.freeze({ rows: 5, cols: 5, timeBonus: 8 }),
+  Object.freeze({ rows: 6, cols: 6, timeBonus: 11 }),
+  Object.freeze({ rows: 7, cols: 6, timeBonus: 15 }),
+]);
+
+export function classicBoardForIndex(boardIndex = 0) {
+  const index = Math.max(0, Math.round(Number(boardIndex) || 0));
+  return CLASSIC_BOARD_LADDER[Math.min(index, CLASSIC_BOARD_LADDER.length - 1)];
+}
 
 export function classicComboGain(cellCount) {
   return Math.round(Number(cellCount) || 0) >= 5 ? 2 : 1;
@@ -287,9 +299,9 @@ export function classicRoundForBoard(boardIndex = 0) {
   return Math.min(10, 5 + Math.max(0, Math.round(Number(boardIndex) || 0)));
 }
 
-export function classicTimeAfterBoardChange(timeLeft = 0) {
+export function classicTimeAfterBoardChange(timeLeft = 0, bonusSeconds = 15) {
   return Math.min(
-    Math.max(0, Number(timeLeft) || 0) + CLASSIC_BOARD_BONUS_SECONDS,
+    Math.max(0, Number(timeLeft) || 0) + Math.max(0, Number(bonusSeconds) || 0),
     CLASSIC_TIME_CAP_SECONDS,
   );
 }

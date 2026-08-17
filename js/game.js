@@ -12,7 +12,7 @@ import {
   buildResultReaction,
   cappedSessionTime,
   chooseBoardDrop,
-  CLASSIC_VARIANTS,
+  classicBoardForIndex,
   classicComboAfterFailure,
   classicComboGain,
   classicRoundForBoard,
@@ -279,7 +279,6 @@ class OingGame {
       document.querySelector('#retry-button'),
       document.querySelector('#ranking-play-button'),
       document.querySelector('#classic-button'),
-      document.querySelector('#classic-wide-button'),
     ].filter(Boolean);
     const primePlay = () => { preloadPlayAssets({ urgent: true }); };
     playButtons.forEach((button) => {
@@ -288,8 +287,7 @@ class OingGame {
       button.addEventListener('focus', primePlay, { passive: true, once: true });
     });
     document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
-    document.querySelector('#classic-button')?.addEventListener('click', () => this.start(1, { classic: CLASSIC_VARIANTS.standard }));
-    document.querySelector('#classic-wide-button')?.addEventListener('click', () => this.start(1, { classic: CLASSIC_VARIANTS.wide }));
+    document.querySelector('#classic-button')?.addEventListener('click', () => this.start(1, { classic: true }));
     document.querySelector('#retry-button').addEventListener('click', () => this.startCurrentMode({ quickCountdown: true }));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
@@ -378,15 +376,7 @@ class OingGame {
   // as classic (same board size), a stage run as stage mode.
   startCurrentMode(options = {}) {
     return this.start(this.runtime?.forcedRound || 1, this.classic
-      ? {
-        ...options,
-        classic: {
-          key: this.classic.key,
-          rows: this.classic.rows,
-          cols: this.classic.cols,
-          label: this.classic.label,
-        },
-      }
+      ? { ...options, classic: true }
       : options);
   }
 
@@ -417,15 +407,7 @@ class OingGame {
     this.ui.resetItemAvailabilityHistory();
     // Classic mode: state.round is the generation depth ramp, not a stage —
     // the ladder machinery is bypassed at every branch below.
-    this.classic = options.classic
-      ? {
-        key: options.classic.key,
-        rows: options.classic.rows,
-        cols: options.classic.cols,
-        label: options.classic.label,
-        boardIndex: 0,
-      }
-      : null;
+    this.classic = options.classic ? { boardIndex: 0 } : null;
     this.state = this.freshState(this.classic ? classicRoundForBoard(0) : startStage, options);
     if (this.classic) this.state.recordEligible = true;
     this.retryStage = 1;
@@ -532,8 +514,9 @@ class OingGame {
   buildRound() {
     this.boardItems.carry();
     this.itemTapCandidate = null;
-    const config = this.classic
-      ? { size: this.classic.cols, cols: this.classic.cols, rows: this.classic.rows }
+    const classicBoard = this.classic ? classicBoardForIndex(this.classic.boardIndex) : null;
+    const config = classicBoard
+      ? { size: classicBoard.cols, cols: classicBoard.cols, rows: classicBoard.rows }
       : getRoundConfig(this.state.round);
     this.generateBoard(config.size, config.rows);
     // Classic keeps the board bare: no special tiles, no board-drop items —
@@ -994,11 +977,16 @@ class OingGame {
   // clock gains +15s, exactly like the original. The timer never stops and
   // the combo carries straight through.
   async classicBoardChange({ emptied = false } = {}) {
+    // The bonus is earned by the board just finished — a dried 5×5 pays its
+    // own small refund, not the full board's.
+    const clearedBoard = classicBoardForIndex(this.classic.boardIndex);
     this.classic.boardIndex += 1;
+    const nextBoard = classicBoardForIndex(this.classic.boardIndex);
     this.state.round = classicRoundForBoard(this.classic.boardIndex);
     const previousTime = this.state.timeLeft;
-    this.state.timeLeft = classicTimeAfterBoardChange(previousTime);
+    this.state.timeLeft = classicTimeAfterBoardChange(previousTime, clearedBoard.timeBonus);
     const gainedTime = Math.round(this.state.timeLeft - previousTime);
+    const boardGrew = nextBoard.rows * nextBoard.cols > clearedBoard.rows * clearedBoard.cols;
     if (this.timer) this.endAt += (this.state.timeLeft - previousTime) * 1000;
     if (this.state.timeLeft > 10) {
       this.lowTimeSpoken = false;
@@ -1013,6 +1001,9 @@ class OingGame {
       this.grantItems({ hint: 1 });
       this.ui.showMessage('싹 비웠다냥! 힌트 +1', 1800, 'classicClear');
       this.ui.setPlayCharacter('cheer', 1000);
+    } else if (boardGrew) {
+      this.ui.showMessage(gainedTime > 0 ? `판이 커졌다냥! +${gainedTime}초` : '판이 커졌다냥!', 1600, 'classicBoard');
+      this.ui.setPlayCharacter('cheer', 900);
     } else {
       this.ui.showMessage(gainedTime > 0 ? `판갈이다냥! +${gainedTime}초` : '판갈이다냥!', 1600, 'classicBoard');
       this.ui.setPlayCharacter('wave', 900);
@@ -1923,7 +1914,7 @@ class OingGame {
       previousScore: null,
       recordEligible: true,
       resultMessage: newRecord ? '클래식 신기록이다냥!' : '',
-      classic: { label: this.classic.label, boards: this.classic.boardIndex + 1 },
+      classic: { boards: this.classic.boardIndex + 1 },
     };
     this.retryStage = 1;
     this.ui.showResult(this.lastResultSummary);
@@ -1985,14 +1976,14 @@ if (game.runtime.testMode) {
       }
       return structuredClone(game.state);
     },
-    startClassic: async (variant = 'standard') => {
+    startClassic: async () => {
       const countdown = game.ui.animateStartCountdown;
       game.ui.animateStartCountdown = async (_steps, onStep = () => {}) => {
         onStep('GO!');
         return true;
       };
       try {
-        await game.start(1, { classic: CLASSIC_VARIANTS[variant] || CLASSIC_VARIANTS.standard });
+        await game.start(1, { classic: true });
       } finally {
         game.ui.animateStartCountdown = countdown;
       }
