@@ -45,6 +45,7 @@ import {
   stageEndDecision,
   normalClearThresholdForStage,
   isWowClear,
+  isNiceClear,
 } from './data.js';
 import { BoardModel, boardAssistForPerformance } from './board.js';
 import { BoardItemField } from './board-items.js';
@@ -749,6 +750,7 @@ class OingGame {
     // have no target to hit, so it takes the top rank.
     const emptiesBoard = this.model.remainingPlayableCells() - clearedCellCount - blastCells.length <= 0;
     const wow = isWowClear(clearedCellCount);
+    const nice = isNiceClear(clearedCellCount);
 
     // One rank for the whole moment, so the celebrations stop competing.
     // Every system used to fire independently, which made the best clears the
@@ -779,12 +781,16 @@ class OingGame {
         : wow ? 0.25 : 0.17;
       playCatBonusSound(catSoundOffset);
     }
+    // The NICE tag steps aside for the ranks that own the frame outright —
+    // emptying the board (5) and WOW or a rare drop (4) — so it only ever
+    // decorates a moment that would otherwise pass with just a number.
     const scoreFeedback = () => this.ui.showScoreBurst(
       points,
       rect,
       { rows: this.model.rows, cols: this.model.cols },
       this.state.combo,
       clearedCellCount,
+      { nice: nice && successLevel < 4 },
     );
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);

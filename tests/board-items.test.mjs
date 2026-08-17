@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, isNiceClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -99,6 +99,22 @@ test('five cells in one clear is the WOW threshold, matching the original', () =
   assert.equal(isWowClear(4), false, 'four cells already pay a wide bonus but do not stop the screen');
   assert.equal(isWowClear(5), true);
   assert.equal(isWowClear(8), true);
+
+  // NICE is the step below WOW and never overlaps it: exactly four cells.
+  assert.equal(isNiceClear(2), false);
+  assert.equal(isNiceClear(3), false);
+  assert.equal(isNiceClear(4), true);
+  assert.equal(isNiceClear(5), false, 'five cells belong to WOW alone');
+  assert.equal(isNiceClear(7), false);
+  for (const cells of [2, 3, 4, 5, 6, 8]) {
+    assert.ok(!(isNiceClear(cells) && isWowClear(cells)), `${cells} cells must not fire both tiers`);
+  }
+  // The rank system is untouched by NICE: four cells on their own still rank
+  // as a plain clear (or its cat/combo rank), so nothing outranks WOW.
+  assert.equal(successFeedbackLevel({ wow: false }), 1);
+  assert.equal(successFeedbackLevel({ wow: true }), 4);
+  assert.equal(successFeedbackLevel({ emptiesBoard: true, wow: true }), 5);
+  assert.equal(successFeedbackLevel({ catCount: 1 }), 2);
 });
 
 test('bomb and clock inventory unlock only when their teaching stages begin', () => {

@@ -6,6 +6,7 @@ import {
   gardenProgress,
   isRecordInReach,
   isWowClear,
+  isNiceClear,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
@@ -1169,7 +1170,7 @@ export class GameUI {
     }, 660);
   }
 
-  showScoreBurst(points, rect, dimensions, combo, cellCount) {
+  showScoreBurst(points, rect, dimensions, combo, cellCount, { nice = false } = {}) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
@@ -1180,9 +1181,21 @@ export class GameUI {
     // mission chip, the cat's line). Naming them here as well stacked up to
     // seven different labels onto one pop and turned a reward into homework.
     // Just the number. The combo already lives in the HUD, one glance away.
-    burst.replaceChildren(primary);
+    // NICE rides on the score pop rather than owning the screen: a four-cell
+    // clear gets a small tag next to its own number, right where the clear
+    // happened. WOW keeps the centred card and the fanfare to itself.
+    const showNice = nice && isNiceClear(cellCount);
+    if (showNice) {
+      const tag = document.createElement('em');
+      tag.textContent = 'NICE!';
+      burst.replaceChildren(primary, tag);
+    } else {
+      burst.replaceChildren(primary);
+    }
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     burst.dataset.wide = String(isWowClear(cellCount));
+    if (showNice) burst.dataset.nice = 'true';
+    else delete burst.dataset.nice;
     if (bounds) {
       burst.style.left = `${clamp((bounds.left + bounds.right) / 2, 82, bounds.frameWidth - 82)}px`;
       burst.style.top = `${clamp((bounds.top + bounds.bottom) / 2, 52, bounds.frameHeight - 34)}px`;
@@ -1199,6 +1212,7 @@ export class GameUI {
     this.scoreBurstTimer = window.setTimeout(() => {
       burst.classList.remove('is-visible');
       delete burst.dataset.wide;
+      delete burst.dataset.nice;
     }, 900);
   }
 

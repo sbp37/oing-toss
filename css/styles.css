@@ -3394,6 +3394,45 @@ img {
   text-shadow: 0 2px white, 0 0 12px rgba(255, 104, 140, 0.32);
 }
 
+/* NICE ------------------------------------------------------------------
+   The four-cell step below WOW. It stays inside the score pop's own footprint
+   — a small tag under the number, at the clear, with a short punch — so the
+   five-cell WOW keeps the only screen-stopping card and fanfare. */
+.score-burst em {
+  display: block;
+  margin: 3px auto 0;
+  width: fit-content;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(90, 178, 160, .3);
+  background: rgba(240, 255, 250, .95);
+  color: #2f9c8a;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: .04em;
+  text-shadow: none;
+}
+
+.score-burst[data-nice="true"] strong {
+  color: #2f9c8a;
+  font-size: clamp(20px, 6vw, 25px);
+  text-shadow: 0 2px white, 0 0 10px rgba(89, 205, 184, .34);
+}
+
+.score-burst[data-nice="true"].is-visible em { animation: nice-tag-pop 420ms cubic-bezier(.2, .8, .3, 1.05) both; }
+
+@keyframes nice-tag-pop {
+  0% { opacity: 0; transform: scale(.72); }
+  45% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score-burst[data-nice="true"].is-visible em { animation: none; }
+}
+
 .score-burst[data-wide="true"] strong {
   color: #e57a38;
   font-size: clamp(23px, 7vw, 30px);

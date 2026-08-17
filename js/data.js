@@ -313,6 +313,16 @@ export function isWowClear(cellCount) {
   return Math.max(0, Math.round(Number(cellCount) || 0)) >= 5;
 }
 
+// One step below WOW. Measured over the live generator, four-cell clears are
+// 4-19% of a stage's moves while five-plus stay at 0-4%, so four is frequent
+// enough to reward the hunt for a wider shape and rare enough that marking it
+// still means something. It is deliberately a different kind of feedback, not
+// a smaller WOW: a tag on the score pop where the clear happened, no centred
+// card and no fanfare, so five cells keeps the screen-stopping moment alone.
+export function isNiceClear(cellCount) {
+  return Math.max(0, Math.round(Number(cellCount) || 0)) === 4;
+}
+
 // LEVEL 5 board emptied · 4 WOW or rare item · 3 combo milestone
 // or an ordinary drop · 2 cat bonus · 1 plain clear. Higher ranks own the
 // frame for a success; lower-ranked flourishes (the "딱 10!" pop, the combo
