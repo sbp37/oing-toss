@@ -369,23 +369,39 @@ export function needsRescueShuffle({ hasAnswer = false, boardEmpty = false } = {
   return !boardEmpty && !hasAnswer;
 }
 
-// The last few cells of a dead-ended board are leftovers, not gameplay:
-// shuffling a whole board over them reads as the game playing itself. Up
-// to this many remaining playable cells (numbers plus cats), a dry board
-// gets a short soft sweep instead of the rescue shuffle.
-export const SOFT_CLEAR_MAX_TAIL = 6;
+// Running out of tens is the normal way a stage ends — the rule, not an
+// assist. Once this share of the board's starting playable cells is gone
+// and no legal answer remains, the stage simply completes and the
+// leftover tiles are cleaned up by the transition. Progress-based, so it
+// means the same thing on a 4x4 and a 6x7.
+export const NORMAL_CLEAR_MIN_PROGRESS = 0.78;
+
+// Learning stages must not meet the rescue shuffle: measured dry-outs on
+// stages 1-2 cluster at 60-77% progress, so those two stages end normally
+// from 60% on — a beginner's board finishing beats a beginner's board
+// reshuffling. From stage 3 the standard line applies.
+export function normalClearThresholdForStage(stage = 1) {
+  return Math.max(1, Math.round(Number(stage) || 1)) <= 2 ? 0.6 : NORMAL_CLEAR_MIN_PROGRESS;
+}
 
 // How a stage step resolves once a selection settles:
-//  'advance'  — board empty, stage clears (CLEAN when nothing intervened);
+//  'advance'  — the player emptied the board (PERFECT when unassisted);
 //  'continue' — answers remain, play on;
-//  'soft'     — dry board, tiny tail: sweep it and clear (not PERFECT);
-//  'rescue'   — dry board, real cells left: rescue shuffle steps in.
+//  'normal'   — no answer left and enough of the board is cleared (or the
+//               stage already spent its one rescue): the stage ends,
+//               leftovers vanish as part of the transition — not PERFECT,
+//               not a failure, just how a stage finishes;
+//  'rescue'   — no answer while the board is still young, at most once
+//               per stage.
 export function stageEndDecision({
-  hasAnswer = false, boardEmpty = false, remaining = 0, threshold = SOFT_CLEAR_MAX_TAIL,
+  hasAnswer = false, boardEmpty = false, remaining = 0, initialPlayable = 0,
+  stageRescues = 0, threshold = NORMAL_CLEAR_MIN_PROGRESS,
 } = {}) {
   if (boardEmpty) return 'advance';
   if (hasAnswer) return 'continue';
-  return remaining <= threshold ? 'soft' : 'rescue';
+  const cleared = initialPlayable > 0 ? 1 - remaining / initialPlayable : 1;
+  if (cleared >= threshold) return 'normal';
+  return stageRescues === 0 ? 'rescue' : 'normal';
 }
 
 export function shouldShowBeginnerAutoHint({
@@ -531,7 +547,6 @@ export const MESSAGES = Object.freeze({
   autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
   perfect: Object.freeze(['퍼펙트! 한 번도 안 막혔다냥!', '싹 비웠다냥, 최고다냥!']),
   rescue: Object.freeze(['막혔네, 내가 살짝 섞어줄게냥!', '잠깐, 판 좀 다듬는다냥!', '요렇게 섞으면 된다냥!']),
-  softclear: Object.freeze(['마무리는 내가 할게냥!', '요 정도는 치워줄게냥!']),
   shuffle: Object.freeze(['판 좀 뒤집어볼까냥?', '숫자들 자리 바꾼다!', '내가 한번 섞어주지냥.']),
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),

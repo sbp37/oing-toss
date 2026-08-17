@@ -62,17 +62,20 @@ assert.ok(humanlike.novice.roundMean >= 2.8 && humanlike.novice.roundMean <= 5,
 assert.ok(humanlike.expert.roundMean >= 6.5,
   'humanlike experts still reach the late stages');
 
-// Soft clear: a dry board with a tiny tail sweeps and clears instead of
-// shuffling; those stages are never CLEAN, and turning the threshold off
-// routes every dead end back through the rescue shuffle.
-const withSoft = simulateRun({ seed: 4242, profile: 'regular', agent: 'humanlike' });
-assert.ok(withSoft.softClears >= 0);
-assert.ok(withSoft.cleanClears <= withSoft.boardsCleared,
-  'clean clears count only fully unassisted boards');
-const noSoft = simulateRun({ seed: 4242, profile: 'regular', agent: 'humanlike', softClearThreshold: 0 });
-assert.equal(noSoft.softClears, 0, 'threshold 0 disables the soft clear entirely');
-const tight = simulateRun({ seed: 4242, profile: 'regular', agent: 'humanlike', softClearThreshold: 4 });
-assert.ok(tight.softClears >= 0 && Number.isFinite(tight.rescueShuffles),
+// Normal clear: running out of tens ends the stage once enough of the
+// board is cleared; a stage never rescues twice; normal clears are never
+// PERFECT; and the progress the rule fires at stays high.
+const withNormal = simulateRun({ seed: 4242, profile: 'regular', agent: 'humanlike' });
+assert.ok(withNormal.normalClears >= 0);
+assert.equal(withNormal.repeatRescueStages, 0, 'a stage never takes a second rescue');
+assert.ok(withNormal.cleanClears <= withNormal.boardsCleared,
+  'PERFECT counts only fully unassisted boards');
+for (const progress of withNormal.normalClearProgress) {
+  assert.ok(progress >= 0.6 || withNormal.rescueShuffles > 0,
+    'a normal clear fires at its stage threshold unless the rescue was already spent');
+}
+const custom = simulateRun({ seed: 4242, profile: 'regular', agent: 'humanlike', normalClearThreshold: 0.7 });
+assert.ok(custom.normalClears >= 0 && Number.isFinite(custom.rescueShuffles),
   'the threshold parameter reaches the simulation');
 
 console.log('balance.test.mjs: seeded novice/regular/expert progression passed');

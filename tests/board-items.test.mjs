@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, SOFT_CLEAR_MAX_TAIL, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -311,17 +311,22 @@ test('a stage ends only on an empty board; a dry board takes a rescue instead', 
   assert.equal(needsRescueShuffle({ hasAnswer: true, boardEmpty: false }), false);
   assert.equal(needsRescueShuffle({ hasAnswer: false, boardEmpty: true }), false);
 
-  // Stage-end triage: an empty board advances (CLEAN when unassisted), a
-  // dry board with a tiny tail soft-clears, and only a dry board with a
-  // real amount of cells left calls the rescue shuffle.
-  assert.equal(SOFT_CLEAR_MAX_TAIL, 6);
-  assert.equal(stageEndDecision({ boardEmpty: true, remaining: 0 }), 'advance');
-  assert.equal(stageEndDecision({ hasAnswer: true, remaining: 20 }), 'continue');
-  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 6 }), 'soft');
-  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 1 }), 'soft', 'one orphan number never triggers a full shuffle');
-  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 3 }), 'soft', 'a cat-only tail sweeps softly');
-  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 7 }), 'rescue');
-  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 5, threshold: 4 }), 'rescue', 'the threshold is tunable');
+  // Stage-end triage: an empty board advances (PERFECT when unassisted).
+  // Out of tens, the stage ends normally once enough of the board is gone
+  // — progress-based, so it means the same on a 4x4 and a 6x7 — and the
+  // rescue shuffle fires at most once per stage, only on a young board.
+  assert.equal(NORMAL_CLEAR_MIN_PROGRESS, 0.78);
+  assert.equal(stageEndDecision({ boardEmpty: true, remaining: 0, initialPlayable: 17 }), 'advance');
+  assert.equal(stageEndDecision({ hasAnswer: true, remaining: 20, initialPlayable: 38 }), 'continue');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 6, initialPlayable: 38 }), 'normal', '84% cleared ends the stage');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 1, initialPlayable: 17 }), 'normal', 'one orphan number never triggers a shuffle');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 20, initialPlayable: 38 }), 'rescue', 'a young dry board earns its one rescue');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 20, initialPlayable: 38, stageRescues: 1 }), 'normal',
+    'a second dry-out ends the stage instead of shuffling again');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 10, initialPlayable: 38, threshold: 0.7 }), 'normal', 'the threshold is tunable');
+  assert.equal(normalClearThresholdForStage(1), 0.6, 'learning stages end normally from 60% so beginners never meet the shuffle');
+  assert.equal(normalClearThresholdForStage(2), 0.6);
+  assert.equal(normalClearThresholdForStage(3), NORMAL_CLEAR_MIN_PROGRESS);
 
   // No stage config carries a target any more; nothing may reintroduce one.
   for (const stage of [1, 3, 5, 10, 16]) {

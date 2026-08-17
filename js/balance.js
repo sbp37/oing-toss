@@ -7,7 +7,7 @@ import {
 } from './board.js';
 import {
   GAME_DURATION_SECONDS,
-  SOFT_CLEAR_MAX_TAIL,
+  normalClearThresholdForStage,
   TIME_FREEZE_SECONDS,
   TIME_ITEM_CAP_SCORE,
   availableItemTimeBonus,
@@ -141,7 +141,7 @@ export function simulateRun({
   showcaseEligible = false,
   showcaseIndex = 0,
   agent = 'strategic',
-  softClearThreshold = SOFT_CLEAR_MAX_TAIL,
+  normalClearThreshold = null,
 } = {}) {
   const settings = typeof profile === 'string' ? PLAYER_PROFILES[profile] : profile;
   if (!settings) throw new Error(`Unknown player profile: ${profile}`);
@@ -166,8 +166,11 @@ export function simulateRun({
       boards: 0,
       perfectClears: 0,
       rescueShuffles: 0,
-      softClears: 0,
-      stageSoftClears: 0,
+      normalClears: 0,
+      stageNormalClears: 0,
+      repeatRescueStages: 0,
+      normalClearProgress: [],
+      normalClearRemaining: [],
       boardsCleared: 0,
       cleanClears: 0,
       stageRescues: 0,
@@ -188,6 +191,7 @@ export function simulateRun({
       capped: false,
     };
     let model;
+    let initialPlayable = 0;
     let clearsOnBoard = 0;
     let previousDropType = null;
     let dropsEarned = 0;
@@ -242,6 +246,7 @@ export function simulateRun({
       state.initialShapePatternCounts.push(diversity.shapePatterns);
       state.initialValuePatternCounts.push(diversity.valuePatterns);
       state.initialOrientationCounts.push(diversity.orientations);
+      initialPlayable = model.remainingPlayableCells();
       clearsOnBoard = 0;
     };
     const closeBoard = () => {
@@ -251,9 +256,10 @@ export function simulateRun({
     const completeStage = () => {
       closeBoard();
       state.boardsCleared += 1;
-      if (state.stageRescues === 0 && state.stageSoftClears === 0) state.cleanClears += 1;
+      if (state.stageRescues === 0 && state.stageNormalClears === 0) state.cleanClears += 1;
+      if (state.stageRescues >= 2) state.repeatRescueStages += 1;
       state.stageRescues = 0;
-      state.stageSoftClears = 0;
+      state.stageNormalClears = 0;
       const bonus = roundTimeBonusSeconds(state.round);
       state.roundTimeBonus += bonus;
       state.timeLeft = cappedSessionTime(state.timeLeft, bonus);
@@ -323,11 +329,16 @@ export function simulateRun({
           completeStage();
           continue;
         }
-        // A tiny leftover tail is swept softly and the stage clears (not
-        // CLEAN); a real amount of cells takes the rescue shuffle.
-        if (remaining <= softClearThreshold) {
-          state.softClears += 1;
-          state.stageSoftClears += 1;
+        // Out of tens: the stage ends normally once enough of the board is
+        // gone, or once its single rescue is already spent. Rescue fires
+        // at most once per stage, only while the board is still young.
+        const cleared = initialPlayable > 0 ? 1 - remaining / initialPlayable : 1;
+        const threshold = normalClearThreshold ?? normalClearThresholdForStage(state.round);
+        if (cleared >= threshold || state.stageRescues >= 1) {
+          state.normalClears += 1;
+          state.stageNormalClears += 1;
+          state.normalClearProgress.push(cleared);
+          state.normalClearRemaining.push(remaining);
           spendTime(randomBetween(random, 0.4, 0.7));
           model.sweepRemaining();
           completeStage();
@@ -423,7 +434,10 @@ export function summarizeRuns(runs) {
     clearsMean: Math.round(mean(runs.map((run) => run.clears)) * 10) / 10,
     boardsClearedMean: Math.round(mean(runs.map((run) => run.boardsCleared)) * 10) / 10,
     rescueMean: Math.round(mean(runs.map((run) => run.rescueShuffles)) * 100) / 100,
-    softClearMean: Math.round(mean(runs.map((run) => run.softClears || 0)) * 100) / 100,
+    normalClearMean: Math.round(mean(runs.map((run) => run.normalClears || 0)) * 100) / 100,
+    normalClearProgressMean: Math.round(mean(runs.flatMap((run) => run.normalClearProgress || [])) * 1000) / 1000,
+    normalClearRemainingMean: Math.round(mean(runs.flatMap((run) => run.normalClearRemaining || [])) * 10) / 10,
+    repeatRescueStages: runs.reduce((sum, run) => sum + (run.repeatRescueStages || 0), 0),
     cleanClearRate: Math.round(mean(runs.map((run) => (run.boardsCleared ? run.cleanClears / run.boardsCleared : 0))) * 100) / 100,
     timeUpRemainingCellsMean: Math.round(mean(runs.map((run) => run.timeUpRemainingCells)) * 10) / 10,
     itemDropsMean: Math.round(mean(runs.map((run) => Object.values(run.itemsEarned).reduce((a, b) => a + b, 0))) * 100) / 100,

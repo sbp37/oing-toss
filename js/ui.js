@@ -808,17 +808,18 @@ export class GameUI {
     });
   }
 
-  // Blast-debris removal for the rescue fallback: the last orphaned cells
-  // pop away so the stage can complete. Reuses the success pop rhythm.
+  // Transition cleanup: when a stage ends with tiles left (the tens ran
+  // out), the leftovers pop away as part of the stage transition — a
+  // different rhythm from the success animation on purpose.
   async animateSweep(cells = []) {
     const tiles = cells
       .map(({ r, c }) => this.tileAt(r, c))
       .filter(Boolean);
     tiles.forEach((tile, index) => {
-      tile.style.setProperty('--sweep-delay', `${index * 40}ms`);
+      tile.style.setProperty('--sweep-delay', `${index * 30}ms`);
       tile.classList.add('is-sweeping');
     });
-    await delay(300 + cells.length * 40);
+    await delay(240 + cells.length * 30);
   }
 
   // The full-clear payoff: the board is empty, so the garden art beneath it
