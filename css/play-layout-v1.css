@@ -3452,3 +3452,25 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
   --board-chrome: calc(242px + 8dvh);
 }
+
+/* ==========================================================================
+   The cat stops sitting on the hint button
+   Drawn at min(100%, 13.5dvh) the cat measured 114px across and its right
+   edge landed 23px *inside* the hint button, so the first item in the dock
+   was physically covered. It is now ~80% of that, pushed further into the
+   left margin (the tail was already accepted as cropped), and lifted so its
+   feet stop at the screen edge instead of past it. The coach's first column
+   narrows to match, which is what carries the speech bubble across with it.
+   The dock and its buttons are untouched - the hit boxes stay as they were.
+   ========================================================================== */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  grid-template-columns: minmax(74px, 26%) minmax(0, 1fr);
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: min(100%, 10.8dvh);
+  margin-bottom: calc(-1 * clamp(56px, 10.4dvh, 92px));
+  transform: translateX(-26%);
+}
