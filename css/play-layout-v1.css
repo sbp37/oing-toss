@@ -3730,3 +3730,51 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
   --board-chrome: calc(246px + 8dvh);
 }
+
+/* Chapter art through cleared cells only ------------------------------------
+   The hidden-picture loop is the point: classic empties a board completely,
+   so the painting should open up cell by cell as the player clears. What it
+   should NOT do is leak through the 1.5px gutters and the rounded-corner
+   voids between live tiles - the board bed under the grid was near
+   transparent (.12), so every seam sampled the painting and read as stains.
+
+   Sealing the bed alone would also seal the windows, because an empty cell
+   was only ever a transparent hole over the frame art. So the roles move:
+   the bed goes opaque (quiet violet-white, the same family as the tile bed),
+   and each cleared cell paints the painting itself - the board-sized image
+   is positioned per cell from --win-size/--win-pos, which ui.js measures
+   from layout (offsetLeft/Top, immune to the flip animations' transforms).
+   Adjacent cleared cells therefore assemble into one continuous picture. */
+.play-ui-v4 .board { position: relative; }
+
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
+  background-color: rgba(232, 237, 251, .97);
+  background-image:
+    linear-gradient(to right, rgba(104, 116, 192, .08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(104, 116, 192, .08) 1px, transparent 1px);
+}
+
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(255, 255, 255, .38);
+  border-radius: clamp(7px, 1.9vw, 11px);
+  background-color: rgba(255, 255, 255, .04);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .10), rgba(255, 255, 255, .02)),
+    var(--chapter-art);
+  background-size: auto, var(--win-size, cover);
+  background-position: 0 0, var(--win-pos, center);
+  background-repeat: no-repeat;
+  /* Recessed, like a cell lifted out of the board rather than a sticker. */
+  box-shadow:
+    inset 0 2px 4px rgba(64, 76, 128, .20),
+    inset 0 0 0 1px rgba(255, 255, 255, .18);
+  filter: none;
+  opacity: 1;
+}
+
+/* The reveal beat empties the whole frame for the new scene; the opaque bed
+   above outranks the original reveal rule, so it is re-lowered here. */
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board-frame.is-chapter-reveal .board {
+  background-color: transparent;
+  background-image: none;
+}

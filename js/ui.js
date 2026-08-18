@@ -325,6 +325,26 @@ export class GameUI {
     }
     this.board.replaceChildren(fragment);
     this.clearSelection();
+    requestAnimationFrame(() => this.syncChapterWindows());
+    if (!this.chapterWindowResizeBound) {
+      this.chapterWindowResizeBound = true;
+      window.addEventListener('resize', () => this.syncChapterWindows());
+    }
+  }
+
+  // Cleared cells paint the chapter art themselves: each tile gets the
+  // board-sized painting offset to its own cell, so adjacent cleared cells
+  // line up into one continuous picture while the sealed bed keeps it out of
+  // the gutters. Measured from offsetLeft/Top - layout coordinates - so the
+  // flip animations' transforms cannot skew the sample points. Every tile is
+  // measured up front because cells go empty later without a re-render.
+  syncChapterWindows() {
+    const board = this.board;
+    if (!board || !board.offsetWidth) return;
+    board.style.setProperty('--win-size', `${board.offsetWidth}px ${board.offsetHeight}px`);
+    board.querySelectorAll('.tile').forEach((tile) => {
+      tile.style.setProperty('--win-pos', `${-tile.offsetLeft}px ${-tile.offsetTop}px`);
+    });
   }
 
   tileAt(r, c) {
@@ -885,6 +905,9 @@ export class GameUI {
     });
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
     window.setTimeout(() => this.boardFrame.classList.remove('is-shuffle-settled'), 260);
+    // The board may have morphed to a new ladder size during the swap; the
+    // windows resample once the layout has settled.
+    this.syncChapterWindows();
   }
 
   async animateBomb(rect) {
