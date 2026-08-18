@@ -3,6 +3,7 @@ import {
   BOARD_DROP_ITEMS,
   GARDEN_MILESTONES,
   buildScoreComparisons,
+  classicChapterArtUrl,
   classicChapterThumbUrl,
   gardenProgress,
   isRecordInReach,
@@ -152,6 +153,8 @@ export class GameUI {
       chapterRevealName: document.querySelector('#chapter-reveal-name'),
       chapterGallery: document.querySelector('#chapter-gallery'),
       chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
+      chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
+      chapterViewerArt: document.querySelector('#chapter-viewer-art'),
       gardenRevealBest: document.querySelector('#garden-reveal-best'),
       gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
       finalScore: document.querySelector('#final-score'),
@@ -341,9 +344,21 @@ export class GameUI {
   syncChapterWindows() {
     const board = this.board;
     if (!board || !board.offsetWidth) return;
-    board.style.setProperty('--win-size', `${board.offsetWidth}px ${board.offsetHeight}px`);
+    // Cover-fit at the painting's own 1086x1448 ratio. Stretching the image
+    // to the board box squashed every scene on boards that are not 3:4 -
+    // visibly so on the square openers.
+    const ART_W = 1086;
+    const ART_H = 1448;
+    const bw = board.offsetWidth;
+    const bh = board.offsetHeight;
+    const scale = Math.max(bw / ART_W, bh / ART_H);
+    const coverW = ART_W * scale;
+    const coverH = ART_H * scale;
+    const originX = (bw - coverW) / 2;
+    const originY = (bh - coverH) / 2;
+    board.style.setProperty('--win-size', `${coverW}px ${coverH}px`);
     board.querySelectorAll('.tile').forEach((tile) => {
-      tile.style.setProperty('--win-pos', `${-tile.offsetLeft}px ${-tile.offsetTop}px`);
+      tile.style.setProperty('--win-pos', `${originX - tile.offsetLeft}px ${originY - tile.offsetTop}px`);
     });
   }
 
@@ -693,7 +708,7 @@ export class GameUI {
     this.board.classList.remove('is-hinting');
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
-      .filter((tile) => tile && !tile.dataset.item);
+      .filter((tile) => tile && !tile.dataset.item && !tile.classList.contains('is-empty'));
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--hint-index', index);
       tile.classList.add('is-hint');
@@ -1191,7 +1206,7 @@ export class GameUI {
   showCloverHint(rect) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
-      .filter((tile) => tile && !tile.dataset.item);
+      .filter((tile) => tile && !tile.dataset.item && !tile.classList.contains('is-empty'));
     tiles.forEach((tile) => tile.classList.add('is-clover-hint'));
     setTimeout(() => tiles.forEach((tile) => tile.classList.remove('is-clover-hint')), 4500);
   }
@@ -1672,7 +1687,7 @@ export class GameUI {
       this.elements.boardTimeGauge.hidden = !timed;
       if (timed) {
         const remaining = clamp(timeLeft / Math.max(1, duration), 0, 1);
-        this.elements.boardTimeFill.style.width = `${remaining * 100}%`;
+        this.elements.boardTimeFill.style.transform = `scaleX(${remaining})`;
         this.elements.boardTimeGauge.dataset.band = isFrozen ? 'frozen'
           : remaining <= 0.15 ? 'low'
             : remaining <= 0.4 ? 'mid'
@@ -1955,6 +1970,17 @@ export class GameUI {
       item.setAttribute('aria-label', chapter.unlocked
         ? `${chapter.label} 수집 완료`
         : `잠긴 장면, ${chapter.requirement} 필요`);
+      if (chapter.unlocked && classicChapterArtUrl(chapter)) {
+        item.setAttribute('role', 'button');
+        item.tabIndex = 0;
+        item.addEventListener('click', () => this.openChapterViewer(chapter));
+        item.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.openChapterViewer(chapter);
+          }
+        });
+      }
       return item;
     });
     this.elements.chapterGallery.replaceChildren(...cards);
@@ -1964,6 +1990,16 @@ export class GameUI {
         ? `장면 ${found}/${list.length} 수집`
         : '';
     }
+  }
+
+  // The album card is a thumbnail; tapping an earned scene opens the real
+  // painting. Locked cards stay inert - the blur is the tease.
+  openChapterViewer(chapter) {
+    const art = classicChapterArtUrl(chapter);
+    if (!art) return;
+    if (this.elements.chapterViewerTitle) this.elements.chapterViewerTitle.textContent = chapter.label;
+    if (this.elements.chapterViewerArt) this.elements.chapterViewerArt.src = art;
+    this.setOverlay('chapter-viewer', true);
   }
 
   renderRanking({ summary } = {}) {

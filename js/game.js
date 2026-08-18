@@ -325,6 +325,7 @@ class OingGame {
     });
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
     document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
+    document.querySelector('#chapter-viewer-close').addEventListener('click', () => this.ui.setOverlay('chapter-viewer', false));
     document.querySelector('#garden-play-button').addEventListener('click', () => {
       this.ui.setOverlay('garden-overlay', false);
       this.start(1, { classic: true });

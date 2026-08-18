@@ -2250,7 +2250,8 @@
   width: 100%;
   border-radius: inherit;
   background: #7cb342;
-  transition: width .3s linear, background-color .3s linear;
+  transform-origin: left center;
+  transition: transform .3s linear, background-color .3s linear;
 }
 
 .play-ui-v4 .board-time-gauge[data-band="mid"] i { background: #e8c74a; }
@@ -3187,12 +3188,18 @@
    hint veil's saturate() has to repeat it or the shadows would pop off the
    moment a hint appears. */
 .play-ui-v4 .tile {
-  filter: drop-shadow(0 2px 3px rgba(78, 88, 158, .24));
+  /* box-shadow, not drop-shadow: filter() forces the browser to keep a
+     rasterized layer per tile and re-filter it on every repaint, and with
+     up to 54 tiles that was the play loop's single biggest constant GPU
+     cost. The element's own border-radius matches the art closely enough
+     that the cast shadow reads the same. */
+  filter: none;
+  box-shadow: 0 2px 3px rgba(78, 88, 158, .24);
 }
 
 .play-ui-v4 .board.is-hinting .tile:not(.is-hint),
 .play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
-  filter: saturate(.72) drop-shadow(0 2px 3px rgba(78, 88, 158, .24));
+  filter: saturate(.72);
 }
 
 /* Deep boards (8-9 rows): the run's payoff boards, and the ones the height
@@ -3777,4 +3784,56 @@
 .screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board-frame.is-chapter-reveal .board {
   background-color: transparent;
   background-image: none;
+}
+
+/* 2026-08 device-report batch ----------------------------------------------
+   Fixes from a real-device pass: the dock jumping in size at board 3, the
+   flat bubble that came with it, the timer pill sitting small against its
+   own digits, the STAGE numeral crowding the ribbon, hint glow spilling
+   onto cleared cells, and the bonus-cat cell blending into the board. */
+
+/* The dock grew a tier at every ladder step - 74% wide on square boards,
+   89% on tall, 82% on deep - so at board 3 the buttons jumped 52 to 63dp
+   for no reason a player can see. One size now, the one boards 1-2 had. */
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  width: min(74%, 308px);
+}
+
+/* Timer pill: the box hugged its digits. Grown to balance the x1.5 badge
+   across the row; the digits stay, the art breathes around them. */
+.play-ui-v4 .play-top-controls .time-readout,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .time-readout {
+  width: clamp(90px, 26.5%, 98px);
+  min-height: 41px;
+}
+
+/* STAGE numeral sat against the ribbon; down into the plate's belly. */
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  top: 60%;
+}
+
+/* The bubble ran nearly to the screen edge. Its left edge stays attached
+   at the cat; only the right side pulls in. */
+.play-ui-v4 .cat-speech {
+  width: calc(100% - 24px);
+}
+
+/* The bonus-cat cell read as just another pale tile. A warmer bed and a
+   peach rim give it the one-glance difference the peach art alone lost
+   against 40 mint neighbours. */
+.play-ui-v4 .tile.is-bonus-cat {
+  background-color: rgba(255, 216, 182, .97);
+  outline: 1.5px solid rgba(233, 158, 92, .6);
+  outline-offset: -1px;
+}
+
+/* The chapter arrival beat read as a glitch - a bare painting flashing
+   between boards. A stronger plate makes it read as the feature it is. */
+.play-ui-v4 .chapter-reveal {
+  padding: 15px 22px;
+  border-width: 2px;
+  box-shadow: 0 8px 22px rgba(60, 74, 110, .28), inset 0 1px 0 #fff;
 }

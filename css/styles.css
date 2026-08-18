@@ -9605,3 +9605,31 @@ img {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+/* 2026-08 result sheet: bigger cat, bigger line ----------------------------
+   Both were sized for a busier sheet. The cat grows ~17% and the message
+   with it, capped where the longest line still fits on two rows. */
+.result-character-stage { width: 152px; height: 160px; }
+
+.result-message {
+  min-width: 186px;
+  max-width: 236px;
+  font-size: 15.5px;
+}
+
+@media (max-width: 340px) {
+  .result-character-stage { width: 128px; height: 136px; }
+  .result-message { max-width: 208px; font-size: 14.5px; }
+}
+
+/* Chapter viewer: one painting, full width of the panel, its own 3:4. */
+.chapter-viewer-panel { width: min(100%, 330px); padding: 20px 16px 16px; }
+.chapter-viewer-panel h2 { margin: 0 0 10px; color: #44516a; font-size: 19px; }
+.chapter-viewer-panel img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(60, 74, 110, .22), inset 0 0 0 1px rgba(255,255,255,.4);
+}

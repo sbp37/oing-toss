@@ -92,10 +92,10 @@
    boards pay: 5x5 and 6x6 are width-limited, so their surplus comes out of
    the grid spacers instead. */
 .screen-play.play-ui-v4.is-tall-board {
-  --board-chrome: calc(270px + 8dvh);
+  --board-chrome: calc(256px + 8dvh);
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
-  --board-chrome: calc(258px + 8dvh);
+  --board-chrome: calc(250px + 8dvh);
 }
