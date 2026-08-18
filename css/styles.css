@@ -9492,3 +9492,13 @@ img {
   margin-left: 1px;
   font-size: 10.5px;
 }
+
+/* 2026-08 start button stars ------------------------------------------------
+   The two marks flanking 시작하기 were a four-point sparkle on the left and a
+   five-point star on the right, at 20 and 18dp. Same art, same size on both
+   sides now, so the button reads as one symmetrical piece. */
+.start-button-sparkle,
+.start-button-sparkle:last-child {
+  width: 19px;
+  height: 19px;
+}
