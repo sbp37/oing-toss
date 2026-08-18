@@ -23,6 +23,13 @@
 | `assets/backgrounds/home-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/home-bg@2x.webp` | 홈·결과 배경 | 최대 430×932 |
 | `assets/backgrounds/play-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/play-bg@2x.webp` | 플레이 배경 | 최대 430×932 |
 | `assets/backgrounds/board-secret-garden-v1.webp` | imagegen으로 신규 제작한 `assets/source/board-secret-garden-v1.png` | STAGE 3부터 보드 뒤에 깔려 빈칸을 통해서만 드러나는 하부 일러스트 (STAGE 1–2는 기존 유리 바닥 유지) | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-garden.webp` | 기존 승인 원본 `assets/backgrounds/board-secret-garden-v1.webp` | 챕터 1 비밀의 정원 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-forest.webp` | `design/chapter-art/source/chapter-forest.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 2 이끼 숲길 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-stream.webp` | `design/chapter-art/source/chapter-stream.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 3 반짝이는 개울 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-village.webp` | `design/chapter-art/source/chapter-village.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 4 고양이 마을 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-sunset.webp` | `design/chapter-art/source/chapter-sunset.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 5 노을 언덕 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-night.webp` | `design/chapter-art/source/chapter-night.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 6 별빛 지붕 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-aurora.webp` | `design/chapter-art/source/chapter-aurora.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 7 오로라 항구 보드 하부 일러스트 | 보드 내부 320–400px, cover |
 | `assets/ui/play-hud-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 상단의 빈 버튼·STAGE 휘장·타이머·점수/목표/콤보 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/ui/play-footer-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 하단의 빈 말풍선·4색 아이템 도크 셸 | 화면 폭 296–406px, 고유 비율 유지 |
 | `assets/backgrounds/play-bg-v4.webp` | 첨부 플레이 레퍼런스는 색감·구도만 참고하고 imagegen으로 새로 제작한 `assets/source/play-bg-v4.png` | 플레이 화면의 선명한 푸른 하늘과 하단 꽃밭 | 모바일 전체 화면, cover |
