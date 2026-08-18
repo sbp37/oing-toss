@@ -1,4 +1,5 @@
-import { cp, mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,15 +14,6 @@ await mkdir(server, { recursive: true });
 
 for (const entry of ["index.html", "css", "js", "assets"]) {
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
-}
-
-// The play screen ships the approved fixed chrome and default character only.
-// Editable generation sources and builders stay out of the client bundle.
-const chromeSource = resolve(root, "design/ui-chrome");
-const chromeClient = resolve(client, "design/ui-chrome");
-await mkdir(chromeClient, { recursive: true });
-for (const entry of ["ui-chrome.png", "cat_idle.png"]) {
-  await cp(resolve(chromeSource, entry), resolve(chromeClient, entry));
 }
 
 // Keep editable source sheets and font candidates in the repository, but do not
@@ -45,5 +37,28 @@ for (const name of ["blush", "peach", "lemon", "mint", "aqua", "lilac"]) {
     await rm(resolve(client, `assets/ui/tiles-syrup-v4/tile-${name}.webp`), { force: true });
   }
 }
+
+// PNG masters whose webp twin is what the game actually loads. Nothing in
+// index.html, the stylesheets or the JS ever names a .png, so these were
+// sitting in the bundle unreachable - never requested by a browser, but
+// carried on every deploy. Dropping one only ever removes the master, and
+// only when the twin the game does load is present next to it; a PNG with
+// no twin is left in place and reported, so a future PNG-only asset cannot
+// be swept out silently.
+const uiDir = resolve(client, "assets/ui");
+const orphans = [];
+for (const name of await readdir(uiDir)) {
+  if (!name.endsWith(".png")) continue;
+  const twin = resolve(uiDir, `${name.slice(0, -4)}.webp`);
+  if (existsSync(twin)) await rm(resolve(uiDir, name), { force: true });
+  else orphans.push(name);
+}
+if (orphans.length) {
+  console.warn(`build: kept ${orphans.length} png without a webp twin: ${orphans.join(", ")}`);
+}
+
+// Dead stylesheet: index.html never links it, and the atlas image it points
+// at is not shipped either.
+await rm(resolve(client, "css/atlas-integration.css"), { force: true });
 
 await cp(resolve(root, "hosting/worker.js"), resolve(server, "index.js"));
