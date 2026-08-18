@@ -3,6 +3,7 @@ import {
   BOARD_DROP_ITEMS,
   GARDEN_MILESTONES,
   buildScoreComparisons,
+  classicChapterThumbUrl,
   gardenProgress,
   isRecordInReach,
   isWowClear,
@@ -53,6 +54,14 @@ const CHARACTER_ALT = Object.freeze({
   peek: '보드 아래에서 빼꼼 보는 블루 고양이',
   fail: '살짝 아쉬워하는 블루 고양이',
 });
+
+// A url() inside a custom property is resolved against the stylesheet that
+// consumes it, not the document, so a document-relative path handed to CSS
+// from here would be looked up under css/. Resolve it to an absolute URL
+// first and CSS has nothing left to re-resolve.
+function cssUrl(path) {
+  return `url("${new URL(path, document.baseURI).href}")`;
+}
 
 export class GameUI {
   constructor() {
@@ -1794,7 +1803,7 @@ export class GameUI {
     const screen = this.elements.playScreen;
     if (key) screen.dataset.chapter = key;
     else delete screen.dataset.chapter;
-    if (artUrl) screen.style.setProperty('--chapter-art', `url("${artUrl}")`);
+    if (artUrl) screen.style.setProperty('--chapter-art', cssUrl(artUrl));
     else screen.style.removeProperty('--chapter-art');
   }
 
@@ -1810,8 +1819,7 @@ export class GameUI {
     }
   }
 
-  renderGarden(total = 0, cleanClears = 0, chapters = []) {
-    this.renderChapterGallery(chapters);
+  renderGarden(total = 0, cleanClears = 0) {
     const cleared = Math.max(0, Math.round(Number(cleanClears) || 0));
     if (this.elements.gardenRevealBest && this.elements.gardenRevealBestValue) {
       this.elements.gardenRevealBestValue.textContent = cleared.toLocaleString('ko-KR');
@@ -1883,7 +1891,7 @@ export class GameUI {
     card.classList.remove('is-visible');
     void card.offsetWidth;
     card.classList.add('is-visible');
-    await delay(1050);
+    await delay(760);
     card.classList.remove('is-visible');
     this.boardFrame.classList.remove('is-chapter-reveal');
   }
@@ -1909,6 +1917,13 @@ export class GameUI {
       item.dataset.chapter = chapter.key;
       item.classList.toggle('is-unlocked', Boolean(chapter.unlocked));
       item.classList.toggle('is-secret', Boolean(chapter.secret));
+      // A locked card still paints its scene, blurred and drained by CSS, so
+      // the album reads as pictures waiting to be earned rather than a list of
+      // empty slots. Chapters whose art has not shipped get no thumb at all
+      // and fall back to the placeholder wash.
+      const thumb = classicChapterThumbUrl(chapter);
+      item.classList.toggle('has-art', Boolean(thumb));
+      if (thumb) item.style.setProperty('--chapter-thumb', cssUrl(thumb));
       const label = document.createElement('strong');
       label.textContent = chapter.unlocked ? chapter.label : '???';
       const requirement = document.createElement('span');

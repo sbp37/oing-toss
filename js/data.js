@@ -352,12 +352,12 @@ export function classicRoundForBoard(boardIndex = 0) {
 // falls back to the original garden painting (see the chapter background
 // rules in play-layout-v1.css), so chapters can ship art one at a time.
 export const CLASSIC_CHAPTERS = Object.freeze([
-  Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: false }),
-  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 2, art: 'chapter-forest', hasArt: false }),
-  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 4, art: 'chapter-stream', hasArt: false }),
-  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 6, art: 'chapter-village', hasArt: false }),
-  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 8, art: 'chapter-sunset', hasArt: false }),
-  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 10, art: 'chapter-night', hasArt: false }),
+  Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: true }),
+  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 2, art: 'chapter-forest', hasArt: true }),
+  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 4, art: 'chapter-stream', hasArt: true }),
+  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 6, art: 'chapter-village', hasArt: true }),
+  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 8, art: 'chapter-sunset', hasArt: true }),
+  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 10, art: 'chapter-night', hasArt: true }),
 ]);
 
 // A scene goes live in two steps: drop assets/backgrounds/<art>.webp, then
@@ -367,6 +367,13 @@ export function classicChapterArtUrl(chapter) {
   return chapter?.hasArt && chapter.art ? `assets/backgrounds/${chapter.art}.webp` : null;
 }
 
+// The album shows all seven scenes at once, so it reads a downscaled twin
+// rather than seven full paintings. Null until the art actually ships, which
+// is what lets the card fall back to its placeholder.
+export function classicChapterThumbUrl(chapter) {
+  return chapter?.hasArt && chapter.art ? `assets/backgrounds/thumbs/${chapter.art}.webp` : null;
+}
+
 // Reached by score alone, so it stays visible as a goal for players who
 // already know every scene the ladder can show them.
 export const CLASSIC_SECRET_CHAPTER = Object.freeze({
@@ -374,7 +381,7 @@ export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   label: '오로라 항구',
   minScore: 5000,
   art: 'chapter-aurora',
-  hasArt: false,
+  hasArt: true,
 });
 
 // The 5×5 opener is a ramp for a first-timer and a toll for everybody

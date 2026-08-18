@@ -9502,3 +9502,106 @@ img {
   width: 19px;
   height: 19px;
 }
+
+/* 2026-08 chapter album ----------------------------------------------------
+   The album moved out of the parked garden into the records sheet, and the
+   cards stopped being name chips. Each one is now the scene itself at 3:4,
+   the same ratio the paintings ship in, so the reward is the picture rather
+   than a checklist row. A locked card still paints its scene -- blurred,
+   drained and darkened -- because "there is something there you have not
+   reached" is a better hook than an empty slot. */
+.chapter-gallery {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.chapter-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+  display: grid;
+  align-content: end;
+  gap: 0;
+  overflow: hidden;
+  padding: 3px;
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, rgba(206,226,236,.55), rgba(232,224,206,.55));
+  isolation: isolate;
+}
+
+/* The painting sits on its own layer so the lock treatment can blur it
+   without touching the label on top. */
+.chapter-card.has-art::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  background: var(--chapter-thumb) center / cover no-repeat;
+}
+
+/* Legibility scrim under the name, and the lock veil in one element. */
+.chapter-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(38,52,74,.42) 0%, rgba(38,52,74,.06) 42%, transparent 62%),
+    linear-gradient(0deg, rgba(30,44,66,.62), transparent 52%);
+}
+
+.chapter-card:not(.is-unlocked).has-art::before {
+  filter: blur(3.5px) saturate(.35) brightness(.86);
+  transform: scale(1.12);
+}
+
+.chapter-card:not(.is-unlocked)::after {
+  background: linear-gradient(0deg, rgba(30,44,66,.66), rgba(30,44,66,.34));
+}
+
+.chapter-card strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 2px rgba(24,36,56,.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-card span {
+  color: rgba(255,255,255,.86);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 2px rgba(24,36,56,.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-card.is-unlocked {
+  border-color: rgba(102,185,167,.75);
+  background: none;
+}
+
+.chapter-card.is-unlocked strong,
+.chapter-card.is-unlocked span { color: #fff; }
+
+/* The score-gated scene keeps its warm frame so it reads as a different
+   kind of goal from the ones the ladder hands out. */
+.chapter-card.is-secret { border-color: rgba(224,168,92,.6); border-style: dashed; }
+.chapter-card.is-secret.is-unlocked { border-style: solid; border-color: rgba(240,186,102,.9); }
+.chapter-card.is-secret.is-unlocked strong { color: #fff; }
+.chapter-card.is-secret.is-unlocked span { color: rgba(255,240,214,.94); }
+
+/* The sheet grew a picture grid, so it needs to be able to scroll on short
+   screens instead of clipping. */
+.ranking-panel {
+  max-height: calc(100dvh - 44px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

@@ -1105,9 +1105,7 @@ class OingGame {
     // new skin first — buildRound's own call then finds nothing to change.
     if (enteredChapter) {
       this.applyClassicChapter();
-      /* TODO: restore the chapter reveal card. Only the background art
-         swap is live for now; the card itself is parked. */
-      // await this.ui.revealChapter(enteredChapter.label);
+      await this.ui.revealChapter(enteredChapter.label);
     }
     this.buildRound();
     await this.ui.animateShuffleIn();
@@ -1952,16 +1950,20 @@ class OingGame {
     this.refreshClassicRecordSurfaces();
     this.ui.renderRanking(records);
     this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
+    // The album lives in the records sheet now: the garden it used to sit in
+    // is parked, and this is the surface a player already opens to look back
+    // at a run.
+    this.ui.renderChapterGallery(classicChapterGallery({
+      seenKeys: storageAdapter.getSeenChapters(),
+      bestScore: storageAdapter.getClassicBestScore(),
+    }));
     this.ui.setOverlay('ranking-overlay', true);
   }
 
   openGarden() {
     const total = storageAdapter.getCatsRescued();
     this.ui.updateCatsRescued(total);
-    this.ui.renderGarden(total, storageAdapter.getCleanClears(), classicChapterGallery({
-      seenKeys: storageAdapter.getSeenChapters(),
-      bestScore: storageAdapter.getClassicBestScore(),
-    }));
+    this.ui.renderGarden(total, storageAdapter.getCleanClears());
     this.ui.setOverlay('garden-overlay', true);
   }
 
