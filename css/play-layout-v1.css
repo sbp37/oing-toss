@@ -3660,3 +3660,27 @@
 .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
   font-size: clamp(18px, 5.3vw, 25px);
 }
+
+/* ==========================================================================
+   Speech bubble: full width, and it only ever grows downward
+   Pinning the lane to 30dp also pinned the bubble's width at 205dp - under
+   half the screen - so 31 of the 131 strings showMessage can raise needed
+   three lines to fit. The bubble now fills the coach's second column, which
+   runs from the cat's right edge to 12dp short of the screen edge.
+
+   Height stays variable: 30dp at one line, taller at two. Growth is
+   downward only (align-self: start inside the fixed lane), so the board
+   above never moves when a longer line arrives mid-drag, and the overhang
+   across the dock stays click-through.
+   ========================================================================== */
+.play-ui-v4 .cat-speech {
+  align-self: start;
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+}
+
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  padding: 4px 14px;
+}
