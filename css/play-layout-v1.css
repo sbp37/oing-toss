@@ -3684,3 +3684,24 @@
 .play-ui-v4.is-tall-board .play-character-stage {
   transform: none;
 }
+
+/* ==========================================================================
+   5. The timer pill slims down
+   The pill measured 100x47dp. Its height comes from the painted chrome's
+   534/249 aspect, so narrowing it is what shortens it.
+
+   The digits are deliberately NOT reduced by the same 15%. The brief asks
+   the timer to stay the largest number in the HUD, and it already was not:
+   measured before any change, the timer read 19.5px against 21.8px for
+   score, combo and best at 390x844 (18px against 20.2px at 360x740). Taking
+   another 15% off would have widened a gap that is already the wrong way
+   round, so the box shrinks and the digits hold their size - which is the
+   "shrink less if the constraint breaks" case the brief describes.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls .time-readout,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .time-readout {
+  width: clamp(80px, 23.5%, 86px);
+  /* A 44px floor was holding the height up regardless of the width; the
+     534/249 chrome sets it now. */
+  min-height: 36px;
+}
