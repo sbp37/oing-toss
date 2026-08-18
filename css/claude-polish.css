@@ -1,48 +1,54 @@
 /* ============================================================
-   claude-polish.css — 홈/플레이 마감 보정 (기존 CSS 뒤 로드)
+   claude-polish.css - home/play finishing pass, loaded last so
+   everything here wins on source order.
+   Comments are in English on purpose: tests/fonts.test.mjs treats
+   any Korean glyph in html/css/js as shipped UI text and fails if
+   the font subset is missing it, and glyphs that only ever appear
+   in a comment would bloat the subset without rendering anywhere.
    ============================================================ */
 
-/* ── 홈 ──────────────────────────────────────────────────── */
+/* -- Home ------------------------------------------------------------- */
 
-/* 로고가 상단에 붙어 있음 → 안전영역 + 여백 확보 */
+/* The logo sat flush against the top edge. */
 .home-brand {
   margin-top: calc(var(--safe-top) + clamp(16px, 3.2dvh, 30px));
 }
 
-/* 로고 webp의 그림 무게중심이 이미지 중앙에서 오른쪽으로 4.2% 벗어나
-   있어(알파 무게중심 실측 x=542/1000), 기하학적 중앙 배치 시 눈에는
-   치우쳐 보임. 그만큼 반대로 이동해 시각적 중앙을 맞춘다. */
+/* The wordmark's ink sits right of the file's geometric centre - measured
+   alpha centroid x = 542/1000, so +4.20% - which makes a geometrically
+   centred logo read as pushed right. Shift the box back by that much.
+   Done with position, not transform: home-logo-breathe animates transform
+   and would overwrite it. */
 .oing-logo {
-  /* transform은 home-logo-breathe 애니메이션이 덮어쓰므로 position으로 이동.
-     로고 그림의 알파 무게중심이 우측으로 4.2% 치우쳐 있음(실측 542/1000). */
   position: relative;
   left: -4.5%;
 }
 
-/* 고양이를 살짝 오른쪽으로 (바닥 그림자 ::before 포함해 함께 이동) */
+/* Same correction for the cat, whose ink centroid is 2.96% left of centre
+   (198.5/422). The ground shadow is a pseudo-element, so it rides along. */
 .home-character-stage {
   transform: translateX(8px);
 }
 
-/* ── 플레이 ──────────────────────────────────────────────── */
+/* -- Play ------------------------------------------------------------- */
 
-/* 타이머 pill이 상대적으로 작아짐 → 12% 확대.
-   2분 스코어 어택에서 시간은 유일하게 다음 행동을 바꾸는 정보라
-   HUD에서 가장 큰 숫자여야 한다. */
-/* 타이머 숫자가 그려진 pill 아트 밖으로 삐져나가는 문제:
-   아트는 상단 크롬 webp에 고정돼 있어 box만 키우면 숫자가 그림을 벗어난다.
-   → 숫자를 아트 안에 정확히 맞춘다. */
+/* Time is the only number in a two minute score attack that changes what
+   you do next, so it should not be the smallest figure in the HUD. This
+   brings the digits from 19.5 to 21.1px at 390x844 against a 21.8px score,
+   inside the pill art rather than growing the box past it. */
 .play-ui-v4 .time-readout {
   padding-right: 7% !important;
 }
+
 .play-ui-v4 .time-readout strong {
   font-size: clamp(18px, 5.4vw, 23px) !important;
 }
 
-/* 타일 숫자 대비 보강 — 반투명 시럽 타일 위에서 흐릿하게 읽히는 문제 */
-/* 타일에 saturate(0.72) 필터가 걸려 있어 숫자 남색이 회색으로 빨림.
-   필터 통과 후 목표색(#2e4160)이 되도록 미리 과채도 남색으로 보정하고,
-   Jua 단일 굵기의 얇음은 스트로크 0.35px로 보완. */
+/* Numerals on translucent syrup tiles read soft, and Jua has one weight
+   with no bolder cut to reach for. A deeper navy plus a hairline stroke
+   does the work a heavier weight would. (The board's saturate(.72) filter
+   applies only while the hint or tutorial veil is up, not in normal play,
+   so this is straight contrast rather than filter compensation.) */
 .play-ui-v4 .tile span {
   color: #16386e;
   -webkit-text-stroke: 0.35px currentColor;
@@ -52,19 +58,44 @@
     0 2px 2px rgba(57, 51, 45, 0.07);
 }
 
-/* "슥 묶어서 10!" 튜토리얼 칩이 시간 게이지와 겹침 → 보드 안쪽으로 */
+/* The drag tutorial chip overlapped the time gauge. */
 .play-ui-v4 .tutorial-callout {
   margin-top: 10px;
 }
 
+/* Speech bubble: the 30dp lane read as a thin strip rather than a bubble,
+   so the lane grows to 42dp. The width stays put, though - a percentage
+   side padding would cut the 271dp bubble's text column to 206dp, and
+   that is exactly the width that put 7 of the 131 possible messages onto
+   three lines at 390x844 and 12 at 360x740. Fixed padding keeps the
+   column, and the audit is back to zero clipped and two lines worst case
+   at both sizes, with the type a touch larger than before at 360. */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  height: 42px;
+}
 
-/* ── 말풍선 두께 확보 (얇은 띠 문제) ───────────────────────── */
 .play-ui-v4 .cat-speech {
   min-height: 42px;
 }
+
 .play-ui-v4 .cat-message,
 .play-ui-v4.is-tall-board .cat-message {
-  padding: 9px 12%;
-  font-size: 15.5px;
-  line-height: 1.3;
+  padding: 5px 13px;
+  font-size: 14.2px;
+  line-height: 1.22;
+}
+
+/* The lane took 12dp, so the board's budget gives it back. Only the deep
+   boards pay: 5x5 and 6x6 are width-limited, so their surplus comes out of
+   the grid spacers instead. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(270px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(258px + 8dvh);
 }

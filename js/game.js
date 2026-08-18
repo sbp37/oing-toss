@@ -448,7 +448,8 @@ class OingGame {
     // result sheet's 판갈이 count.
     this.classic = options.classic
       ? {
-        /* TODO: 점수별 시작 보드 해금을 되살리려면 classicStartBoardIndex(...)로 복원 */
+        /* TODO: to bring back score-gated start boards, restore
+           classicStartBoardIndex(storageAdapter.getClassicBestScore()) here. */
         boardIndex: 0,
         boardsPlayed: 1,
         chapterKey: null,
@@ -1104,8 +1105,8 @@ class OingGame {
     // new skin first — buildRound's own call then finds nothing to change.
     if (enteredChapter) {
       this.applyClassicChapter();
-      /* TODO: 정원 기능 재작업 시 복구 — 장면 공개 카드 연출은
-         정원 시스템과 함께 다시 붙인다. 배경 아트 교체만 유지. */
+      /* TODO: restore the chapter reveal card. Only the background art
+         swap is live for now; the card itself is parked. */
       // await this.ui.revealChapter(enteredChapter.label);
     }
     this.buildRound();

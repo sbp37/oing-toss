@@ -9404,7 +9404,7 @@ img {
    the weight sits left, which is the other half of the misalignment. */
 .home-character-stage {
   width: auto;
-  height: clamp(150px, calc(100dvh - 496px), 304px);
+  height: clamp(132px, calc(100dvh - 520px), 304px);
   aspect-ratio: 422 / 480;
   margin-top: clamp(4px, 2.6vh, 26px);
 }
