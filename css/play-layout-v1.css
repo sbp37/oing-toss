@@ -3705,3 +3705,30 @@
      534/249 chrome sets it now. */
   min-height: 36px;
 }
+
+/* ==========================================================================
+   6. STAGE badge, enlarged as far as the constraint allows
+   The brief asks for x1.2 while requiring the badge to stay visually
+   lighter than the timer pill in both area and contrast. Measured from the
+   shipped art - the shield is 59.5% opaque pixels, the pill 81.2% - those
+   two cannot both hold:
+
+     390x844  badge ink 2428 vs pill ink 2530 - already 96% of it
+     360x740  badge ink 2099 vs pill ink 2404 - 87%
+     at x1.2  the badge reaches 138% / 126% of the pill
+
+   This is not a side effect of the pill shrinking in the previous commit:
+   even at the 86x40dp the brief itself specifies for the pill, the largest
+   badge that stays lighter is x1.073. The binding viewport is 390x844,
+   where the ceiling is x1.021 - so that is what is applied here, and the
+   remaining call is the user's to make.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  width: clamp(73px, 22.5%, 88px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  font-size: clamp(18px, 5.3vw, 25px);
+}
