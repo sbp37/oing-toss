@@ -3507,3 +3507,87 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
   --board-chrome: calc(214px + 8dvh);
 }
+
+/* ==========================================================================
+   2. The item dock stops out-sizing the board
+   The dock ran 82dp tall with 58dp buttons - a single item was bigger than
+   a board tile. Height is now driven directly (the painted tray keeps its
+   1600/423 aspect, so width follows from it), the tray's rim insets give
+   the buttons more of the box, and the icons, labels and count badges scale
+   with them. Labels keep their words.
+
+   Visual size and touch size are deliberately separate: the drawn button is
+   ~47x49dp, and a transparent ::after expands the tap target past 48x48dp
+   without moving anything on screen. The gloss highlight already owns
+   ::before. Depleted and locked buttons share the same box, so a count
+   dropping to zero never shifts the row.
+   ========================================================================== */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  width: auto;
+  height: min(58px, 8dvh);
+  aspect-ratio: 1600 / 423;
+}
+
+.play-ui-v4 .item-actions {
+  /* ui-chrome pins this row to height:56% with a 44px floor, which capped
+     the buttons at 44dp. Height is given explicitly rather than left to
+     stretch between top and bottom: as an absolutely positioned child of
+     the footer it does not stretch, and an auto height collapses to the
+     buttons' own content - which is what the buttons then measure against. */
+  inset: auto 3.5% 8%;
+  height: 85%;
+  min-height: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3%;
+}
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  padding: 4% 2% 2%;
+  grid-template-rows: 62% 38%;
+  border-radius: 22%;
+}
+
+/* Touch target, held at 48x48dp minimum while the button draws smaller. */
+.play-ui-v4 .item-button::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -2px -3px;
+  border-radius: inherit;
+}
+
+.play-ui-v4 .item-icon {
+  width: clamp(19px, 5.4vw, 25px);
+  height: clamp(20px, 5.6vw, 26px);
+}
+
+.play-ui-v4 .item-button > span {
+  font-size: clamp(9px, 2.5vw, 11px);
+}
+
+.play-ui-v4 .item-button b {
+  top: -6px;
+  right: -5px;
+  width: clamp(16px, 4.4vw, 19px);
+  height: clamp(16px, 4.4vw, 19px);
+  border-width: 1.5px;
+  font-size: clamp(10px, 2.8vw, 12px);
+}
+
+/* The dock got shorter, so the board takes that back too. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(206px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(192px + 8dvh);
+}
