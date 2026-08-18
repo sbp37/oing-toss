@@ -448,7 +448,8 @@ class OingGame {
     // result sheet's 판갈이 count.
     this.classic = options.classic
       ? {
-        boardIndex: this.runtime.testMode ? 0 : classicStartBoardIndex(storageAdapter.getClassicBestScore()),
+        /* TODO: 점수별 시작 보드 해금을 되살리려면 classicStartBoardIndex(...)로 복원 */
+        boardIndex: 0,
         boardsPlayed: 1,
         chapterKey: null,
         chapterLabel: '',

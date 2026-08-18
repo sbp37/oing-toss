@@ -13,7 +13,10 @@
    있어(알파 무게중심 실측 x=542/1000), 기하학적 중앙 배치 시 눈에는
    치우쳐 보임. 그만큼 반대로 이동해 시각적 중앙을 맞춘다. */
 .oing-logo {
-  transform: translateX(-4.2%);
+  /* transform은 home-logo-breathe 애니메이션이 덮어쓰므로 position으로 이동.
+     로고 그림의 알파 무게중심이 우측으로 4.2% 치우쳐 있음(실측 542/1000). */
+  position: relative;
+  left: -4.5%;
 }
 
 /* 고양이를 살짝 오른쪽으로 (바닥 그림자 ::before 포함해 함께 이동) */
@@ -26,11 +29,14 @@
 /* 타이머 pill이 상대적으로 작아짐 → 12% 확대.
    2분 스코어 어택에서 시간은 유일하게 다음 행동을 바꾸는 정보라
    HUD에서 가장 큰 숫자여야 한다. */
-.play-ui-v4 .play-top-controls .time-readout {
-  width: min(100%, 162px);
+/* 타이머 숫자가 그려진 pill 아트 밖으로 삐져나가는 문제:
+   아트는 상단 크롬 webp에 고정돼 있어 box만 키우면 숫자가 그림을 벗어난다.
+   → 숫자를 아트 안에 정확히 맞춘다. */
+.play-ui-v4 .time-readout {
+  padding-right: 7% !important;
 }
-.play-ui-v4 .play-top-controls .time-readout strong {
-  font-size: clamp(20px, 6.2vw, 28px);
+.play-ui-v4 .time-readout strong {
+  font-size: clamp(18px, 5.4vw, 23px) !important;
 }
 
 /* 타일 숫자 대비 보강 — 반투명 시럽 타일 위에서 흐릿하게 읽히는 문제 */
@@ -49,4 +55,16 @@
 /* "슥 묶어서 10!" 튜토리얼 칩이 시간 게이지와 겹침 → 보드 안쪽으로 */
 .play-ui-v4 .tutorial-callout {
   margin-top: 10px;
+}
+
+
+/* ── 말풍선 두께 확보 (얇은 띠 문제) ───────────────────────── */
+.play-ui-v4 .cat-speech {
+  min-height: 42px;
+}
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  padding: 9px 12%;
+  font-size: 15.5px;
+  line-height: 1.3;
 }
