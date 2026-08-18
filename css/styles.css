@@ -9443,3 +9443,52 @@ img {
 .home-actions {
   margin-top: auto;
 }
+
+/* 2026-08 home best-score card ---------------------------------------------
+   The card was a three-column grid -- star, label stack, score -- squeezed
+   into half of a 360dp row, so the caption clipped to "최..." and the STAGE
+   line ran underneath the number. The stage line is gone and what is left
+   stacks in a single column: a small caption over the figure the card is
+   actually about, set in the display face. */
+.best-record-card {
+  grid-template-columns: 26px minmax(0, 1fr);
+  column-gap: 7px;
+  padding: 5px 9px 5px 8px;
+}
+
+.best-record-card span {
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  min-width: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.best-record-card span em {
+  overflow: visible;
+  color: #4f8b80;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .01em;
+}
+
+.best-record-card strong {
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
+  color: var(--coral-deep);
+  font-family: var(--font-display);
+  font-size: clamp(17px, 5.4vw, 22px);
+  font-weight: 400;
+  letter-spacing: .005em;
+  line-height: 1.08;
+  text-align: left;
+  text-overflow: clip;
+}
+
+.best-record-card strong::after {
+  margin-left: 1px;
+  font-size: 10.5px;
+}

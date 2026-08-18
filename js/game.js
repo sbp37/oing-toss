@@ -17,7 +17,6 @@ import {
   classicChapterArtUrl,
   classicChapterForBoard,
   classicChapterGallery,
-  classicDeepestChapterLabel,
   classicComboAfterFailure,
   classicComboGain,
   classicDropStage,
@@ -1242,7 +1241,6 @@ class OingGame {
     this.state.stageBombUsed = false;
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
-    this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
     const unlockGrant = itemUnlockGrantForStage(nextRound);
     if (unlockGrant) this.grantItems(unlockGrant, { source: 'earned' });
     const showcaseDrop = this.state.stageShowcaseEligible
@@ -2036,14 +2034,11 @@ class OingGame {
     this.finishing = false;
   }
 
-  // The home card and the records sheet are about classic now: the figure is
-  // the classic best, and the line under it is how far the cat has actually
-  // travelled — the adventure's own progress read.
+  // The home card and the records sheet are about classic now: one figure,
+  // the classic best. How far the cat has travelled is the chapter gallery's
+  // job, so the card no longer carries a second line for it.
   refreshClassicRecordSurfaces() {
-    const bestScore = storageAdapter.getClassicBestScore();
-    const seenKeys = storageAdapter.getSeenChapters();
-    this.ui.updateBestScore(bestScore);
-    this.ui.updateAdventureProgress(classicDeepestChapterLabel({ seenKeys, bestScore }));
+    this.ui.updateBestScore(storageAdapter.getClassicBestScore());
   }
 
   updateHUD() {

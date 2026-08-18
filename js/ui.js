@@ -124,7 +124,6 @@ export class GameUI {
       bombButton: document.querySelector('#bomb-button'),
       clockButton: document.querySelector('#clock-button'),
       homeBest: document.querySelector('#home-best-score'),
-      homeBestStage: document.querySelector('#home-best-stage'),
       rankingBest: document.querySelector('#ranking-best-score'),
       rankingLast: document.querySelector('#ranking-last-score'),
       rankingAverage: document.querySelector('#ranking-average-score'),
@@ -1797,18 +1796,6 @@ export class GameUI {
     else delete screen.dataset.chapter;
     if (artUrl) screen.style.setProperty('--chapter-art', `url("${artUrl}")`);
     else screen.style.removeProperty('--chapter-art');
-  }
-
-  updateAdventureProgress(label) {
-    if (this.elements.homeBestStage) {
-      this.elements.homeBestStage.textContent = label || '모험 시작 전';
-    }
-  }
-
-  updateHighestStage(stage) {
-    if (this.elements.homeBestStage) {
-      this.elements.homeBestStage.textContent = `STAGE ${Math.max(1, Math.round(Number(stage) || 1))}`;
-    }
   }
 
   updateCatsRescued(total = 0) {
