@@ -9375,3 +9375,16 @@ img {
   border: 6px solid transparent;
   border-right-color: rgba(255, 252, 238, .98);
 }
+
+/* 2026-08 home logo swap ---------------------------------------------------
+   The new wordmark is a wide lockup (OING over a GAME pill) instead of the
+   old square-ish OING, so it needs a lot more width to read at the same
+   optical weight. These win over the height/width media blocks above purely
+   by source order, which keeps the responsive rules there untouched. */
+.oing-logo {
+  width: clamp(268px, 84vw, 330px);
+}
+
+@media (max-width: 340px) {
+  .oing-logo { width: 88vw; }
+}
