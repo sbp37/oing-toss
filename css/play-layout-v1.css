@@ -3684,3 +3684,49 @@
 .play-ui-v4.is-tall-board .cat-message {
   padding: 4px 14px;
 }
+
+/* ==========================================================================
+   3. STAGE badge at x1.5
+   The brief's priority is explicit: the shield must be at least as tall as
+   the pause button (44dp), the size must not be reduced to resolve a
+   collision, and the 6dp gap to the status bar holds. Raising the badge's
+   top cannot resolve it on its own - at x1.5 the shield is 85dp tall and
+   the status bar starts 71dp down at 390x844, so the badge would have to
+   begin above the top of the screen. The remaining lever is the control
+   row, which grows to seat the bigger badge and pushes the status bar down
+   with it. That costs the board; the exact figure is in the report.
+
+   The numeral grows faster than the shield, as asked, so it fills the
+   plate rather than floating in it.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  height: clamp(74px, 10.2dvh, 86px);
+}
+
+.play-ui-v4.is-tall-board .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band].is-tall-board .play-top-controls {
+  height: clamp(76px, 9.8dvh, 84px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  top: -4%;
+  width: clamp(110px, 33.75%, 132px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  top: 56%;
+  font-size: clamp(27px, 7.9vw, 36px);
+}
+
+/* The control row took the height, so the board's budget gives it up. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(258px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(246px + 8dvh);
+}
