@@ -3670,3 +3670,17 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
   --board-chrome: calc(188px + 8dvh);
 }
+
+/* ==========================================================================
+   4. The cat comes back inside the screen
+   It was pushed 26% of its own width into the left margin, which was the
+   only way to clear the hint button while the dock still ran the full width
+   of the screen. The dock is now 219dp wide and sits right, so that shove
+   buys nothing and only costs the cat its left side. Dropping it leaves the
+   cat at the coach row's own left edge - about 10dp in - with its size
+   untouched: the art is fitted by width, and the width is unchanged.
+   ========================================================================== */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  transform: none;
+}
