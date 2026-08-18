@@ -3591,3 +3591,82 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
   --board-chrome: calc(192px + 8dvh);
 }
+
+/* ==========================================================================
+   3. The speech bubble gets its own row and stops touching anything
+   The bubble lived inside the cat coach row, whose height moved with the
+   board size (73dp on a 5x5, 34dp on a 6x9) while the bubble stayed 52dp -
+   so it spilled past the row and touched the board above and the dock
+   below at the same time. The row is now a fixed 30dp lane with 6dp of
+   daylight on each side, and it keeps that height whether or not there is a
+   message: a lane that collapses and re-opens would resize the board
+   mid-drag and pull the aim off.
+
+   A two-line message grows the bubble instead of the lane - rows do not
+   clip, so it simply overhangs, and pointer-events:none means an overhang
+   across the dock can never swallow a button press.
+   ========================================================================== */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  height: 30px;
+  /* 4dp of screen row-gap either side, plus 2dp here, is the 6dp asked for. */
+  margin-block: 2px;
+}
+
+.play-ui-v4 .cat-speech {
+  align-self: center;
+  height: auto;
+  min-height: 30px;
+  aspect-ratio: auto;
+  margin-bottom: 0;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+/* The painted bubble follows the box now that the box can grow past 30dp;
+   `contain` would letterbox and leave a two-line message outside its own
+   bubble. */
+.play-ui-v4 .speech-bubble-chrome {
+  object-fit: fill;
+}
+
+/* No message: the lane stays, the bubble fades. */
+.play-ui-v4 .cat-speech:has(.cat-message:empty) {
+  opacity: 0;
+}
+
+/* The message drove nothing while it was absolutely positioned - a second
+   line was simply clipped at 84% of the lane. In flow it sets the bubble's
+   height instead, so two lines grow the bubble (and the painted chrome
+   stretches with it) while the lane underneath stays 30dp. The padding
+   stands in for the offsets the absolute version used to keep the text
+   inside the art. */
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: 5px 12%;
+  transform: none;
+}
+
+.play-ui-v4 .cat-speech {
+  display: grid;
+  align-content: center;
+}
+
+/* The lane is shorter than the coach row was, so the board takes the rest. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(200px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(188px + 8dvh);
+}
