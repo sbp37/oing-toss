@@ -3474,3 +3474,36 @@
   margin-bottom: calc(-1 * clamp(56px, 10.4dvh, 92px));
   transform: translateX(-26%);
 }
+
+/* ==========================================================================
+   1. The dead band between the status bar and the time gauge
+   At 6x9 the two sat 23dp apart: a 5.2dp row gap, a 12dp reserved feedback
+   rail, another 5.2dp row gap. The rail's own children are absolutely
+   positioned, so the reserved height bought nothing except a strip of empty
+   sky - the STAGE CLEAR banner and the tutorial callout still land on the
+   same line with the row collapsed, they just float over the board's top
+   edge instead of above it. Classic never raises the banner at all.
+   ========================================================================== */
+.screen-play.play-ui-v4 {
+  row-gap: 4px;
+}
+
+.screen-play.play-ui-v4 .play-feedback-rail,
+.screen-play.play-ui-v4.is-stage-clearing .play-feedback-rail {
+  height: 0;
+  overflow: visible;
+}
+
+.screen-play.play-ui-v4 .board-time-gauge {
+  margin-block: 0 6px;
+}
+
+/* Everything the band gave up goes to the board. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(228px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(214px + 8dvh);
+}
