@@ -56,7 +56,8 @@
           <span><em>최고기록</em><small id="home-best-stage">모험 시작 전</small></span>
           <strong id="home-best-score">0</strong>
         </div>
-        <button class="btn btn-cream home-garden-button" id="home-garden-button" type="button">
+        <!-- TODO: 정원 기능 재작업 시 복구 -->
+        <button class="btn btn-cream home-garden-button" id="home-garden-button" type="button" hidden>
           <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" decoding="async" alt=""><span>내 정원</span><b id="home-garden-count">고양이 0마리</b>
         </button>
       </div>
@@ -261,6 +262,7 @@
           <div><span>평균 점수</span><strong id="ranking-average-score">0</strong></div>
           <div><span>저장된 판</span><strong id="ranking-run-count">0/7</strong></div>
         </div>
+        <!-- TODO: 정원 기능 재작업 시 복구 -->
         <p class="record-cats-line" id="ranking-cats-line" hidden><img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt="">지금까지 구조한 고양이 <strong id="ranking-cats-total">0</strong>마리</p>
         <section class="record-history" aria-labelledby="record-history-title">
           <div class="record-history-title"><span id="record-history-title">최근 점수 흐름</span><b id="ranking-trend">첫 판을 기다리고 있다냥!</b></div>
@@ -272,6 +274,7 @@
       </div>
     </div>
 
+    <!-- TODO: 정원 기능 재작업 시 복구 -->
     <div class="overlay" id="garden-overlay" hidden>
       <div class="mini-panel garden-panel" role="dialog" aria-modal="true" aria-labelledby="garden-title">
         <button class="overlay-close" id="garden-close" type="button" aria-label="닫기"><i></i></button>

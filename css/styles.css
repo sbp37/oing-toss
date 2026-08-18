@@ -9311,3 +9311,16 @@ img {
   font-weight: 800;
   text-align: center;
 }
+
+/* TODO: 정원 기능 재작업 시 복구 --------------------------------------------
+   The garden is parked, not removed: the markup stays in place, the rescued
+   cat count keeps accumulating, and renderGarden / renderChapterGallery are
+   untouched, so turning it back on is deleting this block and the `hidden`
+   attributes in index.html. The CSS is here as well as the attributes
+   because setOverlay() clears `hidden` when an overlay opens - an id rule
+   keeps the panel down even if something calls openGarden(). */
+#home-garden-button,
+#garden-overlay,
+#ranking-cats-line {
+  display: none;
+}
