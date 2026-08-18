@@ -3412,3 +3412,43 @@
   outline: 2.5px solid rgba(46, 176, 96, .92);
   outline-offset: -2px;
 }
+
+/* ==========================================================================
+   HUD pass: the STAGE badge stops dominating the top row
+   At clamp(112px, 33%, 134px) the shield stood 92px tall in a ~62px control
+   row, so it hung down over the score bar and pushed the whole board down
+   with it. Sized to ~62% and re-seated inside its own row, it clears the
+   status bar, and the control row and the board's height budget both give
+   back the pixels it was borrowing.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  top: -14%;
+  width: clamp(72px, 22%, 86px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  top: 55%;
+  font-size: clamp(18px, 5.2vw, 24px);
+}
+
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  height: clamp(50px, 7.4dvh, 62px);
+}
+
+.play-ui-v4.is-tall-board .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band].is-tall-board .play-top-controls {
+  height: clamp(44px, 6.2dvh, 52px);
+}
+
+/* The board takes what the shrunken control row released. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(250px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(242px + 8dvh);
+}
