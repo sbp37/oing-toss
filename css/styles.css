@@ -9388,3 +9388,58 @@ img {
 @media (max-width: 340px) {
   .oing-logo { width: 88vw; }
 }
+
+/* 2026-08 home layout pass -------------------------------------------------
+   Two things were off. The stage box was sized independently of the cat art,
+   so the painted image spilled past the box by a different amount at every
+   viewport (23px below at 390x844, 14px at 360x740) and the ground shadow --
+   anchored to the box -- floated up around the cat's hips instead of sitting
+   under its paws. Giving the stage the art's own aspect ratio puts the box
+   and the image in one coordinate space, so a single percentage lands the
+   shadow correctly at every size.
+
+   The cat art is 422x480 with the silhouette ending at y=440, so the paw line
+   is a flat 8.33% up from the bottom of the box. The contact patch spans
+   x 69..300, centred at 43.7% rather than 50% -- the tail swings right while
+   the weight sits left, which is the other half of the misalignment. */
+.home-character-stage {
+  width: auto;
+  height: clamp(150px, calc(100dvh - 496px), 304px);
+  aspect-ratio: 422 / 480;
+  margin-top: clamp(4px, 2.6vh, 26px);
+}
+/* The 496px is the rest of the screen measured: padding, brand row, tagline,
+   howto card, action card and the settings reserve. Sizing the cat from what
+   is left rather than from a share of the viewport is what keeps every size
+   from 320x568 up clear of the settings button -- a plain vh share fits one
+   height and overflows the other, because the chrome around the cat costs
+   the same absolute pixels on a short screen as on a tall one. */
+
+/* Grass glow and cast shadow, both centred on the paw line. */
+.home-character-stage::before {
+  left: 43.7%;
+  bottom: -0.7%;
+  width: 100%;
+  height: 18%;
+}
+
+.home-character-stage::after {
+  left: 43.7%;
+  bottom: 4.3%;
+  width: 56%;
+  height: 8%;
+}
+
+/* The cat and the button stack ride down into the slack the old layout left
+   sitting empty above the settings button. The reserve keeps the action card
+   clear of that button, and the two auto margins split whatever is left over
+   so tall screens breathe and short ones collapse to zero instead of
+   overflowing. */
+.screen-home {
+  padding-bottom: calc(80px + var(--safe-bottom));
+}
+
+.home-howto,
+.home-actions {
+  margin-top: auto;
+}
