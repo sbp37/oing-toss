@@ -15,6 +15,7 @@ import {
   classicBoardChangeSeconds,
   classicBoardForIndex,
   classicChapterArtUrl,
+  classicChapterCollected,
   classicChapterForBoard,
   classicChapterGallery,
   classicComboAfterFailure,
@@ -399,8 +400,21 @@ class OingGame {
     this.classic.chapterKey = chapter.key;
     this.classic.chapterLabel = chapter.label;
     this.ui.setChapter(chapter.key, classicChapterArtUrl(chapter));
-    if (!this.runtime.testMode) storageAdapter.markChapterSeen(chapter.key);
+    // Arriving is not collecting; markChapterCollected does that, and only
+    // once the board has actually been opened up.
     return chapter;
+  }
+
+  // A scene enters the album when the board carrying it was cleared to the
+  // collect ratio - the same work that opens the painting on the board. The
+  // chapter read here is the one still on screen, so this must run before
+  // boardIndex advances.
+  markChapterCollected(clearedRatio) {
+    if (!this.classic || this.runtime.testMode) return false;
+    if (!classicChapterCollected(clearedRatio)) return false;
+    const chapter = classicChapterForBoard(this.classic.boardIndex);
+    storageAdapter.markChapterSeen(chapter.key);
+    return true;
   }
 
   // Classic hides the ladder's item unlock schedule: bomb/clock stay at
@@ -1056,6 +1070,7 @@ class OingGame {
     // real seconds and a tidy finish beats breaking a few and moving on.
     const initial = Math.max(1, this.state.initialPlayableCells);
     const clearedRatio = Math.min(1, Math.max(0, 1 - this.model.remainingPlayableCells() / initial));
+    this.markChapterCollected(clearedRatio);
     this.classic.boardIndex += 1;
     this.classic.boardsPlayed += 1;
     const nextBoard = classicBoardForIndex(this.classic.boardIndex);
@@ -2001,6 +2016,11 @@ class OingGame {
     this.tutorialActive = false;
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
+    // The board the timer ran out on never gets a 판갈이, so its scene would
+    // otherwise be unclaimable no matter how far the player got through it.
+    this.markChapterCollected(
+      1 - this.model.remainingPlayableCells() / Math.max(1, this.state.initialPlayableCells),
+    );
     const endAnswers = this.model.findAnswers();
     this.ui.showMessage('기록을 정리한다냥!', 1300, 'result');
     this.ui.setPlayCharacter(this.state.maxCombo >= 8 ? 'success' : 'cheer');

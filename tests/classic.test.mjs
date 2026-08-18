@@ -163,12 +163,14 @@ test('classic chapters open by board depth, and the last one by score', async ()
     classicChapterForBoard, classicChapterGallery, classicDeepestChapterLabel,
   } = await import('../js/data.js');
 
-  // 첫 판은 정원, 두 판마다 다음 장면.
+  // 오프너만 두 판을 함께 쓰고, 3판부터는 판마다 새 장면.
   assert.equal(classicChapterForBoard(0).key, 'garden');
   assert.equal(classicChapterForBoard(1).key, 'garden');
   assert.equal(classicChapterForBoard(2).key, 'forest');
-  assert.equal(classicChapterForBoard(9).key, 'sunset');
-  assert.equal(classicChapterForBoard(10).key, 'night');
+  assert.equal(classicChapterForBoard(3).key, 'stream');
+  assert.equal(classicChapterForBoard(4).key, 'village');
+  assert.equal(classicChapterForBoard(5).key, 'sunset');
+  assert.equal(classicChapterForBoard(6).key, 'night');
   // 사다리 끝을 넘어도 마지막 장면에 머문다.
   assert.equal(classicChapterForBoard(40).key, 'night');
   assert.equal(classicChapterForBoard(-3).key, 'garden');
@@ -202,6 +204,28 @@ test('classic chapters open by board depth, and the last one by score', async ()
     classicDeepestChapterLabel({ seenKeys: ['garden'], bestScore: CLASSIC_SECRET_CHAPTER.minScore }),
     CLASSIC_SECRET_CHAPTER.label,
   );
+});
+
+test('a scene is collected by clearing its board, not by standing on it', async () => {
+  const {
+    CLASSIC_CHAPTER_COLLECT_RATIO, classicChapterCollected, classicChapterGallery,
+  } = await import('../js/data.js');
+
+  // 발만 디딘 판은 수집이 아니다.
+  assert.equal(classicChapterCollected(0), false);
+  assert.equal(classicChapterCollected(0.5), false);
+  assert.equal(classicChapterCollected(CLASSIC_CHAPTER_COLLECT_RATIO - 0.01), false);
+  // 기준선과 그 위는 수집.
+  assert.equal(classicChapterCollected(CLASSIC_CHAPTER_COLLECT_RATIO), true);
+  assert.equal(classicChapterCollected(1), true);
+  // 숫자가 아닌 값은 0으로 읽어 수집되지 않는다.
+  assert.equal(classicChapterCollected(undefined), false);
+  assert.equal(classicChapterCollected(null), false);
+
+  // 갤러리 요구 조건이 비율을 그대로 안내한다.
+  const percent = `${Math.round(CLASSIC_CHAPTER_COLLECT_RATIO * 100)}%`;
+  const rows = classicChapterGallery({ seenKeys: [], bestScore: 0 });
+  assert.ok(rows.slice(0, -1).every((row) => row.requirement.includes(percent)));
 });
 
 test('판갈이 pays in proportion to how much of the board was cleared', () => {

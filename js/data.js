@@ -351,14 +351,28 @@ export function classicRoundForBoard(boardIndex = 0) {
 // `art` is the asset stem; a scene whose file is not in place yet simply
 // falls back to the original garden painting (see the chapter background
 // rules in play-layout-v1.css), so chapters can ship art one at a time.
+// The opener repeats its scene once - board 1 is a ramp and board 2 is the
+// first real one, and a player is still learning the rules there - but from
+// board 3 on every 판갈이 pays a new painting. 판갈이 is the loop's only big
+// reward beat, and one that arrives with no new scene is half a reward.
 export const CLASSIC_CHAPTERS = Object.freeze([
   Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: true }),
   Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 2, art: 'chapter-forest', hasArt: true }),
-  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 4, art: 'chapter-stream', hasArt: true }),
-  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 6, art: 'chapter-village', hasArt: true }),
-  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 8, art: 'chapter-sunset', hasArt: true }),
-  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 10, art: 'chapter-night', hasArt: true }),
+  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 3, art: 'chapter-stream', hasArt: true }),
+  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 4, art: 'chapter-village', hasArt: true }),
+  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 5, art: 'chapter-sunset', hasArt: true }),
+  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 6, art: 'chapter-night', hasArt: true }),
 ]);
+
+// Reaching a scene is not collecting it. Standing on a chapter's board for
+// one move used to fill the album, so a player could own every card without
+// ever having opened a picture - and the picture only opens as cells clear.
+// The album now asks for the same thing the board does: clear most of it.
+export const CLASSIC_CHAPTER_COLLECT_RATIO = 0.8;
+
+export function classicChapterCollected(clearedRatio = 0) {
+  return (Number(clearedRatio) || 0) >= CLASSIC_CHAPTER_COLLECT_RATIO;
+}
 
 // A scene goes live in two steps: drop assets/backgrounds/<art>.webp, then
 // flip its hasArt to true. Until then the board falls back to the garden
@@ -416,15 +430,16 @@ export function classicChapterForBoard(boardIndex = 0) {
   return chapter;
 }
 
-// One row per scene for the gallery: unlocked once seen in play (the ladder
-// chapters) or once the score bar is cleared (the secret one).
+// One row per scene for the gallery: unlocked once its board has actually
+// been cleared to the collect ratio (the ladder chapters) or once the score
+// bar is cleared (the secret one).
 export function classicChapterGallery({ seenKeys = [], bestScore = 0 } = {}) {
   const seen = new Set(seenKeys);
   const best = Math.max(0, Math.round(Number(bestScore) || 0));
   const ladder = CLASSIC_CHAPTERS.map((chapter) => ({
     ...chapter,
     unlocked: seen.has(chapter.key),
-    requirement: `${chapter.fromBoard + 1}번째 판`,
+    requirement: `${chapter.fromBoard + 1}번째 판 ${Math.round(CLASSIC_CHAPTER_COLLECT_RATIO * 100)}%`,
     secret: false,
   }));
   return [...ladder, {
