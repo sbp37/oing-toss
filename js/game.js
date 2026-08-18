@@ -14,6 +14,7 @@ import {
   chooseBoardDrop,
   classicBoardChangeSeconds,
   classicBoardForIndex,
+  classicRefundWithFatigue,
   classicChapterArtUrl,
   classicChapterCollected,
   classicChapterForBoard,
@@ -1071,6 +1072,9 @@ class OingGame {
     const initial = Math.max(1, this.state.initialPlayableCells);
     const clearedRatio = Math.min(1, Math.max(0, 1 - this.model.remainingPlayableCells() / initial));
     this.markChapterCollected(clearedRatio);
+    // The board just finished is #boardsPlayed (it starts at 1); read it
+    // before the counters advance, since fatigue is charged on it.
+    const finishedBoardNumber = this.classic.boardsPlayed;
     this.classic.boardIndex += 1;
     this.classic.boardsPlayed += 1;
     const nextBoard = classicBoardForIndex(this.classic.boardIndex);
@@ -1078,7 +1082,10 @@ class OingGame {
     const previousTime = this.state.timeLeft;
     this.state.timeLeft = classicTimeAfterBoardChange(
       previousTime,
-      classicBoardChangeSeconds(clearedBoard, clearedRatio),
+      classicRefundWithFatigue(
+        classicBoardChangeSeconds(clearedBoard, clearedRatio),
+        finishedBoardNumber,
+      ),
     );
     const gainedTime = Math.round(this.state.timeLeft - previousTime);
     const boardGrew = nextBoard.rows * nextBoard.cols > clearedBoard.rows * clearedBoard.cols;

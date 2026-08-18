@@ -283,6 +283,30 @@ export const CLASSIC_BOARD_LADDER = Object.freeze([
 // Seconds the finished board pays out. The ratio is how much of it the
 // player cleared, so the last stubborn corner of a 6×9 is worth real time
 // and the difference between a tidy finish and a messy one is felt.
+// Past the ladder's last scene the night gets stingy: each further 판갈이
+// pays half a second less, and no board change ever pays under the floor.
+// This is what bounds a run. Below the fatigue line the time economy of a
+// fast player is close to balanced, so the 120s buffer can stretch for
+// twenty minutes; a slope, however gentle, makes the economy mathematically
+// net-negative and every run converges. Tuned by simulation (10 runs per
+// cell): a 3.0s-per-move player never reaches the line (3.2min runs,
+// unchanged), a 2.0s player grazes it (4.4 to 4.3min), while the 1.2s
+// ceiling drops from 19.5min/141k to 6.5min/38k. The floor keeps the
+// 판갈이 beat itself alive - a board change that pays nothing reads as a
+// punishment, not an event.
+export const CLASSIC_REFUND_FATIGUE = Object.freeze({
+  fromBoard: 6,   // boards 1..6 - the six scenes - always pay in full
+  perBoard: 0.5,  // seconds shaved per board past the line
+  floor: 2,       // the least any 판갈이 pays
+});
+
+export function classicRefundWithFatigue(seconds, finishedBoardNumber = 1) {
+  const paid = Math.max(0, Number(seconds) || 0);
+  const past = Math.max(0, Math.round(Number(finishedBoardNumber) || 0) - CLASSIC_REFUND_FATIGUE.fromBoard);
+  if (past <= 0) return paid;
+  return Math.max(CLASSIC_REFUND_FATIGUE.floor, paid - CLASSIC_REFUND_FATIGUE.perBoard * past);
+}
+
 export function classicBoardChangeSeconds(board, clearedRatio = 0) {
   const floor = Math.max(0, Number(board?.timeFloor) || 0);
   const ceiling = Math.max(floor, Number(board?.timeBonus) || 0);

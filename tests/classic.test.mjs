@@ -228,6 +228,30 @@ test('a scene is collected by clearing its board, not by standing on it', async 
   assert.ok(rows.slice(0, -1).every((row) => row.requirement.includes(percent)));
 });
 
+test('refund fatigue starts past the ladder and never drops below the floor', async () => {
+  const { CLASSIC_REFUND_FATIGUE, classicRefundWithFatigue } = await import('../js/data.js');
+  const { fromBoard, perBoard, floor } = CLASSIC_REFUND_FATIGUE;
+
+  // 사다리 안(1..6판)은 전액 지급.
+  for (let n = 1; n <= fromBoard; n += 1) {
+    assert.equal(classicRefundWithFatigue(19, n), 19);
+  }
+  // 선을 넘으면 판마다 perBoard씩 깎인다.
+  assert.equal(classicRefundWithFatigue(19, fromBoard + 1), 19 - perBoard);
+  assert.equal(classicRefundWithFatigue(19, fromBoard + 4), 19 - perBoard * 4);
+  // 깊은 판에서도 바닥 밑으로는 안 내려간다.
+  assert.equal(classicRefundWithFatigue(19, fromBoard + 200), floor);
+  assert.equal(classicRefundWithFatigue(4, fromBoard + 10), floor);
+  // 원래 지급액이 바닥보다 크면 피로가 지급액을 늘리는 일은 없다.
+  for (let n = 1; n <= 40; n += 1) {
+    assert.ok(classicRefundWithFatigue(19, n) <= 19);
+  }
+  // 비정상 입력은 전액 지급으로 읽는다.
+  assert.equal(classicRefundWithFatigue(19, undefined), 19);
+  assert.equal(classicRefundWithFatigue(19, null), 19);
+  assert.equal(classicRefundWithFatigue(undefined, 9), floor);
+});
+
 test('판갈이 pays in proportion to how much of the board was cleared', () => {
   const small = CLASSIC_BOARD_LADDER[0];
   const big = classicBoardForIndex(4);
