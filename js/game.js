@@ -1103,7 +1103,9 @@ class OingGame {
     // new skin first — buildRound's own call then finds nothing to change.
     if (enteredChapter) {
       this.applyClassicChapter();
-      await this.ui.revealChapter(enteredChapter.label);
+      /* TODO: 정원 기능 재작업 시 복구 — 장면 공개 카드 연출은
+         정원 시스템과 함께 다시 붙인다. 배경 아트 교체만 유지. */
+      // await this.ui.revealChapter(enteredChapter.label);
     }
     this.buildRound();
     await this.ui.animateShuffleIn();
@@ -1995,7 +1997,7 @@ class OingGame {
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
     const endAnswers = this.model.findAnswers();
-    this.ui.showMessage('클래식 기록을 정리한다냥!', 1300, 'result');
+    this.ui.showMessage('기록을 정리한다냥!', 1300, 'result');
     this.ui.setPlayCharacter(this.state.maxCombo >= 8 ? 'success' : 'cheer');
     const oldBest = storageAdapter.getClassicBestScore();
     const newRecord = this.state.score > oldBest;
@@ -2024,7 +2026,7 @@ class OingGame {
       previousBest: oldBest,
       previousScore: null,
       recordEligible: true,
-      resultMessage: newRecord ? '클래식 신기록이다냥!' : '',
+      resultMessage: newRecord ? '신기록이다냥!' : '',
       classic: { boards: this.classic.boardsPlayed },
     };
     this.retryStage = 1;
