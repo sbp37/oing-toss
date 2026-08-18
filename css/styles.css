@@ -9324,3 +9324,54 @@ img {
 #ranking-cats-line {
   display: none;
 }
+
+/* ==========================================================================
+   Result speech bubble: a tail that is actually attached
+   The old tail was a rotate(35deg) skew(8deg,8deg) square sitting at the
+   bubble's upper left. Three things made it read as a torn-off flag rather
+   than a tail: the skew left its edges out of line with the body, the
+   body's own left border ran straight through the join, and the flat fill
+   did not match the body's gradient at that height.
+
+   It is now the standard two-triangle tail - an outer triangle in the
+   border colour with an inner triangle of body fill laid over it, offset by
+   the border width. The inner triangle's base lands 3px inside the bubble,
+   so it covers the body's left border and the join disappears; the outer
+   one shows through as a ~1.7px outline that continues the body's border
+   around the point. Sitting at top:50% it points at the cat and stays
+   centred whether the message runs to one line or two.
+
+   The play screen's own .cat-message bubble is a different element and is
+   deliberately untouched.
+   ========================================================================== */
+.result-message {
+  /* The old 10px bottom-left corner existed to meet the old tail position. */
+  border-radius: 18px;
+}
+
+.result-message::before,
+.result-message::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  background: none;
+  border-radius: 0;
+  transform: translateY(-50%);
+}
+
+/* Outline, matching the body's border colour. */
+.result-message::before {
+  left: -12px;
+  border: 7px solid transparent;
+  border-right-color: rgba(222, 181, 116, .7);
+}
+
+/* Fill, sampled from the body gradient at the tail's own height so the two
+   are the same colour where they meet. */
+.result-message::after {
+  left: -9px;
+  border: 6px solid transparent;
+  border-right-color: rgba(255, 252, 238, .98);
+}
