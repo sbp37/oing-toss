@@ -419,39 +419,6 @@
   aspect-ratio: 1;
 }
 
-/* Classic is one continuous run, not a stage ladder. Keep the board count
-   readable but secondary, and remove the baked STAGE shield from this mode. */
-.screen-play.play-ui-v4.is-classic-mode .play-top-controls,
-.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls {
-  height: clamp(54px, 7.2dvh, 62px);
-}
-
-.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini,
-.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini {
-  top: 0;
-  width: clamp(58px, 17vw, 70px);
-  height: clamp(34px, 4.7dvh, 40px);
-  align-self: center;
-  border: 1px solid rgba(217, 190, 135, .72);
-  border-radius: 999px;
-  background: rgba(255, 250, 235, .92);
-  box-shadow: 0 3px 8px rgba(84, 119, 151, .16), inset 0 1px 0 #fff;
-}
-
-.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini img {
-  display: none;
-}
-
-.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini strong,
-.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini strong {
-  top: 0;
-  color: #44617a;
-  font-family: var(--font-sans);
-  font-size: clamp(14px, 4vw, 17px);
-  font-weight: 800;
-  text-shadow: none;
-}
-
 .play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
   border: 1px solid rgba(255,255,255,.17);
   background: rgba(245,253,255,.055);
@@ -3990,28 +3957,6 @@
   transform: translateY(8px);
 }
 
-/* Final classic-mode cascade guard. Keep after every legacy HUD pass. */
-.screen-play.play-ui-v4.is-classic-mode .play-top-controls,
-.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls {
-  height: clamp(54px, 7.2dvh, 62px);
-}
-
-.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini,
-.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini {
-  left: auto;
-  top: 0;
-  align-self: center;
-  width: clamp(58px, 17vw, 70px);
-  height: clamp(34px, 4.7dvh, 40px);
-  transform: none;
-}
-
-.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini strong,
-.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini strong {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: clamp(14px, 4vw, 17px);
-  transform: none;
-}
+/* Classic keeps the painted STAGE shield: a 판 and a STAGE are the same beat
+   here, so the badge that already reads as "the counter" stays the counter,
+   and the mode class is left as a hook without changing the HUD. */

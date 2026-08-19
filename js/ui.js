@@ -1688,7 +1688,7 @@ export class GameUI {
 
   updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
     this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
-    this.elements.round.textContent = classicMode ? `${round}판` : String(round);
+    this.elements.round.textContent = String(round);
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수
