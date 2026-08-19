@@ -387,17 +387,16 @@ export function classicRoundForBoard(boardIndex = 0) {
 // `art` is the asset stem; a scene whose file is not in place yet simply
 // falls back to the original garden painting (see the chapter background
 // rules in play-layout-v1.css), so chapters can ship art one at a time.
-// The opener repeats its scene once - board 1 is a ramp and board 2 is the
-// first real one, and a player is still learning the rules there - but from
-// board 3 on every 판갈이 pays a new painting. 판갈이 is the loop's only big
-// reward beat, and one that arrives with no new scene is half a reward.
+// Display order and album ownership are deliberately separate. The board
+// walks this six-scene loop forever, while the album stores stable scene
+// keys and therefore never re-locks a picture when the display wraps.
 export const CLASSIC_CHAPTERS = Object.freeze([
   Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: true }),
-  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 2, art: 'chapter-forest', hasArt: true }),
-  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 3, art: 'chapter-stream', hasArt: true }),
-  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 4, art: 'chapter-village', hasArt: true }),
-  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 5, art: 'chapter-sunset', hasArt: true }),
-  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 6, art: 'chapter-night', hasArt: true }),
+  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 1, art: 'chapter-forest', hasArt: true }),
+  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 2, art: 'chapter-stream', hasArt: true }),
+  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 3, art: 'chapter-village', hasArt: true }),
+  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 4, art: 'chapter-sunset', hasArt: true }),
+  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 5, art: 'chapter-night', hasArt: true }),
 ]);
 
 // Reaching a scene is not collecting it - the album asks for the board to
@@ -463,11 +462,7 @@ export function classicDropStage(boardIndex = 0) {
 
 export function classicChapterForBoard(boardIndex = 0) {
   const index = Math.max(0, Math.round(Number(boardIndex) || 0));
-  let chapter = CLASSIC_CHAPTERS[0];
-  for (const candidate of CLASSIC_CHAPTERS) {
-    if (index >= candidate.fromBoard) chapter = candidate;
-  }
-  return chapter;
+  return CLASSIC_CHAPTERS[index % CLASSIC_CHAPTERS.length];
 }
 
 // One row per scene for the gallery: unlocked once its board has actually

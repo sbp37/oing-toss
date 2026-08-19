@@ -16,7 +16,13 @@
   min-height: 100dvh;
   padding: calc(var(--safe-top) + 8px) var(--flow-inline) calc(var(--safe-bottom) + 6px);
   overflow: hidden;
-  background: #36a4fa url("../assets/backgrounds/play-bg-spring-path-v2.webp") center bottom / cover no-repeat;
+  background-color: #69bbed;
+  background-image:
+    linear-gradient(rgba(255, 253, 247, .18), rgba(255, 252, 244, .18)),
+    url("../assets/backgrounds/play-bg-spring-path-v2.webp");
+  background-position: 0 0, center bottom;
+  background-size: auto, cover;
+  background-repeat: no-repeat;
 }
 
 .screen-play.play-ui-v4:not(.is-active) { display: none; }
@@ -411,6 +417,39 @@
   min-width: 0;
   min-height: 0;
   aspect-ratio: 1;
+}
+
+/* Classic is one continuous run, not a stage ladder. Keep the board count
+   readable but secondary, and remove the baked STAGE shield from this mode. */
+.screen-play.play-ui-v4.is-classic-mode .play-top-controls,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls {
+  height: clamp(54px, 7.2dvh, 62px);
+}
+
+.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini {
+  top: 0;
+  width: clamp(58px, 17vw, 70px);
+  height: clamp(34px, 4.7dvh, 40px);
+  align-self: center;
+  border: 1px solid rgba(217, 190, 135, .72);
+  border-radius: 999px;
+  background: rgba(255, 250, 235, .92);
+  box-shadow: 0 3px 8px rgba(84, 119, 151, .16), inset 0 1px 0 #fff;
+}
+
+.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini img {
+  display: none;
+}
+
+.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini strong {
+  top: 0;
+  color: #44617a;
+  font-family: var(--font-sans);
+  font-size: clamp(14px, 4vw, 17px);
+  font-weight: 800;
+  text-shadow: none;
 }
 
 .play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
@@ -3717,7 +3756,7 @@
      layer back on every cell, which is exactly what was taken off the tiles
      to cool the play loop. A white wash desaturates on its own. */
   background-image:
-    linear-gradient(rgba(255, 255, 255, var(--win-veil, .34)), rgba(255, 255, 255, var(--win-veil-b, .28))),
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .30)), rgba(255, 255, 255, var(--win-veil-b, .24))),
     var(--chapter-art);
   background-size: auto, var(--win-size, cover);
   background-position: 0 0, var(--win-pos, center);
@@ -3949,4 +3988,30 @@
 
 .play-ui-v4 .cat-speech {
   transform: translateY(8px);
+}
+
+/* Final classic-mode cascade guard. Keep after every legacy HUD pass. */
+.screen-play.play-ui-v4.is-classic-mode .play-top-controls,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls {
+  height: clamp(54px, 7.2dvh, 62px);
+}
+
+.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini {
+  left: auto;
+  top: 0;
+  align-self: center;
+  width: clamp(58px, 17vw, 70px);
+  height: clamp(34px, 4.7dvh, 40px);
+  transform: none;
+}
+
+.screen-play.play-ui-v4.is-classic-mode .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini strong {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(14px, 4vw, 17px);
+  transform: none;
 }

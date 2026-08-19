@@ -21,6 +21,7 @@ import {
   classicChapterCollected,
   classicChapterForBoard,
   classicChapterGallery,
+  CLASSIC_CHAPTERS,
   classicComboAfterFailure,
   classicComboGain,
   classicDropStage,
@@ -2096,6 +2097,7 @@ class OingGame {
     const catsRescuedTotal = this.runtime.testMode
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
+    const seenChapterKeys = storageAdapter.getSeenChapters();
     this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
       score: this.state.score,
@@ -2116,6 +2118,8 @@ class OingGame {
       classic: {
         boards: this.classic.boardsPlayed,
         collectedLabels: this.classic.collectedLabels || [],
+        collectionCount: CLASSIC_CHAPTERS.filter((chapter) => seenChapterKeys.includes(chapter.key)).length,
+        collectionTotal: CLASSIC_CHAPTERS.length,
       },
     };
     this.retryStage = 1;
@@ -2151,6 +2155,7 @@ class OingGame {
       timed: this.stageDuration > 0,
       freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),
       gardenFromStart: Boolean(this.classic),
+      classicMode: Boolean(this.classic),
       bestScore: this.classic ? storageAdapter.getClassicBestScore() : storageAdapter.getBestScore(),
     });
   }

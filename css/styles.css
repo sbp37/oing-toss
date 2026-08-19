@@ -9618,6 +9618,23 @@ img {
 }
 
 .result-stage-progress { font-size: 17.5px; }
+
+.result-chapter-earned {
+  justify-self: center;
+  width: fit-content;
+  margin: 5px auto 0;
+  padding: 5px 11px;
+  border: 1px solid rgba(92, 185, 157, .28);
+  border-radius: 999px;
+  background: rgba(226, 250, 239, .82);
+  color: #347d69;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.result-chapter-earned[hidden] { display: none; }
 .result-kicker { font-size: 14px; }
 
 /* Ranking opened from the result screen: the sheet bows out downward so

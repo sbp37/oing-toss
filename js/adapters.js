@@ -227,9 +227,12 @@ export const rankingAdapter = {
   },
 };
 
-export function buildShareText({ score, maxCombo, round }) {
+export function buildShareText({ score, maxCombo, round, classic = null }) {
   const points = Math.max(0, Math.round(Number(score) || 0)).toLocaleString('ko-KR');
-  return `오잉게임에서 ${points}점 냈다냥! 최고 콤보 ${Math.max(0, Math.round(Number(maxCombo) || 0))}, STAGE ${Math.max(1, Math.round(Number(round) || 1))}까지 갔다냥. 이겨보라냥!`;
+  const progress = classic
+    ? `${Math.max(1, Math.round(Number(round) || 1))}판 진행`
+    : `STAGE ${Math.max(1, Math.round(Number(round) || 1))} 도달`;
+  return `오잉게임에서 ${points}점 냈다냥! 최고 콤보 ${Math.max(0, Math.round(Number(maxCombo) || 0))}, ${progress}. 이겨보라냥!`;
 }
 
 export const shareAdapter = {

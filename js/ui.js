@@ -58,8 +58,8 @@ const CHARACTER_ALT = Object.freeze({
 
 // How much mist sits over the chapter art inside cleared cells: heavy while
 // the board is still full of numbers to read, light once it is nearly empty.
-const VEIL_FULL = 0.44;
-const VEIL_CLEAR = 0.14;
+const VEIL_FULL = 0.40;
+const VEIL_CLEAR = 0.10;
 
 // A url() inside a custom property is resolved against the stylesheet that
 // consumes it, not the document, so a document-relative path handed to CSS
@@ -158,6 +158,7 @@ export class GameUI {
       chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
       chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
       chapterViewerArt: document.querySelector('#chapter-viewer-art'),
+      resultChapterEarned: document.querySelector('#result-chapter-earned'),
       gardenRevealBest: document.querySelector('#garden-reveal-best'),
       gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
       finalScore: document.querySelector('#final-score'),
@@ -1685,8 +1686,9 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false, bestScore = 0 }) {
-    this.elements.round.textContent = String(round);
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
+    this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
+    this.elements.round.textContent = classicMode ? `${round}판` : String(round);
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수
@@ -2092,18 +2094,27 @@ export class GameUI {
     // the kicker names the mode so the score's smaller scale isn't read
     // against stage-mode records.
     if (this.elements.finalRoundLabel) {
-      this.elements.finalRoundLabel.textContent = classic ? '판갈이 수' : '도달 스테이지';
+      this.elements.finalRoundLabel.textContent = classic ? '진행한 판' : '도달 스테이지';
     }
+    this.elements.finalRound.textContent = classic ? `${round}판` : String(round);
     this.elements.resultKicker.textContent = '이번 판 기록';
     // A scene earned this run is the retry hook, so it reads here rather
     // than only inside the records sheet.
     const collected = classic?.collectedLabels || [];
-    const collectedNote = collected.length === 0 ? ''
-      : collected.length === 1 ? ` · 새 장면: ${collected[0]}`
-        : ` · 새 장면 ${collected.length}개`;
     this.elements.resultStageProgress.textContent = classic
-      ? `${classic.boards}판 진행 · 성공 ${successCount}회${collectedNote}`
+      ? `${classic.boards}판 진행 · 성공 ${successCount}회`
       : `STAGE ${round} 도달 · 성공 ${successCount}회`;
+    if (this.elements.resultChapterEarned) {
+      const collectionCount = Math.min(
+        Math.max(0, Number(classic?.collectionCount) || 0),
+        Math.max(0, Number(classic?.collectionTotal) || 0),
+      );
+      const collectionTotal = Math.max(0, Number(classic?.collectionTotal) || 0);
+      this.elements.resultChapterEarned.hidden = !classic || collected.length === 0;
+      this.elements.resultChapterEarned.textContent = collected.length
+        ? `새 그림 획득! ${collectionCount}/${collectionTotal}`
+        : '';
+    }
     this.elements.retryButton.textContent = classic ? '한 판 더!' : resultRetryLabel({
       score,
       previousBest,

@@ -175,6 +175,12 @@ test('share copy contains score, combo, stage and the original challenge tone', 
   assert.match(text, /이겨보라냥/);
 });
 
+test('classic share copy uses board count instead of stage language', () => {
+  const text = buildShareText({ score: 12580, maxCombo: 7, round: 3, classic: { boards: 3 } });
+  assert.match(text, /3판 진행/);
+  assert.doesNotMatch(text, /STAGE|스테이지/);
+});
+
 test('local records summarize the latest seven real runs without inventing rankings', () => {
   const summary = buildLocalRecordSummary([100, 300, 200, 500, 700, 600, 900, 1200], 1500);
   assert.deepEqual([...summary.recent], [300, 200, 500, 700, 600, 900, 1200]);

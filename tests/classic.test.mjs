@@ -157,22 +157,22 @@ test('generateClassic is instant enough for a mid-timer board change', () => {
   assert.ok(elapsed < 2000, `30 full-size classic boards took ${elapsed.toFixed(0)}ms`);
 });
 
-test('classic chapters open by board depth, and the last one by score', async () => {
+test('classic chapters cycle in order while album ownership stays key-based', async () => {
   const {
     CLASSIC_CHAPTERS, CLASSIC_SECRET_CHAPTER,
     classicChapterForBoard, classicChapterGallery, classicDeepestChapterLabel,
   } = await import('../js/data.js');
 
-  // 오프너만 두 판을 함께 쓰고, 3판부터는 판마다 새 장면.
+  // The six normal scenes loop forever in a stable, non-random order.
   assert.equal(classicChapterForBoard(0).key, 'garden');
-  assert.equal(classicChapterForBoard(1).key, 'garden');
-  assert.equal(classicChapterForBoard(2).key, 'forest');
-  assert.equal(classicChapterForBoard(3).key, 'stream');
-  assert.equal(classicChapterForBoard(4).key, 'village');
-  assert.equal(classicChapterForBoard(5).key, 'sunset');
-  assert.equal(classicChapterForBoard(6).key, 'night');
-  // 사다리 끝을 넘어도 마지막 장면에 머문다.
-  assert.equal(classicChapterForBoard(40).key, 'night');
+  assert.equal(classicChapterForBoard(1).key, 'forest');
+  assert.equal(classicChapterForBoard(2).key, 'stream');
+  assert.equal(classicChapterForBoard(3).key, 'village');
+  assert.equal(classicChapterForBoard(4).key, 'sunset');
+  assert.equal(classicChapterForBoard(5).key, 'night');
+  assert.equal(classicChapterForBoard(6).key, 'garden');
+  assert.equal(classicChapterForBoard(7).key, 'forest');
+  assert.equal(classicChapterForBoard(40).key, 'sunset');
   assert.equal(classicChapterForBoard(-3).key, 'garden');
   // Thresholds must stay ordered, or a deeper board could show an earlier scene.
   CLASSIC_CHAPTERS.forEach((chapter, index) => {
@@ -188,6 +188,15 @@ test('classic chapters open by board depth, and the last one by score', async ()
   const seen = classicChapterGallery({ seenKeys: ['garden', 'forest'], bestScore: 900 });
   assert.deepEqual(
     seen.filter((chapter) => chapter.unlocked).map((chapter) => chapter.key),
+    ['garden', 'forest'],
+  );
+  // Repeating the display loop does not reset or duplicate album ownership.
+  const repeated = classicChapterGallery({
+    seenKeys: ['garden', 'forest', 'garden'],
+    bestScore: 900,
+  });
+  assert.deepEqual(
+    repeated.filter((chapter) => chapter.unlocked).map((chapter) => chapter.key),
     ['garden', 'forest'],
   );
   // 점수 장면은 판을 아무리 넘겨도 안 열리고, 점수로만 열린다.
