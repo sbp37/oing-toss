@@ -10,6 +10,7 @@ import {
   availableItemTimeBonus,
   boardDropRewardForRun,
   buildResultReaction,
+  buildClassicResultReaction,
   cappedSessionTime,
   chooseBoardDrop,
   classicBoardChangeSeconds,
@@ -2075,6 +2076,17 @@ class OingGame {
     this.ui.setPlayCharacter(this.state.maxCombo >= 8 ? 'success' : 'cheer');
     const oldBest = storageAdapter.getClassicBestScore();
     const newRecord = this.state.score > oldBest;
+    // Built before saveClassicRunScore below, so recentScores are strictly
+    // past runs - the judgement compares today against yesterday.
+    const classicReaction = buildClassicResultReaction({
+      score: this.state.score,
+      newRecord,
+      previousBest: oldBest,
+      recentScores: storageAdapter.getClassicRecentScores(),
+    }, {
+      recentMessages: storageAdapter.getRecentResultMessages(),
+    });
+    if (!this.runtime.testMode) storageAdapter.rememberResultMessage(classicReaction.message);
     this.telemetry?.finish(this.state, 'timer');
     fadeOutMusic();
     playGameOverSound(newRecord);
@@ -2100,7 +2112,7 @@ class OingGame {
       previousBest: oldBest,
       previousScore: null,
       recordEligible: true,
-      resultMessage: newRecord ? '신기록이다냥!' : '',
+      resultMessage: classicReaction.message,
       classic: {
         boards: this.classic.boardsPlayed,
         collectedLabels: this.classic.collectedLabels || [],

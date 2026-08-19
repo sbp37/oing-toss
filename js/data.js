@@ -936,6 +936,377 @@ export function pickResultMessage(score, { newRecord = false, previous = '', ran
   return pickMessage(resultMessageType(score, newRecord), previous, random);
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// 원조 오잉 결과창 멘트 이식.
+// 구조가 핵심이다: 7단계 점수 구간(lines+goals), 다음 구간이 코앞일 때의
+// 목표 멘트, 그리고 과거 기록 대비 오늘 판을 판정하는 스마트 리액트 9종.
+// 원문에서 바꾼 것: 아직 랭킹이 없으므로 랭킹·1위·TOP10·친구 기록류는
+// 자기 기록/모험 표현으로 치환했고, 랭킹 도발(taunts)과 오늘 첫 판
+// (firstOfDay)은 해당 기능이 생길 때까지 보류. 원조의 규칙 두 가지는
+// 그대로 지킨다 — 낮은 구간일수록 "못했다" 뉘앙스 금지, 그리고 도발
+// (drill)은 아쉬운 판(below)에는 절대 내보내지 않는다.
+// ══════════════════════════════════════════════════════════════════════════
+export const CLASSIC_RESULT_TIERS = Object.freeze([
+  Object.freeze({ min: 30000, lines: Object.freeze([
+    '이 점수는 오잉게임 역사에 박제된다냥 📜👑',
+    '전설 위의 전설, 신화급 기록이다냥 🌌',
+    '이 판은 두고두고 회자될 거다냥 🏛️',
+    '오잉게임이 널 영원히 기억할 거다냥 ✨',
+    '3만 고지를 넘은 사람은 정말 몇 없다냥 🏔️',
+    '이건 실력이 아니라 경지다냥 🧘',
+    '숫자판이 항복 선언했다냥 🏳️',
+    '오늘의 기록이 내일의 전설이 된다냥 🌠',
+    '이 점수 실제로 본 사람 거의 없다냥, 방금 네가 해냈다냥 📸',
+  ]), goals: Object.freeze([
+    '🎯 이제 목표는 자기 자신뿐이다냥 🌌',
+    '🎯 이 기록 위엔 하늘뿐이다냥 ☁️',
+    '🎯 다음 신화를 써보자냥 📜',
+    '🎯 정상의 풍경을 즐겨보라냥 ⛰️',
+    '🎯 이 자리를 지키는 게 다음 도전이다냥 😼',
+  ]) }),
+  Object.freeze({ min: 15000, lines: Object.freeze([
+    '이건 인간의 반응속도가 아니다냥 🤖',
+    '오잉게임 전설이 되는 중이다냥 📜👑',
+    '이 정도면 아이템 운도 실력이다냥 🍀🏆',
+    '숫자판이 무서워하는 소리가 들린다냥 😱',
+    '이 점수는 앞으로도 쉽게 안 나온다냥, 자랑해도 된다냥 🎉',
+    '이제는 최고기록이랑 싸우는 단계다냥 👑',
+    '이 기록 넘는 건 미래의 나뿐이다냥 🐱',
+    '숫자가 아니라 전설을 남기고 있다냥 📜',
+    '오늘의 오잉왕 후보 확정이다냥 👑',
+    '이런 점수는 캡처부터 해야 한다냥 📸',
+    '기록판이 긴장하고 있다냥 😼',
+    '손가락에 날개 달린 거 아니냥? 🪽',
+    '오늘은 오잉게임이 널 기억할 것 같다냥 🐱',
+    '최고를 넘어 전설이 되고 있다냥 🌟',
+    '이런 플레이는 매일 나오는 게 아니다냥 🎇',
+    '이 기록, 한동안 아무도 못 깰 것 같다냥 😎',
+  ]), goals: Object.freeze([
+    '🎯 이제 상대는 자기 최고기록뿐이다냥 👑',
+    '🎯 이 기록 넘는 건 미래의 너다냥 🏆',
+    '🎯 다음 전설을 써 내려가보자냥 📜',
+    '🎯 한계를 또 한 번 넘어보자냥 🚀',
+    '🎯 새로운 역사를 만들어보자냥 ✨',
+    '🎯 다음 목표는 3만 고지다냥 🏔️',
+  ]) }),
+  Object.freeze({ min: 6000, lines: Object.freeze([
+    '말도 안 되는 실력이다냥 🏆',
+    '이 정도면 최상위권 실력이다냥 👑',
+    '완전 고수의 향기다냥...! 🔥',
+    '오잉게임 마스터 인정이다냥 🎖️',
+    '이 점수 실화냥? 대단하다냥 😳',
+    '진짜 손이 안 보였을 것 같다냥 ⚡',
+    '오늘 기록판 흔들어놓을 기세다냥 😤',
+    '손끝에 우승 DNA가 흐른다냥 🏅',
+    '이 실력 친구들한테 자랑해도 된다냥 📢',
+    '오잉게임 역사에 이름 남기는 중이다냥 📜',
+    '어제의 기록쯤은 넘볼 수 있겠다냥 🐱',
+    '집중력이 폭발했다냥 ⚡',
+    '오늘 감각이 정말 좋다냥 🐱',
+    '누구나 인정하는 고수다냥 👏',
+    '전설 등급이 슬슬 보인다냥 👀',
+  ]), goals: Object.freeze([
+    '🎯 오늘 감각이면 전설도 꿈이 아니다냥 🔥',
+    '🎯 최고기록 갱신까지 달려보자냥 🚀',
+    '🎯 전설 등급도 노려볼 만하다냥 😼',
+    '🎯 이 흐름 이어가면 더 갈 수 있다냥 💪',
+    '🎯 한 판이면 기록이 훌쩍 뛴다냥 🏃',
+    '🎯 다음 목표는 만오천 고지다냥 🏔️',
+    '🎯 콤보를 끝까지 안 끊기게 가보자냥 ⚡',
+  ]) }),
+  Object.freeze({ min: 3200, lines: Object.freeze([
+    '속도가 장난 아니다냥 ⚡',
+    '숫자가 다 보이나보다냥 😳',
+    '머리 회전이 빠르다냥 🧠',
+    '와, 이번 판 진짜 잘했다냥 🙌',
+    '콤보 타이밍이 예술이다냥 ✨',
+    '다음 판도 이 흐름 기대한다냥! 🐱',
+    '이 페이스면 기록이 몇 계단은 그냥 오른다냥 📈',
+    '오늘 컨디션 물올랐다냥, 한 판만 더 가보자냥 🔥',
+    '이 흐름 잡았으면 놓치지 말라냥! 🐱',
+    '벌써 고수 냄새가 난다냥 👃',
+    '숫자가 저절로 눈에 들어오는 경지다냥 👀',
+    '손이 점점 빨라지고 있다냥 ⚡',
+    '실력이 눈에 띄게 늘었다냥 🌟',
+  ]), goals: Object.freeze([
+    '🎯 조금만 더 하면 고수 반열이다냥 👑',
+    '🎯 이 감각 그대로 이어가보자냥 🐱',
+    '🎯 한 판 더 하면 확 달라질 수 있다냥 💪',
+    '🎯 최고기록도 노려볼 만하다냥 👀',
+    '🎯 조금만 더 집중하면 기록이 바뀐다냥 👑',
+    '🎯 긴 콤보 한 번이면 확 뛴다냥 ⚡',
+    '🎯 이 페이스면 6천 고지도 보인다냥 🔥',
+    '🎯 실수만 줄이면 자기 기록 갱신이다냥 🏆',
+  ]) }),
+  Object.freeze({ min: 1500, lines: Object.freeze([
+    '감 좋다냥! 콤보가 착착 붙는다냥 ✨',
+    '패턴이 눈에 딱딱 걸린다냥 🔍',
+    '오, 이번 판 흐름 괜찮았다냥? 🐱',
+    '숫자 조합 보는 눈이 늘고 있다냥 👀',
+    '안정적으로 잘 하고 있다냥! 🐱',
+    '이 정도면 중수는 훌쩍 넘었다냥 😎',
+    '이 페이스 유지하면 기록판에 이름 올린다냥 🐱',
+    '몸이 기억하기 시작했다냥, 계속 가보라냥 🐱',
+    '오늘 중에 자기 최고기록 갈아치울 수도 있다냥 🐱',
+    '한 끗만 더 다듬으면 확 달라진다냥 💪',
+    '이제 진짜 실력이 붙기 시작했다냥 😎',
+    '감각이 살아나고 있다냥 😼',
+    '지금이 가장 많이 늘 때다냥 📈',
+    '플레이가 훨씬 안정적이다냥 👏',
+  ]), goals: Object.freeze([
+    '🎯 조금만 더 다듬으면 고수 반열이다냥 🔥',
+    '🎯 이번엔 최고기록도 노려보라냥 🏆',
+    '🎯 지금 감각이면 충분히 가능하다냥 💪',
+    '🎯 이 감각 그대로 이어가보자냥 🐱',
+    '🎯 한 번만 터지면 기록이 확 오른다냥 🔥',
+    '🎯 콤보 한 번만 길게 이어보라냥 ✨',
+    '🎯 다음 판은 실수 하나만 줄여보자냥 🐾',
+    '🎯 고양이까지 챙기면 점수가 더 붙는다냥 🐱',
+    '🎯 남은 시간 끝까지 써보자냥 ⏱️',
+    '🎯 고수 반열까지 이제 몇 판 안 남았다냥 👀',
+    '🎯 오늘 안에 기록 하나 갈아치워보자냥 🌟',
+  ]) }),
+  Object.freeze({ min: 500, lines: Object.freeze([
+    '숫자 조합이 눈에 들어오기 시작했다냥 👀',
+    '한 판 한 판 늘고 있다냥, 이 감각 기억해두라냥 🐱',
+    '다음 판엔 조금 더 잘 보일 거다냥 🐱',
+    '조금씩 요령이 붙고 있다냥 🐱',
+    '나쁘지 않은 페이스다냥, 계속 가보라냥! 🐱',
+    '한 판 더 하면 확 달라질 거다냥, 가보라냥 🐱',
+    '숫자 사이 거리감이 슬슬 익숙해진다냥 🐱',
+    '이 판이 다음 판 실력이 된다냥, 계속해보라냥 🐱',
+    '감 잡히면 순식간에 는다냥, 조금만 더 가보라냥 💪',
+    '다들 이렇게 시작했다냥, 걱정 말라냥 🐱',
+    '이제 게임이 보이기 시작했다냥 😼',
+    '성장 속도가 꽤 빠르다냥 📈',
+    '시작이 아주 좋다냥 😺',
+    '감은 잡았다냥, 이제 속도만 올리면 된다냥 💪',
+    '오늘 최고기록 충분히 노려볼 만하다냥 🔥',
+  ]), goals: Object.freeze([
+    '🎯 이제 중수는 코앞이다냥 🐱',
+    '🎯 감각을 이어가면 금방 오른다냥 🌟',
+    '🎯 다음 판이 기대된다냥 😸',
+    '🎯 조금만 더 하면 확 달라진다냥 🔥',
+    '🎯 이 흐름 놓치지 말라냥 💪',
+    '🎯 다음 판부터 진짜 시작이다냥 😼',
+    '🎯 콤보 감만 잡으면 쭉쭉 오른다냥 📈',
+    '🎯 고양이 챙기는 재미도 붙여보라냥 🐾',
+  ]) }),
+  Object.freeze({ min: 0, lines: Object.freeze([
+    '오잉게임 은근 중독성 있다냥? 몇 판 더 하면 감 잡힌다냥 🐱',
+    '합이 10 되는 조합, 눈에 익으면 확 빨라진다냥 🐱',
+    '고양이는 챙겼냥? 다음 판도 기대한다냥 🐾',
+    '워밍업 한 판이었다고 생각하면 딱이다냥 🐱',
+    '처음엔 다 이렇다냥, 몇 판 더 해보면 확 달라진다냥 🐱',
+    '오늘의 한 판, 그 자체로 의미있다냥 🙂',
+    '천천히 봐도 된다냥, 급할 거 없다냥 🐱',
+    '그냥 눌러보는 것부터가 시작이다냥 🐱',
+    '다음 판엔 분명 다를 거다냥, 한 판만 더 가보라냥 🐱',
+    '몸 풀렸으니 이제 진짜 시작이다냥 🔥',
+    '시작이 제일 어려운 거다냥 🐱',
+    '아직 몸이 풀리는 중이다냥 ☀️',
+    '누구나 여기서 시작했다냥 😺',
+    '금방 재미가 붙을 거다냥 🐱',
+    '오늘 첫걸음도 충분히 멋지다냥 🌼',
+    '모험은 아직 시작도 안 했다냥 😼',
+    '한 판만 더 하면 달라질 것 같다냥 😸',
+  ]), goals: Object.freeze([
+    '🎯 다음 판엔 분명 더 잘할 거다냥 🐾',
+    '🎯 감만 잡으면 금방 성장한다냥 😸',
+    '🎯 조금만 더 하면 게임이 보이기 시작한다냥 👀',
+    '🎯 한 판만 더 가보자냥! 🔥',
+    '🎯 시작이 반이다냥, 계속 가보라냥 😺',
+    '🎯 고양이 한 마리만 구해보자냥 🐱',
+    '🎯 이번엔 콤보 5개 이어보기다냥 ✨',
+    '🎯 어제의 나보다 한 칸만 더 가보자냥 🐾',
+  ]) }),
+]);
+
+// 다음 구간이 코앞일 때 — 남은 점수를 들이대지 않고 부드럽게.
+export const CLASSIC_NEAR_GOAL_TEMPLATES = Object.freeze([
+  '🎯 {next}점이 코앞이다냥!',
+  '🎯 조금만 더 가면 {next}점이다냥!',
+  '🎯 {next}점, 거의 다 왔다냥!',
+  '🎯 이 흐름이면 {next}점도 금방이다냥!',
+  '🎯 다음 판엔 {next}점 넘어보자냥!',
+  '🎯 {next}점 문턱에 걸쳐 있다냥, 한 발만 더냥!',
+  '🎯 {next}점까지 손 뻗으면 닿는다냥!',
+  '🎯 다음 판 한 콤보면 {next}점이다냥!',
+]);
+
+// 과거 기록 대비 오늘 판의 판정별 대사.
+export const CLASSIC_SMART_REACT = Object.freeze({
+  record: Object.freeze([
+    '🏆 새 기록이다냥!! 이 순간을 기억하라냥 🎉',
+    '🏆 최고기록 갱신이다냥! 오늘의 너는 어제의 너를 이겼다냥 👑',
+    '🏆 신기록이다냥!! 손끝이 반짝인다냥 ✨',
+    '🎉 방금 그거 역대급이다냥! 자기 기록을 깼다냥 🏆',
+    '👑 최고점 경신이다냥! 이 감각 잊지 말라냥',
+    '✨ 새 최고기록이다냥! 실력이 한 계단 올라갔다냥 📈',
+    '🔥 신기록이다냥!! 오늘 컨디션 예술이다냥',
+    '💫 자기 최고를 넘었다냥! 방금 그 판 명장면이다냥',
+  ]),
+  near: Object.freeze([
+    '😼 최고기록까지 딱 {diff}점이었다냥... 다음 판이다냥!',
+    '👀 최고기록 코앞이었다냥! {diff}점 차이다냥',
+    '🔥 조금만 더! 최고기록이 바로 앞이다냥 ({diff}점 남았다냥)',
+    '😻 {diff}점만 더 갔으면 신기록이었다냥! 아까비다냥',
+    '💦 최고기록이 {diff}점 앞에서 손 흔들고 있었다냥',
+    '🎯 {diff}점 차이다냥... 이건 다음 판에 넘는다냥',
+    '😤 최고기록 바로 밑이다냥! {diff}점, 곧 깬다냥',
+    '✨ 자기 최고랑 {diff}점 차이다냥, 감 잡혔다냥 다시 가자냥',
+    '🐾 {diff}점 남았다냥! 신기록 냄새가 난다냥',
+  ]),
+  above: Object.freeze([
+    '📈 오늘 평소보다 확실히 좋다냥! 감각 살아있다냥 ✨',
+    '😳 오늘 판은 유난히 날카로웠다냥, 컨디션 좋아 보인다냥!',
+    '📈 평소 페이스를 훌쩍 넘었다냥! 이 흐름 아깝다냥, 한 판 더냥',
+    '✨ 오늘따라 손이 다르다냥, 컨디션 최고다냥',
+    '🚀 평소보다 확 치고 올라갔다냥! 물 만났다냥',
+    '😸 오늘 유난히 잘 풀린다냥, 이 감각 붙잡아라냥',
+    '🔥 평소 실력 위로 점프했다냥! 지금이 기회다냥',
+    '👏 오늘 판 좋다냥! 자기 평균을 가볍게 넘었다냥',
+  ]),
+  rising: Object.freeze([
+    '📊 판마다 점수가 오르고 있다냥! 지금 물올랐다냥 🔥',
+    '📈 3판 연속 상승세다냥, 여기서 멈추기 아깝다냥',
+    '🚀 계속 오르는 중이다냥! 어디까지 가나 보자냥',
+    '😼 판이 갈수록 좋아진다냥, 감 잡았다냥',
+    '📈 우상향이다냥! 다음 판도 더 오를 것 같다냥',
+    '🔥 점점 잘하고 있다냥! 리듬 제대로 탔다냥',
+    '🌊 파도 제대로 탔다냥! 이 흐름 그대로 밀어붙이라냥',
+    '🎢 점수가 계단을 그리며 오르는 중이다냥, 다음 칸도 가보자냥',
+    '⏫ 어제의 나를 매 판 이기고 있다냥, 멋지다냥',
+  ]),
+  below: Object.freeze([
+    '🐾 이런 판도 있는 거다냥~ 손은 풀렸으니 다음 판 가보자냥',
+    '😽 평소 실력 어디 안 갔다냥, 잠깐 숨 고르는 판이었다냥',
+    '🍵 아쉬운 판이었냥? 원래 그 다음 판이 진짜다냥',
+    '🐱 오늘 숫자들이 좀 얄미웠다냥, 다시 가보자냥',
+    '🌱 이번 판은 워밍업이라 치자냥, 다음 판 기대된다냥',
+    '😌 누구나 이런 판 있다냥~ 금방 원래대로 돌아온다냥',
+    '☕ 잠깐 쉬어가는 판이었다냥, 손 풀렸으니 이제부터다냥',
+    '🐾 괜찮다냥! 이 판은 그냥 다음 판을 위한 발판이다냥',
+  ]),
+  around: Object.freeze([
+    '🐾 딱 평소 페이스다냥, 안정적이다냥',
+    '😸 오늘도 꾸준하다냥! 이 페이스 나쁘지 않다냥',
+    '🐱 늘 하던 만큼은 해줬다냥, 다음 판이 진짜 승부다냥',
+    '👌 무난하게 한 판 뽑았다냥~ 슬슬 한 방 노려보자냥',
+    '🎯 평소 실력 그대로다냥, 살짝만 더 밀면 신기록이다냥',
+    '😺 흔들림 없다냥! 이런 판이 쌓여서 실력이 된다냥',
+    '🍀 안정적인 한 판이었다냥, 리듬 탔다냥',
+    '🐾 꾸준함이 무기다냥! 이 페이스 유지하라냥',
+    '😼 늘 하던 실력이다냥~ 오늘은 한 끗을 노려보자냥',
+    '✨ 편안한 한 판이다냥, 다음 판에 욕심 내보자냥',
+    '🎮 딱 자기 페이스다냥! 여기서 한 뼘만 더 가보자냥',
+    '🐱 안정권이다냥~ 이제 슬슬 자기 기록에 도전하라냥',
+    '👍 평소만큼 해냈다냥, 다음 판은 조금 더 노려보자냥',
+    '🌟 균형 잡힌 한 판이다냥, 이 리듬에서 한 번 터뜨려보자냥',
+  ]),
+  drill: Object.freeze([
+    '😼 방금 5-5 두 쌍 지나친 거 다 봤다냥',
+    '🫡 나쁘지 않다냥. 근데 어제의 너는 더 빨랐다냥',
+    '🐱 고양이들이 "좀 더 하라냥"고 전해달란다냥',
+    '😼 손은 풀린 것 같은데, 본실력은 언제 나오냥?',
+  ]),
+  plateau: Object.freeze([
+    '🧗 요즘 딱 이 근처에서 맴돈다냥~ 한 끗만 더 밀면 벽 뚫린다냥!',
+    '💪 조금만 더 해보라냥~ 다음 계단이 코앞이다냥',
+    '🎯 실력은 이미 쌓였다냥, 이제 한 판만 제대로 터뜨리면 된다냥',
+    '😼 몸에 익었다냥~ 이제 한 끗 차이로 확 오른다냥',
+    '⛰️ 정체기는 폭발 직전이라는 뜻이다냥, 한 판 더 가보자냥',
+    '🔓 벽에 손 닿았다냥, 살짝만 더 힘주면 넘는다냥',
+    '🐾 계속 비슷하다냥? 그럼 이제 슬슬 깰 타이밍이다냥!',
+    '🚪 문 앞까지 왔다냥~ 이 벽만 넘으면 새 기록이다냥',
+  ]),
+});
+
+function pickFrom(pool, recentMessages = [], random = Math.random) {
+  const blocked = new Set(recentMessages);
+  const fresh = pool.filter((line) => !blocked.has(line));
+  const choices = fresh.length ? fresh : pool;
+  return choices[Math.min(choices.length - 1, Math.floor(Math.max(0, random()) * choices.length))];
+}
+
+export function classicResultTierFor(score) {
+  const value = Math.max(0, Math.round(Number(score) || 0));
+  return CLASSIC_RESULT_TIERS.find((tier) => value >= tier.min) || CLASSIC_RESULT_TIERS.at(-1);
+}
+
+// The original's judgement thresholds, verbatim: personalisation needs three
+// past runs; record only counts against a real previous best; near is 90% of
+// a four-digit best; above/below compare to the recent average with floors so
+// a brand-new account can't trip them; plateau fires half the time when four
+// runs sit within 15% of their mean; drill swaps in at low odds on good or
+// ordinary runs and never on a down one.
+export function buildClassicResultReaction({
+  score = 0,
+  newRecord = false,
+  previousBest = 0,
+  recentScores = [],
+} = {}, { recentMessages = [], random = Math.random } = {}) {
+  const current = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  const past = (Array.isArray(recentScores) ? recentScores : [])
+    .filter(Number.isFinite)
+    .map((value) => Math.max(0, Math.round(value)));
+  const average = past.length
+    ? past.slice(-4).reduce((sum, value) => sum + value, 0) / Math.min(4, past.length)
+    : 0;
+  const say = (type, pool, message) => {
+    const text = message ?? pickFrom(pool, recentMessages, random);
+    return Object.freeze({ type, message: text });
+  };
+
+  if (newRecord && best >= 500) return say('record', CLASSIC_SMART_REACT.record);
+
+  const personalized = past.length >= 3;
+  if (personalized) {
+    if (best >= 1000 && current < best && current / best >= 0.9) {
+      const template = pickFrom(CLASSIC_SMART_REACT.near, recentMessages, random);
+      return Object.freeze({
+        type: 'near',
+        message: template.replaceAll('{diff}', (best - current).toLocaleString('ko-KR')),
+      });
+    }
+    const last = past.at(-1);
+    const beforeLast = past.at(-2);
+    if (current > last && last > beforeLast) return say('rising', CLASSIC_SMART_REACT.rising);
+    if (average >= 800 && current <= average * 0.6) return say('below', CLASSIC_SMART_REACT.below);
+    if (average >= 200 && current >= average * 1.35) {
+      if (random() < 0.15) return say('drill', CLASSIC_SMART_REACT.drill);
+      return say('above', CLASSIC_SMART_REACT.above);
+    }
+    const window = [...past.slice(-3), current];
+    const windowAvg = window.reduce((sum, value) => sum + value, 0) / window.length;
+    if (windowAvg > 0 && past.length >= 3) {
+      const spread = Math.max(...window) - Math.min(...window);
+      if (spread <= windowAvg * 0.15 && random() < 0.5) {
+        return say('plateau', CLASSIC_SMART_REACT.plateau);
+      }
+    }
+    if (random() < 0.2) return say('drill', CLASSIC_SMART_REACT.drill);
+    return say('around', CLASSIC_SMART_REACT.around);
+  }
+
+  // Fresh accounts speak in tiers. When the next tier is within reach the
+  // goal points at it by name; otherwise the tier's own lines and goals mix.
+  const tier = classicResultTierFor(current);
+  const tierIndex = CLASSIC_RESULT_TIERS.indexOf(tier);
+  const nextTier = tierIndex > 0 ? CLASSIC_RESULT_TIERS[tierIndex - 1] : null;
+  if (nextTier && current >= nextTier.min * 0.85 && random() < 0.5) {
+    const template = pickFrom(CLASSIC_NEAR_GOAL_TEMPLATES, recentMessages, random);
+    return Object.freeze({
+      type: 'nearGoal',
+      message: template.replaceAll('{next}', nextTier.min.toLocaleString('ko-KR')),
+    });
+  }
+  if (random() < 0.3 && tier.goals.length) return say('tierGoal', tier.goals);
+  return say('tier', tier.lines);
+}
+
+
 function pickFreshMessage(type, recentMessages = [], random = Math.random) {
   const pool = MESSAGES[type] || MESSAGES.resultNormal;
   const blocked = new Set(Array.isArray(recentMessages) ? recentMessages : []);
