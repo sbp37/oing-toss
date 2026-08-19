@@ -1123,13 +1123,11 @@ class OingGame {
     this.ui.flashBoardChange();
     this.updateHUD();
     await this.ui.animateShuffleOut();
-    // The tiles are gone and the chapter art is the whole frame, so a new
-    // scene announces itself here rather than behind a fresh board. Paint the
-    // new skin first — buildRound's own call then finds nothing to change.
-    if (enteredChapter) {
-      this.applyClassicChapter();
-      await this.ui.revealChapter(enteredChapter.label);
-    }
+    // The new scene's skin goes on before the fresh board arrives, but it is
+    // never shown outright: a card that displays the whole painting is a
+    // preview, and this picture is only supposed to be earned cell by cell.
+    // The arrival still gets announced — in the speech bubble, in words.
+    if (enteredChapter) this.applyClassicChapter();
     this.buildRound();
     await this.ui.animateShuffleIn();
     itemHaptic();

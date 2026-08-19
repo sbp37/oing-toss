@@ -56,6 +56,11 @@ const CHARACTER_ALT = Object.freeze({
   fail: '살짝 아쉬워하는 블루 고양이',
 });
 
+// How much mist sits over the chapter art inside cleared cells: heavy while
+// the board is still full of numbers to read, light once it is nearly empty.
+const VEIL_FULL = 0.44;
+const VEIL_CLEAR = 0.14;
+
 // A url() inside a custom property is resolved against the stylesheet that
 // consumes it, not the document, so a document-relative path handed to CSS
 // from here would be looked up under css/. Resolve it to an absolute URL
@@ -149,8 +154,6 @@ export class GameUI {
       gardenProgressLabel: document.querySelector('#garden-progress-label'),
       gardenProgressFill: document.querySelector('#garden-progress-fill'),
       gardenTiers: document.querySelector('#garden-tiers'),
-      chapterReveal: document.querySelector('#chapter-reveal'),
-      chapterRevealName: document.querySelector('#chapter-reveal-name'),
       chapterGallery: document.querySelector('#chapter-gallery'),
       chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
       chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
@@ -357,9 +360,32 @@ export class GameUI {
     const originX = (bw - coverW) / 2;
     const originY = (bh - coverH) / 2;
     board.style.setProperty('--win-size', `${coverW}px ${coverH}px`);
-    board.querySelectorAll('.tile').forEach((tile) => {
+    const tiles = board.querySelectorAll('.tile');
+    tiles.forEach((tile) => {
       tile.style.setProperty('--win-pos', `${originX - tile.offsetLeft}px ${originY - tile.offsetTop}px`);
     });
+    this.syncChapterVeil(tiles);
+  }
+
+  // The mist thins as the board empties, so a scene develops rather than
+  // arriving. Written as two variables on the board itself - one style write
+  // per render, inherited by the cells - rather than per-tile, and as plain
+  // gradient alpha rather than a filter, so nothing here adds a composited
+  // layer or a per-frame cost.
+  syncChapterVeil(tiles = this.board?.querySelectorAll('.tile')) {
+    const board = this.board;
+    if (!board || !tiles?.length) return;
+    let playable = 0;
+    let cleared = 0;
+    tiles.forEach((tile) => {
+      if (tile.classList.contains('is-board-item') || tile.classList.contains('is-bonus-cat')) return;
+      playable += 1;
+      if (tile.classList.contains('is-empty')) cleared += 1;
+    });
+    const ratio = playable ? cleared / playable : 0;
+    const veil = VEIL_FULL + (VEIL_CLEAR - VEIL_FULL) * ratio;
+    board.style.setProperty('--win-veil', veil.toFixed(3));
+    board.style.setProperty('--win-veil-b', (veil - 0.06).toFixed(3));
   }
 
   tileAt(r, c) {
@@ -1921,19 +1947,6 @@ export class GameUI {
   // Held between the old board fading out and the new one landing: the
   // tiles are already gone, so the chapter art behind them is briefly the
   // whole screen. One card names the scene, then play resumes.
-  async revealChapter(label) {
-    const card = this.elements.chapterReveal;
-    if (!card || !label) return;
-    this.elements.chapterRevealName.textContent = label;
-    this.boardFrame.classList.add('is-chapter-reveal');
-    card.classList.remove('is-visible');
-    void card.offsetWidth;
-    card.classList.add('is-visible');
-    await delay(760);
-    card.classList.remove('is-visible');
-    this.boardFrame.classList.remove('is-chapter-reveal');
-  }
-
   // 판갈이 is the loop's only lifeline, so it gets a real beat: the frame
   // flashes and kicks once as the seconds land.
   flashBoardChange() {

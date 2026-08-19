@@ -9633,3 +9633,17 @@ img {
   border-radius: 14px;
   box-shadow: 0 6px 16px rgba(60, 74, 110, .22), inset 0 0 0 1px rgba(255,255,255,.4);
 }
+
+/* 2026-08 play backdrop calmed ---------------------------------------------
+   The surround was the most saturated thing on screen while the board a
+   player has to read was pale pastel - the value hierarchy ran backwards,
+   so the eye kept drifting to the frame and re-focusing on the numbers.
+   The wash over the sky comes up so the board becomes the brightest, most
+   defined object. The photograph underneath is untouched: sky and meadow
+   still read as sky and meadow, only softer. */
+.screen-play.play-ui-v4,
+.screen-play.play-ui-v4[data-stage-band] {
+  background:
+    linear-gradient(180deg, rgba(232,247,253,.62) 0%, rgba(247,252,247,.52) 44%, rgba(255,251,238,.46) 78%, rgba(255,249,232,.44) 100%),
+    #9fd4f5 url("../assets/backgrounds/play-bg-spring-path-v2.webp") center bottom / cover no-repeat;
+}

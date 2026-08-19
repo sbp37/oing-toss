@@ -3325,67 +3325,10 @@
   100% { opacity: 0; }
 }
 
-/* Chapter reveal. Held in the gap where the old tiles have faded and the new
-   board has not arrived: the art behind the board is briefly the whole
-   frame, so the scene gets one uninterrupted look. */
-.play-ui-v4 .board-frame.is-chapter-reveal .board {
-  background-color: transparent;
-  background-image: none;
-}
 
-/* The .board step is here to outrank the tutorial's own tile-opacity rule,
-   which is otherwise more specific and would keep the tiles visible over
-   the reveal. In the live flow animateShuffleOut has already hidden them,
-   so this is the belt to that braces. */
-.play-ui-v4 .board-frame.is-chapter-reveal .board .tile {
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
 
-.play-ui-v4 .chapter-reveal {
-  position: absolute;
-  z-index: 34;
-  inset-inline: 6%;
-  top: 50%;
-  display: grid;
-  gap: 3px;
-  justify-items: center;
-  padding: 13px 16px;
-  border: 1px solid rgba(255, 255, 255, .9);
-  border-radius: 18px;
-  background: rgba(255, 252, 243, .9);
-  box-shadow: 0 10px 26px rgba(52, 96, 118, .22), inset 0 2px 0 rgba(255,255,255,.94);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%) scale(.9);
-}
 
-.play-ui-v4 .chapter-reveal small {
-  color: #b39a72;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .16em;
-}
 
-.play-ui-v4 .chapter-reveal strong {
-  color: #5d7f74;
-  font-family: var(--font-display);
-  font-size: clamp(20px, 6.4vw, 27px);
-  line-height: 1.05;
-  text-align: center;
-}
-
-.play-ui-v4 .chapter-reveal.is-visible {
-  animation: chapter-reveal-in 1050ms cubic-bezier(.18, .82, .24, 1.1) both;
-}
-
-@keyframes chapter-reveal-in {
-  0% { opacity: 0; transform: translateY(-50%) scale(.86); }
-  16% { opacity: 1; transform: translateY(-50%) scale(1.04); }
-  30% { transform: translateY(-50%) scale(1); }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-50%) scale(1.02); }
-}
 
 /* The record slot: quiet while it is a target, lit once the run is past it. */
 .play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy b,
@@ -3765,8 +3708,16 @@
   border: 1px solid rgba(255, 255, 255, .38);
   border-radius: clamp(7px, 1.9vw, 11px);
   background-color: rgba(255, 255, 255, .04);
+  /* The mist over the picture. The window system dropped this to 10% when it
+     moved the art from the frame into the cells; the frame used to carry
+     about 28% and the board read far calmer for it. It is back, and it
+     breathes: ui.js lowers --win-veil as the board empties, so an early
+     board stays quiet under a heavy mist and a nearly-cleared one lets the
+     scene bloom. No filter is involved - saturate() would put a rasterized
+     layer back on every cell, which is exactly what was taken off the tiles
+     to cool the play loop. A white wash desaturates on its own. */
   background-image:
-    linear-gradient(rgba(255, 255, 255, .10), rgba(255, 255, 255, .02)),
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .34)), rgba(255, 255, 255, var(--win-veil-b, .28))),
     var(--chapter-art);
   background-size: auto, var(--win-size, cover);
   background-position: 0 0, var(--win-pos, center);
@@ -3781,10 +3732,6 @@
 
 /* The reveal beat empties the whole frame for the new scene; the opaque bed
    above outranks the original reveal rule, so it is re-lowered here. */
-.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board-frame.is-chapter-reveal .board {
-  background-color: transparent;
-  background-image: none;
-}
 
 /* 2026-08 device-report batch ----------------------------------------------
    Fixes from a real-device pass: the dock jumping in size at board 3, the
@@ -3832,8 +3779,14 @@
 
 /* The chapter arrival beat read as a glitch - a bare painting flashing
    between boards. A stronger plate makes it read as the feature it is. */
-.play-ui-v4 .chapter-reveal {
-  padding: 15px 22px;
-  border-width: 2px;
-  box-shadow: 0 8px 22px rgba(60, 74, 110, .28), inset 0 1px 0 #fff;
+
+/* will-change: transform sat on the base .tile rule, so every cell on the
+   board - up to 54 of them - was permanently promoted to its own compositor
+   layer, held there for the whole run whether or not anything was moving.
+   That is the same standing GPU cost the drop-shadow filter was removed for.
+   The press feedback it was hinting at is a 32ms transform; the browser
+   promotes for that on its own, at the moment it happens, and drops it
+   again after. */
+.play-ui-v4 .tile {
+  will-change: auto;
 }
