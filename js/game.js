@@ -15,6 +15,7 @@ import {
   classicBoardChangeSeconds,
   classicBoardForIndex,
   classicRefundWithFatigue,
+  CLASSIC_REFUND_FATIGUE,
   classicChapterArtUrl,
   classicChapterCollected,
   classicChapterForBoard,
@@ -741,6 +742,9 @@ class OingGame {
         rewardIndex: this.state.boardDropsEarned,
         stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
         timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
+        // Same line the refund fatigue charges from: boardsPlayed counts the
+        // board being played, so board 7 is the first one past it.
+        lateRun: Boolean(this.classic && this.classic.boardsPlayed > CLASSIC_REFUND_FATIGUE.fromBoard),
       });
       if (drop) {
         earnedDrop = drop;

@@ -228,6 +228,36 @@ test('a scene is collected by clearing its board, not by standing on it', async 
   assert.ok(rows.slice(0, -1).every((row) => row.requirement.includes(percent)));
 });
 
+test('past the fatigue line the board stops dropping time-givers', async () => {
+  const { chooseBoardDrop } = await import('../js/data.js');
+  const draw = (lateRun, seed) => chooseBoardDrop(20, () => seed, {
+    cloverGiven: true, pity: {}, previousType: null,
+    rewardIndex: 3, stage: 10, timeBonusCapped: false, lateRun,
+  });
+  const sample = (lateRun) => {
+    const seen = new Set();
+    for (let i = 0; i < 200; i += 1) {
+      const drop = draw(lateRun, (i + 0.5) / 200);
+      if (drop) seen.add(drop.id);
+    }
+    return seen;
+  };
+  const normal = sample(false);
+  const late = sample(true);
+  // 평시 후반 풀에는 시간 아이템이 존재한다.
+  assert.ok(normal.has('clock') || normal.has('freeze'));
+  // 피로선 너머에서는 시간 아이템이 사라지고 보드 액션만 남는다.
+  assert.ok(!late.has('clock'));
+  assert.ok(!late.has('freeze'));
+  assert.ok(late.has('bomb'));
+  // 프리즈 pity가 가득 차 있어도 피로선 너머에서는 프리즈를 강제하지 않는다.
+  const pityForced = chooseBoardDrop(20, () => 0.99, {
+    cloverGiven: true, pity: { freeze: 99 }, previousType: null,
+    rewardIndex: 3, stage: 10, timeBonusCapped: false, lateRun: true,
+  });
+  assert.notEqual(pityForced?.id, 'freeze');
+});
+
 test('refund fatigue starts past the ladder and never drops below the floor', async () => {
   const { CLASSIC_REFUND_FATIGUE, classicRefundWithFatigue } = await import('../js/data.js');
   const { fromBoard, perBoard, floor } = CLASSIC_REFUND_FATIGUE;

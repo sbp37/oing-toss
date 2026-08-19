@@ -90,7 +90,7 @@ export function stageShowcaseBoardDrop(stage = 1, random = Math.random, alreadyG
   return BOARD_DROP_ITEMS[STAGE_SHOWCASE_DROP_IDS[Math.floor(roll * STAGE_SHOWCASE_DROP_IDS.length)]];
 }
 
-function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = false) {
+function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = false, lateRun = false) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   // 시뮬레이션(scripts/item-drop-compare.mjs)으로 확인한 사실: 콤보는 거의
@@ -106,7 +106,12 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   // 클로버는 게임당 1회 한정(!cloverGiven)이고 보너스가 커서 비중은 그대로 1.
   const bombWeight = streak >= 14 ? 12 : streak >= 7 ? 13 : 15;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
-  if (level >= 5 && !timeBonusCapped) pool.push('clock');
+  // Past the refund-fatigue line the run is supposed to be converging; a
+  // clock or a freeze there reopens the time economy the fatigue just
+  // closed (measured: they stretched a near-expert run past its simulated
+  // ceiling). Board-action items keep dropping - the reward beat stays -
+  // but the time-givers stop.
+  if (level >= 5 && !timeBonusCapped && !lateRun) pool.push('clock');
   // Reachability pass: across three full instrumented runs (casual to
   // near-perfect pace) freeze and clover never appeared once — the old
   // level>=6 + streak 14/21 gates sat past where most runs end. Megabomb
@@ -114,7 +119,7 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   // run meets each rare item while the bomb-heavy weighting still keeps
   // board actions dominant (see the late-drop distribution test).
   if (level >= 5 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 5 && streak >= 10 && !timeBonusCapped) pool.push('freeze');
+  if (level >= 5 && streak >= 10 && !timeBonusCapped && !lateRun) pool.push('freeze');
   if (level >= 6 && streak >= 14 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
@@ -126,6 +131,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
   rewardIndex = 0,
   stage = 1,
   timeBonusCapped = false,
+  lateRun = false,
 } = {}) {
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   const earned = Math.max(0, Math.round(Number(rewardIndex) || 0));
@@ -138,7 +144,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
     && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
     return BOARD_DROP_ITEMS.clover;
   }
-  if (!timeBonusCapped && !previousWasTimeItem && level >= 5 && streak >= 10
+  if (!timeBonusCapped && !lateRun && !previousWasTimeItem && level >= 5 && streak >= 10
     && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
     return BOARD_DROP_ITEMS.freeze;
   }
@@ -151,7 +157,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
     && previousType !== 'megabomb') {
     return BOARD_DROP_ITEMS.megabomb;
   }
-  const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped);
+  const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped, lateRun);
   if (!pool.length) return null;
   // Avoid back-to-back rare effects without forcing a clock after every bomb.
   const repeatSafePool = previousType && previousType !== 'bomb'
