@@ -414,7 +414,11 @@ class OingGame {
     if (!this.classic || this.runtime.testMode) return false;
     if (!classicChapterCollected(clearedRatio)) return false;
     const chapter = classicChapterForBoard(this.classic.boardIndex);
+    const alreadySeen = storageAdapter.getSeenChapters().includes(chapter.key);
     storageAdapter.markChapterSeen(chapter.key);
+    // Only a first-time collect is this run's news; the result sheet reads
+    // the list so the album progress lands where the retry decision is made.
+    if (!alreadySeen) (this.classic.collectedLabels ||= []).push(chapter.label);
     return true;
   }
 
@@ -2057,7 +2061,10 @@ class OingGame {
       previousScore: null,
       recordEligible: true,
       resultMessage: newRecord ? '신기록이다냥!' : '',
-      classic: { boards: this.classic.boardsPlayed },
+      classic: {
+        boards: this.classic.boardsPlayed,
+        collectedLabels: this.classic.collectedLabels || [],
+      },
     };
     this.retryStage = 1;
     if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
@@ -2096,7 +2103,34 @@ class OingGame {
     });
   }
 
+  // The chatty categories get a cooldown. A near-expert QA run logged 187
+  // bubble lines in under seven minutes - one every 2.2s - with the cat
+  // bonus trio alone firing 59 times; at that density the bubble is noise.
+  // Only the high-frequency celebration categories are cooled: feedback the
+  // player acts on (fail, nearMiss, lowTime), rare events (wow, clutch,
+  // freeze, clover) and player-triggered lines (hint, shuffle, rescue) all
+  // still speak every time. Cooldowns scale naturally with skill - at a
+  // novice's pace almost nothing is suppressed.
+  static CAT_MESSAGE_COOLDOWN_MS = Object.freeze({
+    catBonus: 15000,
+    itemDrop: 10000,
+    bomb: 8000,
+    megabomb: 8000,
+    combo3: 8000,
+    combo5: 8000,
+    combo8: 8000,
+    success: 5000,
+    tapEnd: 6000,
+  });
+
   showCatMessage(type) {
+    const cooldown = OingGame.CAT_MESSAGE_COOLDOWN_MS[type] || 0;
+    if (cooldown) {
+      const now = performance.now();
+      const last = this.catMessageLastAt?.[type] || 0;
+      if (now - last < cooldown) return;
+      (this.catMessageLastAt ||= {})[type] = now;
+    }
     const message = pickMessage(type, this.lastCatMessage);
     this.lastCatMessage = message;
     const duration = ['itemDrop', 'lowTime', 'freeze', 'clover'].includes(type) ? 1800 : 1500;

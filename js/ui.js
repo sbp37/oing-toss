@@ -2092,8 +2092,14 @@ export class GameUI {
       this.elements.finalRoundLabel.textContent = classic ? '판갈이 수' : '도달 스테이지';
     }
     this.elements.resultKicker.textContent = '이번 판 기록';
+    // A scene earned this run is the retry hook, so it reads here rather
+    // than only inside the records sheet.
+    const collected = classic?.collectedLabels || [];
+    const collectedNote = collected.length === 0 ? ''
+      : collected.length === 1 ? ` · 새 장면: ${collected[0]}`
+        : ` · 새 장면 ${collected.length}개`;
     this.elements.resultStageProgress.textContent = classic
-      ? `${classic.boards}판 진행 · 성공 ${successCount}회`
+      ? `${classic.boards}판 진행 · 성공 ${successCount}회${collectedNote}`
       : `STAGE ${round} 도달 · 성공 ${successCount}회`;
     this.elements.retryButton.textContent = classic ? '한 판 더!' : resultRetryLabel({
       score,

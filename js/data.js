@@ -388,11 +388,15 @@ export const CLASSIC_CHAPTERS = Object.freeze([
   Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 6, art: 'chapter-night', hasArt: true }),
 ]);
 
-// Reaching a scene is not collecting it. Standing on a chapter's board for
-// one move used to fill the album, so a player could own every card without
-// ever having opened a picture - and the picture only opens as cells clear.
-// The album now asks for the same thing the board does: clear most of it.
-export const CLASSIC_CHAPTER_COLLECT_RATIO = 0.8;
+// Reaching a scene is not collecting it - the album asks for the board to
+// actually be opened up. But the bar has to sit BELOW where a board
+// naturally dies: boards dry up with no answers left at roughly 63-73%
+// cleared (simulated novice to expert means), so the original 0.8 was
+// above what normal play can reach - fresh-account QA bots finished their
+// first session with zero cards, and an expert bot missed three of the
+// one-shot mid scenes across 23 boards. At 0.6 an ordinary dried board
+// collects and a badly abandoned one does not.
+export const CLASSIC_CHAPTER_COLLECT_RATIO = 0.6;
 
 export function classicChapterCollected(clearedRatio = 0) {
   return (Number(clearedRatio) || 0) >= CLASSIC_CHAPTER_COLLECT_RATIO;
