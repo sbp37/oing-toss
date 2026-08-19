@@ -60,6 +60,7 @@ import {
   scoreForMegaBomb,
   shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
+  shouldShowClassicAutoHint,
   stageEndDecision,
   normalClearThresholdForStage,
   isWowClear,
@@ -176,6 +177,8 @@ class OingGame {
     this.restartConfirmTimer = null;
     this.lastInteractionAt = performance.now();
     this.beginnerAutoHintShown = false;
+    this.classicAutoHints = 0;
+    this.classicAutoHintAt = -Infinity;
     this.activeResolution = false;
     this.activeGesture = false;
     this.finishGraceTimer = null;
@@ -517,6 +520,8 @@ class OingGame {
     this.lowTimeSpoken = false;
     this.timeWarned = false;
     this.beginnerAutoHintShown = false;
+    this.classicAutoHints = 0;
+    this.classicAutoHintAt = -Infinity;
     this.lastInteractionAt = performance.now();
     this.activeResolution = false;
     this.activeGesture = false;
@@ -1245,7 +1250,9 @@ class OingGame {
       && this.state.combo % ITEM_REWARD_INTERVAL === ITEM_REWARD_INTERVAL - 1) {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
-      this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
+      // The item gauge already fills in front of the player, so the bubble
+      // does not narrate it a second time.
+      // this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
     } else if (this.state.combo === 5 || this.state.combo === 8) {
       this.ui.setPlayCharacter('success', 900);
       this.showCatMessage(this.state.combo >= 8 ? 'combo8' : 'combo5');
@@ -1724,7 +1731,8 @@ class OingGame {
   tick() {
     if (!this.state.running || this.state.paused) return;
     const now = performance.now();
-    if (!this.classic) this.maybeShowBeginnerAutoHint(now);
+    if (this.classic) this.maybeShowClassicAutoHint(now);
+    else this.maybeShowBeginnerAutoHint(now);
     const isFrozen = this.freezeEndsAt > now;
     if (isFrozen) {
       this.state.timeLeft = this.frozenTimeLeft;
@@ -1798,6 +1806,34 @@ class OingGame {
       return;
     }
     this.finish();
+  }
+
+  // The beginner's safety net in classic. Same idle trigger as the stage
+  // mode's, but budgeted per run rather than once, because a classic run is
+  // many boards long and a learner can stall on any of them.
+  maybeShowClassicAutoHint(now = performance.now()) {
+    if (!shouldShowClassicAutoHint({
+      running: this.state.running && !this.state.paused,
+      inputLocked: this.state.inputLocked,
+      tutorialActive: this.tutorialActive || this.waitingForFirstDrag,
+      shownCount: this.classicAutoHints || 0,
+      sinceLastMs: now - (this.classicAutoHintAt || -Infinity),
+      timeLeft: this.state.timeLeft,
+      idleMs: now - this.lastInteractionAt,
+      // Classic keeps its own record, so the beginner test has to read it.
+      bestScore: storageAdapter.getClassicBestScore(),
+      completedRuns: storageAdapter.getClassicRecentScores().length,
+    })) return false;
+    const answer = this.model.findHintAnswer();
+    if (!answer) return false;
+    this.classicAutoHints = (this.classicAutoHints || 0) + 1;
+    this.classicAutoHintAt = now;
+    this.telemetry?.hint('auto');
+    this.lastInteractionAt = now;
+    this.ui.showHint(answer);
+    this.ui.setPlayCharacter('wave', 1000);
+    this.showCatMessage('autoHint', { force: true });
+    return true;
   }
 
   maybeShowBeginnerAutoHint(now = performance.now()) {
@@ -2180,7 +2216,27 @@ class OingGame {
     tapEnd: 6000,
   });
 
-  showCatMessage(type) {
+  // The bubble speaks only when it has something a player would act on or
+  // remember. Routine praise stayed silent behind cooldowns before, but the
+  // real problem was that it spoke at all: a line on every clear made the
+  // bottom of the screen a second thing to watch while the board was the
+  // first. These are the moments that keep their voice - guidance the player
+  // uses (hints, rescues, being stuck), things they must react to (a drop
+  // landed, time is short), and the rare peaks worth marking (a big clear, a
+  // new scene, the run's own milestones). Everything else - ordinary
+  // successes, combo tiers, cat bonuses, misses - is already told by the
+  // score, the combo counter and the tile animation, so the cat lets those
+  // speak for themselves.
+  static CAT_MESSAGE_ALWAYS = Object.freeze(new Set([
+    'start', 'tapEnd', 'firstSuccess',
+    'hint', 'autoHint', 'struggleHint', 'shuffle', 'rescue',
+    'itemDrop', 'bomb', 'megabomb', 'clock', 'freeze', 'clover', 'cloverSuccess',
+    'lowTime', 'clutch', 'wow', 'perfect',
+    'classicClear', 'classicChapter', 'classicBoard', 'result',
+  ]));
+
+  showCatMessage(type, { force = false } = {}) {
+    if (!force && !OingGame.CAT_MESSAGE_ALWAYS.has(type)) return;
     const cooldown = OingGame.CAT_MESSAGE_COOLDOWN_MS[type] || 0;
     if (cooldown) {
       const now = performance.now();

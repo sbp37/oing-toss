@@ -237,6 +237,34 @@ test('a scene is collected by clearing its board, not by standing on it', async 
   assert.ok(rows.slice(0, -1).every((row) => row.requirement.includes(percent)));
 });
 
+test('classic beginners get repeated auto-hints when they stall', async () => {
+  const {
+    shouldShowClassicAutoHint, CLASSIC_AUTO_HINT_LIMIT, CLASSIC_AUTO_HINT_COOLDOWN_MS,
+    BEGINNER_AUTO_HINT_IDLE_MS, BEGINNER_AUTO_HINT_SCORE_CEILING,
+  } = await import('../js/data.js');
+  const base = {
+    running: true, inputLocked: false, tutorialActive: false,
+    shownCount: 0, sinceLastMs: Infinity, timeLeft: 90,
+    idleMs: BEGINNER_AUTO_HINT_IDLE_MS, bestScore: 0, completedRuns: 0,
+  };
+  // 초보가 멈춰 있으면 뜬다.
+  assert.equal(shouldShowClassicAutoHint(base), true);
+  // 스테이지 모드의 40초 창은 클래식엔 적용되지 않는다 — 2분 초반에도 뜬다.
+  assert.equal(shouldShowClassicAutoHint({ ...base, timeLeft: 115 }), true);
+  // 아직 안 멈췄으면 안 뜬다.
+  assert.equal(shouldShowClassicAutoHint({ ...base, idleMs: 1000 }), false);
+  // 런당 횟수 제한과 쿨다운을 지킨다.
+  assert.equal(shouldShowClassicAutoHint({ ...base, shownCount: CLASSIC_AUTO_HINT_LIMIT }), false);
+  assert.equal(shouldShowClassicAutoHint({ ...base, sinceLastMs: CLASSIC_AUTO_HINT_COOLDOWN_MS - 1 }), false);
+  // 숙련자에겐 안 뜬다.
+  assert.equal(shouldShowClassicAutoHint({
+    ...base, bestScore: BEGINNER_AUTO_HINT_SCORE_CEILING, completedRuns: 5,
+  }), false);
+  // 튜토리얼 중이거나 시간이 거의 없으면 방해하지 않는다.
+  assert.equal(shouldShowClassicAutoHint({ ...base, tutorialActive: true }), false);
+  assert.equal(shouldShowClassicAutoHint({ ...base, timeLeft: 5 }), false);
+});
+
 test('past the fatigue line the board stops dropping time-givers', async () => {
   const { chooseBoardDrop } = await import('../js/data.js');
   const draw = (lateRun, seed) => chooseBoardDrop(20, () => seed, {

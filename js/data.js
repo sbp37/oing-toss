@@ -678,6 +678,27 @@ export function shouldShowBeginnerAutoHint({
     && timeLeft > 10 && timeLeft <= 40 && idleMs >= BEGINNER_AUTO_HINT_IDLE_MS;
 }
 
+// Classic runs are one continuous clock rather than a 40s stage, so the
+// stage-mode window above never opens. A beginner here gets the same help
+// on the same idle trigger, capped per run so it teaches without solving
+// the game: whenever they stall, the cat points at an answer.
+export const CLASSIC_AUTO_HINT_LIMIT = 3;
+export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 20000;
+
+export function shouldShowClassicAutoHint({
+  running = false, inputLocked = false, tutorialActive = false,
+  shownCount = 0, sinceLastMs = Infinity, timeLeft = 0, idleMs = 0,
+  bestScore = 0, completedRuns = 0,
+} = {}) {
+  const isBeginner = Math.max(0, completedRuns) < 3
+    || Math.max(0, Number(bestScore) || 0) < BEGINNER_AUTO_HINT_SCORE_CEILING;
+  return Boolean(running) && !inputLocked && !tutorialActive && isBeginner
+    && Math.max(0, shownCount) < CLASSIC_AUTO_HINT_LIMIT
+    && sinceLastMs >= CLASSIC_AUTO_HINT_COOLDOWN_MS
+    && timeLeft > 8
+    && idleMs >= BEGINNER_AUTO_HINT_IDLE_MS;
+}
+
 export function boardDropInventoryGrant(type) {
   // Visible board drops are one-tap actions, matching the original OING.
   // Footer inventory is reserved for starting or separately granted items.
