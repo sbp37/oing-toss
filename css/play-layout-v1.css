@@ -884,10 +884,10 @@
   border-radius: calc(clamp(15px, 4vw, 22px) - 4px);
   background-color: rgba(225,246,252,.34);
   background-image:
-    linear-gradient(to right, rgba(104,116,192,.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(104,116,192,.09) 1px, transparent 1px);
+    linear-gradient(to right, rgba(96,102,116,.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(96,102,116,.09) 1px, transparent 1px);
   box-shadow:
-    inset 0 0 12px rgba(104,132,196,.12),
+    inset 0 0 12px rgba(102,110,124,.12),
     inset 0 0 0 1px rgba(255,255,255,.26);
 }
 
@@ -3164,10 +3164,16 @@
    the stylesheet sets one, so it can never overwrite a state again. The
    shading moved into background layers for the same reason.
 
-   The palette also went the wrong way. A cool-grey rim over the mint art
-   read muddy and heavy enough to look cramped. The rim is now
-   a soft violet-blue and the wash on the tile face tints the same way, so
-   the board reads cooler and the seams read lighter while still separating.
+   The palette went through both extremes. A cool-grey rim drawn over the
+   mint art read muddy and cramped, so it was swapped for a violet-blue and
+   the tile face was tinted to match - and that turned the whole board
+   periwinkle, a colour loud enough to look cheap next to the pastel art it
+   was framing. The rim is neither now: a desaturated slate that reads as a
+   line rather than as a colour. Visibility comes off the value, not the
+   hue - it is darker than the violet it replaces, so the seam separates
+   more while drawing less attention to itself. The face tint, the cast
+   shadow and the board's own grid follow it out of violet, since they were
+   only ever tinted to match the rim.
 
    Even so the seam still did not read as a seam on a bright scene. The rim
    sat at outline-offset -1px, i.e. inside the tile, so it drew as another
@@ -3183,7 +3189,7 @@
 .play-ui-v4 .tile[class*="value-"],
 .play-ui-v4 .tile.is-bonus-cat,
 .play-ui-v4 .tile.is-board-item {
-  outline: 1px solid rgba(104, 116, 196, .56);
+  outline: 1px solid rgba(86, 94, 110, .52);
   outline-offset: 0;
 }
 
@@ -3195,9 +3201,9 @@
    hidden picture is showing through. */
 .play-ui-v4 .tile[class*="value-"],
 .screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"] {
-  background-color: rgba(221, 227, 252, .97);
+  background-color: rgba(232, 235, 243, .97);
   background-image:
-    linear-gradient(to bottom, rgba(92, 106, 186, 0) 64%, rgba(92, 106, 186, .1) 100%),
+    linear-gradient(to bottom, rgba(88, 94, 110, 0) 64%, rgba(88, 94, 110, .12) 100%),
     var(--tile-art);
 }
 
@@ -3212,7 +3218,7 @@
      cost. The element's own border-radius matches the art closely enough
      that the cast shadow reads the same. */
   filter: none;
-  box-shadow: 0 2px 3px rgba(78, 88, 158, .24);
+  box-shadow: 0 2px 3px rgba(84, 90, 104, .26);
 }
 
 .play-ui-v4 .board.is-hinting .tile:not(.is-hint),
@@ -3716,10 +3722,10 @@
 .play-ui-v4 .board { position: relative; }
 
 .screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
-  background-color: rgba(232, 237, 251, .97);
+  background-color: rgba(228, 231, 239, .97);
   background-image:
-    linear-gradient(to right, rgba(104, 116, 192, .08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(104, 116, 192, .08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(96, 102, 116, .08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(96, 102, 116, .08) 1px, transparent 1px);
 }
 
 .screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
