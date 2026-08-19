@@ -52,7 +52,15 @@ import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
-import { RunTelemetry, clearTelemetryRuns, getLocalTelemetrySummary, readTelemetryRuns } from './telemetry.js';
+import {
+  RunTelemetry,
+  clearTelemetryEvents,
+  clearTelemetryRuns,
+  getLocalTelemetrySummary,
+  readTelemetryEvents,
+  readTelemetryRuns,
+  trackTelemetryEvent,
+} from './telemetry.js';
 import { preloadPlayAssets, preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import {
   configureMusic,
@@ -121,7 +129,8 @@ class OingGame {
       window.OING_TELEMETRY = Object.freeze({
         summary: () => getLocalTelemetrySummary(),
         runs: () => readTelemetryRuns(),
-        clear: () => clearTelemetryRuns(),
+        events: () => readTelemetryEvents(),
+        clear: () => { clearTelemetryRuns(); clearTelemetryEvents(); },
       });
     }
     this.settings = storageAdapter.getSettings();
@@ -158,6 +167,7 @@ class OingGame {
     this.finishing = false;
     this.selectionWasPerfect = false;
     this.telemetry = null;
+    this.runIsFirstGame = false;
     this.stageDuration = 0;
     this.retryStage = 1;
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
@@ -210,6 +220,7 @@ class OingGame {
     this.ui.updateBestScore(storageAdapter.getBestScore());
     this.ui.updateHighestStage(storageAdapter.getHighestStage());
     this.ui.showScreen('home');
+    trackTelemetryEvent('home_view', { source: 'launch' });
     schedulePlayAssetsPreload();
   }
 
@@ -268,8 +279,11 @@ class OingGame {
       button.addEventListener('pointerenter', primePlay, { passive: true, once: true });
       button.addEventListener('focus', primePlay, { passive: true, once: true });
     });
-    document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
-    document.querySelector('#retry-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1, { quickCountdown: true }));
+    document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1, { source: 'home' }));
+    document.querySelector('#retry-button').addEventListener('click', () => {
+      trackTelemetryEvent('retry', { source: 'result' });
+      this.start(this.runtime.forcedRound || 1, { quickCountdown: true, source: 'retry' });
+    });
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
@@ -293,7 +307,7 @@ class OingGame {
     document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
-      this.start(this.runtime.forcedRound || 1);
+      this.start(this.runtime.forcedRound || 1, { source: 'record' });
     });
     const toggleSound = () => {
       this.settings.sound = !this.settings.sound;
@@ -366,7 +380,12 @@ class OingGame {
     this.retryStage = 1;
     this.stageDuration = this.runtime?.duration || GAME_DURATION_SECONDS;
     this.state.timeLeft = this.stageDuration;
-    this.telemetry = new RunTelemetry({ viewport: { width: window.innerWidth, height: window.innerHeight } });
+    this.runIsFirstGame = !storageAdapter.hasSeenDragTutorial();
+    this.telemetry = new RunTelemetry({
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      firstGame: this.runIsFirstGame,
+    });
+    this.telemetry.gameStart({ startStage: this.state.startStage, source: options.source || 'home' });
     this.boardItems.reset();
     this.itemTapCandidate = null;
     this.inputGuardUntil = 0;
@@ -725,6 +744,7 @@ class OingGame {
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
     this.state.progress += stageProgressGainForClear(clearedCellCount);
+    const firstPlaySuccess = this.runIsFirstGame && this.state.successCount === 1;
     this.completeTutorial();
     successHaptic(this.state.combo);
     duckMusic(comboGain > 1 ? 560 : 390, comboGain > 1 ? 0.48 : 0.64);
@@ -750,7 +770,7 @@ class OingGame {
     });
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
-    this.speakForSuccess(catCount, comboGain);
+    this.speakForSuccess(catCount, comboGain, { firstPlaySuccess });
     if (challengeCompleted) {
       this.ui.setPlayCharacter('success', 1000);
       this.showCatMessage('challengeComplete');
@@ -871,8 +891,11 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
-  speakForSuccess(catCount = 0, comboGain = 1) {
-    if (catCount > 0) {
+  speakForSuccess(catCount = 0, comboGain = 1, { firstPlaySuccess = false } = {}) {
+    if (firstPlaySuccess) {
+      this.ui.setPlayCharacter('success', 1100);
+      this.ui.showMessage('오잉! 네모 안의 합이 10!', 2000, 'firstSuccess');
+    } else if (catCount > 0) {
       this.ui.setPlayCharacter('success', 950);
       this.showCatMessage('catBonus');
     } else if (comboGain > 1) {
@@ -893,10 +916,10 @@ class OingGame {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
       this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
-    } else if (this.state.combo >= 5) {
+    } else if (this.state.combo === 5 || this.state.combo === 8) {
       this.ui.setPlayCharacter('success', 900);
       this.showCatMessage(this.state.combo >= 8 ? 'combo8' : 'combo5');
-    } else {
+    } else if (this.state.successCount % 3 === 0) {
       this.showCatMessage('success');
     }
   }
@@ -1038,7 +1061,7 @@ class OingGame {
       return;
     }
     if (!this.inventory.consume('hint').ok) return;
-    this.telemetry?.itemUsed('hint');
+    this.telemetry?.itemUsed('hint', { round: this.state.round });
     this.telemetry?.hint('manual');
     this.syncInventory();
     this.state.inputLocked = true;
@@ -1072,7 +1095,7 @@ class OingGame {
       this.state.inputLocked = false;
       return;
     }
-    this.telemetry?.itemUsed('shuffle');
+    this.telemetry?.itemUsed('shuffle', { round: this.state.round });
     this.syncInventory();
     this.showCatMessage('shuffle');
     duckMusic(420, 0.66);
@@ -1586,6 +1609,7 @@ class OingGame {
   }
 
   goHome() {
+    const source = document.querySelector('#result-screen')?.classList.contains('is-active') ? 'result' : 'play';
     if (this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'home');
     this.startSequenceId += 1;
     this.ui.cancelStartCountdown();
@@ -1609,9 +1633,12 @@ class OingGame {
     this.ui.updateBestScore(storageAdapter.getBestScore());
     this.ui.updateHighestStage(storageAdapter.getHighestStage());
     this.ui.showScreen('home');
+    trackTelemetryEvent('home_view', { source });
   }
 
   async openRanking() {
+    const source = document.querySelector('#result-screen')?.classList.contains('is-active') ? 'result' : 'home';
+    trackTelemetryEvent('record_view', { source });
     const records = await rankingAdapter.open();
     this.ui.updateBestScore(storageAdapter.getBestScore());
     this.ui.renderRanking(records);
@@ -1624,6 +1651,11 @@ class OingGame {
     if (button?.disabled) return;
     if (button) button.disabled = true;
     const result = await shareAdapter.shareResult(this.lastResultSummary);
+    trackTelemetryEvent('share', {
+      source: 'result',
+      success: Boolean(result.ok),
+      method: result.method || result.reason || 'unknown',
+    });
     if (button) button.disabled = false;
     if (result.ok && result.method === 'clipboard') this.ui.toast('점수와 링크를 복사했다냥!');
     else if (result.ok) this.ui.toast('공유창을 열었다냥!');

@@ -1,5 +1,33 @@
 const TELEMETRY_KEY = 'oing_toss_v2_local_telemetry_v1';
+const TELEMETRY_EVENTS_KEY = 'oing_toss_v2_local_telemetry_events_v1';
 const MAX_STORED_RUNS = 50;
+const MAX_STORED_EVENTS = 100;
+const ALLOWED_EVENTS = new Set([
+  'home_view',
+  'game_start',
+  'first_interaction',
+  'first_success',
+  'game_finish',
+  'retry',
+  'hint_use',
+  'shuffle_use',
+  'share',
+  'record_view',
+]);
+const ALLOWED_EVENT_FIELDS = new Set([
+  'source',
+  'firstGame',
+  'firstSuccessMs',
+  'durationSeconds',
+  'score',
+  'maxCombo',
+  'round',
+  'startStage',
+  'successCount',
+  'endReason',
+  'success',
+  'method',
+]);
 
 const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const whole = (value, fallback = 0) => Math.max(0, Math.round(finite(value, fallback)));
@@ -8,6 +36,44 @@ const mean = (values) => values.length ? values.reduce((sum, value) => sum + fin
 function safeStorage(storage) {
   if (storage) return storage;
   try { return globalThis.localStorage; } catch { return null; }
+}
+
+function sanitizeEventPayload(payload = {}) {
+  return Object.fromEntries(Object.entries(payload)
+    .filter(([key, value]) => ALLOWED_EVENT_FIELDS.has(key)
+      && (typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value)))
+    .map(([key, value]) => [key, typeof value === 'string' ? value.slice(0, 40) : value]));
+}
+
+export function readTelemetryEvents(storage) {
+  try {
+    const parsed = JSON.parse(safeStorage(storage)?.getItem(TELEMETRY_EVENTS_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.slice(-MAX_STORED_EVENTS) : [];
+  } catch { return []; }
+}
+
+export function trackTelemetryEvent(name, payload = {}, { storage, now = () => Date.now() } = {}) {
+  if (!ALLOWED_EVENTS.has(name)) return false;
+  const target = safeStorage(storage);
+  const event = Object.freeze({ schema: 1, name, at: now(), ...sanitizeEventPayload(payload) });
+  if (target) {
+    try {
+      target.setItem(TELEMETRY_EVENTS_KEY, JSON.stringify(
+        [...readTelemetryEvents(target), event].slice(-MAX_STORED_EVENTS),
+      ));
+    } catch {}
+  }
+  try { globalThis.OING_ANALYTICS?.track?.(name, { ...event }); } catch {}
+  try {
+    if (typeof globalThis.dispatchEvent === 'function' && typeof globalThis.CustomEvent === 'function') {
+      globalThis.dispatchEvent(new globalThis.CustomEvent('oing:telemetry', { detail: event }));
+    }
+  } catch {}
+  return true;
+}
+
+export function clearTelemetryEvents(storage) {
+  try { safeStorage(storage)?.removeItem(TELEMETRY_EVENTS_KEY); return true; } catch { return false; }
 }
 
 export function readTelemetryRuns(storage) {
@@ -49,6 +115,7 @@ export function summarizeTelemetryRuns(runs = []) {
     nearMissRate: selections ? Math.round(valid.reduce((sum, run) => sum + whole(run.nearMisses), 0) / selections * 1000) / 10 : 0,
     richClearRatio: successes ? Math.round(valid.reduce((sum, run) => sum + whole(run.richClears), 0) / successes * 1000) / 10 : 0,
     averageFirstInputMs: Math.round(mean(valid.map((run) => run.firstInputMs).filter(Number.isFinite))),
+    averageFirstSuccessMs: Math.round(mean(valid.map((run) => run.firstSuccessMs).filter(Number.isFinite))),
     itemsUsed: Object.freeze(itemsUsed),
     assistHints: valid.reduce((sum, run) => sum + whole(run.assistHints), 0),
     itemClearedCells: valid.reduce((sum, run) => sum + whole(run.itemClearedCells), 0),
@@ -62,7 +129,7 @@ export function summarizeTelemetryRuns(runs = []) {
 }
 
 export class RunTelemetry {
-  constructor({ storage, now = () => Date.now(), monotonicNow = () => globalThis.performance?.now?.() ?? Date.now(), viewport = {} } = {}) {
+  constructor({ storage, now = () => Date.now(), monotonicNow = () => globalThis.performance?.now?.() ?? Date.now(), viewport = {}, firstGame = false } = {}) {
     this.storage = safeStorage(storage);
     this.now = now;
     this.monotonicNow = monotonicNow;
@@ -72,6 +139,7 @@ export class RunTelemetry {
     this.pauseStartedAt = null;
     this.run = {
       schema: 1, startedAt: now(), viewportWidth: whole(viewport.width), viewportHeight: whole(viewport.height), firstInputMs: null,
+      firstSuccessMs: null, firstGame: Boolean(firstGame),
       selections: 0, successes: 0, failures: 0, simpleClears: 0, richClears: 0, clearedCells: 0, catsCollected: 0,
       boardsGenerated: 0, roundsCleared: 0, perfectClears: 0, manualHints: 0, autoHints: 0, assistHints: 0, nearMisses: 0,
       itemClearedCells: 0, itemCatsCollected: 0, pauses: 0, pausedMs: 0,
@@ -80,10 +148,26 @@ export class RunTelemetry {
   }
 
   firstInput() {
-    if (!this.closed && this.run.firstInputMs === null) this.run.firstInputMs = whole(this.monotonicNow() - (this.activeMonotonic ?? this.startedMonotonic));
+    if (this.closed || this.run.firstInputMs !== null) return false;
+    this.run.firstInputMs = whole(this.monotonicNow() - (this.activeMonotonic ?? this.startedMonotonic));
+    trackTelemetryEvent('first_interaction', {
+      firstGame: this.run.firstGame,
+      startStage: this.run.startStage,
+    }, { storage: this.storage, now: this.now });
+    return true;
   }
 
   playReady() { if (!this.closed && this.activeMonotonic === null) this.activeMonotonic = this.monotonicNow(); }
+
+  gameStart({ startStage = 1, source = 'home' } = {}) {
+    if (this.closed) return;
+    this.run.startStage = Math.max(1, whole(startStage, 1));
+    trackTelemetryEvent('game_start', {
+      source,
+      firstGame: this.run.firstGame,
+      startStage: this.run.startStage,
+    }, { storage: this.storage, now: this.now });
+  }
 
   boardGenerated(answerCount = 0) {
     if (this.closed) return;
@@ -100,6 +184,14 @@ export class RunTelemetry {
       if (Math.abs(finite(sum) - 10) === 1) this.run.nearMisses += 1;
       return;
     }
+    if (this.run.successes === 0) {
+      this.run.firstSuccessMs = whole(this.monotonicNow() - (this.activeMonotonic ?? this.startedMonotonic));
+      trackTelemetryEvent('first_success', {
+        firstGame: this.run.firstGame,
+        firstSuccessMs: this.run.firstSuccessMs,
+        startStage: this.run.startStage,
+      }, { storage: this.storage, now: this.now });
+    }
     this.run.successes += 1;
     const cells = whole(cellCount);
     this.run.clearedCells += cells;
@@ -109,7 +201,17 @@ export class RunTelemetry {
   }
 
   itemEarned(type) { if (!this.closed && type) this.run.itemsEarned[type] = whole(this.run.itemsEarned[type]) + 1; }
-  itemUsed(type) { if (!this.closed && type) { this.firstInput(); this.run.itemsUsed[type] = whole(this.run.itemsUsed[type]) + 1; } }
+  itemUsed(type, { round } = {}) {
+    if (this.closed || !type) return;
+    this.firstInput();
+    this.run.itemsUsed[type] = whole(this.run.itemsUsed[type]) + 1;
+    if (type === 'hint' || type === 'shuffle') {
+      trackTelemetryEvent(`${type}_use`, {
+        firstGame: this.run.firstGame,
+        round: whole(round),
+      }, { storage: this.storage, now: this.now });
+    }
+  }
   itemBlast({ cellCount = 0, catCount = 0 } = {}) {
     if (this.closed) return;
     this.run.itemClearedCells += whole(cellCount);
@@ -138,6 +240,17 @@ export class RunTelemetry {
       maxCombo: whole(finalState.maxCombo), successCount: whole(finalState.successCount),
     });
     saveTelemetryRun(result, this.storage);
+    trackTelemetryEvent('game_finish', {
+      firstGame: result.firstGame,
+      firstSuccessMs: result.firstSuccessMs,
+      durationSeconds: result.durationSeconds,
+      score: result.score,
+      maxCombo: result.maxCombo,
+      round: result.round,
+      startStage: result.startStage,
+      successCount: result.successCount,
+      endReason: result.endReason,
+    }, { storage: this.storage, now: this.now });
     return result;
   }
 }

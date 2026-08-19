@@ -40,16 +40,24 @@
         </div>
         <p class="home-tagline"><span>합이 <b>10</b>이면,</span><strong>뿅!</strong></p>
       </div>
-      <div class="home-howto" aria-label="숫자 칸을 밀어 합이 10이 되게 만드는 게임">
-        <p class="home-instruction"><img src="assets/decor/sparkle.webp" width="278" height="296" alt="">숫자 칸을 슥 밀어 묶어봐!<img src="assets/decor/heart.webp" width="283" height="254" alt=""></p>
+      <div class="home-howto" aria-label="두 지점을 드래그해 만든 네모 안의 모든 숫자 합이 10이면 숫자가 사라지는 게임">
+        <p class="home-instruction"><img src="assets/decor/sparkle.webp" width="278" height="296" alt="">네모로 묶어 합이 10이면, 뿅!<img src="assets/decor/heart.webp" width="283" height="254" alt=""></p>
         <div class="home-equation" aria-hidden="true">
-          <span class="home-mini-tile home-mini-mint">2</span><b>+</b><span class="home-mini-tile home-mini-peach">8</span><b>=</b><strong>10</strong><i>뿅!</i>
+          <div class="home-demo-board">
+            <span class="home-mini-tile home-mini-mint">2</span>
+            <span class="home-mini-tile home-mini-peach">3</span>
+            <span class="home-mini-tile home-mini-empty"></span>
+            <span class="home-mini-tile home-mini-mint">5</span>
+            <i class="home-demo-selection"></i>
+            <i class="home-demo-drag"></i>
+          </div>
+          <p class="home-demo-sum"><b>2 + 3 + 5</b><span>=</span><strong>10</strong><i>뿅!</i></p>
         </div>
       </div>
       <div class="home-actions">
         <button class="btn btn-primary btn-start" id="start-button" type="button"><img class="start-button-sparkle" src="assets/decor/sparkle.webp" width="278" height="296" alt=""><span>시작하기</span><img class="start-button-sparkle" src="assets/decor/star.webp" width="266" height="256" alt=""></button>
-        <button class="btn btn-cream home-ranking-button" id="home-ranking-button" type="button">
-          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>랭킹 보기</span>
+        <button class="btn btn-cream home-ranking-button" id="home-ranking-button" type="button" aria-label="내 기록 열기">
+          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>내 기록</span>
         </button>
         <div class="best-record-card" aria-label="내 최고기록">
           <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
@@ -129,7 +137,7 @@
           <div><small id="combo-celebration-kicker">NICE!</small><strong>COMBO <b id="combo-celebration-value">3</b></strong></div>
           <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
         </div>
-        <div class="tutorial-callout" id="tutorial-callout"><strong>슥 묶어서 10!</strong></div>
+        <div class="tutorial-callout" id="tutorial-callout"><span>네모로 묶어</span><strong>합 10!</strong></div>
       </div>
 
       <section class="board-zone" aria-label="숫자 보드">
@@ -214,8 +222,8 @@
         <button class="btn btn-mint result-share-button" id="share-button" type="button">
           <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>카톡으로 자랑하기</span>
         </button>
-        <button class="btn btn-cream result-ranking-button" id="result-ranking-button" type="button">
-          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>랭킹 보기</span>
+        <button class="btn btn-cream result-ranking-button" id="result-ranking-button" type="button" aria-label="내 기록 열기">
+          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>내 기록</span>
         </button>
         <button class="result-home-button" id="home-button" type="button">
           <img src="assets/icons/navigation/home.webp" width="310" height="290" loading="lazy" decoding="async" alt=""><span>홈으로</span>
