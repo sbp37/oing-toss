@@ -3155,7 +3155,7 @@
    being later and more specific, would erase their glow.
    ========================================================================== */
 .play-ui-v4 .board {
-  gap: clamp(1.5px, .52vw, 2.6px);
+  gap: clamp(2px, .62vw, 3.2px);
 }
 
 /* Separation used to ride box-shadow, which quietly erased every state that
@@ -3167,12 +3167,24 @@
    The palette also went the wrong way. A cool-grey rim over the mint art
    read muddy and heavy enough to look cramped. The rim is now
    a soft violet-blue and the wash on the tile face tints the same way, so
-   the board reads cooler and the seams read lighter while still separating. */
+   the board reads cooler and the seams read lighter while still separating.
+
+   Even so the seam still did not read as a seam on a bright scene. The rim
+   sat at outline-offset -1px, i.e. inside the tile, so it drew as another
+   marking on the face rather than as the cell's edge, and the gap between
+   two tiles showed the sky straight through - a seam brighter than the
+   tiles it was meant to divide. The rim moves out onto the edge itself, so
+   two neighbours put their dark lines either side of the gap and the pair
+   reads as one groove, and the groove is widened just enough to be seen.
+   Kept at 1px: anything thicker turns the pastel board into a window
+   grille and slices the hidden picture. Empty cells are untouched - the
+   selectors only match tiles that hold something - so the picture that
+   comes through as the board clears is still uncut. */
 .play-ui-v4 .tile[class*="value-"],
 .play-ui-v4 .tile.is-bonus-cat,
 .play-ui-v4 .tile.is-board-item {
-  outline: 1px solid rgba(118, 130, 206, .42);
-  outline-offset: -1px;
+  outline: 1px solid rgba(104, 116, 196, .56);
+  outline-offset: 0;
 }
 
 /* The syrup art is translucent, so the colour a tile reads as comes from the
@@ -3780,7 +3792,7 @@
 .play-ui-v4 .tile.is-bonus-cat {
   background-color: rgba(255, 216, 182, .97);
   outline: 1.5px solid rgba(233, 158, 92, .6);
-  outline-offset: -1px;
+  outline-offset: 0;
 }
 
 /* The chapter arrival beat read as a glitch - a bare painting flashing
@@ -3960,3 +3972,41 @@
 /* Classic keeps the painted STAGE shield: a 판 and a STAGE are the same beat
    here, so the badge that already reads as "the counter" stays the counter,
    and the mode class is left as a hook without changing the HUD. */
+
+/* Dock balance pass ---------------------------------------------------------
+   The dock is a two-toy row by design - hint bottom-right in the thumb zone,
+   shuffle by the cat on the far left, the meadow open between them so the two
+   can never be confused mid-frenzy. On device the gap read as a hole waiting
+   for a third button rather than as deliberate space, and the reason was not
+   the gap: the two toys were not on the same line, and only one of them was
+   actually at an edge.
+
+   Hint carried align-self:center from the days when it was the bigger of the
+   two, so it floated ~5px above shuffle even after the sizes were equalised -
+   just enough for the row to read as unaligned. Both sit on the dock floor
+   now. Hint also stopped 27px short of the screen edge while the cat starts
+   10px in on the other side, so the row looked shifted rather than spread;
+   the right inset now matches the cat's, and the pair reads as two anchored
+   ends with the meadow between them.
+
+   No third button: adding one halves the separation the split dock exists to
+   buy, and the middle is already the coach's lane - the bubble hangs over it
+   and the cat speaks into it. The empty ground is the point. */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state] {
+  align-self: flex-end;
+}
+
+.play-ui-v4 .item-actions {
+  padding-right: 4px;
+}
+
+/* The bubble ended over the hint well, so the coach line looked like it was
+   leaning on the button instead of hanging over the open middle. Pulling its
+   right edge back to where the hint well starts puts the message centred on
+   the gap, which is the thing the eye was reading as empty. The pull has to
+   come off the width: the bubble carries an explicit one, so a margin would
+   have been ignored and the box would have kept overhanging the well. */
+.play-ui-v4 .cat-speech {
+  width: calc(100% - clamp(60px, 17vw, 72px));
+}
