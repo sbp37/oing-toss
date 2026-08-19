@@ -9609,17 +9609,34 @@ img {
 /* 2026-08 result sheet: bigger cat, bigger line ----------------------------
    Both were sized for a busier sheet. The cat grows ~17% and the message
    with it, capped where the longest line still fits on two rows. */
-.result-character-stage { width: 152px; height: 160px; }
+.result-character-stage { width: 172px; height: 180px; }
 
 .result-message {
-  min-width: 186px;
-  max-width: 236px;
-  font-size: 15.5px;
+  min-width: 196px;
+  max-width: 248px;
+  font-size: 16px;
 }
 
+.result-stage-progress { font-size: 17.5px; }
+.result-kicker { font-size: 14px; }
+
+/* Ranking opened from the result screen: the sheet bows out downward so
+   the panel owns the screen, and slides back when the overlay closes. */
+.result-card {
+  transition: transform 340ms cubic-bezier(.3,.7,.3,1), opacity 280ms ease;
+}
+
+.result-card.is-tucked {
+  transform: translateY(118%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+#ranking-overlay { z-index: 60; }
+
 @media (max-width: 340px) {
-  .result-character-stage { width: 128px; height: 136px; }
-  .result-message { max-width: 208px; font-size: 14.5px; }
+  .result-character-stage { width: 142px; height: 150px; }
+  .result-message { max-width: 214px; font-size: 15px; }
 }
 
 /* Chapter viewer: one painting, full width of the panel, its own 3:4. */
@@ -9644,6 +9661,6 @@ img {
 .screen-play.play-ui-v4,
 .screen-play.play-ui-v4[data-stage-band] {
   background:
-    linear-gradient(180deg, rgba(232,247,253,.62) 0%, rgba(247,252,247,.52) 44%, rgba(255,251,238,.46) 78%, rgba(255,249,232,.44) 100%),
+    linear-gradient(180deg, rgba(232,247,253,.56) 0%, rgba(247,252,247,.47) 44%, rgba(255,251,238,.41) 78%, rgba(255,249,232,.40) 100%),
     #9fd4f5 url("../assets/backgrounds/play-bg-spring-path-v2.webp") center bottom / cover no-repeat;
 }

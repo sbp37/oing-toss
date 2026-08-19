@@ -321,9 +321,13 @@ class OingGame {
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
-    document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
+    document.querySelector('#ranking-close').addEventListener('click', () => {
+      this.ui.setOverlay('ranking-overlay', false);
+      this.setResultTucked(false);
+    });
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
+      this.setResultTucked(false);
       this.start(1, { classic: true });
     });
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
@@ -1974,7 +1978,16 @@ class OingGame {
     this.ui.showScreen('home');
   }
 
+  setResultTucked(tucked) {
+    document.querySelector('.result-card')?.classList.toggle('is-tucked', tucked);
+  }
+
   async openRanking() {
+    // From the result screen the sheet bows out so the panel reads
+    // full-screen; every close path brings it back.
+    if (document.querySelector('#result-screen')?.classList.contains('is-active')) {
+      this.setResultTucked(true);
+    }
     const records = await rankingAdapter.open();
     this.refreshClassicRecordSurfaces();
     this.ui.renderRanking(records);

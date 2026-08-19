@@ -3878,3 +3878,35 @@
   align-self: flex-end;
   background: url("../assets/ui/item-well-shuffle-v1.webp") center / 100% 100% no-repeat;
 }
+
+/* Device pass: equal buttons, bigger cat, bubble hugging it -----------------
+   The size asymmetry between hint and shuffle read as inconsistency rather
+   than hierarchy, so both buttons share one size now - the screen-width
+   gap and the colors already make them impossible to confuse. The cat
+   grows into the opened meadow, the shuffle clearance follows it, and the
+   bubble drops toward the cat's head into the empty dock center (visual
+   shift only - the lane's layout, growth direction and hit-through
+   behavior are untouched). */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(50px, 14vw, 56px);
+  height: clamp(50px, 14vw, 56px);
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(90px, 25vw, 98px);
+}
+
+.play-ui-v4 .item-actions {
+  padding-left: clamp(106px, 29.5vw, 118px);
+}
+
+.play-ui-v4 .cat-speech {
+  margin-left: -6px;
+  transform: translateY(10px);
+}
