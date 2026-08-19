@@ -56,6 +56,10 @@ export function attachStickyRectangleInput({
   let queuedEvent = null;
   let previewFrame = 0;
   let tapAnchorTimer = 0;
+  // Whether this gesture ever left the cell it started on. A drag that comes
+  // back to its origin is someone changing their mind, so it cancels; only a
+  // gesture that never moved is a tap, and only a tap arms the anchor.
+  let leftOrigin = false;
 
   const clearTapTimer = () => {
     if (tapAnchorTimer) clearTimeout(tapAnchorTimer);
@@ -66,6 +70,7 @@ export function attachStickyRectangleInput({
     const cell = cellFromPoint(boardEl, event.clientX, event.clientY, lastCell);
     if (!cell || !startCell) return;
     lastCell = cell;
+    if (cell.r !== startCell.r || cell.c !== startCell.c) leftOrigin = true;
     const rect = normalizeRect(startCell, cell);
     const key = rectKey(rect);
     if (key !== lastKey) {
@@ -97,6 +102,7 @@ export function attachStickyRectangleInput({
     committed = false;
     queuedEvent = null;
     usingTapAnchor = false;
+    leftOrigin = false;
     if (clearTapAnchor) {
       tapAnchor = null;
       clearTapTimer();
@@ -121,6 +127,7 @@ export function attachStickyRectangleInput({
     startCell = tapAnchor || cell;
     lastCell = cell;
     committed = false;
+    leftOrigin = false;
     lastKey = '';
     boardEl.classList.add('is-dragging');
     try { boardEl.setPointerCapture(pointerId); } catch {}
@@ -146,7 +153,7 @@ export function attachStickyRectangleInput({
       && lastCell.r === startCell.r
       && lastCell.c === startCell.c;
     if (returnedToOrigin) {
-      if (usingTapAnchor) {
+      if (usingTapAnchor || leftOrigin) {
         reset(true);
       } else {
         tapAnchor = { ...startCell };

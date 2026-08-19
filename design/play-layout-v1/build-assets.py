@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""Build independent play-layout chrome from approved project-owned artwork."""
+
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+
+ROOT = Path(__file__).resolve().parents[2]
+HUD_SOURCE = ROOT / "assets/ui/play-hud-chrome-v2.png"
+BUBBLE_SOURCE = ROOT / "assets/ui/speech-bubble-v2.png"
+BACKGROUND_SOURCE = ROOT / "design/play-layout-v1/source/play-bg-clear-sky-v1.png"
+UI_OUT = ROOT / "assets/ui"
+BG_OUT = ROOT / "assets/backgrounds"
+
+
+def alpha_crop(source: Image.Image, bounds: tuple[int, int, int, int], padding: int = 10) -> Image.Image:
+    region = source.crop(bounds)
+    alpha_bounds = region.getchannel("A").getbbox()
+    if alpha_bounds is None:
+        raise ValueError(f"No opaque pixels inside {bounds}")
+    left, top, right, bottom = alpha_bounds
+    left = max(0, left - padding)
+    top = max(0, top - padding)
+    right = min(region.width, right + padding)
+    bottom = min(region.height, bottom + padding)
+    return region.crop((left, top, right, bottom))
+
+
+def save_pair(image: Image.Image, stem: str) -> None:
+    png_path = UI_OUT / f"{stem}.png"
+    webp_path = UI_OUT / f"{stem}.webp"
+    image.save(png_path, optimize=True)
+    image.save(webp_path, format="WEBP", lossless=True, method=6)
+
+
+def expand_vertical_nine_slice(
+    source: Image.Image,
+    target_height: int,
+    top_cap: int,
+    bottom_cap: int,
+) -> Image.Image:
+    """Increase panel breathing room without stretching its painted corners."""
+    if target_height <= source.height:
+        raise ValueError("target_height must be larger than source height")
+    middle_source = source.crop((0, top_cap, source.width, source.height - bottom_cap))
+    middle_height = target_height - top_cap - bottom_cap
+    middle = middle_source.resize((source.width, middle_height), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (source.width, target_height))
+    canvas.alpha_composite(source.crop((0, 0, source.width, top_cap)), (0, 0))
+    canvas.alpha_composite(middle, (0, top_cap))
+    canvas.alpha_composite(
+        source.crop((0, source.height - bottom_cap, source.width, source.height)),
+        (0, target_height - bottom_cap),
+    )
+    return canvas
+
+
+def build_status_bar_v5() -> None:
+    """Draw a clean text-free status frame with stable transparent edges."""
+    width, height = 1800, 312
+    scale = 2
+    canvas = Image.new("RGBA", (width * scale, height * scale))
+    shadow = Image.new("RGBA", canvas.size)
+    shadow_draw = ImageDraw.Draw(shadow)
+    panel = (30 * scale, 18 * scale, 1770 * scale, 282 * scale)
+    radius = 86 * scale
+    shadow_draw.rounded_rectangle(
+        (panel[0], panel[1] + 15 * scale, panel[2], panel[3] + 15 * scale),
+        radius=radius,
+        fill=(72, 107, 121, 66),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(14 * scale))
+    canvas.alpha_composite(shadow)
+
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle(panel, radius=radius, fill=(255, 252, 242, 255))
+    inner = (42 * scale, 29 * scale, 1758 * scale, 270 * scale)
+    draw.rounded_rectangle(inner, radius=72 * scale, outline=(224, 206, 175, 245), width=5 * scale)
+    highlight = (50 * scale, 37 * scale, 1750 * scale, 260 * scale)
+    draw.rounded_rectangle(highlight, radius=66 * scale, outline=(255, 255, 255, 230), width=4 * scale)
+    for x in (558, 1314):
+        draw.line(
+            (x * scale, 70 * scale, x * scale, 232 * scale),
+            fill=(205, 186, 159, 112),
+            width=3 * scale,
+        )
+
+    canvas = canvas.resize((width, height), Image.Resampling.LANCZOS)
+    save_pair(canvas, "play-status-bar-v5")
+
+
+def rounded_gradient(
+    canvas: Image.Image,
+    bounds: tuple[int, int, int, int],
+    radius: int,
+    top: tuple[int, int, int, int],
+    bottom: tuple[int, int, int, int],
+) -> None:
+    left, y1, right, y2 = bounds
+    layer = Image.new("RGBA", canvas.size)
+    pixels = ImageDraw.Draw(layer)
+    height = max(1, y2 - y1)
+    for y in range(y1, y2 + 1):
+        mix = (y - y1) / height
+        color = tuple(round(top[i] * (1 - mix) + bottom[i] * mix) for i in range(4))
+        pixels.line((left, y, right, y), fill=color)
+    mask = Image.new("L", canvas.size)
+    ImageDraw.Draw(mask).rounded_rectangle(bounds, radius=radius, fill=255)
+    canvas.alpha_composite(Image.composite(layer, Image.new("RGBA", canvas.size), mask))
+
+
+def build_item_dock_v3() -> None:
+    """Build a clean 4:1 dock with four complete square buttons and no badge holes."""
+    width, height = 1200, 300
+    scale = 2
+    canvas = Image.new("RGBA", (width * scale, height * scale))
+
+    shadow = Image.new("RGBA", canvas.size)
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle(
+        (12 * scale, 24 * scale, 1188 * scale, 276 * scale),
+        radius=72 * scale,
+        fill=(72, 101, 105, 58),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(13 * scale))
+    canvas.alpha_composite(shadow)
+
+    rounded_gradient(
+        canvas,
+        (10 * scale, 12 * scale, 1190 * scale, 272 * scale),
+        76 * scale,
+        (255, 253, 244, 255),
+        (247, 232, 204, 255),
+    )
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle(
+        (24 * scale, 24 * scale, 1176 * scale, 260 * scale),
+        radius=64 * scale,
+        outline=(222, 199, 163, 232),
+        width=5 * scale,
+    )
+    draw.rounded_rectangle(
+        (32 * scale, 31 * scale, 1168 * scale, 250 * scale),
+        radius=58 * scale,
+        outline=(255, 255, 255, 225),
+        width=4 * scale,
+    )
+
+    palettes = (
+        ((255, 252, 221, 255), (255, 218, 112, 255), (225, 168, 51, 210)),
+        ((238, 255, 249, 255), (164, 230, 211, 255), (52, 173, 146, 210)),
+        ((255, 246, 247, 255), (247, 174, 188, 255), (214, 92, 119, 205)),
+        ((241, 251, 255, 255), (165, 216, 240, 255), (68, 155, 202, 205)),
+    )
+    button_size = 230
+    gap = 35
+    start_x = 88
+    y1 = 31
+    for index, (top, bottom, edge) in enumerate(palettes):
+        x1 = start_x + index * (button_size + gap)
+        x2 = x1 + button_size
+        y2 = y1 + button_size
+        # Soft grounded shadow and bottom lip make the squares feel pressable.
+        draw.rounded_rectangle(
+            (x1 * scale, (y1 + 10) * scale, x2 * scale, (y2 + 10) * scale),
+            radius=48 * scale,
+            fill=edge,
+        )
+        rounded_gradient(
+            canvas,
+            (x1 * scale, y1 * scale, x2 * scale, y2 * scale),
+            48 * scale,
+            top,
+            bottom,
+        )
+        draw = ImageDraw.Draw(canvas)
+        draw.rounded_rectangle(
+            ((x1 + 5) * scale, (y1 + 5) * scale, (x2 - 5) * scale, (y2 - 5) * scale),
+            radius=43 * scale,
+            outline=(255, 255, 255, 225),
+            width=4 * scale,
+        )
+        draw.arc(
+            ((x1 + 10) * scale, (y1 + 10) * scale, (x2 - 10) * scale, (y2 - 10) * scale),
+            200,
+            335,
+            fill=(255, 255, 255, 165),
+            width=4 * scale,
+        )
+
+    canvas = canvas.resize((width, height), Image.Resampling.LANCZOS)
+    save_pair(canvas, "item-dock-v3")
+
+
+def build_hud_parts() -> None:
+    source = Image.open(HUD_SOURCE).convert("RGBA")
+    parts = {
+        "play-control-pause-v3": (35, 70, 295, 365),
+        "play-control-sound-v3": (295, 70, 550, 365),
+        "play-stage-badge-v3": (575, 0, 1245, 445),
+        "play-timer-pill-v3": (1240, 75, 1819, 370),
+        "play-status-bar-v3": (0, 430, 1819, 706),
+    }
+    for name, bounds in parts.items():
+        part = alpha_crop(source, bounds)
+        if name == "play-stage-badge-v3":
+            draw = ImageDraw.Draw(part)
+            font = ImageFont.truetype("/System/Library/Fonts/AppleSDGothicNeo.ttc", 52, index=14)
+            text = "STAGE"
+            box = draw.textbbox((0, 0), text, font=font, stroke_width=1)
+            x = (part.width - (box[2] - box[0])) / 2
+            draw.text(
+                (x, 77),
+                text,
+                font=font,
+                fill=(255, 252, 245, 255),
+                stroke_width=2,
+                stroke_fill=(192, 76, 87, 190),
+            )
+        elif name == "play-status-bar-v3":
+            # Keep the painted recessed track, but remove its sample fill so
+            # the real progress remains an HTML/CSS state.
+            draw = ImageDraw.Draw(part)
+            draw.rounded_rectangle(
+                (785, 94, 1240, 154),
+                radius=26,
+                fill=(245, 235, 216, 255),
+                outline=(211, 186, 145, 180),
+                width=3,
+            )
+        save_pair(part, name)
+        if name == "play-status-bar-v3":
+            save_pair(expand_vertical_nine_slice(part, 300, 92, 92), "play-status-bar-v4")
+
+
+def build_wide_speech_bubble() -> None:
+    source = Image.open(BUBBLE_SOURCE).convert("RGBA")
+    bbox = source.getchannel("A").getbbox()
+    if bbox is None:
+        raise ValueError("Speech bubble source is empty")
+    source = source.crop(bbox)
+    target_height = 230
+    scaled_width = round(source.width * target_height / source.height)
+    scaled = source.resize((scaled_width, target_height), Image.Resampling.LANCZOS)
+
+    target_width = 900
+    left_cap = 150
+    right_cap = 105
+    middle_width = target_width - left_cap - right_cap
+    source_middle = scaled.crop((left_cap, 0, scaled.width - right_cap, target_height))
+    middle = source_middle.resize((middle_width, target_height), Image.Resampling.LANCZOS)
+
+    canvas = Image.new("RGBA", (target_width, target_height))
+    canvas.alpha_composite(scaled.crop((0, 0, left_cap, target_height)), (0, 0))
+    canvas.alpha_composite(middle, (left_cap, 0))
+    canvas.alpha_composite(
+        scaled.crop((scaled.width - right_cap, 0, scaled.width, target_height)),
+        (target_width - right_cap, 0),
+    )
+    save_pair(canvas, "speech-bubble-wide-v3")
+
+
+def build_background() -> None:
+    background = Image.open(BACKGROUND_SOURCE).convert("RGB")
+    background.save(BG_OUT / "play-bg-clear-sky-v5.webp", format="WEBP", quality=94, method=6)
+
+
+def main() -> None:
+    UI_OUT.mkdir(parents=True, exist_ok=True)
+    BG_OUT.mkdir(parents=True, exist_ok=True)
+    build_hud_parts()
+    build_status_bar_v5()
+    build_item_dock_v3()
+    build_wide_speech_bubble()
+    build_background()
+
+
+if __name__ == "__main__":
+    main()

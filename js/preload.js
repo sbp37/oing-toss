@@ -1,5 +1,14 @@
 const PLAY_CRITICAL_ASSETS = Object.freeze([
-  'assets/backgrounds/play-bg@2x.webp',
+  'assets/backgrounds/play-bg-spring-path-v2.webp',
+  'assets/ui/play-control-pause-v3.webp',
+  'assets/ui/play-control-sound-v3.webp',
+  'assets/ui/play-stage-badge-v3.webp',
+  'assets/ui/play-timer-pill-v3.webp',
+  'assets/ui/play-status-bar-v5.webp',
+  'assets/ui/play-top-controls-v4.webp',
+  'assets/ui/item-well-hint-v1.webp',
+  'assets/ui/item-well-shuffle-v1.webp',
+  'assets/ui/speech-bubble-wide-v3.webp',
   'assets/characters/cat-peek.webp',
   'assets/characters/cat-wave.webp',
   'assets/characters/cat-idle.webp',
@@ -9,11 +18,11 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/icons/items/hint.webp',
   'assets/icons/items/shuffle.webp',
   'assets/icons/items/bomb.webp',
-  'assets/ui/button-pause.webp',
   'assets/ui/tiles-syrup-v4/tile-mint.webp',
 ]);
 
 const PLAY_DEFERRED_ASSETS = Object.freeze([
+  'assets/backgrounds/board-secret-garden-v1.webp',
   'assets/characters/cat-cheer.webp',
   'assets/characters/cat-success.webp',
   'assets/characters/cat-fail.webp',

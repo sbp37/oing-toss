@@ -1,7 +1,14 @@
 import { cellsInRect } from './board.js';
 import {
   BOARD_DROP_ITEMS,
+  GARDEN_MILESTONES,
   buildScoreComparisons,
+  classicChapterArtUrl,
+  classicChapterThumbUrl,
+  gardenProgress,
+  isRecordInReach,
+  isWowClear,
+  isNiceClear,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
@@ -10,11 +17,6 @@ import {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-// Shuffle flip wave: gap between neighbouring diagonals, and the ceiling on how
-// long the whole sweep may take to reach the far corner.
-const SHUFFLE_WAVE_MS = 26;
-const SHUFFLE_WAVE_SPAN_MS = 190;
 
 // Every tile is the same tile. There is no colour to assign, so nothing here
 // assigns one — css/styles.css names the single art file.
@@ -54,13 +56,18 @@ const CHARACTER_ALT = Object.freeze({
   fail: '살짝 아쉬워하는 블루 고양이',
 });
 
-const ITEM_DROP_COPY = Object.freeze({
-  bomb: '톡 누르면 바로 펑!',
-  megabomb: '톡 누르면 크게 펑!',
-  clock: '톡 누르면 +5초!',
-  freeze: '톡 누르면 10초 정지!',
-  clover: '톡 누르면 정답 발견!',
-});
+// How much mist sits over the chapter art inside cleared cells: heavy while
+// the board is still full of numbers to read, light once it is nearly empty.
+const VEIL_FULL = 0.44;
+const VEIL_CLEAR = 0.14;
+
+// A url() inside a custom property is resolved against the stylesheet that
+// consumes it, not the document, so a document-relative path handed to CSS
+// from here would be looked up under css/. Resolve it to an absolute URL
+// first and CSS has nothing left to re-resolve.
+function cssUrl(path) {
+  return `url("${new URL(path, document.baseURI).href}")`;
+}
 
 export class GameUI {
   constructor() {
@@ -72,14 +79,12 @@ export class GameUI {
     this.characterTimer = null;
     this.selectionSnapTimer = null;
     this.selectionSnapAnimation = null;
-    this.comboCelebrationTimer = null;
     this.hintTimer = null;
     this.roundReadyTimer = null;
     this.countdownPulseTimer = null;
+    this.boardChangeFlashTimer = null;
     this.goalPulseTimer = null;
-    this.stageMissionPulseTimer = null;
     this.itemRewardPreviewTimer = null;
-    this.comboRewardTimer = null;
     this.comboLossTimer = null;
     this.scoreBurstTimer = null;
     this.lastCountdownSecond = null;
@@ -104,28 +109,26 @@ export class GameUI {
       combo: document.querySelector('#combo-value'),
       comboChip: document.querySelector('#combo-chip'),
       comboTimerFill: document.querySelector('#combo-timer-fill'),
+      comboItemLabel: document.querySelector('#combo-item-label'),
+      comboItemTrack: document.querySelector('#combo-item-track'),
+      comboItemFill: document.querySelector('#combo-item-fill'),
+      boardTimeGauge: document.querySelector('#board-time-gauge'),
+      boardTimeFill: document.querySelector('#board-time-fill'),
       goal: document.querySelector('#goal-value'),
       goalLabel: document.querySelector('#goal-label'),
-      goalFill: document.querySelector('#goal-fill'),
-      goalTrack: document.querySelector('#goal-track'),
-      stageMission: document.querySelector('#stage-mission'),
-      stageMissionIcon: document.querySelector('#stage-mission-icon'),
-      stageMissionValue: document.querySelector('#stage-mission-value'),
       roundMini: document.querySelector('.round-mini'),
       sumBubble: document.querySelector('#sum-bubble'),
       sum: document.querySelector('#sum-value'),
       marquee: document.querySelector('#selection-marquee'),
       tutorial: document.querySelector('#tutorial-guide'),
       tutorialCallout: document.querySelector('#tutorial-callout'),
+      wowMoment: document.querySelector('#wow-moment'),
       catMessage: document.querySelector('#cat-message'),
       playCat: document.querySelector('#play-cat'),
       resultCat: document.querySelector('#result-cat'),
       resultDecor: document.querySelector('#result-decor'),
       roundClear: document.querySelector('#round-clear'),
       timeUp: document.querySelector('#time-up'),
-      comboCelebration: document.querySelector('#combo-celebration'),
-      comboCelebrationKicker: document.querySelector('#combo-celebration-kicker'),
-      comboCelebrationValue: document.querySelector('#combo-celebration-value'),
       scoreBurst: document.querySelector('#score-burst'),
       hintCount: document.querySelector('#hint-count'),
       shuffleCount: document.querySelector('#shuffle-count'),
@@ -136,7 +139,6 @@ export class GameUI {
       bombButton: document.querySelector('#bomb-button'),
       clockButton: document.querySelector('#clock-button'),
       homeBest: document.querySelector('#home-best-score'),
-      homeBestStage: document.querySelector('#home-best-stage'),
       rankingBest: document.querySelector('#ranking-best-score'),
       rankingLast: document.querySelector('#ranking-last-score'),
       rankingAverage: document.querySelector('#ranking-average-score'),
@@ -144,10 +146,24 @@ export class GameUI {
       rankingTrend: document.querySelector('#ranking-trend'),
       rankingBars: document.querySelector('#ranking-bars'),
       rankingEmpty: document.querySelector('#ranking-empty'),
+      rankingCatsLine: document.querySelector('#ranking-cats-line'),
+      rankingCatsTotal: document.querySelector('#ranking-cats-total'),
+      homeGardenCount: document.querySelector('#home-garden-count'),
+      gardenScene: document.querySelector('#garden-scene'),
+      gardenCatsTotal: document.querySelector('#garden-cats-total'),
+      gardenProgressLabel: document.querySelector('#garden-progress-label'),
+      gardenProgressFill: document.querySelector('#garden-progress-fill'),
+      gardenTiers: document.querySelector('#garden-tiers'),
+      chapterGallery: document.querySelector('#chapter-gallery'),
+      chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
+      chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
+      chapterViewerArt: document.querySelector('#chapter-viewer-art'),
+      gardenRevealBest: document.querySelector('#garden-reveal-best'),
+      gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
-      finalCats: document.querySelector('#final-cats'),
+      finalRoundLabel: document.querySelector('#final-round-label'),
       newRecord: document.querySelector('#new-record'),
       resultBestCompare: document.querySelector('#result-best-compare'),
       resultPreviousCompare: document.querySelector('#result-previous-compare'),
@@ -161,12 +177,15 @@ export class GameUI {
     };
   }
 
-  showScreen(name) {
+  showScreen(name, { behind = null } = {}) {
     this.screens.forEach((screen) => {
       const active = screen.dataset.screen === name;
-      screen.classList.toggle('is-active', active);
+      const kept = behind && screen.dataset.screen === behind;
+      screen.classList.toggle('is-active', active || Boolean(kept));
+      screen.classList.toggle('is-behind-sheet', Boolean(kept));
       screen.setAttribute('aria-hidden', String(!active));
     });
+    document.querySelector('#result-screen')?.classList.toggle('is-sheet', name === 'result' && Boolean(behind));
   }
 
   async animateStartCountdown(steps, onStep = () => {}, { compact = false } = {}) {
@@ -180,20 +199,23 @@ export class GameUI {
     for (const step of steps) {
       if (token !== this.startCountdownToken) return false;
       const isGo = step === 'GO!';
-      this.elements.startCountdownKicker.textContent = isGo ? '합10을 찾아라냥!' : 'READY?';
-      this.elements.startCountdownValue.textContent = String(step);
+      this.elements.startCountdownKicker.textContent = isGo ? '합이 10이면' : '준비!';
+      this.elements.startCountdownValue.textContent = isGo ? 'GO!' : String(step);
       overlay.classList.toggle('is-go', isGo);
       overlay.dataset.step = String(step);
       this.elements.startCountdownValue.classList.remove('is-popping');
       void this.elements.startCountdownValue.offsetWidth;
       this.elements.startCountdownValue.classList.add('is-popping');
       onStep(step);
-      await delay(compact ? (isGo ? 340 : 330) : (isGo ? 560 : 640));
+      // The original OING holds each digit for 650ms and GO! for 500ms —
+      // long enough for the bloom to overshoot and settle before the next
+      // beat lands. Ours ran at 420/500 and read as a stutter.
+      await delay(compact ? (isGo ? 380 : 420) : (isGo ? 500 : 650));
     }
 
     if (token !== this.startCountdownToken) return false;
     overlay.classList.add('is-leaving');
-    await delay(compact ? 110 : 170);
+    await delay(compact ? 110 : 150);
     overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
     overlay.setAttribute('aria-hidden', 'true');
     return true;
@@ -218,10 +240,18 @@ export class GameUI {
     this.board.dataset.cols = String(cols);
     this.board.dataset.rows = String(rows);
     this.boardFrame.dataset.size = String(cols);
+    this.boardFrame.dataset.cols = String(cols);
     this.boardFrame.dataset.rows = String(rows);
     this.elements.playScreen.classList.toggle('is-tall-board', rows > cols);
+    // The deepest ladder steps (8 and 9 rows) need more height than the tall
+    // board's chrome trim frees up, so they get their own tighter tier.
+    this.elements.playScreen.dataset.boardRows = String(rows);
     this.board.style.setProperty('--board-cols', cols);
     this.board.style.setProperty('--board-rows', rows);
+    this.boardFrame.style.setProperty('--board-cols', cols);
+    this.boardFrame.style.setProperty('--board-rows', rows);
+    this.elements.playScreen.style.setProperty('--board-cols', cols);
+    this.elements.playScreen.style.setProperty('--board-rows', rows);
     const fragment = document.createDocumentFragment();
     for (let r = 0; r < rows; r += 1) {
       for (let c = 0; c < cols; c += 1) {
@@ -275,7 +305,9 @@ export class GameUI {
           badge.setAttribute('aria-hidden', 'true');
           tile.append(cat, badge);
         } else {
-          const specialLabel = special === 'clock' ? ', 시계 타일 +5초' : special === 'bomb' ? ', 폭탄 타일' : '';
+          // The bomb is the only special tile the board can produce; the
+          // clock version was retired with its stage chance and placement.
+          const specialLabel = special === 'bomb' ? ', 폭탄 타일' : '';
           tile.setAttribute('aria-label', value ? `${value}${specialLabel}` : '빈칸');
           if (value) {
             const number = document.createElement('span');
@@ -285,13 +317,11 @@ export class GameUI {
               tile.dataset.special = special;
               const badge = document.createElement('img');
               badge.className = 'special-tile-badge';
-              badge.src = special === 'clock'
-                ? 'assets/icons/hud/time.webp'
-                : 'assets/icons/items/bomb.webp';
+              badge.src = 'assets/icons/items/bomb.webp';
               badge.alt = '';
               const actionLabel = document.createElement('small');
               actionLabel.className = 'special-tile-label';
-              actionLabel.textContent = special === 'clock' ? '+5초' : '펑!';
+              actionLabel.textContent = '펑!';
               tile.append(badge, actionLabel);
             }
           }
@@ -301,6 +331,61 @@ export class GameUI {
     }
     this.board.replaceChildren(fragment);
     this.clearSelection();
+    requestAnimationFrame(() => this.syncChapterWindows());
+    if (!this.chapterWindowResizeBound) {
+      this.chapterWindowResizeBound = true;
+      window.addEventListener('resize', () => this.syncChapterWindows());
+    }
+  }
+
+  // Cleared cells paint the chapter art themselves: each tile gets the
+  // board-sized painting offset to its own cell, so adjacent cleared cells
+  // line up into one continuous picture while the sealed bed keeps it out of
+  // the gutters. Measured from offsetLeft/Top - layout coordinates - so the
+  // flip animations' transforms cannot skew the sample points. Every tile is
+  // measured up front because cells go empty later without a re-render.
+  syncChapterWindows() {
+    const board = this.board;
+    if (!board || !board.offsetWidth) return;
+    // Cover-fit at the painting's own 1086x1448 ratio. Stretching the image
+    // to the board box squashed every scene on boards that are not 3:4 -
+    // visibly so on the square openers.
+    const ART_W = 1086;
+    const ART_H = 1448;
+    const bw = board.offsetWidth;
+    const bh = board.offsetHeight;
+    const scale = Math.max(bw / ART_W, bh / ART_H);
+    const coverW = ART_W * scale;
+    const coverH = ART_H * scale;
+    const originX = (bw - coverW) / 2;
+    const originY = (bh - coverH) / 2;
+    board.style.setProperty('--win-size', `${coverW}px ${coverH}px`);
+    const tiles = board.querySelectorAll('.tile');
+    tiles.forEach((tile) => {
+      tile.style.setProperty('--win-pos', `${originX - tile.offsetLeft}px ${originY - tile.offsetTop}px`);
+    });
+    this.syncChapterVeil(tiles);
+  }
+
+  // The mist thins as the board empties, so a scene develops rather than
+  // arriving. Written as two variables on the board itself - one style write
+  // per render, inherited by the cells - rather than per-tile, and as plain
+  // gradient alpha rather than a filter, so nothing here adds a composited
+  // layer or a per-frame cost.
+  syncChapterVeil(tiles = this.board?.querySelectorAll('.tile')) {
+    const board = this.board;
+    if (!board || !tiles?.length) return;
+    let playable = 0;
+    let cleared = 0;
+    tiles.forEach((tile) => {
+      if (tile.classList.contains('is-board-item') || tile.classList.contains('is-bonus-cat')) return;
+      playable += 1;
+      if (tile.classList.contains('is-empty')) cleared += 1;
+    });
+    const ratio = playable ? cleared / playable : 0;
+    const veil = VEIL_FULL + (VEIL_CLEAR - VEIL_FULL) * ratio;
+    board.style.setProperty('--win-veil', veil.toFixed(3));
+    board.style.setProperty('--win-veil-b', (veil - 0.06).toFixed(3));
   }
 
   tileAt(r, c) {
@@ -539,14 +624,15 @@ export class GameUI {
   }
 
   pulseGoal(combo = 1) {
-    const track = this.elements.goalTrack;
+    const counter = this.elements.goal;
+    if (!counter) return;
     clearTimeout(this.goalPulseTimer);
-    track.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
-    track.classList.remove('is-rewarded');
-    void track.offsetWidth;
-    track.classList.add('is-rewarded');
+    counter.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
+    counter.classList.remove('is-rewarded');
+    void counter.offsetWidth;
+    counter.classList.add('is-rewarded');
     this.goalPulseTimer = window.setTimeout(() => {
-      track.classList.remove('is-rewarded');
+      counter.classList.remove('is-rewarded');
     }, 520);
   }
 
@@ -560,46 +646,19 @@ export class GameUI {
     }, 760);
   }
 
-  showComboReward(item, delayMs = 0) {
-    clearTimeout(this.comboRewardTimer);
-    this.elements.playScreen.querySelector('.combo-reward-pop')?.remove();
-    this.comboRewardTimer = window.setTimeout(() => {
-      const pop = document.createElement('div');
-      pop.className = `combo-reward-pop combo-reward-${item.id}`;
-      const icon = document.createElement('img');
-      icon.src = item.asset;
-      icon.alt = '';
-      const copy = document.createElement('span');
-      copy.textContent = `7 COMBO · ${item.label} 획득`;
-      pop.append(icon, copy, document.createElement('i'), document.createElement('i'));
-      const chip = this.elements.comboChip.getBoundingClientRect();
-      const screen = this.elements.playScreen.getBoundingClientRect();
-      pop.style.left = `${chip.right - screen.left - 4}px`;
-      pop.style.top = `${chip.top - screen.top - 2}px`;
-      this.elements.playScreen.appendChild(pop);
-      this.elements.comboChip.classList.remove('is-reward-earned');
-      void this.elements.comboChip.offsetWidth;
-      this.elements.comboChip.classList.add('is-reward-earned');
-      window.setTimeout(() => {
-        pop.remove();
-        this.elements.comboChip.classList.remove('is-reward-earned');
-      }, 1050);
-    }, Math.max(0, delayMs));
-  }
-
   showComboLoss(amount) {
     const loss = Math.max(1, Math.round(Number(amount) || 1));
     clearTimeout(this.comboLossTimer);
     this.elements.playScreen.querySelector('.combo-loss-pop')?.remove();
     const pop = document.createElement('div');
     pop.className = 'combo-loss-pop';
-    pop.textContent = `COMBO -${loss}`;
-    const chip = this.elements.comboChip.getBoundingClientRect();
-    const screen = this.elements.playScreen.getBoundingClientRect();
-    pop.style.left = `${chip.right - screen.left - 4}px`;
-    pop.style.top = `${chip.top - screen.top}px`;
-    this.elements.playScreen.appendChild(pop);
-    this.comboLossTimer = window.setTimeout(() => pop.remove(), 720);
+    pop.textContent = `−${loss}`;
+    this.elements.comboChip.appendChild(pop);
+    this.elements.comboChip.classList.add('is-inline-feedback');
+    this.comboLossTimer = window.setTimeout(() => {
+      pop.remove();
+      this.elements.comboChip.classList.remove('is-inline-feedback');
+    }, 720);
   }
 
   async animateSuccess(rect, combo = 1) {
@@ -655,18 +714,6 @@ export class GameUI {
       });
     const source = specialTiles[0]?.tile?.getBoundingClientRect();
     const frame = this.boardFrame.getBoundingClientRect();
-    const popType = specialTiles.some(({ type }) => type === 'bomb') ? 'bomb' : specialTiles[0]?.type;
-    // Clock already flies to the timer with a single +5 SEC label. Repeating
-    // another +5 on the board made one reward read like two separate gains.
-    if (source && popType !== 'clock') {
-      const pop = document.createElement('div');
-      pop.className = `special-trigger-pop special-trigger-${popType}`;
-      pop.style.left = `${source.left + source.width / 2 - frame.left}px`;
-      pop.style.top = `${source.top + source.height / 2 - frame.top}px`;
-      pop.textContent = 'POP!';
-      this.boardFrame.appendChild(pop);
-      setTimeout(() => pop.remove(), 520);
-    }
     await delay(300);
   }
 
@@ -687,7 +734,7 @@ export class GameUI {
     this.board.classList.remove('is-hinting');
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
-      .filter((tile) => tile && !tile.dataset.item);
+      .filter((tile) => tile && !tile.dataset.item && !tile.classList.contains('is-empty'));
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--hint-index', index);
       tile.classList.add('is-hint');
@@ -715,13 +762,21 @@ export class GameUI {
       this.boardFrame.appendChild(region);
       window.setTimeout(() => region.remove(), 2200);
     }
-    this.hintTimer = setTimeout(() => {
-      tiles.forEach((tile) => {
-        tile.classList.remove('is-hint');
-        tile.style.removeProperty('--hint-index');
-      });
-      this.board.classList.remove('is-hinting');
-    }, 2200);
+    this.hintTimer = setTimeout(() => this.clearHint(), 2200);
+  }
+
+  // Once the hinted answer is actually played the hint has done its job, so
+  // the board must come back instantly. Waiting out the 2.2s display timer
+  // left the veil and the region sitting over the next move.
+  clearHint() {
+    clearTimeout(this.hintTimer);
+    this.hintTimer = null;
+    this.board.querySelectorAll('.tile.is-hint').forEach((tile) => {
+      tile.classList.remove('is-hint');
+      tile.style.removeProperty('--hint-index');
+    });
+    this.board.classList.remove('is-hinting');
+    this.boardFrame.querySelector('.hint-region')?.remove();
   }
 
   previewBombTarget(rect) {
@@ -741,7 +796,6 @@ export class GameUI {
     region.style.top = `${bounds.top - 3}px`;
     region.style.width = `${bounds.right - bounds.left + 6}px`;
     region.style.height = `${bounds.bottom - bounds.top + 6}px`;
-    region.textContent = 'POP!';
     this.boardFrame.appendChild(region);
   }
 
@@ -826,48 +880,63 @@ export class GameUI {
     this.elements.playScreen.querySelector('.time-rescue-label')?.remove();
     this.elements.playScreen.querySelector('.low-time-alert')?.remove();
     this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop').forEach((element) => element.remove());
+    this.elements.comboChip.classList.remove('is-inline-feedback');
     this.elements.playScreen.classList.remove('is-board-growth-clear', 'is-time-rescued', 'is-low-time-alerting');
   }
 
-  /* The flip runs as a diagonal wave: a tile's delay comes from row + col, so
-     the turn sweeps from the top-left corner to the bottom-right instead of
-     every tile moving at once. SHUFFLE_WAVE_MS is the gap between neighbouring
-     diagonals; the last one starts (cols-1 + rows-1) steps late, which is
-     ~180ms on the biggest board, so the wave stays readable without dragging
-     the shuffle out. */
   setShuffleVectors() {
+    // The flip animation needs only a per-tile delay. Staggering by
+    // (row + col) sends one diagonal wave across the board, so the shuffle
+    // reads as a sweep of cards turning over rather than 42 separate pops.
     const cols = Number(this.board.dataset.cols) || Number(this.board.dataset.size) || 4;
     const rows = Number(this.board.dataset.rows) || cols;
-    const lastDiagonal = Math.max(1, cols + rows - 2);
-    const step = Math.min(SHUFFLE_WAVE_MS, SHUFFLE_WAVE_SPAN_MS / lastDiagonal);
+    const span = Math.max(1, cols + rows - 2);
     this.board.querySelectorAll('.tile').forEach((tile) => {
       const row = Number(tile.dataset.row) || 0;
       const col = Number(tile.dataset.col) || 0;
-      tile.style.setProperty('--shuffle-delay', `${Math.round((row + col) * step)}ms`);
+      tile.style.setProperty('--shuffle-delay', `${Math.round(((row + col) / span) * 200)}ms`);
     });
+  }
+
+  // Transition cleanup: when a stage ends with tiles left (the tens ran
+  // out), the leftovers pop away as part of the stage transition — a
+  // different rhythm from the success animation on purpose.
+  async animateSweep(cells = []) {
+    const tiles = cells
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter(Boolean);
+    tiles.forEach((tile, index) => {
+      tile.style.setProperty('--sweep-delay', `${index * 30}ms`);
+      tile.classList.add('is-sweeping');
+    });
+    await delay(240 + cells.length * 30);
+  }
+
+  // The full-clear payoff: the board is empty, so the garden art beneath it
+  // is completely visible for the first time. Hold on it briefly — long
+  // enough to register as a reward, short enough not to stall the run.
+  async celebrateFullGarden({ perfect = false } = {}) {
+    this.boardFrame.classList.add('is-garden-complete');
+    this.boardFrame.classList.toggle('is-garden-perfect', perfect);
+    await delay(perfect ? 780 : 620);
+    this.boardFrame.classList.remove('is-garden-complete', 'is-garden-perfect');
   }
 
   async animateShuffleOut() {
     this.setShuffleVectors();
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
-    /* One element, one transform. The old overlay spawned a vortex, five
-       droplets, three lightning bolts, four sparkle stars and a paw — sixteen
-       animated nodes over the board, every one of them compositing at once on
-       the exact frames the tiles were already animating. The flip wave carries
-       the effect now, so all this has to add is a band of light travelling the
-       same diagonal. */
     const effect = document.createElement('div');
     effect.className = 'shuffle-fx';
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(320);
+    await delay(400);
     this.board.classList.remove('is-shuffling-out');
   }
 
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(420);
+    await delay(480);
     this.board.classList.remove('is-shuffling-in');
     this.boardFrame.classList.remove('is-shuffle-settled');
     void this.boardFrame.offsetWidth;
@@ -877,6 +946,9 @@ export class GameUI {
     });
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
     window.setTimeout(() => this.boardFrame.classList.remove('is-shuffle-settled'), 260);
+    // The board may have morphed to a new ladder size during the swap; the
+    // windows resample once the layout has settled.
+    this.syncChapterWindows();
   }
 
   async animateBomb(rect) {
@@ -899,9 +971,7 @@ export class GameUI {
       const icon = document.createElement('img');
       icon.src = 'assets/icons/items/bomb.webp';
       icon.alt = '';
-      const label = document.createElement('strong');
-      label.textContent = 'POP!';
-      effect.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
       for (let index = 0; index < 5; index += 1) {
         const drop = document.createElement('b');
         drop.style.setProperty('--bomb-drop-index', String(index));
@@ -970,53 +1040,11 @@ export class GameUI {
       flightIcon.alt = '';
       flight.append(flightIcon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
       this.elements.playScreen.appendChild(flight);
-      const effect = document.createElement('div');
-      effect.className = `item-drop-fx item-drop-${type}`;
-      effect.style.left = `${tileRect.left + tileRect.width / 2 - frameRect.left}px`;
-      effect.style.top = `${tileRect.top + tileRect.height / 2 - frameRect.top}px`;
-      effect.style.setProperty('--item-landing-delay', `${landingDelay}ms`);
-      const icon = document.createElement('img');
-      icon.src = definition?.asset || '';
-      icon.alt = '';
-      const label = document.createElement('span');
-      label.textContent = showcase
-        ? `첫 등장! ${definition?.label || '희귀 아이템'}`
-        : ITEM_DROP_COPY[type] || `${definition?.label || '아이템'} 등장!`;
-      effect.append(icon, label);
-      for (let sparkle = 0; sparkle < 4; sparkle += 1) effect.appendChild(document.createElement('i'));
-      for (let pawIndex = 0; pawIndex < 2; pawIndex += 1) {
-        const paw = document.createElement('b');
-        paw.className = 'item-drop-paw';
-        effect.appendChild(paw);
-      }
-      this.boardFrame.appendChild(effect);
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
-        effect.remove();
         flight.remove();
       }, 1420 + index * 80);
     });
-  }
-
-  showItemTease(type = 'bomb') {
-    this.boardFrame.querySelector('.item-tease')?.remove();
-    const definition = BOARD_DROP_ITEMS[type] || BOARD_DROP_ITEMS.bomb;
-    const tease = document.createElement('div');
-    tease.className = `item-tease item-tease-${definition.id}`;
-    const icon = document.createElement('img');
-    icon.src = definition.asset || '';
-    icon.width = 286;
-    icon.height = 312;
-    icon.alt = '';
-    const copy = document.createElement('div');
-    const kicker = document.createElement('span');
-    kicker.textContent = 'NEXT BONUS';
-    const title = document.createElement('strong');
-    title.textContent = `다음 합10에 ${definition.label}!`;
-    copy.append(kicker, title);
-    tease.append(icon, copy, document.createElement('i'), document.createElement('i'));
-    this.boardFrame.appendChild(tease);
-    setTimeout(() => tease.remove(), 1150);
   }
 
   pressBoardItem(row, col, pressed) {
@@ -1110,12 +1138,11 @@ export class GameUI {
     flight.style.top = `${start.top + start.height / 2 - frame.top}px`;
     flight.style.setProperty('--clock-x', `${target.left + target.width / 2 - start.left - start.width / 2}px`);
     flight.style.setProperty('--clock-y', `${target.top + target.height / 2 - start.top - start.height / 2}px`);
-    const icon = document.createElement('img');
-    icon.src = 'assets/icons/hud/time.webp';
-    icon.alt = '';
+    // Text only: the icon asset has an opaque square background, which is
+    // what flew across the screen as a clipped box.
     const label = document.createElement('strong');
-    label.textContent = `+${seconds} SEC`;
-    flight.append(icon, label);
+    label.textContent = `+${seconds}초`;
+    flight.append(label);
     sourceElement?.classList.add('is-casting');
     this.elements.playScreen.classList.toggle('is-time-rescued', urgent);
     screen.appendChild(flight);
@@ -1126,15 +1153,6 @@ export class GameUI {
     for (let index = 0; index < 6; index += 1) impact.appendChild(document.createElement('i'));
     await delay(350);
     screen.appendChild(impact);
-    if (urgent) {
-      const rescue = document.createElement('div');
-      rescue.className = 'time-rescue-label';
-      rescue.textContent = '시간 살렸다!';
-      rescue.style.left = `${target.left + target.width / 2 - frame.left}px`;
-      rescue.style.top = `${target.bottom - frame.top + 5}px`;
-      screen.appendChild(rescue);
-      window.setTimeout(() => rescue.remove(), 760);
-    }
     this.elements.timePill.classList.remove('is-time-added');
     void this.elements.timePill.offsetWidth;
     this.elements.timePill.classList.add('is-time-added');
@@ -1214,7 +1232,7 @@ export class GameUI {
   showCloverHint(rect) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
-      .filter((tile) => tile && !tile.dataset.item);
+      .filter((tile) => tile && !tile.dataset.item && !tile.classList.contains('is-empty'));
     tiles.forEach((tile) => tile.classList.add('is-clover-hint'));
     setTimeout(() => tiles.forEach((tile) => tile.classList.remove('is-clover-hint')), 4500);
   }
@@ -1224,16 +1242,15 @@ export class GameUI {
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
     primary.textContent = `+${points}`;
-    const detail = document.createElement('span');
-    detail.textContent = kind === 'megabomb'
-      ? '메가폭탄 보너스'
-      : kind === 'bomb' ? '폭탄 보너스' : '아이템 보너스';
-    burst.replaceChildren(primary, detail);
+    // No label: the blast that just played said "bomb" far louder than a
+    // caption can, and the caption sat right on top of the bomb tile.
+    burst.replaceChildren(primary);
     burst.dataset.level = '1';
     burst.dataset.item = kind;
     if (bounds) {
       burst.style.left = `${(bounds.left + bounds.right) / 2}px`;
-      burst.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
+      // Lifted above the blast so the number and the bomb never overlap.
+      burst.style.top = `${Math.max(18, (bounds.top + bounds.bottom) / 2 - 42)}px`;
     }
     clearTimeout(this.scoreBurstTimer);
     burst.classList.remove('is-visible');
@@ -1245,28 +1262,32 @@ export class GameUI {
     }, 660);
   }
 
-  showScoreBurst(points, rect, dimensions, combo, cellCount, bonus = {}) {
+  showScoreBurst(points, rect, dimensions, combo, cellCount, { nice = false } = {}) {
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
-    const isWide = bonus.comboGain > 1;
-    primary.textContent = isWide ? `WOW! +${points}` : `+${points}`;
-    const detail = document.createElement('span');
-    const rewardLabels = [];
-    if (bonus.challengeBonusPoints > 0) rewardLabels.push(`미션 +${bonus.challengeBonusPoints}`);
-    if (bonus.cloverBonusPoints > 0) rewardLabels.push(`클로버 +${bonus.cloverBonusPoints}`);
-    if (bonus.clutchBonusPoints > 0) rewardLabels.push(`막판 +${bonus.clutchBonusPoints}`);
-    if (bonus.catBonusPoints > 0) rewardLabels.push(`고양이 +${bonus.catBonusPoints}`);
-    if (bonus.specialBonusPoints > 0) rewardLabels.push(`폭탄 +${bonus.specialBonusPoints}`);
-    if (bonus.wideBonusPoints > 0) rewardLabels.push(`큰 조합 +${bonus.wideBonusPoints}`);
-    // The total is the only information needed on every clear. Show at most
-    // one exceptional reward label; cell counts and multipliers remain in the
-    // underlying score calculation instead of racing past as transient copy.
-    detail.textContent = rewardLabels[0] || (isWide ? '큰 조합!' : '');
-    detail.hidden = !detail.textContent;
-    burst.replaceChildren(primary, detail);
+    primary.textContent = `+${points}`;
+    // The original OING's entire score readout is "+48 ×7", and that is all a
+    // clear needs to say: the total already contains every bonus, and each
+    // bonus announces itself elsewhere (the cat pop, the bomb blast, the
+    // mission chip, the cat's line). Naming them here as well stacked up to
+    // seven different labels onto one pop and turned a reward into homework.
+    // Just the number. The combo already lives in the HUD, one glance away.
+    // NICE rides on the score pop rather than owning the screen: a four-cell
+    // clear gets a small tag next to its own number, right where the clear
+    // happened. WOW keeps the centred card and the fanfare to itself.
+    const showNice = nice && isNiceClear(cellCount);
+    if (showNice) {
+      const tag = document.createElement('em');
+      tag.textContent = 'NICE!';
+      burst.replaceChildren(primary, tag);
+    } else {
+      burst.replaceChildren(primary);
+    }
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
-    burst.dataset.wide = String(isWide);
+    burst.dataset.wide = String(isWowClear(cellCount));
+    if (showNice) burst.dataset.nice = 'true';
+    else delete burst.dataset.nice;
     if (bounds) {
       burst.style.left = `${clamp((bounds.left + bounds.right) / 2, 82, bounds.frameWidth - 82)}px`;
       burst.style.top = `${clamp((bounds.top + bounds.bottom) / 2, 52, bounds.frameHeight - 34)}px`;
@@ -1283,6 +1304,7 @@ export class GameUI {
     this.scoreBurstTimer = window.setTimeout(() => {
       burst.classList.remove('is-visible');
       delete burst.dataset.wide;
+      delete burst.dataset.nice;
     }, 900);
   }
 
@@ -1320,102 +1342,65 @@ export class GameUI {
     setTimeout(() => pop.remove(), 900);
   }
 
-  showComboMoment(combo) {
-    const level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
+  // `milestone` is whatever comboMilestoneCrossed(previousCombo, combo)
+  // returned for this success — the caller decides whether one was crossed,
+  // this method only ever renders that answer. It used to recompute its own
+  // "did combo land exactly on 3/5/8/multiple-of-8" check, which disagreed
+  // with the rank calculation's crossing check (e.g. 15 -> 17 skips 16 by
+  // landing but still crosses it), so a banner could fire at the same time
+  // successFeedbackLevel had already decided this was a plain clear.
+  // Five-plus cells in one clear. The original stops the screen for this and
+  // nothing else, which is exactly what makes hunting a big rectangle worth
+  // the extra seconds of looking.
+  showWowMoment() {
+    const wow = this.elements.wowMoment;
+    if (!wow) return;
+    clearTimeout(this.wowMomentTimer);
+    wow.classList.remove('is-visible');
+    void wow.offsetWidth;
+    wow.classList.add('is-visible');
+    this.wowMomentTimer = window.setTimeout(() => wow.classList.remove('is-visible'), 940);
+  }
+
+  showComboMoment(combo, { allowCelebration = true, milestone = 0 } = {}) {
+    // The chip carries every step of the climb — it punches on each combo and
+    // its band keeps rising past 8, so the escalation lives in the HUD rather
+    // than in another card over the board.
+    const level = combo >= 16 ? '16' : combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = level;
     this.elements.comboChip.classList.remove('is-punching');
     void this.elements.comboChip.offsetWidth;
     this.elements.comboChip.classList.add('is-punching');
     setTimeout(() => this.elements.comboChip.classList.remove('is-punching'), 520);
 
-    const milestone = combo === 3 || combo === 5 || combo === 8 || (combo > 8 && combo % 3 === 0);
-    if (!milestone) return;
+    if (!milestone || !allowCelebration) return;
 
-    const celebration = this.elements.comboCelebration;
-    clearTimeout(this.comboCelebrationTimer);
-    celebration.dataset.level = level;
-    this.elements.comboCelebrationValue.textContent = String(combo);
-    const callout = level === '8'
-      ? 'OING FEVER!'
-      : level === '5'
-        ? 'SWEET!'
-        : 'NICE!';
-    this.elements.comboCelebrationKicker.textContent = callout;
-    this.elements.comboChip.dataset.callout = callout;
-    celebration.classList.remove('is-visible');
-    void celebration.offsetWidth;
-    celebration.setAttribute('aria-hidden', 'false');
-    celebration.classList.add('is-visible');
-    this.elements.playScreen.classList.add('is-combo-celebrating');
-    this.boardFrame.classList.remove('combo-celebrating');
-    this.boardFrame.dataset.comboCelebration = level;
-    this.boardFrame.classList.add('combo-celebrating');
-    if (level) this.spawnComboConfetti(Number(level));
-    const duration = level === '8' ? 820 : level === '5' ? 760 : 700;
-    this.comboCelebrationTimer = window.setTimeout(() => {
-      this.dismissComboCelebration();
-    }, duration);
+    // The original's entire milestone celebration is one small line of
+    // floating text over the board — no card, no confetti, nothing that has
+    // to be dismissed or that can double up with the HUD chip.
+    this.elements.playScreen.querySelector('.combo-text-pop')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'combo-text-pop';
+    pop.textContent = `${combo} combo \uD83D\uDD25`;
+    this.elements.playScreen.appendChild(pop);
+    setTimeout(() => pop.remove(), 1200);
   }
 
-  showLowTimeAlert(seconds = 10) {
-    this.elements.playScreen.querySelector('.low-time-alert')?.remove();
-    this.dismissComboCelebration();
-    this.elements.playScreen.classList.add('is-low-time-alerting');
-    const alert = document.createElement('div');
-    alert.className = 'low-time-alert';
-    const clock = document.createElement('img');
-    clock.src = 'assets/icons/hud/time.webp';
-    clock.alt = '';
-    const copy = document.createElement('div');
-    const kicker = document.createElement('small');
-    kicker.textContent = 'HURRY UP!';
-    const value = document.createElement('strong');
-    value.textContent = `${Math.max(1, Math.round(Number(seconds) || 10))} SEC`;
-    copy.append(kicker, value);
-    alert.append(clock, copy, document.createElement('i'), document.createElement('i'));
-    this.elements.playScreen.appendChild(alert);
-    window.setTimeout(() => {
-      alert.remove();
-      this.elements.playScreen.classList.remove('is-low-time-alerting');
-    }, 980);
-  }
-
-  spawnComboConfetti(level) {
-    this.boardFrame.querySelectorAll('.combo-confetti').forEach((particle) => particle.remove());
-    const count = level >= 8 ? 10 : level >= 5 ? 7 : 4;
-    const sources = [
-      'assets/decor/star.webp',
-      'assets/decor/sparkle.webp',
-      'assets/decor/heart.webp',
-      'assets/decor/paw.webp',
-    ];
-    for (let index = 0; index < count; index += 1) {
-      const particle = document.createElement('img');
-      const angle = -156 + (312 / Math.max(1, count - 1)) * index;
-      const distance = 74 + (index % 3) * 18 + level * 2;
-      const radians = (angle * Math.PI) / 180;
-      particle.className = 'combo-confetti';
-      particle.src = sources[index % sources.length];
-      particle.alt = '';
-      particle.style.setProperty('--combo-x', `${Math.cos(radians) * distance}px`);
-      particle.style.setProperty('--combo-y', `${Math.sin(radians) * distance}px`);
-      particle.style.setProperty('--combo-rotate', `${(index % 2 ? 1 : -1) * (35 + index * 11)}deg`);
-      particle.style.setProperty('--combo-delay', `${(index % 5) * 18}ms`);
-      particle.style.setProperty('--combo-size', `${level >= 8 ? 18 + (index % 3) * 3 : 15 + (index % 3) * 2}px`);
-      this.boardFrame.appendChild(particle);
-      setTimeout(() => particle.remove(), level >= 8 ? 980 : 860);
-    }
-  }
-
-  dismissComboCelebration() {
-    clearTimeout(this.comboCelebrationTimer);
-    this.comboCelebrationTimer = null;
-    this.elements.comboCelebration.classList.remove('is-visible');
-    this.elements.comboCelebration.setAttribute('aria-hidden', 'true');
-    this.elements.playScreen.classList.remove('is-combo-celebrating');
-    delete this.elements.comboChip.dataset.callout;
-    this.boardFrame.classList.remove('combo-celebrating');
-    delete this.boardFrame.dataset.comboCelebration;
+  showStageTimeBonus(seconds = 0) {
+    const amount = Math.max(0, Math.round(Number(seconds) || 0));
+    if (!amount || !this.elements.boardTimeGauge) return;
+    // The gain shows on the surface that represents time, rather than as a
+    // pill floating over the HUD where it covered the clock and the tally.
+    const gauge = this.elements.boardTimeGauge;
+    clearTimeout(this.timeBonusTimer);
+    gauge.dataset.bonus = `+${amount}초`;
+    gauge.classList.remove('is-bonus');
+    void gauge.offsetWidth;
+    gauge.classList.add('is-bonus');
+    this.timeBonusTimer = window.setTimeout(() => {
+      gauge.classList.remove('is-bonus');
+      delete gauge.dataset.bonus;
+    }, 1100);
   }
 
   showRoundClear({
@@ -1425,17 +1410,16 @@ export class GameUI {
     nextStage = stage + 1,
     rows = 0,
     cols = 0,
+    perfect = false,
     boardGrew = false,
   } = {}) {
-    this.dismissComboCelebration();
     const clear = this.elements.roundClear;
     const label = clear.querySelector('strong');
-    const reward = clear.querySelector('#round-clear-reward');
-    if (label) label.textContent = `STAGE ${stage} CLEAR!`;
-    const details = [];
-    if (boardGrew && rows > 0 && cols > 0) details.push(`${cols}×${rows} OPEN`);
-    if (timeBonus > 0) details.push(`+${timeBonus}초`);
-    if (reward) reward.textContent = details.slice(0, 2).join(' · ') || `STAGE ${nextStage} GO!`;
+    // One line of text is the whole card, like the original's board-change
+    // pop. PERFECT — a board emptied without one rescue shuffle — earns the
+    // word itself; everything else stays the plain clear.
+    if (label) label.textContent = perfect ? `STAGE ${stage} PERFECT!` : `STAGE ${stage} CLEAR!`;
+    clear.dataset.perfect = perfect ? '1' : '0';
     clear.dataset.stage = String(stage);
     clear.dataset.nextStage = String(nextStage);
     clear.classList.toggle('is-milestone', timeBonus > 0 || boardGrew);
@@ -1483,13 +1467,16 @@ export class GameUI {
     const amount = Math.max(0, Math.round(Number(seconds) || 0));
     if (!amount || !this.elements.timePill) return;
     this.elements.playScreen.querySelector('.stage-time-bonus')?.remove();
-    const pill = this.elements.timePill.getBoundingClientRect();
     const screen = this.elements.playScreen.getBoundingClientRect();
+    // Centred over the time gauge — the surface that actually shows the
+    // gain — instead of under the timer pill, where it was clipped by the
+    // HUD art and covered whatever sat beneath it.
+    const gauge = this.elements.boardTimeGauge?.getBoundingClientRect();
     const pop = document.createElement('div');
     pop.className = 'stage-time-bonus';
-    pop.textContent = `+${amount} SEC`;
-    pop.style.left = `${pill.left + pill.width / 2 - screen.left}px`;
-    pop.style.top = `${pill.bottom - screen.top + 4}px`;
+    pop.textContent = `+${amount}초`;
+    pop.style.left = `${gauge ? gauge.left + gauge.width / 2 - screen.left : screen.width / 2}px`;
+    pop.style.top = `${gauge ? gauge.top - screen.top - 6 : 120}px`;
     this.elements.playScreen.appendChild(pop);
     this.elements.timePill.classList.remove('is-bonus-awarded');
     void this.elements.timePill.offsetWidth;
@@ -1502,26 +1489,39 @@ export class GameUI {
 
   async animateRoundTransition(nextRound, swapBoard, intro = {}) {
     this.clearTransientBoardFeedback();
+    const previousTileWidth = this.board.querySelector('.tile')?.getBoundingClientRect().width || 0;
     this.boardFrame.classList.add('is-round-leaving');
     await delay(140);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
+    // When the ladder grows an axis the tiles drop a size in one frame,
+    // which read as the board being replaced rather than growing. Arriving
+    // scaled so the new tiles start at the old tile size, then settling to
+    // 1, keeps it one continuous board. Measured from real widths so the
+    // same code handles every step (and does nothing when size is equal).
+    const nextTileWidth = this.board.querySelector('.tile')?.getBoundingClientRect().width || 0;
+    clearTimeout(this.sizeMorphTimer);
+    this.boardFrame.classList.remove('is-size-morphing');
+    if (previousTileWidth && nextTileWidth && Math.abs(previousTileWidth - nextTileWidth) > 1.5) {
+      const scale = clamp(previousTileWidth / nextTileWidth, 0.6, 1.6);
+      this.boardFrame.style.setProperty('--arrive-scale', String(Math.round(scale * 1000) / 1000));
+      void this.boardFrame.offsetWidth;
+      this.boardFrame.classList.add('is-size-morphing');
+      this.sizeMorphTimer = window.setTimeout(() => {
+        this.boardFrame.classList.remove('is-size-morphing');
+      }, 680);
+    }
     this.elements.roundMini.classList.remove('is-advancing');
     void this.elements.roundMini.offsetWidth;
     this.elements.roundMini.classList.add('is-advancing');
     this.boardFrame.classList.add('is-round-arriving');
+    // One line of plain glowing text, like the original's board-change pop.
     const entry = document.createElement('div');
     entry.className = 'stage-entry';
-    const kicker = document.createElement('small');
-    kicker.textContent = intro.kicker || 'LEVEL UP';
     const title = document.createElement('strong');
     title.textContent = intro.title || `STAGE ${nextRound}`;
-    const detail = document.createElement('span');
-    detail.textContent = intro.detail || '새 보드 시작';
-    const goal = document.createElement('b');
-    goal.textContent = `목표 ${Math.max(1, Math.round(Number(intro.target) || 1))}`;
     entry.classList.toggle('is-milestone', Boolean(intro.boardGrew));
-    entry.append(kicker, title, detail, goal, document.createElement('i'), document.createElement('i'));
+    entry.append(title);
     this.boardFrame.appendChild(entry);
     await delay(460);
     entry.remove();
@@ -1574,8 +1574,7 @@ export class GameUI {
     });
   }
 
-  async animateGameEnd({ score = 0, maxCombo = 0, newRecord = false, answers = [] } = {}) {
-    this.dismissComboCelebration();
+  async animateGameEnd({ answers = [] } = {}) {
     this.clearSelection();
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
@@ -1592,30 +1591,17 @@ export class GameUI {
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
     timeUp.classList.add('is-visible');
-    await delay(620);
+    await delay(780);
     timeUp.classList.remove('is-visible');
-    const summary = document.createElement('div');
-    summary.className = 'end-score-summary';
-    const label = document.createElement('small');
-    label.textContent = newRecord ? 'NEW RECORD!' : 'FINAL SCORE';
-    const value = document.createElement('strong');
-    value.textContent = Math.max(0, Math.round(score)).toLocaleString('ko-KR');
-    const combo = document.createElement('span');
-    combo.textContent = maxCombo > 1 ? `최고 콤보 ${maxCombo}` : '끝까지 잘했다냥!';
-    summary.append(label, value, combo, document.createElement('i'), document.createElement('i'));
-    summary.classList.toggle('is-record', newRecord);
-    this.boardFrame.appendChild(summary);
-    await delay(620);
-    summary.remove();
     sweep.remove();
-    this.clearEndAnswers();
+    // The score is about to be the sheet's headline, so it is not announced
+    // twice; the missed answers stay lit underneath it.
     this.boardFrame.classList.remove('is-game-ending');
-    this.elements.playScreen.classList.add('is-ending-to-result');
-    await delay(170);
+    await delay(140);
   }
 
   setPlayCharacter(pose, duration = 0) {
-    const next = CHARACTER_ASSETS[pose] ? pose : 'peek';
+    const next = CHARACTER_ASSETS[pose] ? pose : 'wave';
     const token = ++this.characterToken;
     clearTimeout(this.characterTimer);
     const image = this.elements.playCat;
@@ -1630,9 +1616,9 @@ export class GameUI {
       image.dataset.pose = next;
       void image.offsetWidth;
       image.classList.add('is-switching');
-      if (duration > 0 && next !== 'peek') {
+      if (duration > 0 && next !== 'wave') {
         this.characterTimer = setTimeout(() => {
-          if (token === this.characterToken) this.setPlayCharacter('peek');
+          if (token === this.characterToken) this.setPlayCharacter('wave');
         }, duration);
       }
     };
@@ -1699,7 +1685,7 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, progress, target, stageMission = null, stageMissionBonus = 0 }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false, bestScore = 0 }) {
     this.elements.round.textContent = String(round);
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
@@ -1718,13 +1704,34 @@ export class GameUI {
       : '';
     this.elements.timePill.style.setProperty('--time-progress', String(timed ? clamp(timeLeft / Math.max(1, duration), 0, 1) : 1));
     const isFrozen = freezeRemaining > 0;
+    // The gauge above the numbers: remaining time as a shrinking bar in the
+    // original's green-to-lemon-to-orange language, readable in peripheral
+    // vision while the eyes stay on the board. The original switched on
+    // remaining *percentage* (40% and 15%), not absolute seconds, so a time
+    // bonus widens the green stretch instead of skipping past a band.
+    if (this.elements.boardTimeGauge) {
+      this.elements.boardTimeGauge.hidden = !timed;
+      if (timed) {
+        const remaining = clamp(timeLeft / Math.max(1, duration), 0, 1);
+        this.elements.boardTimeFill.style.transform = `scaleX(${remaining})`;
+        this.elements.boardTimeGauge.dataset.band = isFrozen ? 'frozen'
+          : remaining <= 0.15 ? 'low'
+            : remaining <= 0.4 ? 'mid'
+              : 'high';
+      }
+    }
     this.elements.timePill.classList.toggle('is-low-time', timed && !isFrozen && time > 10 && time <= 30);
     this.elements.timePill.classList.toggle('is-warning', timed && !isFrozen && time <= 10);
     this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
     const isFinalCountdown = timed && !isFrozen && time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
     this.elements.playScreen.dataset.round = String(round);
-    this.elements.playScreen.dataset.stageBand = round >= 8 ? 'fever' : round >= 5 ? 'wide' : round >= 3 ? 'rising' : 'warmup';
+    // The warmup band hides the hidden-garden art; classic runs skip it so
+    // the picture peeks through from the very first cleared cell.
+    this.elements.playScreen.dataset.stageBand = round >= 8 ? 'fever'
+      : round >= 5 ? 'wide'
+        : round >= 3 || gardenFromStart ? 'rising'
+          : 'warmup';
     this.boardFrame.dataset.round = String(round);
     this.elements.timePill.dataset.urgency = time <= 3 ? 'high' : time <= 5 ? 'medium' : 'low';
     if (isFinalCountdown && time !== this.lastCountdownSecond) {
@@ -1749,6 +1756,17 @@ export class GameUI {
     const rewardUnlocked = rewardRemaining > 0;
     const rewardProgress = !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
     this.elements.comboTimerFill.style.transform = `scaleX(${rewardProgress})`;
+    // The centre compartment's gauge. The track is always on screen — it is
+    // half of what makes the compartment look furnished, and hiding it for
+    // the first two stages left an empty box exactly where new players
+    // look first. Only the "아이템까지 N" caption waits for stage 3, when
+    // item drops actually unlock and the number means something.
+    if (this.elements.comboItemTrack) {
+      const comboCycle = combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
+      this.elements.comboItemFill.style.width = `${Math.round(comboCycle * 100)}%`;
+      this.elements.comboItemLabel.hidden = !rewardUnlocked;
+      if (rewardUnlocked) this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
+    }
     this.elements.comboChip.classList.toggle('is-active', combo > 0);
     const comboUrgency = combo > 0 ? clamp(comboRemainingMs / Math.max(1, comboWindowMs), 0, 1) : 1;
     const comboExpiring = combo >= 3 && comboUrgency > 0 && comboUrgency <= 0.24;
@@ -1763,49 +1781,24 @@ export class GameUI {
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
     this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
+    // Classic multipliers keep climbing long after the fever band tops out,
+    // so the board carries a second, coarser tier keyed to the figures that
+    // actually matter there: the score cap and the two steps past it.
+    this.boardFrame.dataset.comboTier = combo >= 60 ? '60' : combo >= 40 ? '40' : combo >= 25 ? '25' : '';
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
-    this.elements.goalLabel.textContent = '성공';
-    this.elements.goal.textContent = `${progress} / ${target}`;
-    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', progress >= target);
-    this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
-    const mission = this.elements.stageMission;
-    if (mission) {
-      const wasCompleted = mission.dataset.completed === '1';
-      mission.hidden = !stageMission;
-      mission.classList.toggle('is-complete', Boolean(stageMission?.completed));
-      mission.dataset.kind = stageMission?.kind || '';
-      mission.dataset.completed = stageMission?.completed ? '1' : '0';
-      if (stageMission) {
-        const iconByKind = {
-          wide: 'assets/decor/sparkle.webp',
-          cat: 'assets/decor/paw.webp',
-          chain: 'assets/decor/star.webp',
-        };
-        this.elements.stageMissionIcon.src = iconByKind[stageMission.kind] || iconByKind.wide;
-        const activeCopy = stageMission.kind === 'wide'
-          ? `${stageMission.requirement}칸 묶기`
-          : stageMission.kind === 'cat'
-            ? '고양이 찾기'
-            : `${stageMission.label} ${stageMission.progress}/${stageMission.target}`;
-        this.elements.stageMissionValue.textContent = stageMission.completed
-          ? `${stageMission.label} 완료`
-          : activeCopy;
-        mission.setAttribute('aria-label', stageMission.completed
-          ? `${stageMission.label} 미션 완료, ${Math.max(0, Math.round(stageMissionBonus)).toLocaleString('ko-KR')}점 보너스`
-          : stageMission.kind === 'wide'
-            ? `${stageMission.requirement}칸을 한 번에 묶는 미션`
-            : stageMission.kind === 'cat'
-              ? '고양이를 한 마리 찾는 미션'
-              : `${stageMission.label} 미션, ${stageMission.progress}/${stageMission.target}`);
-        if (!wasCompleted && stageMission.completed) {
-          clearTimeout(this.stageMissionPulseTimer);
-          mission.classList.remove('is-rewarded');
-          void mission.offsetWidth;
-          mission.classList.add('is-rewarded');
-          this.stageMissionPulseTimer = setTimeout(() => mission.classList.remove('is-rewarded'), 760);
-        }
-      }
-    }
+    // The third compartment used to count answers found, which never changed
+    // a decision — it only ever went up. In a score attack the figure worth
+    // carrying there is the record being chased, and once the run passes it
+    // the slot flips into a live "you are ahead" readout.
+    const best = Math.max(0, Math.round(Number(bestScore) || 0));
+    const ahead = best > 0 && score > best;
+    const goalText = (ahead ? score : best).toLocaleString('ko-KR');
+    this.elements.goal.textContent = goalText;
+    if (this.elements.goalLabel) this.elements.goalLabel.textContent = ahead ? '신기록' : '최고';
+    this.elements.goal.closest('.goal-status')?.classList.toggle('is-ahead', ahead);
+    // Same length-band pattern as the score figure: the counter box is narrow
+    // and the text is nowrap-centred, so long values shrink one step.
+    this.elements.goal.dataset.digits = goalText.length > 3 ? 'l' : 'm';
   }
 
   updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true }) {
@@ -1867,10 +1860,159 @@ export class GameUI {
     this.elements.rankingBest.textContent = text;
   }
 
-  updateHighestStage(stage) {
-    if (this.elements.homeBestStage) {
-      this.elements.homeBestStage.textContent = `STAGE ${Math.max(1, Math.round(Number(stage) || 1))}`;
+  // Which scene of 고양이의 모험 is painted behind the board. The art itself
+  // lives in CSS (one rule per chapter) so a missing file falls back to the
+  // original garden painting instead of leaving a blank frame.
+  setChapter(key, artUrl = null) {
+    const screen = this.elements.playScreen;
+    if (key) screen.dataset.chapter = key;
+    else delete screen.dataset.chapter;
+    if (artUrl) screen.style.setProperty('--chapter-art', cssUrl(artUrl));
+    else screen.style.removeProperty('--chapter-art');
+  }
+
+  updateCatsRescued(total = 0) {
+    const count = Math.max(0, Math.round(Number(total) || 0));
+    const formatted = count.toLocaleString('ko-KR');
+    if (this.elements.rankingCatsLine && this.elements.rankingCatsTotal) {
+      this.elements.rankingCatsTotal.textContent = formatted;
+      this.elements.rankingCatsLine.hidden = count <= 0;
     }
+    if (this.elements.homeGardenCount) {
+      this.elements.homeGardenCount.textContent = `고양이 ${formatted}마리`;
+    }
+  }
+
+  renderGarden(total = 0, cleanClears = 0) {
+    const cleared = Math.max(0, Math.round(Number(cleanClears) || 0));
+    if (this.elements.gardenRevealBest && this.elements.gardenRevealBestValue) {
+      this.elements.gardenRevealBestValue.textContent = cleared.toLocaleString('ko-KR');
+      this.elements.gardenRevealBest.hidden = cleared <= 0;
+    }
+    const state = gardenProgress(total);
+    if (this.elements.gardenCatsTotal) {
+      this.elements.gardenCatsTotal.textContent = state.cats.toLocaleString('ko-KR');
+    }
+    if (this.elements.gardenProgressLabel) {
+      this.elements.gardenProgressLabel.textContent = state.complete
+        ? '정원을 모두 채웠다냥!'
+        : `${state.next.label}까지 ${state.remaining.toLocaleString('ko-KR')}마리`;
+    }
+    if (this.elements.gardenProgressFill) {
+      this.elements.gardenProgressFill.style.width = `${Math.round(state.progress * 100)}%`;
+    }
+    if (this.elements.gardenScene) {
+      // Unlocked decorations are the garden itself filling in. Positions are
+      // fixed per tier so a returning player finds the same garden, with the
+      // newest friend arriving in an empty spot rather than reshuffling.
+      this.elements.gardenScene.querySelectorAll('.garden-decor').forEach((decor) => decor.remove());
+      GARDEN_MILESTONES.forEach((milestone, index) => {
+        if (!state.unlocked.includes(milestone.id)) return;
+        const decor = document.createElement('img');
+        decor.className = `garden-decor garden-decor-${milestone.id}`;
+        decor.dataset.slot = String(index);
+        decor.src = milestone.asset;
+        decor.alt = '';
+        this.elements.gardenScene.appendChild(decor);
+      });
+      this.elements.gardenScene.dataset.tier = String(state.unlocked.length);
+    }
+    if (this.elements.gardenTiers) {
+      const tiers = GARDEN_MILESTONES.map((milestone) => {
+        const unlocked = state.unlocked.includes(milestone.id);
+        const item = document.createElement('li');
+        item.className = 'garden-tier';
+        item.classList.toggle('is-unlocked', unlocked);
+        const icon = document.createElement('img');
+        icon.src = milestone.asset;
+        icon.alt = '';
+        const label = document.createElement('span');
+        label.textContent = milestone.label;
+        const requirement = document.createElement('b');
+        requirement.textContent = unlocked ? '완료' : `${milestone.cats}마리`;
+        item.append(icon, label, requirement);
+        item.setAttribute('aria-label', unlocked
+          ? `${milestone.label} 해금 완료`
+          : `${milestone.label} 잠김, 고양이 ${milestone.cats}마리 필요`);
+        return item;
+      });
+      this.elements.gardenTiers.replaceChildren(...tiers);
+    }
+  }
+
+  // The adventure gallery: every scene the run can travel to, with the ones
+  // still ahead shown as silhouettes so there is something to aim at. Art is
+  // applied by CSS class, so scenes without a file yet render as a plain
+  // locked card rather than a broken image.
+  // Held between the old board fading out and the new one landing: the
+  // tiles are already gone, so the chapter art behind them is briefly the
+  // whole screen. One card names the scene, then play resumes.
+  // 판갈이 is the loop's only lifeline, so it gets a real beat: the frame
+  // flashes and kicks once as the seconds land.
+  flashBoardChange() {
+    this.boardFrame.classList.remove('is-board-change');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-board-change');
+    clearTimeout(this.boardChangeFlashTimer);
+    this.boardChangeFlashTimer = window.setTimeout(() => {
+      this.boardFrame.classList.remove('is-board-change');
+    }, 620);
+  }
+
+  renderChapterGallery(chapters = []) {
+    if (!this.elements.chapterGallery) return;
+    const list = Array.isArray(chapters) ? chapters : [];
+    const cards = list.map((chapter) => {
+      const item = document.createElement('li');
+      item.className = 'chapter-card';
+      item.dataset.chapter = chapter.key;
+      item.classList.toggle('is-unlocked', Boolean(chapter.unlocked));
+      item.classList.toggle('is-secret', Boolean(chapter.secret));
+      // A locked card still paints its scene, blurred and drained by CSS, so
+      // the album reads as pictures waiting to be earned rather than a list of
+      // empty slots. Chapters whose art has not shipped get no thumb at all
+      // and fall back to the placeholder wash.
+      const thumb = classicChapterThumbUrl(chapter);
+      item.classList.toggle('has-art', Boolean(thumb));
+      if (thumb) item.style.setProperty('--chapter-thumb', cssUrl(thumb));
+      const label = document.createElement('strong');
+      label.textContent = chapter.unlocked ? chapter.label : '???';
+      const requirement = document.createElement('span');
+      requirement.textContent = chapter.unlocked ? '수집 완료' : chapter.requirement;
+      item.append(label, requirement);
+      item.setAttribute('aria-label', chapter.unlocked
+        ? `${chapter.label} 수집 완료`
+        : `잠긴 장면, ${chapter.requirement} 필요`);
+      if (chapter.unlocked && classicChapterArtUrl(chapter)) {
+        item.setAttribute('role', 'button');
+        item.tabIndex = 0;
+        item.addEventListener('click', () => this.openChapterViewer(chapter));
+        item.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.openChapterViewer(chapter);
+          }
+        });
+      }
+      return item;
+    });
+    this.elements.chapterGallery.replaceChildren(...cards);
+    if (this.elements.chapterGalleryNote) {
+      const found = list.filter((chapter) => chapter.unlocked).length;
+      this.elements.chapterGalleryNote.textContent = list.length
+        ? `장면 ${found}/${list.length} 수집`
+        : '';
+    }
+  }
+
+  // The album card is a thumbnail; tapping an earned scene opens the real
+  // painting. Locked cards stay inert - the blur is the tease.
+  openChapterViewer(chapter) {
+    const art = classicChapterArtUrl(chapter);
+    if (!art) return;
+    if (this.elements.chapterViewerTitle) this.elements.chapterViewerTitle.textContent = chapter.label;
+    if (this.elements.chapterViewerArt) this.elements.chapterViewerArt.src = art;
+    this.setOverlay('chapter-viewer', true);
   }
 
   renderRanking({ summary } = {}) {
@@ -1918,7 +2060,7 @@ export class GameUI {
     void output.offsetWidth;
     output.classList.add('is-counting');
     const startedAt = performance.now();
-    const duration = 680;
+    const duration = 950;
     const step = (now) => {
       const progress = clamp((now - startedAt) / duration, 0, 1);
       const eased = 1 - ((1 - progress) ** 4);
@@ -1928,6 +2070,9 @@ export class GameUI {
       } else {
         output.textContent = target.toLocaleString('ko-KR');
         output.classList.remove('is-counting');
+        output.classList.remove('is-settled');
+        void output.offsetWidth;
+        output.classList.add('is-settled');
         this.finalScoreAnimationFrame = 0;
       }
     };
@@ -1935,15 +2080,31 @@ export class GameUI {
   }
 
   showResult({
-    score, maxCombo, round, progress = 0, target = 1, catsCollected = 0,
+    score, maxCombo, round, successCount = 0, catsCollected = 0,
+    catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
+    classic = null,
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
+    // Classic reads its own sheet: the round figure is boards survived, and
+    // the kicker names the mode so the score's smaller scale isn't read
+    // against stage-mode records.
+    if (this.elements.finalRoundLabel) {
+      this.elements.finalRoundLabel.textContent = classic ? '판갈이 수' : '도달 스테이지';
+    }
     this.elements.resultKicker.textContent = '이번 판 기록';
-    this.elements.resultStageProgress.textContent = `STAGE ${round} 도달 · 목표 ${progress} / ${target}`;
-    this.elements.retryButton.textContent = resultRetryLabel({
+    // A scene earned this run is the retry hook, so it reads here rather
+    // than only inside the records sheet.
+    const collected = classic?.collectedLabels || [];
+    const collectedNote = collected.length === 0 ? ''
+      : collected.length === 1 ? ` · 새 장면: ${collected[0]}`
+        : ` · 새 장면 ${collected.length}개`;
+    this.elements.resultStageProgress.textContent = classic
+      ? `${classic.boards}판 진행 · 성공 ${successCount}회${collectedNote}`
+      : `STAGE ${round} 도달 · 성공 ${successCount}회`;
+    this.elements.retryButton.textContent = classic ? '한 판 더!' : resultRetryLabel({
       score,
       previousBest,
       newRecord,
@@ -1951,7 +2112,8 @@ export class GameUI {
       maxCombo,
       round,
     });
-    this.elements.finalCats.textContent = String(catsCollected);
+    // Rescued-cat counts live in the garden screen, which is where they
+    // actually accumulate; the sheet keeps to the run's own headline.
     this.elements.newRecord.hidden = !newRecord;
     this.elements.resultDecor.classList.toggle('is-record', newRecord);
 
@@ -1960,34 +2122,55 @@ export class GameUI {
     else if (maxCombo >= 5 || round >= 5) this.setResultCharacter('cheer');
     else this.setResultCharacter('wave');
 
+    // One comparison, not two stacked. The card used to print the best-score
+    // line and the last-run line together, so an ordinary result said two
+    // similar things at once and neither led. This picks the single most
+    // meaningful reading of the run and shows only that.
     const comparison = buildScoreComparisons(score, previousScore, previousBest);
-    this.elements.resultBestCompare.textContent = recordEligible
-      ? comparison.bestText
-      : '연습 플레이 기록';
-    this.elements.resultBestCompare.dataset.tone = recordEligible ? comparison.bestTone : 'neutral';
-    this.elements.resultPreviousCompare.textContent = recordEligible
-      ? comparison.previousText
-      : '정식 기록은 STAGE 1부터 시작해';
-    this.elements.resultPreviousCompare.dataset.tone = recordEligible ? comparison.previousTone : 'neutral';
-    this.elements.resultPreviousCompare.hidden = recordEligible ? !comparison.hasPrevious : false;
+    const chasingRecord = recordEligible && !newRecord && isRecordInReach(score, previousBest);
+    const beatLastRun = recordEligible && comparison.hasPrevious && comparison.previousTone === 'up';
+    const headline = !recordEligible
+      ? { text: '연습 플레이 기록 · 최고기록에는 반영되지 않아', tone: 'neutral' }
+      : newRecord || chasingRecord || !beatLastRun
+        ? { text: comparison.bestText, tone: comparison.bestTone }
+        : { text: comparison.previousText, tone: comparison.previousTone };
+    this.elements.resultBestCompare.textContent = headline.text;
+    this.elements.resultBestCompare.dataset.tone = headline.tone;
+    // The freed second line celebrates clean clears — boards emptied without
+    // a rescue — which replaced the reveal-percentage record now that every
+    // stage ends fully revealed.
+    const clean = Math.max(0, Math.round(Number(cleanClears) || 0));
+    this.elements.resultPreviousCompare.hidden = clean <= 0;
+    this.elements.resultPreviousCompare.textContent = clean > 0 ? `CLEAN CLEAR ×${clean}!` : '';
+    if (clean > 0) this.elements.resultPreviousCompare.dataset.tone = 'up';
     const recordProgress = !recordEligible
       ? 0
       : newRecord || previousBest <= 0
       ? 1
       : clamp(score / Math.max(1, previousBest), 0, 1);
     const recordPercent = Math.round(recordProgress * 100);
-    this.elements.resultRecordMeterLabel.textContent = !recordEligible
-      ? '연습 기록 · 최고기록 제외'
-      : newRecord
-      ? '새 최고기록 달성!'
-      : `최고기록 도전 ${recordPercent}%`;
+    // The meter only earns its row when it says something the copy above it
+    // does not. A new record pins it at 100% and a practice run excludes it
+    // from records entirely, and in both cases the line under the score has
+    // already said so — so the meter is a chase bar, shown only while there
+    // is a record left to chase.
+    const meterIsInformative = recordEligible && !newRecord && previousBest > 0;
+    this.elements.resultRecordMeter.hidden = !meterIsInformative;
+    // Its own label repeated the comparison line verbatim ("최고기록 도전
+    // 15%" over "최고 기록의 15%까지 왔다냥"), so the bar now carries the
+    // figure for assistive tech instead of printing it twice.
+    this.elements.resultRecordMeterLabel.textContent = `최고기록 도전 ${recordPercent}%`;
+    this.elements.resultRecordMeter.setAttribute('aria-label', `최고기록 도전 진행도 ${recordPercent}%`);
     this.elements.resultRecordMeter.style.setProperty('--record-progress', String(recordProgress));
     this.elements.resultRecordMeter.classList.remove('is-animating');
 
     const message = resultMessage || pickMessage(newRecord ? 'record' : 'resultNormal', this.lastResultMessage);
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
-    this.showScreen('result');
+    // The board stays on screen behind the sheet, with its remaining answers
+    // still lit — seeing what you missed is what makes the retry button worth
+    // pressing, and it is how the original ends a run.
+    this.showScreen('result', { behind: 'play' });
     if (newRecord) this.launchRecordCelebration();
     void this.elements.resultRecordMeter.offsetWidth;
     this.elements.resultRecordMeter.classList.add('is-animating');
@@ -2000,26 +2183,40 @@ export class GameUI {
     setTimeout(() => screen.classList.remove('is-entering'), 680);
   }
 
+  // The original's record moment pops from several places at once, not one
+  // curtain from the top - so the celebration is three staggered bursts,
+  // each seeded to a different band of the screen.
   launchRecordCelebration() {
     const screen = document.querySelector('#result-screen');
     if (!screen) return;
-    screen.querySelector('.record-confetti')?.remove();
-    const confetti = document.createElement('div');
-    confetti.className = 'record-confetti';
+    screen.querySelectorAll('.record-confetti').forEach((el) => el.remove());
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const count = reducedMotion ? 12 : 54;
-    for (let index = 0; index < count; index += 1) {
-      const piece = document.createElement('i');
-      piece.style.setProperty('--confetti-x', `${6 + ((index * 37) % 89)}%`);
-      piece.style.setProperty('--confetti-delay', `${(index % 12) * 34}ms`);
-      piece.style.setProperty('--confetti-drift', `${((index * 29) % 100) - 50}px`);
-      piece.style.setProperty('--confetti-spin', `${120 + (index % 7) * 55}deg`);
-      piece.style.setProperty('--confetti-hue', String((index * 47) % 360));
-      piece.dataset.shape = index % 6 === 0 ? 'star' : 'paper';
-      confetti.appendChild(piece);
+    const spawnWave = (seed, count) => {
+      const confetti = document.createElement('div');
+      confetti.className = 'record-confetti';
+      for (let index = 0; index < count; index += 1) {
+        const piece = document.createElement('i');
+        piece.style.setProperty('--confetti-x', `${(seed * 31 + 6 + ((index * 37) % 89)) % 94}%`);
+        piece.style.setProperty('--confetti-delay', `${(index % 12) * 34}ms`);
+        piece.style.setProperty('--confetti-drift', `${((index * 29 + seed * 13) % 100) - 50}px`);
+        piece.style.setProperty('--confetti-spin', `${120 + (index % 7) * 55}deg`);
+        piece.style.setProperty('--confetti-hue', String((index * 47 + seed * 90) % 360));
+        piece.dataset.shape = index % 6 === 0 ? 'star' : 'paper';
+        confetti.appendChild(piece);
+      }
+      screen.appendChild(confetti);
+      window.setTimeout(() => confetti.remove(), reducedMotion ? 1100 : 3200);
+    };
+    if (reducedMotion) {
+      spawnWave(0, 12);
+      return;
     }
-    screen.appendChild(confetti);
-    window.setTimeout(() => confetti.remove(), reducedMotion ? 1100 : 3200);
+    spawnWave(0, 40);
+    this.confettiWaveTimers?.forEach(clearTimeout);
+    this.confettiWaveTimers = [
+      window.setTimeout(() => spawnWave(1, 34), 420),
+      window.setTimeout(() => spawnWave(2, 30), 860),
+    ];
   }
 
   setOverlay(id, visible) {

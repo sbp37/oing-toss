@@ -1,12 +1,19 @@
-const BEST_SCORE_KEY = 'oing_toss_v2_best_score';
-const LAST_SCORE_KEY = 'oing_toss_v2_last_score';
-const RECENT_SCORES_KEY = 'oing_toss_v2_recent_scores';
-const SETTINGS_KEY = 'oing_toss_v2_settings';
-const TUTORIAL_KEY = 'oing_toss_v2_drag_tutorial_done';
-const HIGHEST_STAGE_KEY = 'oing_toss_v2_highest_stage';
-const BEST_COMBO_KEY = 'oing_toss_v2_best_combo';
-const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v2_recent_result_messages';
-const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v2_rare_showcase_count';
+const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
+const LAST_SCORE_KEY = 'oing_toss_v3_last_score';
+const RECENT_SCORES_KEY = 'oing_toss_v3_recent_scores';
+const SETTINGS_KEY = 'oing_toss_v3_settings';
+const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
+const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
+const BEST_COMBO_KEY = 'oing_toss_v3_best_combo';
+const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v3_recent_result_messages';
+const RARE_SHOWCASE_COUNT_KEY = 'oing_toss_v3_rare_showcase_count';
+const CATS_RESCUED_KEY = 'oing_toss_v3_cats_rescued';
+const CLEAN_CLEARS_KEY = 'oing_toss_v3_clean_clears';
+// Classic mode scores live on the original's scale (cells × combo), an
+// order of magnitude below the stage mode's — they keep their own record.
+const CLASSIC_BEST_SCORE_KEY = 'oing_toss_v3_classic_best_score';
+const CLASSIC_RECENT_SCORES_KEY = 'oing_toss_v3_classic_recent_scores';
+const CLASSIC_CHAPTERS_SEEN_KEY = 'oing_toss_v3_classic_chapters_seen';
 
 function safeRead(key, fallback) {
   try {
@@ -24,6 +31,47 @@ export const storageAdapter = {
   },
   saveBestScore(score) {
     try { localStorage.setItem(BEST_SCORE_KEY, String(Math.max(0, Math.round(score)))); } catch {}
+  },
+  getClassicBestScore() {
+    const value = Number(safeRead(CLASSIC_BEST_SCORE_KEY, '0'));
+    return Number.isFinite(value) ? value : 0;
+  },
+  saveClassicBestScore(score) {
+    try { localStorage.setItem(CLASSIC_BEST_SCORE_KEY, String(Math.max(0, Math.round(score)))); } catch {}
+  },
+  getClassicRecentScores() {
+    try {
+      const values = JSON.parse(safeRead(CLASSIC_RECENT_SCORES_KEY, '[]'));
+      return Array.isArray(values)
+        ? values.filter(Number.isFinite).map((value) => Math.max(0, Math.round(value))).slice(-7)
+        : [];
+    } catch {
+      return [];
+    }
+  },
+  saveClassicRunScore(score) {
+    const value = Math.max(0, Math.round(Number(score) || 0));
+    const recent = [...this.getClassicRecentScores(), value].slice(-7);
+    try { localStorage.setItem(CLASSIC_RECENT_SCORES_KEY, JSON.stringify(recent)); } catch {}
+  },
+  // Chapters a player has actually reached in play. Stored as keys rather
+  // than a count so reordering or inserting a scene later cannot silently
+  // re-lock somebody's gallery.
+  getSeenChapters() {
+    try {
+      const values = JSON.parse(safeRead(CLASSIC_CHAPTERS_SEEN_KEY, '[]'));
+      return Array.isArray(values) ? values.filter((value) => typeof value === 'string') : [];
+    } catch {
+      return [];
+    }
+  },
+  markChapterSeen(key) {
+    if (typeof key !== 'string' || !key) return this.getSeenChapters();
+    const seen = this.getSeenChapters();
+    if (seen.includes(key)) return seen;
+    const next = [...seen, key];
+    try { localStorage.setItem(CLASSIC_CHAPTERS_SEEN_KEY, JSON.stringify(next)); } catch {}
+    return next;
   },
   getLastScore() {
     const raw = safeRead(LAST_SCORE_KEY, '');
@@ -92,6 +140,27 @@ export const storageAdapter = {
     try { localStorage.setItem(RARE_SHOWCASE_COUNT_KEY, String(next)); } catch {}
     return next;
   },
+  // Every stage ends in a full clear now, so "best reveal %" stopped being a
+  // record — 100 became the norm. The garden's long-term number is instead
+  // how many boards were emptied without a single rescue shuffle.
+  getCleanClears() {
+    const value = Number(safeRead(CLEAN_CLEARS_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  addCleanClears(count) {
+    const next = this.getCleanClears() + Math.max(0, Math.round(Number(count) || 0));
+    try { localStorage.setItem(CLEAN_CLEARS_KEY, String(next)); } catch {}
+    return next;
+  },
+  getCatsRescued() {
+    const value = Number(safeRead(CATS_RESCUED_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  addCatsRescued(count) {
+    const next = this.getCatsRescued() + Math.max(0, Math.round(Number(count) || 0));
+    try { localStorage.setItem(CATS_RESCUED_KEY, String(next)); } catch {}
+    return next;
+  },
   getRecentResultMessages() {
     try {
       const values = JSON.parse(safeRead(RECENT_RESULT_MESSAGES_KEY, '[]'));
@@ -148,9 +217,11 @@ export const rankingAdapter = {
   async open() {
     return {
       connected: false,
+      // Classic is the mode the records screen is about now, so the trend
+      // bars and the average read the classic run history.
       summary: buildLocalRecordSummary(
-        storageAdapter.getRecentScores(),
-        storageAdapter.getBestScore(),
+        storageAdapter.getClassicRecentScores(),
+        storageAdapter.getClassicBestScore(),
       ),
     };
   },

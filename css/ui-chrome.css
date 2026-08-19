@@ -1,933 +1,577 @@
-/* ============================================================================
-   OING play chrome — one coordinate system.
+/* ==========================================================================
+   OING responsive play composition
 
-   `design/ui-chrome/ui-chrome.webp` is a fixed 780 × 1688 painting (390 × 844
-   at 2x). Every live value stays HTML text; this file only decides *where*
-   that text lands. To keep painted decoration and HTML from drifting apart,
-   the artwork is measured once and every overlay is expressed as a percentage
-   of that same 780 × 1688 canvas.
-
-   Measured anchors (artwork pixels → canvas %):
-
-     hud panel      x  28  751   y   73   360    3.590% 4.311% 92.692% 17.019%
-     pause circle   cx 104.5     cy 145.1
-     music circle   cx 187.5     cy 145.1
-     stage ribbon   x 305  475   y   69   111    label centre  y  5.315%
-     stage dome     x 300  480   y  115   228    numeral centre y 10.159%
-     time slot      x 507  729   y  113   191   64.999% 6.674% 28.462% 4.667%
-     score pill     x  60  252   y  238   276    coin painted at x 62..106
-     combo pill     x 520  722   y  238   276    star painted at x 520..562
-     goal groove    x  72  707   y  316   342    9.231% 18.724% 81.410% 1.534%
-     board recess   x  60  718   y  415  1177    7.692% 24.585% 84.359% 45.142%
-     dock slots     x  60.7 726.5 y 1270 1422    7.786% 75.249% 85.359%  8.975%
-                    slot pitch 169.26, slot width 158 (regression over the four
-                    painted slots; the artwork is hand-drawn and not perfectly
-                    uniform, worst-case residual is 1.8 artwork px ≈ 0.9 CSS px)
-     speech bubble  x 220  582   y 1472  1592   28.205% 87.196% 46.410%  7.133%
-
-   These anchors were re-derived when build-ui-chrome.py switched to a uniform
-   scale (run it with --anchors for the mapping). The x column never moved; the
-   y column shifted because the dock band is no longer stretched 9.6% and the
-   board recess grew to seat square tiles.
-
-   Anything that needs a box on this canvas is positioned inside a full-canvas
-   layer (`.play-hud`, `.play-footer`, `.cat-coach`) so a child can use plain
-   percentages instead of nested calc() chains.
-   ========================================================================= */
+   The former implementation positioned every live element against one
+   390x844 painting. This layer intentionally does the opposite: the artwork
+   is no longer a coordinate system. HUD, board, dock and coach participate in
+   normal grid flow and adapt to the actual visual viewport.
+   ======================================================================= */
 
 .play-ui-v4 {
-  --chrome-ratio: 2.164103;            /* 1688 / 780 */
-  --chrome-inv-ratio: 0.4620853;       /*  780 / 1688 */
-  --chrome-base-width: min(100vw, 430px);
+  --play-gap: clamp(5px, 0.85dvh, 8px);
+  --play-side: clamp(8px, 2.6vw, 12px);
+  --hud-height: 88px;
+  --dock-height: 62px;
+  --coach-height: 96px;
+  --play-cream: #fffaf0;
+  --play-line: rgba(207, 175, 121, .56);
+  --play-line-soft: rgba(222, 197, 154, .42);
+  --play-ink: #314d70;
+  --play-muted: #778493;
+  --play-coral: #ef6480;
 
-  /* Only the decorative ground below the speech bubble may leave the screen —
-     that is the bottom 6.2% of the canvas. Past that the whole chrome scales
-     down (letterboxed by sky) instead of stretching, so the arch, the dock and
-     the bubble keep their drawn proportions on every phone ratio. */
-  --chrome-height: min(
-    calc(var(--chrome-base-width) * var(--chrome-ratio)),
-    calc(100dvh * 1.0663)
-  );
-  --chrome-width: min(
-    var(--chrome-base-width),
-    calc(var(--chrome-height) * var(--chrome-inv-ratio))
-  );
-  /* Taller viewports keep the ground on screen and show plain sky above, which
-     is the one band of the artwork that extends without a visible seam. */
-  --chrome-top: max(0px, calc(100dvh - var(--chrome-height)));
-
-  position: relative;
-  padding: 0;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: var(--play-gap);
+  padding: calc(5px + var(--safe-top)) var(--play-side) calc(3px + var(--safe-bottom));
   overflow: hidden;
-  /* The band above the chrome is filled with the artwork's own top-row sky,
-     sampled left-to-right, so a taller phone shows more sky instead of a seam
-     (worst-case step across the join is 3/255). */
   background:
-    linear-gradient(90deg,
-      rgb(145, 206, 252) 0%,
-      rgb(137, 204, 252) 50%,
-      rgb(127, 199, 253) 82%,
-      rgb(134, 202, 253) 100%)
-      top center / 100% var(--chrome-top) no-repeat,
-    linear-gradient(180deg,
-      rgb(138, 204, 252) 0%,
-      rgb(170, 224, 253) 11.4%,
-      rgb(200, 238, 253) 23.7%,
-      rgb(225, 246, 254) 41.3%,
-      rgb(236, 250, 254) 60.2%,
-      rgb(211, 240, 253) 72.6%,
-      rgb(229, 245, 253) 84.5%,
-      rgb(210, 235, 248) 89.5%,
-      rgb(217, 231, 181) 93.2%,
-      rgb(195, 218, 167) 96.4%,
-      rgb(175, 209, 154) 100%)
-      center var(--chrome-top) / 100% var(--chrome-height) no-repeat,
-    url("../assets/backgrounds/play-bg@2x.webp") center / cover no-repeat,
-    #8dd7f2;
+    linear-gradient(180deg, rgba(199,239,252,.18), rgba(255,253,240,.38) 69%, rgba(255,248,228,.62)),
+    url("../assets/backgrounds/play-bg@2x.webp") 50% 0 / 100% auto no-repeat,
+    #a7e2f5;
 }
 
-.play-ui-v4 .ui-chrome-layer {
-  position: absolute;
-  z-index: 0;
-  top: var(--chrome-top);
-  left: 50%;
-  width: var(--chrome-width);
-  height: var(--chrome-height);
-  background: url("../design/ui-chrome/ui-chrome.webp") center / contain no-repeat;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
+/* The old full-screen painting remains in the repository as a visual source,
+   but it is never rendered or used for positioning. */
+.play-ui-v4 .ui-chrome-layer { display: none !important; }
 
-/* ---------------------------------------------------------------------------
-   Full-canvas overlay layers. They cover the whole artwork so their children
-   can be placed in artwork percentages, and they never swallow board input.
-   ------------------------------------------------------------------------ */
-.play-ui-v4 .play-hud,
-.play-ui-v4 .play-footer,
-.play-ui-v4.is-tall-board .play-footer {
-  position: absolute;
-  top: var(--chrome-top);
-  left: 50%;
-  display: block;
-  width: var(--chrome-width);
-  height: var(--chrome-height);
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  pointer-events: none;
-  transform: translateX(-50%);
-}
+.play-ui-v4 > * { min-width: 0; }
 
-.play-ui-v4 .play-hud { z-index: 6; }
-.play-ui-v4 .play-footer { z-index: 6; }
-
-/* The stage-band tint in styles.css draws a 1px ring around the HUD. On the
-   painted panel that ring reads as a stray rectangle floating over the sky. */
+/* --------------------------------------------------------------------------
+   Compact HUD — independent component, about 30% shorter than the painted HUD
+   ----------------------------------------------------------------------- */
 .play-ui-v4 .play-hud,
 .screen-play.play-ui-v4[data-stage-band] .play-hud {
-  border-color: transparent;
-  box-shadow: none;
-}
-
-.play-ui-v4 .hud-topline,
-.play-ui-v4 .hud-secondline {
-  position: absolute;
-  inset: 0;
-  display: block;
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-rows: 40px 18px 14px;
+  gap: 2px;
+  width: 100%;
+  height: var(--hud-height);
   min-height: 0;
-  height: auto;
-  padding: 0;
-  border: 0;
-  pointer-events: none;
+  margin: 0;
+  padding: 4px 8px 5px;
+  overflow: visible;
+  border: 1px solid rgba(176, 202, 198, .58);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.76), transparent 38%),
+    linear-gradient(180deg, rgba(255,255,250,.94), rgba(248,252,242,.91));
+  box-shadow:
+    0 3px 0 rgba(92,159,160,.08),
+    0 7px 15px rgba(57,103,119,.09),
+    0 0 0 2px rgba(255,255,255,.34),
+    inset 0 2px 0 rgba(255,255,255,.98);
 }
 
-.play-ui-v4 .play-footer::before,
-.play-ui-v4 .play-footer::after { display: none; }
-
-.play-ui-v4 .start-countdown,
-.play-ui-v4 .play-feedback-rail,
-.play-ui-v4 .time-up,
-.play-ui-v4 .score-burst {
-  z-index: 30;
+.play-ui-v4 .hud-topline {
+  display: grid;
+  grid-template-columns: 70px minmax(70px, 1fr) minmax(108px, 116px);
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
 }
 
-/* ---------------------------------------------------------------------------
-   HUD row 1 — pause / music, stage arch, time.
-   ------------------------------------------------------------------------ */
-
-/* The two painted circles sit only 83 artwork px apart, so 44 px targets cannot
-   both be centred on them. Each hit area instead claims the empty cream panel
-   beside its circle: the pair tiles x 28..146..280 with no overlap, and the
-   glyphs stay pinned to the painted circles. */
 .play-ui-v4 .hud-controls {
-  position: absolute;
-  top: 5.374%;
-  left: 3.590%;
-  display: block;
-  width: 0;
-  height: 6.517%;
-  gap: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 0;
 }
 
 .play-ui-v4 .pause-button,
 .play-ui-v4 .hud-mini-button {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  min-width: 44px;
-  min-height: 44px;
-  margin: 0;
+  position: relative;
+  flex: 0 0 auto;
+  width: 31px;
+  height: 31px;
+  min-width: 31px;
+  min-height: 31px;
   padding: 0;
-  border: 0;
-  border-radius: 14px;
-  background: transparent;
-  box-shadow: none;
-  overflow: visible;
-  pointer-events: auto;
+  overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,.94);
+  border-radius: 50%;
   touch-action: manipulation;
+  transition: transform 80ms ease, box-shadow 80ms ease;
 }
 
-/* widths are relative to the HUD canvas, not to the zero-width .hud-controls */
 .play-ui-v4 .pause-button {
-  left: 0;
-  width: calc(var(--chrome-width) * 0.15128);   /* x 28..146  */
+  background: linear-gradient(180deg, #fff3f3, #ffc6cf);
+  box-shadow: 0 3px 0 #d98b98, 0 5px 8px rgba(175,86,103,.12), inset 0 2px 0 #fff;
 }
 
 .play-ui-v4 .hud-mini-button {
-  left: calc(var(--chrome-width) * 0.15128);
-  width: calc(var(--chrome-width) * 0.17179);   /* x 146..280 */
+  background: linear-gradient(180deg, #f1fff9, #bdeedf);
+  box-shadow: 0 3px 0 #79bbaa, 0 5px 8px rgba(65,142,125,.11), inset 0 2px 0 #fff;
 }
 
-.play-ui-v4 .pause-button::before,
-.play-ui-v4 .hud-mini-button::before { display: none; }
-
-.play-ui-v4 .pause-button:active,
-.play-ui-v4 .hud-mini-button:active {
-  transform: translateY(1px) scale(.97);
-  box-shadow: none;
-}
-
-/* pause bars, centred on the painted circle at 64.83% / 49.55% of its hit box */
+.play-ui-v4 .pause-button img { opacity: 0; }
+.play-ui-v4 .pause-button::before { display: none; }
 .play-ui-v4 .pause-button::after {
   content: "";
   position: absolute;
-  left: 64.83%;
-  top: 49.55%;
-  width: clamp(3px, calc(var(--chrome-width) * 0.0095), 4.5px);
-  height: clamp(13px, calc(var(--chrome-width) * 0.04), 18px);
-  border-radius: 2px;
-  background: #ce6a7e;
-  box-shadow: clamp(7px, calc(var(--chrome-width) * 0.0215), 10px) 0 0 #ce6a7e;
-  transform: translate(calc(-50% - clamp(3.5px, calc(var(--chrome-width) * 0.0108), 5px)), -50%);
+  left: 9px;
+  top: 8px;
+  width: 4px;
+  height: 13px;
+  border-radius: 3px;
+  background: #9a5261;
+  box-shadow: 7px 0 0 #9a5261;
 }
 
-/* speaker glyph: its drawn mass is ~8px right and 5px below the <i> origin */
 .play-ui-v4 .music-button i {
-  left: 30.97%;
-  top: 49.55%;
+  left: 7px;
+  top: 9px;
   margin: 0;
-  transform: translate(-8px, -5px);
-  transform-origin: 8px 5px;
+  transform: none;
 }
 
-@media (min-width: 400px) {
-  .play-ui-v4 .music-button i { transform: translate(-8px, -5px) scale(1.14); }
+.play-ui-v4 .pause-button:active,
+.play-ui-v4 .hud-mini-button:active {
+  transform: translateY(2px) scale(.97);
+  box-shadow: 0 1px 0 rgba(122,92,70,.18), inset 0 1px 2px rgba(84,64,48,.1);
 }
 
-/* Stage arch: the ribbon carries the word, the dome carries the number. The
-   arch stays the centrepiece but no longer outweighs TIME and the goal. */
 .play-ui-v4 .round-mini {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  position: relative;
+  justify-self: center;
+  align-self: stretch;
+  display: grid;
+  place-items: end center;
+  min-height: 44px;
+  width: min(100%, 88px);
+  margin: -2px 0 0;
+  padding: 16px 5px 1px;
+  overflow: visible;
+  border: 1px solid rgba(224,185,112,.42);
+  border-radius: 16px 16px 13px 13px;
+  background:
+    radial-gradient(circle at 31% 68%, rgba(246,189,72,.16) 0 2px, transparent 3px),
+    radial-gradient(circle at 69% 68%, rgba(246,189,72,.16) 0 2px, transparent 3px),
+    linear-gradient(180deg, #fffdf3, #fff0c7);
+  box-shadow: 0 2px 0 rgba(196,139,63,.08), 0 4px 8px rgba(135,98,51,.06), inset 0 2px 0 #fff;
   pointer-events: none;
 }
 
-.play-ui-v4 .round-mini::before,
-.play-ui-v4 .round-mini::after { display: none; }
+.play-ui-v4 .round-mini::before { display: none; }
 
-/* styles.css pops the whole .round-mini with scale(1.07) on stage advance. That
-   was written for the old small pill; now that .round-mini is the full canvas,
-   scaling it throws the label 27px off the ribbon and the numeral off the dome.
-   Scale the two children about their own centres instead. */
-.play-ui-v4 .round-mini.is-advancing { animation: none; }
-
-.play-ui-v4 .round-mini.is-advancing span,
-.play-ui-v4 .round-mini.is-advancing strong {
-  animation: chrome-stage-advance 570ms cubic-bezier(.16,.82,.24,1.15) both;
-}
-
-@keyframes chrome-stage-advance {
-  0% { transform: translate(-50%, -50%) scale(.94); filter: brightness(1); }
-  38% { transform: translate(-50%, -50%) scale(1.14); filter: brightness(1.1) saturate(1.08); }
-  100% { transform: translate(-50%, -50%) scale(1); filter: none; }
-}
-
+.play-ui-v4 .round-mini::after { display: none !important; }
 .play-ui-v4 .round-mini span {
   position: absolute;
-  top: 5.315%;
+  z-index: 2;
+  top: 2px;
   left: 50%;
-  display: block;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  color: #fffdf7;
-  font-size: clamp(10px, calc(var(--chrome-width) * 0.03), 13px);
-  letter-spacing: .05em;
+  min-width: 60px;
+  padding: 3px 8px 2px;
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8da0, #ef647f);
+  box-shadow: 0 3px 0 #cf4f69, inset 0 1px 0 rgba(255,255,255,.58);
+  color: #fffdf8;
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: .06em;
   line-height: 1;
-  white-space: nowrap;
-  transform: translate(-50%, -50%);
-  text-shadow: 0 1px 1px rgba(155, 59, 76, .34);
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(150,54,73,.24);
+  transform: translateX(-50%);
 }
 
 .play-ui-v4 .round-mini strong {
-  position: absolute;
-  top: 10.159%;
-  left: 50%;
-  min-width: 0;
-  color: #e98f36;
-  font-size: clamp(22px, calc(var(--chrome-width) * 0.072), 30px);
-  line-height: 1;
-  transform: translate(-50%, -50%);
-  text-shadow: 0 2px 0 rgba(255,255,255,.86);
+  position: relative;
+  z-index: 3;
+  min-width: 32px;
+  color: #ed8a35;
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: .9;
+  text-align: center;
+  text-shadow: 0 2px 0 #fff, 0 3px 0 rgba(211,132,52,.1);
 }
 
-/* TIME is the first thing to read, so it fills its painted slot and keeps the
-   darkest ink in the HUD. */
+.play-ui-v4 .round-mini.is-advancing { animation: none; }
+.play-ui-v4 .round-mini.is-advancing span,
+.play-ui-v4 .round-mini.is-advancing strong { animation: flow-stage-pop 540ms cubic-bezier(.16,.82,.24,1.15) both; }
+
+@keyframes flow-stage-pop {
+  0% { transform: scale(.94); filter: brightness(1); }
+  38% { transform: scale(1.1); filter: brightness(1.08) saturate(1.06); }
+  100% { transform: scale(1); filter: none; }
+}
+
+.play-ui-v4 .round-mini.is-advancing span { transform-origin: center; }
+
 .play-ui-v4 .time-readout {
-  position: absolute;
-  top: 6.674%;
-  left: 64.999%;
+  align-self: center;
   display: flex;
-  width: 28.462%;
-  height: 4.680%;
-  min-width: 0;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  gap: clamp(3px, calc(var(--chrome-width) * 0.01), 5px);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  align-items: center;
   justify-content: center;
+  min-width: 108px;
+  min-height: 36px;
+  margin: 0;
+  padding: 4px 8px 7px;
+  gap: 4px;
+  border: 1.5px solid rgba(89,176,204,.48);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f9ffff, #e1f5fa);
+  box-shadow: 0 3px 0 rgba(75,143,169,.14), 0 6px 10px rgba(70,139,165,.08), inset 0 2px 0 #fff;
 }
 
-.play-ui-v4 .time-readout img {
-  width: clamp(19px, calc(var(--chrome-width) * 0.06), 26px);
-  height: clamp(21px, calc(var(--chrome-width) * 0.066), 28px);
-  flex: 0 0 auto;
-}
-
+.play-ui-v4 .time-readout img { width: 21px; height: 23px; }
 .play-ui-v4 .time-readout strong {
-  color: #24506f;
-  /* 0.08 put "02:00" at 117px in a 111px slot at 390px wide — the painted
-     slot, icon and gap leave ~88px, which 0.072 fits at every tested width. */
-  font-size: clamp(21px, calc(var(--chrome-width) * 0.072), 28px);
-  font-weight: 800;
-  line-height: 1;
+  color: #2e5878;
+  font-size: clamp(21px, 6vw, 25px);
+  font-variant-numeric: tabular-nums;
 }
-
 .play-ui-v4 .time-readout::before,
-.play-ui-v4 .time-readout::after { display: none; }
+.play-ui-v4 .time-readout::after { left: 9px; right: 9px; bottom: 3px; height: 3px; }
 
-/* The painted slot replaces the old pill, so the running-out and frozen cues
-   have to live in the numerals themselves instead of in a chip background. */
-.play-ui-v4 .time-readout.is-warning strong,
-.play-ui-v4 .time-readout.is-low-time strong {
-  color: #e0435f;
-  text-shadow: 0 0 10px rgba(255, 118, 145, .3);
+.play-ui-v4 .hud-secondline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 18px;
+  padding: 0 5px;
+  border-top: 1px solid rgba(218,190,146,.25);
 }
 
-.play-ui-v4 .time-readout.is-frozen strong {
-  color: #2a8fbe;
-  text-shadow: 0 0 10px rgba(120, 205, 240, .38);
-}
-
-/* ---------------------------------------------------------------------------
-   HUD row 2 — score and combo, each seated on its painted pill.
-   ------------------------------------------------------------------------ */
 .play-ui-v4 .score-readout,
 .play-ui-v4 .combo-readout {
-  position: absolute;
-  top: 13.583%;
   display: flex;
-  height: 3.318%;
+  align-items: center;
+  flex: 1 1 0;
   min-width: 0;
-  min-height: 0;
-  padding: 0;
-  gap: clamp(3px, calc(var(--chrome-width) * 0.01), 5px);
+  min-height: 17px;
+  padding: 1px 0 0;
   border: 0;
   background: transparent;
   box-shadow: none;
-  align-items: center;
-  line-height: 1;
-  pointer-events: none;
 }
-
-.play-ui-v4 .score-readout {                 /* right of the painted coin */
-  left: 13.846%;
-  width: 19.231%;
-  justify-content: flex-start;
-}
-
-.play-ui-v4 .combo-readout {                 /* right of the painted star */
-  left: 72.051%;
-  width: 18.462%;                            /* stops 16 artwork px short of
-                                                the pill's rounded right end */
-  justify-content: flex-end;
-}
-
-/* The score and combo plates are painted. Every live state that used to draw
-   its own chip (combo fever, "reward close") would otherwise float a second
-   box over — and past — the painted pill, so the state now lives in the type. */
-.play-ui-v4 .hud-secondline .score-readout,
-.play-ui-v4 .hud-secondline .combo-readout {
-  background: transparent;
-  box-shadow: none;
-  animation: none;
-}
-
-.play-ui-v4 .hud-secondline .combo-readout::before,
-.play-ui-v4 .hud-secondline .combo-readout::after,
-.play-ui-v4 .hud-secondline .score-readout::before,
-.play-ui-v4 .hud-secondline .score-readout::after { display: none; }
-
-.play-ui-v4 .combo-readout.is-reward-close strong { color: #e2892c; }
-.play-ui-v4 .combo-readout.is-active strong { color: #e06079; }
-
-/* the combo window bar belongs inside the pill, not on its bottom rim */
-.play-ui-v4 .combo-timer {
-  left: auto;
-  right: 0;
-  bottom: -14%;
-  width: 62%;
-  height: 3px;
-}
-
+.play-ui-v4 .combo-readout { justify-content: flex-end; }
+.play-ui-v4 .score-readout img,
+.play-ui-v4 .combo-readout img { width: 15px; height: 15px; }
 .play-ui-v4 .score-readout span,
-.play-ui-v4 .combo-readout span {
-  display: block;
-  flex: 0 0 auto;
-  color: #7d8587;
-  font-size: clamp(10px, calc(var(--chrome-width) * 0.031), 13px);
-  line-height: 1;
-  white-space: nowrap;
-}
-
+.play-ui-v4 .combo-readout span { color: var(--play-muted); font-size: 10px; font-weight: 900; }
 .play-ui-v4 .score-readout strong,
-.play-ui-v4 .combo-readout strong {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  color: #4f6473;
-  font-size: clamp(15px, calc(var(--chrome-width) * 0.047), 19px);
-  line-height: 1;
-  text-overflow: clip;
-  white-space: nowrap;
-}
+.play-ui-v4 .combo-readout strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.play-ui-v4 .score-readout strong { color: var(--play-ink); }
+.play-ui-v4 .combo-readout strong { color: var(--play-coral); }
+.play-ui-v4 .combo-timer { bottom: 0; height: 2px; }
 
-/* ui.js grades #score-value by rendered length so a real mid-game score
-   ("21,400") never ellipsises inside the painted pill — the digits give up a
-   step of size instead and the whole number stays readable. */
-.play-ui-v4 .score-readout strong[data-digits="l"] {
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.039), 16px);
-}
-
-.play-ui-v4 .score-readout strong[data-digits="xl"] {
-  font-size: clamp(11px, calc(var(--chrome-width) * 0.032), 13.5px);
-}
-
-/* ---------------------------------------------------------------------------
-   HUD row 3 — the painted groove is the goal track.
-   ------------------------------------------------------------------------ */
 .play-ui-v4 .goal-status {
-  position: absolute;
-  top: 17.542%;
-  left: 9.231%;
   display: grid;
-  grid-template-columns: max-content minmax(38%, 1fr);
-  width: 81.410%;
-  height: 3.910%;
-  min-height: 0;
-  gap: clamp(6px, calc(var(--chrome-width) * 0.024), 11px);
-  padding: 0;
+  grid-template-columns: max-content minmax(72px, 1fr);
   align-items: center;
+  gap: 8px;
+  min-height: 14px;
+  padding: 0 5px;
+}
+.play-ui-v4 .goal-copy { display: inline-flex; gap: 3px; color: #647487; font-size: 10px; }
+.play-ui-v4 .goal-copy b { color: var(--play-coral); font-size: 13px; font-variant-numeric: tabular-nums; }
+.play-ui-v4 .goal-copy em { color: #7b8390; }
+.play-ui-v4 .goal-track {
+  height: 5px;
+  border: 0;
+  background: rgba(222,211,187,.68);
+  box-shadow: inset 0 1px 2px rgba(109,82,47,.08);
+}
+
+/* Feedback stays attached to the HUD instead of using board/canvas coords. */
+.play-ui-v4 .play-feedback-rail {
+  position: absolute;
+  z-index: 28;
+  top: calc(var(--safe-top) + var(--hud-height) - 1px);
+  left: 50%;
+  bottom: auto;
+  width: min(78%, 300px);
+  height: 28px;
+  transform: translateX(-50%);
   pointer-events: none;
 }
+.play-ui-v4 .tutorial-callout { top: 0; min-height: 25px; padding: 4px 12px 3px; }
+.play-ui-v4 .play-feedback-rail .round-clear,
+.play-ui-v4 .play-feedback-rail .combo-celebration { max-height: 31px; overflow: visible; }
+.play-ui-v4.is-stage-clearing .play-feedback-rail { top: calc(var(--safe-top) + var(--hud-height) - 1px); }
 
-.play-ui-v4 .goal-meta,
-.play-ui-v4 .goal-copy { align-items: center; }
-
-.play-ui-v4 .goal-copy {
-  color: #4f5b64;
-  font-size: clamp(12px, calc(var(--chrome-width) * 0.0355), 15px);
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.play-ui-v4 .goal-copy b {
-  color: #e85073;
-  font-size: clamp(19px, calc(var(--chrome-width) * 0.059), 25px);
-  line-height: 1;
-}
-
-.play-ui-v4 .goal-copy em { line-height: 1; transform: translateY(1px); }
-
-/* 26 artwork px of groove ÷ 66 artwork px of row. The painted groove already
-   reads as the empty half of the bar, so the HTML track only contributes the
-   fill and the two blend into one continuous bar. */
-.play-ui-v4 .goal-track {
-  height: 39.4%;
-  min-height: 8px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  box-shadow: inset 0 1px 2px rgba(119, 83, 46, .07);
-}
-
-.play-ui-v4 .stage-mission {
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.027), 11px);
-  white-space: nowrap;
-}
-
-/* ---------------------------------------------------------------------------
-   Board — a packed slab of square tiles on open sky.
-
-   There is no longer a painted tray behind the board: build-ui-chrome.py
-   erases it and refills those rows with the sky it interrupted. It had to go
-   in the bitmap, because it was drawn for one fixed 4 × 4 grid — on every
-   other stage, and behind every cleared cell, the parts of it the tiles did
-   not cover showed as stray beige blocks that no CSS here could hide.
-
-   The board keeps the geometry the tray used to define: `.board-zone` is still
-   that 658 × 762 artwork box (h/w 1.158), which is what lets the tallest board,
-   6 × 7 (h/w 1.167), seat square tiles with 0.7% to spare. Tiles stay packed
-   edge to edge at cell×cols by cell×rows — the uniform pitch input.js assumes
-   when it divides the board rect by cols/rows — and `.board` itself paints
-   nothing, so a shorter board simply leaves more sky around it.
-   ------------------------------------------------------------------------ */
-/* 0.90, not the erased tray's old 0.84359: there is no painted edge left to
-   stay inside, so the board takes the HUD panel's margin instead and every
-   width-bound stage (4×4 … 6×6) gets ~7% larger tiles — numerals scale with
-   --cell, so they grow with it. 6×7 is height-bound and unchanged. */
+/* --------------------------------------------------------------------------
+   Board — its own flow row, sized from the real cols/rows and available space
+   ----------------------------------------------------------------------- */
 .play-ui-v4 .board-zone {
-  position: absolute;
+  position: relative;
   z-index: 5;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.24585);
-  left: 50%;
-  width: calc(var(--chrome-width) * 0.90);
-  height: calc(var(--chrome-height) * 0.45142);
-  padding: 0;
-  overflow: visible;
+  container-type: inline-size;
+  display: flex;
   align-items: center;
   justify-content: center;
-  transform: translateX(-50%);
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+  align-self: start;
 }
 
 .play-ui-v4 .board-zone::before { display: none; }
 
 .play-ui-v4 .board-frame,
 .play-ui-v4 .board-frame[data-round] {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
   width: 100%;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  box-shadow: none;
-  outline: 0;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: clamp(5px, 1.5vw, 7px);
+  border: 1.5px solid rgba(205,166,104,.62);
+  border-radius: clamp(20px, 5.5vw, 24px);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.86), transparent 32%),
+    linear-gradient(180deg, #fffdf7, #f7e8cc);
+  box-shadow:
+    0 4px 0 rgba(174,124,65,.13),
+    0 10px 20px rgba(55,105,121,.14),
+    0 0 0 3px rgba(255,255,255,.5),
+    inset 0 2px 0 #fff;
 }
 
-/* The stage-band theme rings the frame with a tinted outline and a white spread
-   shadow — a card edge for a card that no longer exists. Its selector outranks
-   the rule above, so the frame has to be cleared again here or a warm rounded
-   rectangle keeps floating a few px outside the tiles. */
-.screen-play.play-ui-v4[data-stage-band] .board-frame {
-  outline: 0;
-  box-shadow: none;
+/* STAGE 5+ is the only rectangular board in the current rules. */
+.play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+  width: 100%;
+  aspect-ratio: 6 / 7;
 }
 
 .play-ui-v4 .board {
-  /* the square cell edge: whichever axis runs out first decides it */
-  --cell: min(
-    calc(var(--chrome-width) * 0.90 / var(--board-cols)),
-    calc(var(--chrome-height) * 0.45142 / var(--board-rows))
-  );
-  width: calc(var(--cell) * var(--board-cols));
-  height: calc(var(--cell) * var(--board-rows));
-  max-height: none;
-  aspect-ratio: auto;
-  border: 0;
-  border-radius: 0;
-  /* No surface of its own — only the tiles are drawn. */
-  background: transparent;
-  box-shadow: none;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--board-cols) / var(--board-rows);
+  border: 1px solid rgba(205,177,134,.48);
+  border-radius: 14px;
+  background-color: #f8f5e9;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,250,.12), rgba(255,249,236,.18)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+  background-size:
+    calc(100% / var(--board-cols)) calc(100% / var(--board-rows)),
+    calc(100% / var(--board-cols)) calc(100% / var(--board-rows)),
+    100% 100%,
+    cover;
+  background-position: 0 0, 0 0, center, center 58%;
+  background-repeat: repeat, repeat, no-repeat, no-repeat;
+  box-shadow: inset 0 1px 4px rgba(133,96,52,.07);
 }
 
-/* Cells are square by construction (board width/height is cell×cols/cell×rows),
-   so the tile just fills its cell — no extra gap to reveal the floor between
-   tiles.
-
-   The tile art was drawn to sit on cream, where its own pale edge carried the
-   contrast. On open sky it lost that: pale mint glass on pale blue read as
-   washed out and the grid went flat. Rather than put a panel back under the
-   board, the separation now comes from the tile itself — a white rim to cut it
-   out of the sky, a warm inner line to keep the drawn edge, and a real shadow
-   underneath so the tiles sit above the sky instead of dissolving into it. */
 .play-ui-v4 .tile {
-  aspect-ratio: auto;
   width: 100%;
   height: 100%;
-  box-shadow:
-    inset 0 0 0 1px rgba(126, 100, 66, .28),
-    0 0 0 1.5px rgba(255, 255, 255, .92);
+  aspect-ratio: 1;
   filter:
-    drop-shadow(0 2px 2px rgba(60, 94, 124, .20))
-    drop-shadow(0 5px 7px rgba(60, 94, 124, .13));
+    saturate(.79)
+    contrast(.985)
+    drop-shadow(0 1px 1px rgba(112,76,56,.13))
+    drop-shadow(0 2px 2px rgba(71,96,119,.06));
 }
+.play-ui-v4 .tile:not(.is-empty),
+.play-ui-v4 .tile.is-board-item,
+.play-ui-v4 .tile.is-bonus-cat { background-color: rgba(255,252,245,.96); }
+.play-ui-v4 .tile span { color: #314d70; text-shadow: 0 1px 0 rgba(255,255,255,.94), 0 2px 2px rgba(57,51,45,.05); }
+.play-ui-v4 .board[data-cols="4"] .tile span { font-size: clamp(37px, 10.8vw, 43px); }
+.play-ui-v4 .board[data-cols="5"] .tile span { font-size: clamp(31px, 9.1vw, 38px); }
+.play-ui-v4 .board[data-cols="6"] .tile span { font-size: clamp(26px, 7.5vw, 31px); }
+.play-ui-v4 .board[data-cols="7"] .tile span { font-size: clamp(22px, 6.2vw, 26px); }
 
-/* Numerals ride the square cell edge at a ~0.46 fill and meet the 42px cap on
-   ordinary phones. Raised from the old 0.55/30px pair, which let the 30px cap
-   bind on every board from STAGE 1 to 6×7 alike and read as undersized on the
-   roomy early stages. */
-.play-ui-v4 .tile span {
-  font-size: clamp(17px, calc(var(--cell) * 0.46), 46px);
-}
+.play-ui-v4 .tile.is-selected,
+.play-ui-v4 .tile.is-success,
+.play-ui-v4 .tile.is-hint,
+.play-ui-v4 .tile.is-special-tile,
+.play-ui-v4 .tile.is-board-item,
+.play-ui-v4 .tile.is-bonus-cat { filter: saturate(1.03) contrast(1) drop-shadow(0 2px 3px rgba(72,88,106,.1)); }
 
-/* A cleared cell used to be tinted like a shallow dent in the tray. With the
-   tray erased there is no surface left to dent, so that tint became a beige
-   block floating on the sky — the very thing the erase was for. A cleared cell
-   is now simply nothing. */
 .play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
-  border: 0;
-  background: transparent;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,253,246,.045);
   background-image: none;
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
   filter: none;
   opacity: 1;
 }
 
-/* The rescue cat is the only bonus square on the board and should look picked
-   out rather than like a faded sticker. */
-.play-ui-v4 .tile.is-bonus-cat {
-  background-color: #ffd076;
-  box-shadow:
-    inset 0 0 0 1.5px rgba(255, 255, 255, .9),
-    0 0 0 1.5px rgba(240, 168, 52, .55);
-  filter:
-    drop-shadow(0 2px 2px rgba(156, 111, 55, .2))
-    drop-shadow(0 0 9px rgba(255, 199, 92, .42));
-}
+.play-ui-v4 .bonus-cat-art { width: 70%; height: 70%; }
 
-.play-ui-v4 .bonus-cat-art {
-  bottom: 12%;
-  width: 72%;
-  height: 72%;
-  filter: saturate(1.12) drop-shadow(0 2px 2px rgba(55, 78, 104, .28));
-}
-
-/* ---------------------------------------------------------------------------
-   Feedback rail — floats in the sky gap between the HUD panel and the frame.
-   ------------------------------------------------------------------------ */
-.play-ui-v4 .play-feedback-rail {
-  z-index: 25;
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.22347);
-  left: 50%;
-  bottom: auto;
-  width: min(calc(var(--chrome-width) * 0.76), 296px);
-  height: 28px;
-  transform: translateX(-50%);
-}
-
-.play-ui-v4 .tutorial-callout {
-  top: 0;
-  min-height: 25px;
-  padding: 4px 13px 3px;
-  box-shadow: 0 3px 7px rgba(102,75,54,.09), inset 0 1px 0 #fff;
-}
-
-.play-ui-v4 .tutorial-callout strong {
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.037), 15px);
-}
-
-.play-ui-v4.is-stage-clearing .play-feedback-rail {
-  top: calc(var(--chrome-top) + var(--chrome-height) * 0.42394);
-  width: min(calc(var(--chrome-width) * 0.82), 320px);
-  height: 48px;
-}
-
-.play-ui-v4.is-stage-clearing .combo-celebration,
-.play-ui-v4.is-stage-clearing .tutorial-callout {
-  display: none !important;
-  opacity: 0 !important;
-  animation: none !important;
-}
-
-.play-ui-v4.is-stage-clearing .round-clear.is-visible {
-  z-index: 3;
-}
-
-.play-ui-v4 .play-feedback-rail .round-clear,
-.play-ui-v4 .play-feedback-rail .combo-celebration {
-  max-height: none;
-  overflow: visible;
-}
-
-.play-ui-v4 .play-feedback-rail .round-clear {
-  min-height: 42px;
-}
-
-.play-ui-v4 .play-feedback-rail .round-clear span {
-  max-width: 190px;
-  white-space: nowrap;
-}
-
-/* "TIME UP!" broke over two lines inside its 210px minimum width. */
-.play-ui-v4 .time-up strong,
-.play-ui-v4 .time-up small { white-space: nowrap; }
-
-/* ---------------------------------------------------------------------------
-   Dock — the four painted slots are the buttons.
-   ------------------------------------------------------------------------ */
-.play-ui-v4 .item-actions {
-  position: absolute;
-  top: 75.249%;
-  left: 7.786%;
+/* --------------------------------------------------------------------------
+   Footer — dock and coach are normal flow rows; no canvas anchors
+   ----------------------------------------------------------------------- */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  position: relative;
+  z-index: 8;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  width: 85.359%;
-  height: 8.975%;
-  gap: 1.691%;                        /* 11.26 artwork px between slots */
+  grid-template-rows: var(--dock-height) minmax(0, 1fr);
+  align-content: stretch;
+  gap: 4px;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
   margin: 0;
   padding: 0;
   overflow: visible;
   border: 0;
-  border-radius: 0;
   background: transparent;
   box-shadow: none;
-  pointer-events: auto;
 }
+.play-ui-v4 .play-footer::before,
+.play-ui-v4 .play-footer::after { display: none; }
 
+.play-ui-v4 .item-actions {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: calc(100% - 12px);
+  height: var(--dock-height);
+  min-height: 0;
+  gap: clamp(5px, 1.5vw, 7px);
+  margin: 0 auto;
+  padding: 5px 6px 7px;
+  overflow: visible;
+  border: 1px solid rgba(175,205,200,.55);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.72), transparent 42%),
+    linear-gradient(180deg, rgba(250,255,249,.91), rgba(234,247,238,.88));
+  box-shadow: 0 2px 0 rgba(79,143,143,.07), 0 6px 13px rgba(53,88,97,.07), inset 0 1px 0 #fff;
+}
 .play-ui-v4 .item-actions::before,
-.play-ui-v4 .item-actions::after { display: none; }
+.play-ui-v4 .item-actions::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 8px;
+  display: block;
+  width: 13px;
+  height: 13px;
+  background: url("../assets/decor/paw.webp") center / contain no-repeat;
+  opacity: .16;
+  pointer-events: none;
+}
+.play-ui-v4 .item-actions::before { left: -3px; transform: rotate(-18deg); }
+.play-ui-v4 .item-actions::after { right: -3px; transform: rotate(18deg); }
 
 .play-ui-v4 .item-button {
   position: relative;
-  height: 100%;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: minmax(27px, 1fr) 16px;
+  place-items: center;
+  min-width: 44px;
   min-height: 44px;
-  margin: 0;
-  display: block;
-  border: 0;
-  border-radius: 17px;
-  background: transparent;
-  box-shadow: none;
+  height: 100%;
+  padding: 1px 2px 2px;
+  border: 1px solid rgba(255,255,255,.92);
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.88), transparent 34%),
+    linear-gradient(180deg, var(--item-top), var(--item-mid) 64%, var(--item-bottom));
+  box-shadow:
+    0 2px 0 color-mix(in srgb, var(--item-accent) 24%, #b9c6b8),
+    0 4px 7px rgba(56,91,84,.06),
+    inset 0 1px 0 #fff;
   touch-action: manipulation;
+  transition: transform 80ms ease, box-shadow 80ms ease;
 }
-
-.play-ui-v4 .item-button::before {
-  display: block;
-  inset: 7% 9% auto;
-  height: 17%;
-  border-radius: 12px 12px 0 0;
-  background: linear-gradient(180deg, rgba(255,255,255,.42), transparent);
-}
-
-/* The slot itself is painted, so a press has to darken it from the inside —
-   otherwise only the icon nudges and the button feels unresponsive. */
+.play-ui-v4 .item-button::before { display: none; }
 .play-ui-v4 .item-button:active,
 .play-ui-v4 .item-button.is-pressed {
   transform: translateY(2px) scale(.985);
-  background: rgba(96, 78, 54, .14);
-  box-shadow:
-    inset 0 5px 9px rgba(74, 64, 51, .26),
-    inset 0 -2px 0 rgba(255, 255, 255, .34);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--item-accent) 24%, #aa9877), inset 0 2px 4px rgba(91,66,43,.1);
 }
-
-.play-ui-v4 .pause-button:active::after,
-.play-ui-v4 .hud-mini-button:active i { opacity: .72; }
-
-.play-ui-v4 .item-button::after {
-  display: none !important;
-}
-
-/* Three states have to be told apart at a glance:
-   available — painted slot at full colour, coral count badge
-   depleted  — used up this run: slot drained toward cream, grey "0" badge
-   locked    — never owned yet: cool grey slot, no badge, padlock            */
-.play-ui-v4 .item-button[data-state="depleted"] {
-  background: rgba(255, 251, 240, .74);
-  box-shadow: inset 0 2px 5px rgba(120, 100, 72, .12);
-}
-
-.play-ui-v4 .item-button[data-state="locked"] {
-  background: rgba(226, 231, 234, .82);
-  box-shadow: inset 0 2px 5px rgba(77, 88, 88, .15);
-}
-
-.play-ui-v4 .item-button[data-state="depleted"] .item-icon {
-  filter: saturate(.32) drop-shadow(0 1px 1px rgba(93,74,49,.08));
-  opacity: .46;
-}
-
-.play-ui-v4 .item-button[data-state="locked"] .item-icon {
-  filter: grayscale(1) brightness(1.08) drop-shadow(0 1px 1px rgba(93,74,49,.06));
-  opacity: .3;
-}
-
-.play-ui-v4 .item-button[data-state="depleted"] > span { color: #a4988a; }
-.play-ui-v4 .item-button[data-state="locked"] > span { color: #98a2a7; }
-
-/* "소진" already exists in the stylesheet as a ::after chip; the fixed chrome
-   just has to let it through and give it slot-relative insets. Without it a
-   used-up item was indistinguishable from one that was never unlocked. */
-.play-ui-v4 .item-button[data-state="depleted"]::after {
-  content: "소진" !important;
-  display: block !important;
-  position: absolute;
-  right: 6%;
-  bottom: auto;
-  top: 7%;
+.play-ui-v4 .item-icon {
+  position: relative;
+  top: auto;
   left: auto;
-  min-width: 0;
-  padding: 2px 6px;
-  border: 1px solid rgba(255,255,255,.92);
-  border-radius: 999px;
-  background: rgba(150, 141, 128, .86);
-  box-shadow: 0 1px 2px rgba(78, 71, 62, .12);
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: clamp(9px, calc(var(--chrome-width) * 0.026), 11px);
-  font-weight: 800;
-  line-height: 1.25;
-  width: auto;
-  height: auto;
-}
-
-/* Padlock, built from the button's own pseudo-elements so no placeholder or
-   emoji stands in for missing art. ::before is the body, ::after the shackle. */
-.play-ui-v4 .item-button[data-state="locked"]::before {
-  content: "";
-  display: block;
-  inset: auto;
-  top: 15.5%;
-  right: 8%;
-  bottom: auto;
-  left: auto;
-  width: 15%;
-  height: 11%;
-  border-radius: 3px;
-  background: linear-gradient(180deg, #d3dade, #a7b2b8);
-  box-shadow: 0 1px 0 rgba(255,255,255,.8), inset 0 1px 0 rgba(255,255,255,.72);
-}
-
-.play-ui-v4 .item-button[data-state="locked"]::after {
-  content: "" !important;
-  display: block !important;
-  position: absolute;
-  top: 8.6%;
-  right: 11.6%;
-  bottom: auto;
-  left: auto;
-  min-width: 0;
-  width: 7.8%;
-  height: 7.4%;
-  padding: 0;
-  border: 2px solid #aab5bb;
-  border-bottom: 0;
-  border-radius: 999px 999px 0 0;
+  align-self: end;
+  width: clamp(25px, 7.5vw, 31px);
+  height: clamp(26px, 7.8vw, 32px);
+  padding: 1px;
+  border: 0;
+  border-radius: 10px;
   background: transparent;
   box-shadow: none;
-  font-size: 0;
-}
-
-.play-ui-v4 .item-icon {
-  position: absolute;
-  top: 12%;
-  left: 50%;
-  width: 46%;
-  height: 44%;
-  padding: 0;
   object-fit: contain;
-  filter: drop-shadow(0 2px 2px rgba(93,74,49,.13));
-  transform: translateX(-50%);
+  filter: drop-shadow(0 2px 2px rgba(93,74,49,.11));
+  transform: none;
 }
-
 .play-ui-v4 .item-button > span {
-  position: absolute;
-  left: 6%;
-  right: 6%;
-  bottom: 12%;
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.041), 17px);
+  position: relative;
+  inset: auto;
+  align-self: start;
+  color: color-mix(in srgb, var(--item-accent) 46%, #554f49);
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3.2vw, 13px);
   line-height: 1;
-  text-align: center;
   white-space: nowrap;
 }
-
-/* The badge belongs to its own slot: inset far enough that it never sits on the
-   gap between two painted buttons. */
 .play-ui-v4 .item-button b {
-  right: 5%;
-  top: 4%;
-  width: clamp(20px, calc(var(--chrome-width) * 0.058), 25px);
-  height: clamp(20px, calc(var(--chrome-width) * 0.058), 25px);
-  font-size: clamp(12px, calc(var(--chrome-width) * 0.035), 15px);
+  position: absolute;
+  top: -5px;
+  right: -3px;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
 }
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  border-color: rgba(215,207,191,.54);
+  background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(237,244,239,.52));
+  box-shadow: 0 1px 0 rgba(126,150,139,.08), inset 0 1px 0 rgba(255,255,255,.82);
+}
+.play-ui-v4 .item-button[data-state="locked"] .item-icon,
+.play-ui-v4 .item-button[data-state="depleted"] .item-icon { filter: saturate(.5); opacity: .34; }
+.play-ui-v4 .item-button[data-state="locked"] > span,
+.play-ui-v4 .item-button[data-state="depleted"] > span { color: #9a978f; }
+.play-ui-v4 .item-button[data-state="depleted"]::after { font-size: 9px; padding: 1px 5px; }
 
-.play-ui-v4 .item-button[data-state="locked"] b { display: none; }
-
-/* ---------------------------------------------------------------------------
-   Coach — cat and speech bubble, both on the canvas.
-   ------------------------------------------------------------------------ */
-/* already inside .play-footer, which is the canvas — so plain inset, not a
-   second --chrome-top offset */
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(72px, 104px) minmax(0, 1fr);
+  align-items: center;
+  align-self: start;
+  width: min(100%, 356px);
+  height: min(100%, var(--coach-height));
   min-height: 0;
-  margin: 0;
-  padding: 0;
-  pointer-events: none;
-  transform: none;
+  gap: 2px;
+  margin: 0 auto;
+  padding: 0 4px;
 }
 
 .play-ui-v4 .play-character-stage,
 .play-ui-v4.is-tall-board .play-character-stage {
-  position: absolute;
-  top: 86.226%;
-  left: 1.5%;
+  position: relative;
+  top: auto;
+  left: auto;
   bottom: auto;
-  width: 27%;
-  height: 10.586%;
+  align-self: end;
+  width: min(100%, 102px);
+  height: min(100%, var(--coach-height));
+  transform: none;
 }
-
 .play-ui-v4 .play-character-stage img {
   width: 100%;
   height: 100%;
@@ -935,67 +579,1619 @@
   object-position: center bottom;
 }
 
-/* Two lines, always, centred on the painted bubble. Before this the bubble was
-   a fixed-height flex box with `overflow: hidden`, so a long line grew upward
-   and was sliced through the middle of a glyph. */
 .play-ui-v4 .cat-message,
 .play-ui-v4.is-tall-board .cat-message {
-  position: absolute;
-  top: 90.764%;
-  left: 30.385%;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  width: 42.051%;
-  max-width: none;
+  position: relative;
+  top: auto;
+  left: auto;
+  display: grid;
+  place-items: center;
+  justify-self: stretch;
+  width: 100%;
+  max-width: 246px;
+  min-height: 43px;
   height: auto;
-  min-height: 0;
+  margin: 0;
+  padding: 7px 12px 6px;
+  overflow: visible;
+  border: 1.5px solid rgba(216,179,120,.64);
+  border-radius: 18px 18px 18px 10px;
+  background: linear-gradient(180deg, rgba(255,255,252,.98), rgba(255,249,232,.97));
+  box-shadow: 0 3px 0 rgba(177,126,62,.1), 0 7px 13px rgba(72,78,67,.07), inset 0 1px 0 #fff;
+  color: #6b5447;
+  font-family: var(--font-display);
+  font-size: clamp(14px, 4vw, 16px);
+  line-height: 1.23;
+  text-align: center;
+  text-wrap: balance;
+  word-break: keep-all;
+  transform: none;
+}
+.play-ui-v4 .cat-message.is-long,
+.play-ui-v4.is-tall-board .cat-message.is-long { font-size: clamp(12px, 3.5vw, 14px); }
+.play-ui-v4 .cat-message::before {
+  display: block;
+  left: -9px;
+  bottom: 8px;
+}
+.play-ui-v4 .cat-message::after { display: none; }
+
+/* --------------------------------------------------------------------------
+   Short visual viewports: protect HUD + board first, then coach/dock/gaps.
+   ----------------------------------------------------------------------- */
+@media (max-height: 790px) {
+  .play-ui-v4 {
+    --play-gap: 4px;
+    --hud-height: 84px;
+    --dock-height: 58px;
+    --coach-height: 80px;
+    padding-top: calc(3px + var(--safe-top));
+  }
+  .play-ui-v4 .play-hud { grid-template-rows: 38px 17px 13px; padding: 4px 8px 5px; border-radius: 17px; }
+  .play-ui-v4 .hud-topline { min-height: 38px; }
+  .play-ui-v4 .round-mini { min-height: 41px; padding-top: 15px; }
+  .play-ui-v4 .round-mini strong { font-size: 23px; }
+  .play-ui-v4 .time-readout { min-height: 34px; }
+  .play-ui-v4 .time-readout strong { font-size: 21px; }
+  .play-ui-v4 .item-actions { padding: 5px 6px 7px; }
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach { grid-template-columns: 78px minmax(0,1fr); }
+  .play-ui-v4 .play-character-stage,
+  .play-ui-v4.is-tall-board .play-character-stage { width: 78px; }
+}
+
+@media (max-height: 720px) {
+  .play-ui-v4 {
+    --hud-height: 82px;
+    --dock-height: 56px;
+    --coach-height: 64px;
+    --play-gap: 3px;
+  }
+  .play-ui-v4 .play-hud { grid-template-rows: 37px 17px 13px; padding-block: 3px 4px; }
+  .play-ui-v4 .hud-topline { min-height: 37px; }
+  .play-ui-v4 .round-mini { min-height: 40px; margin-top: -2px; padding-top: 15px; }
+  .play-ui-v4 .round-mini span { top: 3px; }
+  .play-ui-v4 .round-mini strong { font-size: 22px; }
+  .play-ui-v4 .time-readout { min-height: 33px; padding-block: 3px 6px; }
+  .play-ui-v4 .time-readout strong { font-size: 21px; }
+  .play-ui-v4 .item-icon { width: 24px; height: 25px; }
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach { grid-template-columns: 64px minmax(0,1fr); }
+  .play-ui-v4 .play-character-stage,
+  .play-ui-v4.is-tall-board .play-character-stage { width: 64px; height: 68px; }
+  .play-ui-v4 .cat-message,
+  .play-ui-v4.is-tall-board .cat-message { min-height: 38px; padding: 5px 9px 4px; font-size: 13px; }
+}
+
+@media (max-width: 340px) {
+  .play-ui-v4 { --play-side: 7px; }
+  .play-ui-v4 .play-hud { padding-inline: 6px; }
+  .play-ui-v4 .hud-topline { grid-template-columns: 64px minmax(64px,1fr) 100px; gap: 4px; }
+  .play-ui-v4 .pause-button,
+  .play-ui-v4 .hud-mini-button { width: 30px; height: 30px; min-width: 30px; min-height: 30px; }
+  .play-ui-v4 .pause-button::after { left: 9px; top: 8px; height: 13px; box-shadow: 7px 0 0 #9a5261; }
+  .play-ui-v4 .music-button i { left: 7px; top: 9px; }
+  .play-ui-v4 .round-mini span { min-width: 60px; padding-inline: 7px; }
+  .play-ui-v4 .time-readout { min-width: 100px; padding-inline: 5px; }
+  .play-ui-v4 .time-readout img { width: 20px; height: 22px; }
+  .play-ui-v4 .time-readout strong { font-size: 20px; }
+  .play-ui-v4 .item-actions { gap: 4px; padding-inline: 5px; }
+  .play-ui-v4 .item-button { min-width: 44px; border-radius: 12px; }
+  .play-ui-v4 .item-button b { width: 20px; height: 20px; font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .pause-button,
+  .play-ui-v4 .hud-mini-button,
+  .play-ui-v4 .item-button { transition: none; }
+}
+
+/* --------------------------------------------------------------------------
+   OING countdown — keep the board readable and make the cat part of the beat
+   ----------------------------------------------------------------------- */
+.play-ui-v4 .start-countdown {
+  background: rgba(224, 247, 250, .56);
+  backdrop-filter: blur(1px) saturate(.98);
+  -webkit-backdrop-filter: blur(1px) saturate(.98);
+}
+
+.play-ui-v4 .start-countdown::before,
+.play-ui-v4 .start-countdown::after {
+  width: 116px;
+  height: 62px;
+  background: rgba(255,255,255,.48);
+  filter: blur(1px);
+}
+.play-ui-v4 .start-countdown::before { left: -54px; top: 24%; box-shadow: 48px 10px 0 rgba(255,226,235,.32); }
+.play-ui-v4 .start-countdown::after { right: -56px; bottom: 24%; box-shadow: -46px -8px 0 rgba(210,246,234,.38); }
+
+.play-ui-v4 .start-countdown-copy {
+  min-width: 142px;
+  min-height: 142px;
+  transform: translateY(-24px);
+}
+
+.play-ui-v4 .start-countdown-copy::before {
+  width: 122px;
+  height: 122px;
+  border: 2px solid rgba(255,255,255,.94);
+  border-radius: 42% 52% 45% 53% / 48% 43% 55% 50%;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255,255,255,.96) 0 9%, transparent 25%),
+    linear-gradient(145deg, rgba(255,254,239,.96), rgba(255,231,207,.88));
+  box-shadow: 0 5px 0 rgba(226,151,128,.14), 0 13px 24px rgba(74,133,150,.13), inset 0 3px 0 #fff;
+  transform: rotate(-2deg);
+}
+
+.play-ui-v4 .start-countdown small {
+  top: 13px;
+  color: #8e6e63;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.play-ui-v4 .start-countdown strong {
+  color: #f27a65;
+  font-family: var(--font-display);
+  font-size: clamp(62px, 18vw, 76px);
+  font-weight: 400;
+  line-height: .9;
+  -webkit-text-stroke: 2px rgba(255,255,255,.96);
+  text-shadow: 0 3px 0 rgba(190,91,76,.42), 0 8px 14px rgba(191,93,77,.12);
+}
+.play-ui-v4 .start-countdown[data-step="2"] strong { color: #5ec8b1; text-shadow: 0 3px 0 rgba(53,151,133,.38), 0 8px 14px rgba(54,151,139,.11); }
+.play-ui-v4 .start-countdown[data-step="1"] strong { color: #72a9df; text-shadow: 0 3px 0 rgba(66,125,183,.38), 0 8px 14px rgba(74,127,190,.11); }
+.play-ui-v4 .start-countdown.is-go strong {
+  color: #f05f82;
+  font-size: clamp(48px, 14vw, 60px);
+  text-shadow: 0 3px 0 rgba(197,60,92,.4), 0 9px 16px rgba(204,65,101,.13);
+}
+.play-ui-v4 .start-countdown.is-go .start-countdown-copy::before { width: 146px; height: 112px; }
+.play-ui-v4 .start-countdown strong.is-popping { animation-duration: 400ms; }
+.play-ui-v4 .start-countdown.is-go strong.is-popping { animation-duration: 470ms; }
+
+.play-ui-v4 .start-countdown-cat {
+  bottom: max(13%, calc(16px + var(--safe-bottom)));
+  width: clamp(96px, 27vw, 116px);
+  height: clamp(106px, 30vw, 128px);
+}
+
+.play-ui-v4 .start-countdown-paws {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 57%;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.play-ui-v4 .start-countdown-paws i {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: url("../assets/decor/paw.webp") center / contain no-repeat;
+  opacity: 0;
+  animation: countdown-paw-step 1.3s ease-out both;
+}
+.play-ui-v4 .start-countdown-paws i:nth-child(1) { left: -54px; top: 8px; transform: rotate(-18deg); }
+.play-ui-v4 .start-countdown-paws i:nth-child(2) { left: 31px; top: 25px; animation-delay: 180ms; transform: rotate(18deg); }
+.play-ui-v4 .start-countdown-paws i:nth-child(3) { left: -20px; top: 64px; animation-delay: 360ms; transform: rotate(-8deg); }
+
+@keyframes countdown-paw-step {
+  0%, 14% { opacity: 0; scale: .45; }
+  34%, 70% { opacity: .42; scale: 1; }
+  100% { opacity: 0; scale: 1.08; }
+}
+
+/* --------------------------------------------------------------------------
+   OING shuffle — thick syrup sweeps and a single cat gesture, no wire rings
+   ----------------------------------------------------------------------- */
+.play-ui-v4 .board.is-shuffling-out .tile {
+  animation: oing-shuffle-gather 400ms var(--shuffle-delay, 0ms) cubic-bezier(.2,.64,.3,1) both;
+}
+.play-ui-v4 .board.is-shuffling-in .tile {
+  animation: oing-shuffle-place 420ms var(--shuffle-delay, 0ms) cubic-bezier(.16,.82,.24,1.1) both;
+}
+.play-ui-v4 .board.is-shuffling-out,
+.play-ui-v4 .board.is-shuffling-in,
+.play-ui-v4 .board.is-tutorial-active {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,253,245,.72), rgba(255,251,240,.68)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+}
+.play-ui-v4 .board.is-tutorial-active {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.35) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,253,247,.91), rgba(255,252,245,.89)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+}
+
+@keyframes oing-shuffle-gather {
+  0% { opacity: 1; transform: none; filter: brightness(1); }
+  54% { opacity: .92; transform: translate(var(--shuffle-mid-x), var(--shuffle-mid-y)) rotate(var(--shuffle-mid-rotate)) scale(.94); filter: brightness(1.06) saturate(1.04); }
+  100% { opacity: .38; transform: translate(var(--shuffle-x), var(--shuffle-y)) rotate(var(--shuffle-rotate)) scale(.78); filter: brightness(1.1) saturate(1.06); }
+}
+@keyframes oing-shuffle-place {
+  0% { opacity: .38; transform: translate(calc(0px - var(--shuffle-x)), calc(0px - var(--shuffle-y))) rotate(calc(0deg - var(--shuffle-rotate))) scale(.78); }
+  62% { opacity: 1; transform: translate(0,0) rotate(0) scale(1.025); filter: brightness(1.07) saturate(1.05); }
+  82% { transform: scale(.99); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+
+.play-ui-v4 .shuffle-fx {
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,245,.42), rgba(202,244,235,.12) 36%, transparent 70%);
+}
+.play-ui-v4 .shuffle-fx::before {
+  width: clamp(98px, 31%, 126px);
+  height: clamp(74px, 24%, 96px);
+  border: 0;
+  border-radius: 54% 46% 60% 40% / 48% 58% 42% 52%;
+  background:
+    radial-gradient(circle at 31% 26%, rgba(255,255,255,.95) 0 8%, transparent 24%),
+    linear-gradient(145deg, rgba(245,255,250,.92), rgba(116,220,199,.72));
+  box-shadow: inset 0 3px 3px rgba(255,255,255,.72), 0 10px 20px rgba(49,153,135,.12);
+  opacity: 0;
+  animation: oing-shuffle-puff 720ms cubic-bezier(.16,.78,.24,1.04) both;
+}
+.play-ui-v4 .shuffle-fx::after {
+  width: 76px;
+  height: 76px;
+  border: 0;
+  background: radial-gradient(circle, rgba(255,255,250,.82), rgba(255,221,194,.22) 48%, transparent 72%);
+  opacity: 0;
+  animation: oing-shuffle-glow 720ms ease-out both;
+}
+.play-ui-v4 .shuffle-vortex {
+  width: clamp(76px, 23%, 98px);
+  height: clamp(58px, 18%, 76px);
+  border: 0;
+  border-radius: 48% 52% 44% 56% / 55% 43% 57% 45%;
+  background: linear-gradient(145deg, rgba(255,250,230,.9), rgba(249,183,166,.7));
+  box-shadow: inset 0 3px 3px rgba(255,255,255,.76), 0 7px 15px rgba(192,110,91,.1);
+  animation: oing-shuffle-puff 720ms 70ms cubic-bezier(.16,.78,.24,1.04) both;
+}
+.play-ui-v4 .shuffle-fx .shuffle-drop { display: none; }
+
+.play-ui-v4 .shuffle-ribbon {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 50%;
+  width: 66%;
+  height: 42%;
+  border: 0;
+  border-top: clamp(11px, 3.4vw, 14px) solid rgba(80,199,172,.86);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 5px 7px rgba(57,145,132,.12)) drop-shadow(0 -2px 0 rgba(255,255,255,.62));
+  opacity: 0;
+  transform-origin: center;
+  pointer-events: none;
+}
+.play-ui-v4 .shuffle-ribbon-mint {
+  border-top-color: rgba(80,199,172,.86);
+  animation: oing-shuffle-ribbon-mint 720ms cubic-bezier(.17,.74,.24,1.04) both;
+}
+.play-ui-v4 .shuffle-ribbon-coral {
+  width: 58%;
+  border-top-color: rgba(246,144,131,.82);
+  filter: drop-shadow(0 5px 7px rgba(188,103,89,.11)) drop-shadow(0 -2px 0 rgba(255,255,255,.58));
+  animation: oing-shuffle-ribbon-coral 720ms 55ms cubic-bezier(.17,.74,.24,1.04) both;
+}
+
+.play-ui-v4 .shuffle-fx .shuffle-cat-swipe {
+  position: absolute;
+  z-index: 9;
+  left: auto;
+  right: -7px;
+  top: auto;
+  bottom: -9px;
+  width: clamp(74px, 23%, 96px);
+  height: clamp(82px, 25%, 108px);
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: #6b5447;
-  font-size: clamp(13px, calc(var(--chrome-width) * 0.039), 16px);
-  line-height: 1.26;
-  text-align: center;
-  text-wrap: balance;
-  word-break: keep-all;
-  overflow-wrap: break-word;
-  overflow: hidden;
-  transform: translateY(-50%);
+  object-fit: contain;
+  object-position: right bottom;
+  opacity: 0;
+  filter: drop-shadow(0 5px 8px rgba(63,102,113,.13));
+  transform-origin: right bottom;
+  animation: oing-shuffle-cat-swipe 760ms cubic-bezier(.18,.78,.24,1.05) both;
 }
 
-/* `.is-long` is set by ui.js at 18+ characters; the longest line the game ships
-   is 25 units and lands on exactly two lines at this size. */
-.play-ui-v4 .cat-message.is-long,
-.play-ui-v4.is-tall-board .cat-message.is-long {
-  font-size: clamp(10.5px, calc(var(--chrome-width) * 0.0335), 14px);
-  line-height: 1.24;
+.play-ui-v4 .shuffle-fx > b { z-index: 8; width: 16px; height: 16px; filter: none; }
+.play-ui-v4 .shuffle-fx .shuffle-paw { z-index: 8; width: 18px; height: 18px; }
+
+@keyframes oing-shuffle-puff {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(.34) rotate(-14deg); }
+  28% { opacity: .8; transform: translate(-50%,-50%) scale(.86) rotate(6deg); }
+  68% { opacity: .68; transform: translate(-50%,-50%) scale(1) rotate(118deg); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.12) rotate(172deg); }
 }
-
-.play-ui-v4 .cat-message strong { font-size: inherit; }
-
-.play-ui-v4 .cat-message::before,
-.play-ui-v4 .cat-message::after { display: none; }
-
-/* ---------------------------------------------------------------------------
-   Feedback animation.
-   ------------------------------------------------------------------------ */
-.play-ui-v4 .score-burst.is-visible {
-  animation: chrome-score-feedback 900ms cubic-bezier(.16,.76,.24,1) both;
+@keyframes oing-shuffle-glow {
+  0%, 48% { opacity: 0; transform: translate(-50%,-50%) scale(.5); }
+  72% { opacity: .68; }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.65); }
 }
-
-@keyframes chrome-score-feedback {
-  0% { opacity: 0; transform: translate(-50%, 2px) scale(.78); }
-  16% { opacity: 1; transform: translate(-50%, -9px) scale(1.06); }
-  70% { opacity: 1; transform: translate(-50%, -24px) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -38px) scale(.96); }
+@keyframes oing-shuffle-ribbon-mint {
+  0% { opacity: 0; transform: translate(-84%,-50%) rotate(-14deg) scaleX(.35); }
+  28% { opacity: .9; }
+  62% { opacity: .82; transform: translate(-48%,-50%) rotate(18deg) scaleX(1); }
+  100% { opacity: 0; transform: translate(-12%,-50%) rotate(34deg) scaleX(.7); }
+}
+@keyframes oing-shuffle-ribbon-coral {
+  0% { opacity: 0; transform: translate(-8%,-50%) rotate(18deg) scaleX(.3); }
+  30% { opacity: .82; }
+  66% { opacity: .78; transform: translate(-54%,-50%) rotate(-16deg) scaleX(1); }
+  100% { opacity: 0; transform: translate(-92%,-50%) rotate(-34deg) scaleX(.68); }
+}
+@keyframes oing-shuffle-cat-swipe {
+  0%, 8% { opacity: 0; transform: translate(66%, 24%) rotate(10deg) scale(.82); }
+  28% { opacity: 1; transform: translate(4%, 0) rotate(-3deg) scale(1); }
+  55% { opacity: 1; transform: translate(-2%, -3%) rotate(3deg) scale(1.03); }
+  100% { opacity: 0; transform: translate(42%, 8%) rotate(8deg) scale(.9); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .play-ui-v4 .item-button,
+  .play-ui-v4 .start-countdown-paws i,
+  .play-ui-v4 .shuffle-ribbon,
+  .play-ui-v4 .shuffle-cat-swipe { animation-duration: 1ms !important; }
+}
+
+/* ==========================================================================
+   Reference-led chrome v1
+
+   The top and bottom bars are painted production assets. CSS is responsible
+   only for flow, hit areas and live HTML content; it does not redraw shells.
+   ======================================================================= */
+
+.play-ui-v4 {
+  --play-gap: clamp(3px, .62dvh, 6px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding-inline: clamp(6px, 2.1vw, 9px);
+}
+
+.play-ui-v4 .play-hud,
+.screen-play.play-ui-v4[data-stage-band] .play-hud {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1536 / 595;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-hud-chrome,
+.play-ui-v4 .play-footer-chrome {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.play-ui-v4 .hud-topline {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  min-height: 0;
+}
+
+.play-ui-v4 .hud-controls {
+  position: absolute;
+  left: 3.25%;
+  top: 12.4%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  align-items: center;
+  width: 26.4%;
+  height: 32.6%;
+  gap: 5.5%;
+  padding: 0;
+}
+
+.play-ui-v4 .pause-button,
+.play-ui-v4 .hud-mini-button {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .pause-button img { display: none; }
+.play-ui-v4 .pause-button::before,
+.play-ui-v4 .pause-button::after {
+  content: "";
+  position: absolute;
+  top: 31%;
+  display: block;
+  width: 9%;
+  height: 38%;
+  border-radius: 999px;
+  background: #bd526a;
+  box-shadow: 0 1px 0 rgba(255,255,255,.6);
+}
+.play-ui-v4 .pause-button::before { left: 36%; }
+.play-ui-v4 .pause-button::after { left: 55%; }
+
+.play-ui-v4 .music-button i {
+  position: absolute;
+  left: 32%;
+  top: 38%;
+  display: block;
+  width: 11%;
+  height: 24%;
+  margin: 0;
+  border: 0;
+  border-radius: 2px 0 0 2px;
+  background: #18a88e;
+  clip-path: none;
+  transform: none;
+}
+.play-ui-v4 .music-button i::before {
+  content: "";
+  position: absolute;
+  left: 72%;
+  top: -42%;
+  display: block;
+  width: 170%;
+  height: 184%;
+  border: 0;
+  border-radius: 0;
+  background: #18a88e;
+  clip-path: polygon(0 30%, 100% 0, 100% 100%, 0 70%);
+}
+.play-ui-v4 .music-button i::after,
+.play-ui-v4 .music-button::after {
+  content: "";
+  position: absolute;
+  display: block;
+  border: 0;
+  border-right: 2px solid #18a88e;
+  border-radius: 50%;
+  background: transparent;
+}
+.play-ui-v4 .music-button i::after { left: 245%; top: -45%; width: 100%; height: 190%; }
+.play-ui-v4 .music-button::after { left: 65%; top: 34%; width: 14%; height: 32%; opacity: .62; }
+.play-ui-v4 .music-button.is-on i::before { background: #18a88e; border: 0; }
+.play-ui-v4 .music-button.is-on i::after,
+.play-ui-v4 .music-button.is-on::after { border-color: #18a88e; background: transparent; }
+
+.play-ui-v4 .pause-button:active,
+.play-ui-v4 .hud-mini-button:active {
+  transform: translateY(1px) scale(.96);
+  box-shadow: none;
+}
+
+.play-ui-v4 .round-mini {
+  position: absolute;
+  left: 33.1%;
+  top: 1.7%;
+  display: block;
+  width: 33.8%;
+  height: 58.8%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.play-ui-v4 .round-mini span {
+  position: absolute;
+  left: 50%;
+  top: 19.5%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: #fffdf8;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.8vw, 13px);
+  font-weight: 900;
+  letter-spacing: .06em;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(166,63,79,.34);
+  transform: translateX(-50%);
+}
+.play-ui-v4 .round-mini strong {
+  position: absolute;
+  left: 50%;
+  top: 39%;
+  min-width: 0;
+  color: #2f5478;
+  font-family: var(--font-sans);
+  font-size: clamp(30px, 9.6vw, 42px);
+  font-weight: 900;
+  line-height: .9;
+  text-shadow: 0 2px 0 #fff8e8;
+  transform: translateX(-50%);
+}
+
+.play-ui-v4 .time-readout {
+  position: absolute;
+  left: 69.1%;
+  top: 13%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29.7%;
+  height: 31.8%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 4% 1%;
+  gap: 3%;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.play-ui-v4 .time-readout img { width: 19%; height: 54%; object-fit: contain; }
+.play-ui-v4 .time-readout .time-freeze-icon { position: absolute; width: 23%; height: 58%; }
+.play-ui-v4 .time-readout strong {
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(22px, 7.1vw, 31px);
+  font-weight: 900;
+  letter-spacing: -.055em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.play-ui-v4 .time-readout::before,
+.play-ui-v4 .time-readout::after { display: none; }
+
+.play-ui-v4 .hud-secondline {
+  position: absolute;
+  z-index: 2;
+  left: 2.1%;
+  top: 58.2%;
+  display: grid;
+  grid-template-columns: 30.3% 39.4% 30.3%;
+  width: 95.8%;
+  height: 38.7%;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  border: 0;
+}
+
+.play-ui-v4 .score-readout,
+.play-ui-v4 .combo-readout {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20% 1fr;
+  grid-template-rows: 43% 57%;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 9% 5% 7%;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.play-ui-v4 .score-readout img,
+.play-ui-v4 .combo-readout img {
+  grid-row: 1 / 3;
+  align-self: center;
+  justify-self: center;
+  width: 72%;
+  height: auto;
+  object-fit: contain;
+}
+.play-ui-v4 .score-readout span,
+.play-ui-v4 .combo-readout span {
+  align-self: end;
+  color: #716d68;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.65vw, 12px);
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.play-ui-v4 .score-readout strong,
+.play-ui-v4 .combo-readout strong {
+  align-self: start;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(17px, 5.5vw, 24px);
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.play-ui-v4 .score-readout strong {
+  overflow: visible;
+  font-size: clamp(16px, 4.8vw, 21px);
+  letter-spacing: -.025em;
+  white-space: nowrap;
+}
+.play-ui-v4 .score-readout strong[data-digits="l"] { font-size: clamp(14px, 4.25vw, 19px); }
+.play-ui-v4 .score-readout strong[data-digits="xl"] { font-size: clamp(12px, 3.75vw, 17px); }
+.play-ui-v4 .combo-readout { grid-column: 3; }
+.play-ui-v4 .combo-readout strong { color: #ef5578; }
+.play-ui-v4 .combo-timer {
+  position: absolute;
+  left: 35%;
+  right: 9%;
+  bottom: 10%;
+  height: 3px;
+}
+
+.play-ui-v4 .goal-status {
+  position: relative;
+  grid-column: 2;
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+}
+.play-ui-v4 .goal-meta {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 9%;
+  display: flex;
+  justify-content: center;
+}
+.play-ui-v4 .goal-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: #6f6c67;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.65vw, 12px);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.play-ui-v4 .goal-copy b {
+  color: #ef5578;
+  font-size: clamp(17px, 5.4vw, 23px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.play-ui-v4 .goal-track {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  bottom: 23%;
+  height: 13%;
+  min-height: 5px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(222, 207, 178, .72);
+  box-shadow: inset 0 1px 2px rgba(110,82,48,.1);
+}
+.play-ui-v4 .goal-track i {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #52d1b5, #22c2aa);
+}
+.play-ui-v4 .stage-mission:not([hidden]) {
+  position: absolute;
+  right: -3%;
+  top: -2px;
+  display: flex;
+  max-width: 56%;
+  font-size: 8px;
+}
+
+.play-ui-v4 .play-feedback-rail,
+.play-ui-v4.is-stage-clearing .play-feedback-rail {
+  top: calc(var(--safe-top) + clamp(116px, 38.2vw, 158px) - 5px);
+}
+
+.play-ui-v4 .board-zone {
+  container-type: size;
+  align-self: stretch;
+  min-height: 0;
+  overflow: visible;
+}
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round] {
+  width: min(100cqw, 100cqh);
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1;
+}
+.play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+  width: min(100cqw, calc(100cqh * 6 / 7));
+  aspect-ratio: 6 / 7;
+}
+
+.play-ui-v4 .tile.is-selected,
+.play-ui-v4 .board.is-dragging .tile.is-selected {
+  background-color: rgba(255, 225, 125, .92) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,244,190,.96),
+    inset 0 -3px 5px rgba(232,177,55,.13),
+    0 0 10px rgba(255,217,103,.42);
+}
+.play-ui-v4 .board.is-perfect .tile.is-selected {
+  background-color: rgba(255, 216, 92, .96) !important;
+  box-shadow: inset 0 0 0 2px #fff8cf, 0 0 14px rgba(255,203,62,.58);
+}
+.play-ui-v4 .selection-marquee {
+  border-color: rgba(255, 215, 92, .92);
+  background: rgba(255, 232, 144, .12);
+  box-shadow: 0 0 0 2px rgba(255,249,211,.62), 0 0 12px rgba(255,210,75,.36), inset 0 0 10px rgba(255,243,190,.2);
+}
+.play-ui-v4 .selection-marquee.is-ten {
+  border-color: #ffc842;
+  box-shadow: 0 0 0 2px rgba(255,255,230,.8), 0 0 16px rgba(255,196,47,.58), inset 0 0 12px rgba(255,244,180,.28);
+}
+.play-ui-v4 .tutorial-focus {
+  border-color: rgba(255, 205, 67, .9);
+  background: rgba(255, 235, 151, .18);
+  box-shadow: 0 0 0 4px rgba(255,255,242,.76), 0 0 20px rgba(255,199,53,.38), inset 0 0 15px rgba(255,247,202,.42);
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1536 / 530;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.play-ui-v4 .item-actions {
+  position: absolute;
+  z-index: 3;
+  left: 8.9%;
+  right: 8.2%;
+  top: 46.5%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  width: auto;
+  height: 45.5%;
+  min-height: 44px;
+  gap: 3.1%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.play-ui-v4 .item-actions::before,
+.play-ui-v4 .item-actions::after { display: none; }
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  position: relative;
+  display: grid;
+  grid-template-rows: 67% 33%;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4% 3% 1%;
+  overflow: visible;
+  border: 0;
+  border-radius: 15%;
+  background: transparent;
+  box-shadow: none;
+}
+.play-ui-v4 .item-button:active,
+.play-ui-v4 .item-button.is-pressed {
+  transform: translateY(2px) scale(.975);
+  box-shadow: none;
+}
+.play-ui-v4 .item-icon {
+  align-self: end;
+  width: clamp(24px, 7.6vw, 33px);
+  height: clamp(25px, 7.8vw, 34px);
+  padding: 0;
+  object-fit: contain;
+}
+.play-ui-v4 .item-button > span {
+  align-self: center;
+  color: #67594e;
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3.3vw, 14px);
+  line-height: 1;
+}
+.play-ui-v4 .item-button b {
+  top: -8%;
+  right: -2%;
+  width: clamp(19px, 5.9vw, 25px);
+  height: clamp(19px, 5.9vw, 25px);
+  border: 2px solid #fff7ed;
+  font-size: clamp(11px, 3.4vw, 14px);
+}
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] { opacity: .54; }
+.play-ui-v4 .item-button[data-state="locked"] .item-icon,
+.play-ui-v4 .item-button[data-state="depleted"] .item-icon { opacity: .5; }
+
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  position: absolute;
+  left: 0;
+  bottom: 30%;
+  width: 26.5%;
+  height: 75%;
+}
+.play-ui-v4 .play-character-stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  position: absolute;
+  left: 25.5%;
+  top: 5.8%;
+  display: grid;
+  place-items: center;
+  width: 54.5%;
+  max-width: none;
+  height: 28.5%;
+  min-height: 0;
+  margin: 0;
+  padding: 1% 4% 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #675247;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 3.8vw, 16px);
+  line-height: 1.18;
+  text-align: center;
+  text-wrap: balance;
+  word-break: keep-all;
+}
+.play-ui-v4 .cat-message.is-long,
+.play-ui-v4.is-tall-board .cat-message.is-long { font-size: clamp(10px, 3.25vw, 14px); }
+.play-ui-v4 .cat-message::before,
+.play-ui-v4 .cat-message::after { display: none; }
+
+@media (max-height: 760px) {
+  .play-ui-v4 { --play-gap: 2px; padding-top: calc(2px + var(--safe-top)); padding-bottom: calc(1px + var(--safe-bottom)); }
+}
+
+@media (max-width: 340px) {
+  .play-ui-v4 { padding-inline: 5px; }
   .play-ui-v4 .pause-button,
-  .play-ui-v4 .hud-mini-button { transition: none; }
+  .play-ui-v4 .hud-mini-button { min-width: 40px; min-height: 40px; }
+  .play-ui-v4 .item-actions { left: 8.5%; right: 7.9%; gap: 2.5%; }
+  .play-ui-v4 .item-button { min-width: 44px; }
+  .screen-play.play-ui-v4[data-stage-band] .score-readout span,
+  .screen-play.play-ui-v4[data-stage-band] .combo-readout span {
+    display: block;
+    font-size: 8px;
+  }
+}
+
+/* Stage-band and celebration selectors in the legacy layer intentionally had
+   higher specificity. Pin live chrome slots to the artwork so those game
+   states may animate content without moving its anchor. */
+.screen-play.play-ui-v4[data-stage-band] .round-mini {
+  position: absolute;
+  left: 33.1%;
+  top: 1.7%;
+  width: 33.8%;
+  height: 58.8%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+.screen-play.play-ui-v4[data-stage-band] .round-mini span {
+  left: 50%;
+  top: 19.5%;
+  transform: translateX(-50%);
+}
+.screen-play.play-ui-v4[data-stage-band] .round-mini strong {
+  left: 50%;
+  top: 39%;
+  transform: translateX(-50%);
+}
+.screen-play.play-ui-v4 .hud-secondline .goal-status {
+  position: relative;
+  align-self: stretch;
+  width: auto;
+  height: 100%;
+  min-height: 0;
+  inset: auto;
+  transform: none;
+}
+.screen-play.play-ui-v4 .hud-secondline .goal-track {
+  left: 9%;
+  right: 9%;
+  bottom: 23%;
+  width: auto;
+  height: 13%;
+  min-height: 5px;
+}
+.screen-play.play-ui-v4[data-stage-band] .score-readout strong {
+  max-width: none;
+  overflow: visible;
+  font-size: clamp(15px, 4.3vw, 19px);
+  letter-spacing: -.025em;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+.screen-play.play-ui-v4[data-stage-band] .score-readout strong[data-digits="l"] { font-size: clamp(13px, 3.8vw, 17px); }
+.screen-play.play-ui-v4[data-stage-band] .score-readout strong[data-digits="xl"] { font-size: clamp(11px, 3.3vw, 15px); }
+
+/* ==========================================================================
+   Reference chrome v2
+
+   The visible HUD, controls, speech bubble and item dock are raster assets.
+   CSS below only anchors live text, hit areas and state transitions.
+   ======================================================================= */
+
+.screen-play.play-ui-v4 {
+  --play-gap: clamp(4px, .75dvh, 7px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--play-gap);
+  height: 100dvh;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 7px) clamp(6px, 1.8vw, 9px) calc(var(--safe-bottom) + 8px);
+  overflow: hidden;
+  background: #45c2f3 url("../assets/backgrounds/play-bg-v4.webp") center bottom / cover no-repeat;
+}
+.screen-play.play-ui-v4:not(.is-active) { display: none; }
+.screen-play.play-ui-v4.is-active { display: grid; }
+
+.play-ui-v4 .play-hud,
+.screen-play.play-ui-v4[data-stage-band] .play-hud {
+  position: relative;
+  display: block;
+  justify-self: center;
+  width: min(94%, 400px);
+  height: auto;
+  aspect-ratio: 1819 / 706;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-hud-chrome {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.play-ui-v4 .hud-topline {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  min-height: 0;
+}
+
+.play-ui-v4 .hud-controls {
+  position: absolute;
+  left: 3.1%;
+  top: 9.4%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  width: 25.4%;
+  height: 38%;
+  gap: 8.5%;
+  padding: 0;
+}
+
+.play-ui-v4 .pause-button,
+.play-ui-v4 .hud-mini-button {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .pause-button img,
+.play-ui-v4 .pause-button::before,
+.play-ui-v4 .pause-button::after,
+.play-ui-v4 .music-button i,
+.play-ui-v4 .music-button i::before,
+.play-ui-v4 .music-button i::after,
+.play-ui-v4 .music-button.is-on i::before,
+.play-ui-v4 .music-button.is-on i::after { display: none; }
+
+.play-ui-v4 .music-button::after { display: none; }
+.play-ui-v4 .music-button:not(.is-on)::after {
+  content: "";
+  position: absolute;
+  left: 25%;
+  top: 48%;
+  display: block;
+  width: 50%;
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: #e7697d;
+  transform: rotate(-42deg);
+}
+
+.play-ui-v4 .pause-button:active,
+.play-ui-v4 .hud-mini-button:active { transform: translateY(1px) scale(.96); }
+
+.play-ui-v4 .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .round-mini {
+  position: absolute;
+  left: 33.35%;
+  top: 2.6%;
+  display: block;
+  width: 33.45%;
+  height: 57.5%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.play-ui-v4 .round-mini span,
+.screen-play.play-ui-v4[data-stage-band] .round-mini span {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: #fffdf8;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.7vw, 12px);
+  font-weight: 900;
+  letter-spacing: .055em;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(151, 54, 73, .34);
+  transform: translateX(-50%);
+}
+
+.play-ui-v4 .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .round-mini strong {
+  position: absolute;
+  left: 50%;
+  top: 39%;
+  min-width: 0;
+  color: #31577a;
+  font-family: var(--font-sans);
+  font-size: clamp(28px, 8.8vw, 39px);
+  font-weight: 900;
+  line-height: .9;
+  text-shadow: 0 2px 0 #fff8e8;
+  transform: translateX(-50%);
+}
+
+.play-ui-v4 .time-readout {
+  position: absolute;
+  left: 70.1%;
+  top: 15.8%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27.7%;
+  height: 31.8%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 5% 1% 16%;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .time-readout .time-clock-icon { display: none; }
+.play-ui-v4 .time-readout .time-freeze-icon {
+  position: absolute;
+  left: 10%;
+  width: 27%;
+  height: 62%;
+  object-fit: contain;
+}
+.play-ui-v4 .time-readout strong {
+  color: #2f5578;
+  font-family: var(--font-sans);
+  font-size: clamp(19px, 5.7vw, 25px);
+  font-weight: 900;
+  letter-spacing: -.055em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.play-ui-v4 .time-readout::before,
+.play-ui-v4 .time-readout::after { display: none; }
+
+.play-ui-v4 .hud-secondline {
+  position: absolute;
+  z-index: 2;
+  left: 1.15%;
+  top: 65.1%;
+  display: grid;
+  grid-template-columns: 32.7% 42.2% 25.1%;
+  width: 97.7%;
+  height: 30.7%;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  border: 0;
+}
+
+.play-ui-v4 .score-readout,
+.play-ui-v4 .combo-readout {
+  position: relative;
+  display: grid;
+  grid-template-rows: 42% 58%;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 7% 4% 7% 25%;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.play-ui-v4 .combo-readout { grid-column: 3; padding: 7% 25% 7% 3%; }
+.play-ui-v4 .score-readout img,
+.play-ui-v4 .combo-readout img { display: none; }
+.play-ui-v4 .score-readout span,
+.play-ui-v4 .combo-readout span {
+  align-self: end;
+  color: #716d68;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.35vw, 11px);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+.play-ui-v4 .score-readout strong,
+.play-ui-v4 .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .score-readout strong {
+  align-self: start;
+  max-width: 100%;
+  overflow: visible;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(15px, 4.55vw, 20px);
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.play-ui-v4 .combo-readout strong { color: #ef5578; }
+.play-ui-v4 .combo-timer { display: none; }
+
+.play-ui-v4 .goal-status,
+.screen-play.play-ui-v4 .hud-secondline .goal-status {
+  position: relative;
+  grid-column: 2;
+  display: block;
+  width: auto;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  inset: auto;
+  padding: 0;
+  transform: none;
+}
+.play-ui-v4 .goal-meta {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 4%;
+  display: flex;
+  justify-content: center;
+}
+.play-ui-v4 .goal-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #6e6b65;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.35vw, 11px);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.play-ui-v4 .goal-copy b {
+  color: #ef5578;
+  font-size: clamp(15px, 4.45vw, 20px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.play-ui-v4 .goal-track,
+.screen-play.play-ui-v4 .hud-secondline .goal-track {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 15%;
+  width: auto;
+  height: 20%;
+  min-height: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(207, 175, 126, .45);
+  border-radius: 999px;
+  background: #efe5d1;
+  box-shadow: inset 0 1px 2px rgba(99, 72, 40, .10);
+}
+.play-ui-v4 .goal-track i {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #69d7bf, #22bea6);
+}
+
+.play-ui-v4 .play-feedback-rail,
+.play-ui-v4.is-stage-clearing .play-feedback-rail {
+  top: calc(var(--safe-top) + clamp(120px, 36vw, 151px));
+}
+
+.play-ui-v4 .board-zone {
+  container-type: size;
+  display: grid;
+  place-items: start center;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round] {
+  width: min(100cqw, 100cqh);
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1;
+}
+.play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+  width: min(100cqw, calc(100cqh * 6 / 7));
+  aspect-ratio: 6 / 7;
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  position: relative;
+  display: block;
+  justify-self: center;
+  width: 100%;
+  height: clamp(150px, 20.2dvh, 172px);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+.play-ui-v4 .play-footer-chrome {
+  position: absolute;
+  z-index: 1;
+  left: 7%;
+  right: 7%;
+  top: auto;
+  bottom: 0;
+  display: block;
+  width: 86%;
+  height: auto;
+  aspect-ratio: 883 / 302;
+  object-fit: contain;
+  pointer-events: none;
+}
+.play-ui-v4 .item-actions {
+  position: absolute;
+  z-index: 4;
+  left: 11%;
+  right: 11%;
+  bottom: 4.5%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  height: 56%;
+  min-height: 44px;
+  gap: 4.2%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.play-ui-v4 .item-actions::before,
+.play-ui-v4 .item-actions::after { display: none; }
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  position: relative;
+  display: grid;
+  grid-template-rows: 67% 33%;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 5% 2% 1%;
+  overflow: visible;
+  border: 0;
+  border-radius: 17%;
+  background: transparent;
+  box-shadow: none;
+}
+.play-ui-v4 .item-button::before { display: none; }
+.play-ui-v4 .item-button:active,
+.play-ui-v4 .item-button.is-pressed { transform: translateY(2px) scale(.97); box-shadow: none; }
+.play-ui-v4 .item-icon {
+  align-self: end;
+  width: clamp(25px, 7.4vw, 33px);
+  height: clamp(26px, 7.7vw, 34px);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px rgba(91, 69, 47, .13));
+}
+.play-ui-v4 .item-button > span {
+  align-self: center;
+  color: #67584e;
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3.15vw, 14px);
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .92);
+}
+.play-ui-v4 .item-button b {
+  top: -8%;
+  right: -4%;
+  width: clamp(19px, 5.7vw, 24px);
+  height: clamp(19px, 5.7vw, 24px);
+  border: 2px solid #fff7ed;
+  font-size: clamp(11px, 3.25vw, 14px);
+}
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] { opacity: .48; }
+.play-ui-v4 .item-button[data-state="locked"] .item-icon,
+.play-ui-v4 .item-button[data-state="depleted"] .item-icon { opacity: .55; filter: grayscale(.15); }
+
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+.play-ui-v4 .speech-bubble-chrome {
+  position: absolute;
+  z-index: 1;
+  left: 29%;
+  top: 0;
+  display: block;
+  width: 50%;
+  height: auto;
+  object-fit: contain;
+}
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  width: 29%;
+  height: 69%;
+}
+.play-ui-v4 .play-character-stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  position: absolute;
+  z-index: 2;
+  left: 32%;
+  top: 5%;
+  display: grid;
+  place-items: center;
+  width: 42%;
+  max-width: none;
+  height: 28%;
+  min-height: 0;
+  margin: 0;
+  padding: 0 3%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #675247;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 3.55vw, 16px);
+  line-height: 1.16;
+  text-align: center;
+  text-wrap: balance;
+  word-break: keep-all;
+}
+.play-ui-v4 .cat-message.is-long,
+.play-ui-v4.is-tall-board .cat-message.is-long { font-size: clamp(10px, 3.05vw, 13px); }
+.play-ui-v4 .cat-message::before,
+.play-ui-v4 .cat-message::after { display: none; }
+
+/* Countdown is text only; no curtain, ring, burst, paw trail or character. */
+.play-ui-v4 .start-countdown {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.play-ui-v4 .start-countdown::before,
+.play-ui-v4 .start-countdown::after,
+.play-ui-v4 .start-countdown-copy::before,
+.play-ui-v4 .start-countdown-burst,
+.play-ui-v4 .start-countdown-paws,
+.play-ui-v4 .start-countdown-cat,
+.play-ui-v4 .start-countdown small { display: none; }
+.play-ui-v4 .start-countdown-copy {
+  min-width: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.play-ui-v4 .start-countdown strong,
+.play-ui-v4 .start-countdown[data-step="2"] strong,
+.play-ui-v4 .start-countdown[data-step="1"] strong,
+.play-ui-v4 .start-countdown.is-go strong {
+  color: #fffdf7;
+  font-family: var(--font-display);
+  font-size: clamp(52px, 17vw, 72px);
+  text-shadow: 0 3px 0 rgba(48, 105, 153, .42), 0 7px 16px rgba(35, 101, 143, .2);
+}
+
+/* Shuffle uses one painted jelly poof asset; old lines/rings stay disabled. */
+.play-ui-v4 .shuffle-fx {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  background: none;
+  pointer-events: none;
+}
+.play-ui-v4 .shuffle-fx::before,
+.play-ui-v4 .shuffle-fx::after,
+.play-ui-v4 .shuffle-vortex,
+.play-ui-v4 .shuffle-drop,
+.play-ui-v4 .shuffle-ribbon,
+.play-ui-v4 .shuffle-cat-swipe,
+.play-ui-v4 .shuffle-curve,
+.play-ui-v4 .shuffle-paw,
+.play-ui-v4 .shuffle-fx > b,
+.play-ui-v4 .shuffle-fx > i { display: none !important; }
+.play-ui-v4 .shuffle-fx .shuffle-poof {
+  display: block;
+  width: clamp(118px, 42%, 170px);
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  object-fit: contain;
+  filter: none;
+  animation: shuffle-poof-pop 720ms cubic-bezier(.16, .78, .24, 1.06) both;
+}
+@keyframes shuffle-poof-pop {
+  0% { opacity: 0; transform: scale(.46) rotate(-7deg); }
+  38% { opacity: 1; transform: scale(1.04) rotate(2deg); }
+  72% { opacity: .94; transform: scale(.94) rotate(-1deg); }
+  100% { opacity: 0; transform: scale(1.12) rotate(2deg); }
+}
+
+@media (max-height: 760px) {
+  .screen-play.play-ui-v4 {
+    --play-gap: 3px;
+    padding-top: calc(var(--safe-top) + 5px);
+    padding-bottom: calc(var(--safe-bottom) + 3px);
+  }
+  .play-ui-v4 .play-hud,
+  .screen-play.play-ui-v4[data-stage-band] .play-hud { width: min(91.5%, 360px); }
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer { height: clamp(140px, 19dvh, 150px); }
+  .play-ui-v4 .speech-bubble-chrome { left: 29%; width: 48%; }
+  .play-ui-v4 .play-character-stage,
+  .play-ui-v4.is-tall-board .play-character-stage { width: 27%; height: 65%; }
+}
+
+@media (max-width: 340px) {
+  .screen-play.play-ui-v4 { padding-inline: 5px; }
+  .play-ui-v4 .play-hud,
+  .screen-play.play-ui-v4[data-stage-band] .play-hud { width: 94%; }
+  .play-ui-v4 .pause-button,
+  .play-ui-v4 .hud-mini-button { min-width: 40px; min-height: 40px; }
+  .play-ui-v4 .item-actions { left: 10%; right: 10%; gap: 3.4%; }
+  .play-ui-v4 .item-button { min-width: 44px; }
+  .play-ui-v4 .score-readout span,
+  .play-ui-v4 .combo-readout span { display: block; font-size: 8px; }
+  .play-ui-v4 .cat-message { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .shuffle-fx .shuffle-poof { animation-duration: 1ms !important; }
 }

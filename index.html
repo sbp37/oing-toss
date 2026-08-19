@@ -14,6 +14,8 @@
   <link rel="preload" href="assets/fonts/Pretendard-OING.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/ui-chrome.css">
+  <link rel="stylesheet" href="css/play-layout-v1.css">
+  <link rel="stylesheet" href="css/claude-polish.css">
 </head>
 <body>
   <audio id="bgm-audio" src="assets/sounds/oing-original-bgm.mp3" loop preload="none"></audio>
@@ -32,7 +34,7 @@
       </button>
       <div class="home-hero">
         <header class="home-brand">
-          <img class="oing-logo" src="assets/ui/logo.webp" width="446" height="223" loading="eager" decoding="async" fetchpriority="high" alt="OING">
+          <img class="oing-logo" src="assets/ui/logo-v2.webp" width="1000" height="373" loading="eager" decoding="async" fetchpriority="high" alt="OING GAME">
         </header>
         <div class="character-stage home-character-stage">
           <img class="home-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="eager" decoding="async" fetchpriority="high" alt="앉아 있는 블루 고양이">
@@ -46,97 +48,110 @@
         </div>
       </div>
       <div class="home-actions">
-        <button class="btn btn-primary btn-start" id="start-button" type="button"><img class="start-button-sparkle" src="assets/decor/sparkle.webp" width="278" height="296" alt=""><span>시작하기</span><img class="start-button-sparkle" src="assets/decor/star.webp" width="266" height="256" alt=""></button>
+        <button class="btn btn-primary btn-start" id="start-button" type="button"><img class="start-button-sparkle" src="assets/decor/star.webp" width="266" height="256" alt=""><span>시작하기</span><img class="start-button-sparkle" src="assets/decor/star.webp" width="266" height="256" alt=""></button>
         <button class="btn btn-cream home-ranking-button" id="home-ranking-button" type="button">
           <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>랭킹 보기</span>
         </button>
-        <div class="best-record-card" aria-label="내 최고기록">
+        <div class="best-record-card" aria-label="내 최고점수">
           <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
-          <span><em>최고기록</em><small id="home-best-stage">STAGE 1</small></span>
-          <strong id="home-best-score">0</strong>
+          <span><em>최고점수</em><strong id="home-best-score">0</strong></span>
         </div>
+        <!-- TODO: 정원 기능 재작업 시 복구 -->
+        <button class="btn btn-cream home-garden-button" id="home-garden-button" type="button" hidden>
+          <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" decoding="async" alt=""><span>내 정원</span><b id="home-garden-count">고양이 0마리</b>
+        </button>
       </div>
     </section>
 
     <section class="screen screen-play play-ui-v4" id="play-screen" data-screen="play" aria-label="게임 플레이" aria-hidden="true">
-      <div class="ui-chrome-layer" aria-hidden="true"></div>
       <div class="start-countdown" id="start-countdown" aria-live="assertive" aria-hidden="true">
         <div class="start-countdown-burst" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="start-countdown-paws" aria-hidden="true"><i></i><i></i><i></i></div>
         <div class="start-countdown-copy">
-          <small id="start-countdown-kicker">READY?</small>
+          <small id="start-countdown-kicker">준비!</small>
           <strong id="start-countdown-value">3</strong>
         </div>
         <div class="start-countdown-cat" aria-hidden="true"><img src="assets/characters/cat-wave.webp" width="430" height="481" loading="lazy" decoding="async" alt=""></div>
       </div>
-      <header class="play-hud">
+      <header class="play-hud play-top-controls">
+        <img class="play-top-controls-chrome" src="assets/ui/play-top-controls-v4.webp" width="2172" height="724" decoding="async" fetchpriority="high" alt="">
         <div class="hud-topline">
           <div class="hud-controls">
             <button class="asset-icon-button pause-button" id="pause-button" type="button" aria-label="일시정지">
-              <img src="assets/ui/button-pause.webp" width="421" height="235" loading="lazy" decoding="async" alt="">
+              <img src="assets/ui/play-control-pause-v3.webp" width="238" height="249" decoding="async" alt="">
             </button>
-            <button class="hud-mini-button music-button is-on" id="hud-music-button" type="button" aria-label="배경음악 끄기" aria-pressed="true"><i></i></button>
+            <button class="hud-mini-button music-button is-on" id="hud-music-button" type="button" aria-label="배경음악 끄기" aria-pressed="true">
+              <img src="assets/ui/play-control-sound-v3.webp" width="238" height="249" decoding="async" alt=""><i></i>
+            </button>
           </div>
-          <div class="round-mini"><span>STAGE</span><strong id="round-value">1</strong></div>
+          <div class="round-mini">
+            <img src="assets/ui/play-stage-badge-v3.webp" width="623" height="427" decoding="async" fetchpriority="high" alt="STAGE">
+            <strong id="round-value">1</strong>
+          </div>
           <div class="time-readout" id="time-pill" hidden>
+            <img class="time-pill-chrome" src="assets/ui/play-timer-pill-v3.webp" width="534" height="249" decoding="async" alt="">
             <img class="time-clock-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt="">
             <img class="time-freeze-icon" src="assets/icons/items/freeze.webp" width="512" height="512" loading="lazy" decoding="async" alt="">
             <strong id="time-value">03:00</strong>
           </div>
         </div>
+      </header>
+
+      <section class="play-status-bar" aria-label="현재 게임 상태">
+        <img class="play-status-chrome" src="assets/ui/play-status-bar-v5.webp" width="1800" height="312" decoding="async" fetchpriority="high" alt="">
         <div class="hud-secondline">
           <div class="score-readout">
+            <img src="assets/icons/hud/score.webp" width="294" height="296" decoding="async" alt="">
             <span>점수</span><strong id="score-value">0</strong>
           </div>
           <div class="combo-readout" id="combo-chip">
-            <span>COMBO</span><strong id="combo-value">0</strong>
+            <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
+            <span>콤보</span><strong id="combo-value">0</strong>
+            <i class="combo-item-label" id="combo-item-label" hidden>아이템까지 7</i>
+            <div class="combo-item-track" id="combo-item-track" aria-hidden="true"><b id="combo-item-fill"></b></div>
             <div class="combo-timer" aria-hidden="true"><i id="combo-timer-fill"></i></div>
           </div>
-        </div>
-        <div class="goal-status">
-          <div class="goal-meta">
-            <span class="goal-copy"><b id="goal-value">0 / 3</b> <em id="goal-label">성공</em></span>
-            <span class="stage-mission" id="stage-mission" hidden>
-              <img id="stage-mission-icon" src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
-              <strong id="stage-mission-value">큰 조합 0/1</strong>
-            </span>
+          <div class="goal-status">
+            <div class="goal-meta">
+              <span class="goal-copy"><b id="goal-value">0</b> <em id="goal-label">최고</em></span>
+            </div>
           </div>
-          <div class="goal-track" id="goal-track" aria-hidden="true"><i id="goal-fill"></i></div>
         </div>
-      </header>
+      </section>
 
       <div class="play-feedback-rail" aria-hidden="true">
-        <div class="round-clear" id="round-clear">
-          <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
-          <div><strong>STAGE CLEAR!</strong><span id="round-clear-reward">다음 판 가자!</span></div>
-          <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
-        </div>
-        <div class="combo-celebration" id="combo-celebration">
-          <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
-          <div><small id="combo-celebration-kicker">NICE!</small><strong>COMBO <b id="combo-celebration-value">3</b></strong></div>
-          <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
-        </div>
+        <div class="round-clear" id="round-clear"><strong>STAGE CLEAR!</strong></div>
         <div class="tutorial-callout" id="tutorial-callout"><strong>슥 묶어서 10!</strong></div>
       </div>
 
       <section class="board-zone" aria-label="숫자 보드">
+        <div class="board-time-gauge" id="board-time-gauge" aria-hidden="true"><i id="board-time-fill"></i></div>
         <div class="board-frame" id="board-frame">
           <div class="sum-bubble" id="sum-bubble" aria-live="off"><span>합</span><strong id="sum-value">0</strong></div>
           <div class="board" id="board" data-size="4" role="grid" aria-label="합이 10이 되는 직사각형을 드래그하세요"></div>
+          <div class="wow-moment" id="wow-moment" aria-hidden="true"><strong>WOW!</strong></div>
           <div class="selection-marquee" id="selection-marquee" aria-hidden="true"></div>
           <div class="tutorial-guide" id="tutorial-guide" aria-hidden="true">
             <div class="tutorial-focus"><i></i><i></i></div>
             <div class="tutorial-sparkle-trail"><i></i><i></i><i></i></div>
           </div>
-          <div class="time-up" id="time-up" aria-hidden="true">
-            <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
-            <div><small>수고했어!</small><strong>TIME UP!</strong></div>
-            <img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt="">
-          </div>
+          <div class="time-up" id="time-up" aria-hidden="true"><strong>TIME UP!</strong></div>
           <div class="score-burst" id="score-burst" aria-hidden="true"></div>
         </div>
       </section>
 
-      <footer class="play-footer">
+      <section class="cat-coach" aria-live="polite">
+        <div class="character-stage play-character-stage">
+          <img id="play-cat" src="assets/characters/cat-wave.webp" width="430" height="481" loading="lazy" decoding="async" alt="손을 흔드는 블루 고양이">
+        </div>
+        <div class="cat-speech">
+          <img class="speech-bubble-chrome" src="assets/ui/speech-bubble-wide-v3.webp" width="900" height="230" decoding="async" alt="">
+          <div class="cat-message" id="cat-message">10을 찾아보자냥!</div>
+        </div>
+      </section>
+
+      <footer class="play-footer item-dock">
+        <img class="play-footer-chrome" src="assets/ui/item-dock-v5.webp" width="870" height="423" decoding="async" fetchpriority="high" alt="">
         <div class="item-actions">
           <button class="item-button hint-button" id="hint-button" type="button">
             <img class="item-icon" src="assets/icons/items/hint.webp" width="243" height="314" loading="lazy" decoding="async" alt=""><span>힌트</span><b id="hint-count">3</b>
@@ -151,12 +166,6 @@
             <img class="item-icon" src="assets/icons/hud/time.webp" width="276" height="317" loading="lazy" decoding="async" alt=""><span>시계</span><b id="clock-count">1</b>
           </button>
         </div>
-        <div class="cat-coach">
-          <div class="character-stage play-character-stage">
-            <img id="play-cat" src="assets/characters/cat-peek.webp" width="359" height="306" loading="lazy" decoding="async" alt="보드 아래에서 빼꼼 보는 블루 고양이">
-          </div>
-          <div class="cat-message" id="cat-message">10을 찾아보자냥!</div>
-        </div>
       </footer>
     </section>
 
@@ -164,24 +173,27 @@
       <div class="result-decor" id="result-decor" aria-hidden="true">
         <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
       </div>
-      <p class="result-kicker" id="result-kicker">STAGE RESULT</p>
+      <p class="result-kicker" id="result-kicker">이번 판 기록</p>
       <article class="result-card">
-        <p class="result-stage-progress" id="result-stage-progress">STAGE 1 · 0 / 3 성공</p>
-        <div class="result-score-label"><img src="assets/icons/hud/score.webp" width="294" height="296" loading="lazy" decoding="async" alt=""><span>최종 점수</span></div>
-        <strong class="final-score" id="final-score">0</strong>
-        <div class="new-record" id="new-record" hidden>NEW RECORD</div>
-        <div class="score-comparisons" aria-live="polite">
-          <p class="score-compare-primary" id="result-best-compare">첫 기록을 만들었다냥!</p>
-          <p class="score-compare-secondary" id="result-previous-compare" hidden></p>
+        <div class="result-headline">
+          <button class="result-share-chip" id="share-button" type="button">
+            <img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>공유하기</span>
+          </button>
+          <div class="result-score-block">
+            <strong class="final-score" id="final-score">0</strong>
+            <p class="score-compare-primary" id="result-best-compare">첫 기록을 만들었다냥!</p>
+          </div>
+          <dl class="result-stats">
+            <div><dt id="final-round-label">도달 스테이지</dt><dd id="final-round">1</dd></div>
+            <div><dt>최고 콤보</dt><dd id="final-combo">0</dd></div>
+          </dl>
         </div>
+        <div class="new-record" id="new-record" hidden>NEW RECORD</div>
+        <p class="result-stage-progress" id="result-stage-progress">STAGE 1 도달 · 성공 0회</p>
+        <p class="score-compare-secondary" id="result-previous-compare" hidden></p>
         <div class="result-record-meter" id="result-record-meter" aria-label="최고기록 도전 진행도">
           <span id="result-record-meter-label">최고기록 도전 0%</span>
           <i><b id="result-record-meter-fill"></b></i>
-        </div>
-        <div class="result-grid">
-          <div><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><span>최고 콤보</span><b id="final-combo">0</b></div>
-          <div><img src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>도달 스테이지</span><b id="final-round">1</b></div>
-          <div><img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>고양이 구조</span><b><i id="final-cats">0</i>마리</b></div>
         </div>
       </article>
       <div class="result-cat-row">
@@ -192,11 +204,8 @@
       </div>
       <div class="result-actions">
         <button class="btn btn-primary" id="retry-button" type="button">한 판 더!</button>
-        <button class="btn btn-mint result-share-button" id="share-button" type="button">
-          <img class="button-icon" src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt=""><span>카톡으로 자랑하기</span>
-        </button>
         <button class="btn btn-cream result-ranking-button" id="result-ranking-button" type="button">
-          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>랭킹 보기</span>
+          <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" loading="lazy" decoding="async" alt=""><span>랭킹</span>
         </button>
         <button class="result-home-button" id="home-button" type="button">
           <img src="assets/icons/navigation/home.webp" width="310" height="290" loading="lazy" decoding="async" alt=""><span>홈으로</span>
@@ -249,13 +258,57 @@
           <div><span>평균 점수</span><strong id="ranking-average-score">0</strong></div>
           <div><span>저장된 판</span><strong id="ranking-run-count">0/7</strong></div>
         </div>
+        <!-- TODO: 정원 기능 재작업 시 복구 -->
+        <p class="record-cats-line" id="ranking-cats-line" hidden><img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt="">지금까지 구조한 고양이 <strong id="ranking-cats-total">0</strong>마리</p>
         <section class="record-history" aria-labelledby="record-history-title">
           <div class="record-history-title"><span id="record-history-title">최근 점수 흐름</span><b id="ranking-trend">첫 판을 기다리고 있다냥!</b></div>
           <div class="record-bars" id="ranking-bars" role="img" aria-label="최근 7판 점수 그래프"></div>
           <p class="record-empty" id="ranking-empty">한 판을 끝내면 여기에 기록이 쌓인다냥!</p>
         </section>
+        <section class="chapter-collection" aria-labelledby="chapter-collection-title">
+          <div class="chapter-collection-title">
+            <span id="chapter-collection-title">고양이의 모험</span><b id="chapter-gallery-note"></b>
+          </div>
+          <ul class="chapter-gallery" id="chapter-gallery" aria-label="모험 장면 수집"></ul>
+          <p class="chapter-collection-hint">판을 넘길수록 새 장면이 열린다냥</p>
+        </section>
         <button class="btn btn-primary ranking-play-button" id="ranking-play-button" type="button">한 판 더 하기</button>
         <small class="record-online-note">친구 랭킹은 계정 연동 후 열릴 예정이야</small>
+      </div>
+    </div>
+
+    <div id="privacy-cover" hidden aria-hidden="true">
+      <img src="assets/ui/logo-v2.webp" width="1000" height="373" alt="">
+    </div>
+
+    <div class="overlay" id="chapter-viewer" hidden>
+      <div class="mini-panel chapter-viewer-panel" role="dialog" aria-modal="true" aria-labelledby="chapter-viewer-title">
+        <button class="overlay-close" id="chapter-viewer-close" type="button" aria-label="닫기"><i></i></button>
+        <h2 id="chapter-viewer-title"></h2>
+        <img id="chapter-viewer-art" alt="" decoding="async">
+      </div>
+    </div>
+
+    <!-- TODO: 정원 기능 재작업 시 복구 -->
+    <div class="overlay" id="garden-overlay" hidden>
+      <div class="mini-panel garden-panel" role="dialog" aria-modal="true" aria-labelledby="garden-title">
+        <button class="overlay-close" id="garden-close" type="button" aria-label="닫기"><i></i></button>
+        <div class="record-heading">
+          <img src="assets/decor/paw.webp" width="282" height="276" loading="lazy" decoding="async" alt="">
+          <div><span>MY SECRET GARDEN</span><h2 id="garden-title">내 정원</h2></div>
+        </div>
+        <div class="garden-scene" id="garden-scene">
+          <img class="garden-scene-cat" src="assets/characters/cat-cheer.webp" width="431" height="481" loading="lazy" decoding="async" alt="정원에서 기뻐하는 블루 고양이">
+        </div>
+        <p class="garden-count">구조한 고양이 <strong id="garden-cats-total">0</strong>마리</p>
+        <p class="garden-reveal-best" id="garden-reveal-best" hidden>CLEAN CLEAR ×<strong id="garden-reveal-best-value">0</strong></p>
+        <div class="garden-progress" aria-label="다음 정원 친구까지 진행도">
+          <span id="garden-progress-label">첫 친구까지 3마리</span>
+          <i><b id="garden-progress-fill"></b></i>
+        </div>
+        <ul class="garden-tiers" id="garden-tiers" aria-label="정원 친구 목록"></ul>
+        <button class="btn btn-primary" id="garden-play-button" type="button">고양이 구하러 가기</button>
+        <small class="record-online-note">고양이 칸을 조합에 넣어 지우면 구조된다냥</small>
       </div>
     </div>
 

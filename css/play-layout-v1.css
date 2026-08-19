@@ -1,0 +1,3952 @@
+/* Play layout v1: five independent flow regions.
+   Painted assets provide the chrome; CSS owns only responsive layout,
+   live-value placement, hit targets and interaction states. */
+
+.screen-play.play-ui-v4 {
+  --flow-gap: clamp(3px, .6dvh, 6px);
+  --flow-inline: clamp(7px, 2.2vw, 11px);
+  --board-cols: 4;
+  --board-rows: 4;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  align-content: stretch;
+  gap: var(--flow-gap);
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 8px) var(--flow-inline) calc(var(--safe-bottom) + 6px);
+  overflow: hidden;
+  background: #36a4fa url("../assets/backgrounds/play-bg-spring-path-v2.webp") center bottom / cover no-repeat;
+}
+
+.screen-play.play-ui-v4:not(.is-active) { display: none; }
+.screen-play.play-ui-v4.is-active { display: grid; }
+
+/* 1. Top controls -------------------------------------------------------- */
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  position: relative;
+  z-index: 12;
+  display: block;
+  justify-self: center;
+  width: min(94%, 410px);
+  height: clamp(72px, 11.2dvh, 96px);
+  min-height: 0;
+  aspect-ratio: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-top-controls .hud-topline {
+  position: static;
+  display: grid;
+  grid-template-columns: 28% 37% 35%;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.play-ui-v4 .play-top-controls .hud-controls {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(44px, 1fr));
+  align-items: center;
+  justify-self: start;
+  width: min(100%, 104px);
+  height: auto;
+  gap: clamp(3px, 1vw, 6px);
+  padding: 0;
+}
+
+.play-ui-v4 .play-top-controls .pause-button,
+.play-ui-v4 .play-top-controls .hud-mini-button {
+  position: relative;
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-top-controls .pause-button img,
+.play-ui-v4 .play-top-controls .music-button img {
+  display: block;
+  opacity: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .pause-button::before,
+.play-ui-v4 .play-top-controls .pause-button::after,
+.play-ui-v4 .play-top-controls .music-button i,
+.play-ui-v4 .play-top-controls .music-button i::before,
+.play-ui-v4 .play-top-controls .music-button i::after { display: none; }
+
+.play-ui-v4 .play-top-controls .music-button:not(.is-on)::after {
+  content: "";
+  position: absolute;
+  left: 23%;
+  top: 48%;
+  display: block;
+  width: 54%;
+  height: 3px;
+  border-radius: 999px;
+  background: #e85f79;
+  box-shadow: 0 1px 0 rgba(255,255,255,.8);
+  transform: rotate(-43deg);
+}
+
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  position: relative;
+  left: auto;
+  top: auto;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: min(100%, 142px);
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  transform: none;
+}
+
+.play-ui-v4 .play-top-controls .round-mini img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  position: relative;
+  left: auto;
+  top: 11%;
+  z-index: 2;
+  min-width: 0;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(29px, 8.3vw, 40px);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 2px 0 #fff8e7;
+  transform: none;
+}
+
+.play-ui-v4 .play-top-controls .time-readout {
+  position: relative;
+  left: auto;
+  top: auto;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  width: min(100%, 145px);
+  height: auto;
+  min-width: 0;
+  min-height: 44px;
+  aspect-ratio: 534 / 249;
+  margin: 0;
+  padding: 0 5% 0 28%;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-top-controls .time-pill-chrome {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .time-clock-icon { display: none; }
+.play-ui-v4 .play-top-controls .time-freeze-icon {
+  position: absolute;
+  z-index: 2;
+  left: 12%;
+  width: 25%;
+  height: 58%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-top-controls .time-readout strong {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(18px, 5.55vw, 25px);
+  font-weight: 900;
+  letter-spacing: -.055em;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 2. Status bar --------------------------------------------------------- */
+.play-ui-v4 .play-status-bar {
+  position: relative;
+  /* Above .play-top-controls (12) so the stage-mission pill, which rides
+     in the gap under the shield tip, is not painted behind the shield. */
+  z-index: 13;
+  justify-self: center;
+  width: min(96%, 420px);
+  height: auto;
+  aspect-ratio: 1799 / 249;
+  min-height: 0;
+}
+
+.play-ui-v4 .play-status-chrome {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.play-ui-v4 .play-status-bar .hud-secondline {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 31% 42% 27%;
+  width: 100%;
+  height: 100%;
+  gap: 0;
+  padding: 0;
+}
+
+.play-ui-v4 .play-status-bar .score-readout,
+.play-ui-v4 .play-status-bar .combo-readout {
+  position: relative;
+  display: grid;
+  grid-template-rows: 42% 58%;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 8% 4% 8% 26%;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout {
+  grid-column: 3;
+  padding: 8% 25% 8% 4%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout img,
+.play-ui-v4 .play-status-bar .combo-readout img { display: none; }
+
+.play-ui-v4 .play-status-bar .score-readout span,
+.play-ui-v4 .play-status-bar .combo-readout span {
+  align-self: end;
+  color: #665f5a;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.2vw, 10px);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
+  align-self: start;
+  max-width: 100%;
+  overflow: visible;
+  color: #294f72;
+  font-family: var(--font-sans);
+  font-size: clamp(14px, 4.35vw, 19px);
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout strong { color: #ef5477; }
+.play-ui-v4 .play-status-bar .combo-timer { display: none; }
+
+.play-ui-v4 .play-status-bar .goal-status,
+.screen-play.play-ui-v4 .play-status-bar .goal-status {
+  position: relative;
+  inset: auto;
+  grid-column: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  transform: none;
+}
+
+.play-ui-v4 .play-status-bar .goal-meta {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  top: 12%;
+  display: flex;
+  justify-content: center;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #665f5a;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.2vw, 10px);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy b {
+  color: #ef5477;
+  font-size: clamp(14px, 4.25vw, 19px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+
+
+.play-ui-v4 .play-status-bar .stage-mission:not([hidden]) {
+  position: absolute;
+  right: -2%;
+  top: -2px;
+  display: flex;
+  max-width: 57%;
+  font-size: 8px;
+}
+
+/* 3. Board -------------------------------------------------------------- */
+.play-ui-v4 .board-zone {
+  container-type: inline-size;
+  display: grid;
+  place-items: center;
+  align-self: auto;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: visible;
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame,
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-round] {
+  width: min(91cqw, 400px);
+}
+
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round],
+.play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+  position: relative;
+  z-index: 1;
+  display: block;
+  /* Height budget: 100dvh minus the fixed chrome rows. The reserve tracks
+     the tightened tall-board chrome below (rail/gauge/coach) - grow one
+     without shrinking the other and the board overlaps the cat coach. */
+  width: min(98cqw, calc((100dvh - 340px) * var(--board-cols) / var(--board-rows)), 430px);
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--board-cols) / var(--board-rows);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: clamp(15px, 4vw, 22px);
+  background: rgba(244, 252, 255, .1);
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.72),
+    0 0 0 6px rgba(169,224,246,.36),
+    0 8px 18px rgba(25,111,156,.15),
+    inset 0 0 12px rgba(255,255,255,.38);
+}
+
+.play-ui-v4 .board {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--board-cols) / var(--board-rows);
+  gap: clamp(1px, .38vw, 1.8px);
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background-color: rgba(238, 250, 255, .06);
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.2) 1px, transparent 1px);
+  background-size:
+    calc(100% / var(--board-cols)) calc(100% / var(--board-rows)),
+    calc(100% / var(--board-cols)) calc(100% / var(--board-rows));
+  background-position: 0 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .tile {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
+}
+
+.play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(255,255,255,.17);
+  background: rgba(245,253,255,.055);
+  background-image: none;
+  box-shadow: inset 0 0 0 1px rgba(177,220,237,.08);
+  filter: none;
+  opacity: 1;
+}
+
+.play-ui-v4 .tile.is-selected::after,
+.play-ui-v4 .board.is-dragging .tile.is-selected::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 4%;
+  border: 1px solid rgba(255,239,157,.82);
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255,255,231,.86), transparent 24%),
+    linear-gradient(145deg, rgba(255,239,153,.7), rgba(255,204,76,.5));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.72), 0 0 9px rgba(255,204,67,.42);
+  pointer-events: none;
+}
+
+.play-ui-v4 .board.is-perfect .tile.is-selected::after {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255,255,235,.94), transparent 25%),
+    linear-gradient(145deg, rgba(255,231,112,.84), rgba(255,186,55,.66));
+  box-shadow: inset 0 1px 2px #fff, 0 0 13px rgba(255,191,45,.58);
+}
+
+/* 4. Cat and speech ----------------------------------------------------- */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  position: relative;
+  z-index: 8;
+  inset: auto;
+  display: grid;
+  grid-template-columns: minmax(58px, 24%) minmax(0, 1fr);
+  align-items: end;
+  justify-self: center;
+  width: min(92%, 390px);
+  height: clamp(52px, 7.8dvh, 68px);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  position: relative;
+  z-index: 2;
+  left: auto;
+  top: auto;
+  align-self: end;
+  width: 100%;
+  height: 118%;
+  min-height: 0;
+  transform: translateY(7%);
+}
+
+.play-ui-v4 .play-character-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.play-ui-v4 .cat-speech {
+  position: relative;
+  align-self: end;
+  justify-self: start;
+  /* 80.5% of this column reproduces the width the bubble had when the cat
+     column was wider — the horizontal move must not change its size, since
+     a wider bubble is also a taller one and would eat the gap to the board. */
+  width: min(80.5%, 205px);
+  aspect-ratio: 900 / 230;
+  min-width: 0;
+  /* Pulled left of its column so the tail sits by the cat's paw. The cat
+     column is sized for the character, not for where the bubble should
+     start, so this offset is what decouples the two. */
+  margin-left: -10%;
+  /* Was a negative margin, which let the bubble sink past the coach row's
+     own bottom edge into the dock row below (rows don't clip their
+     children), so the tail touched or overlapped the dock chrome. A small
+     positive margin in px keeps a constant strip of daylight above the
+     dock while letting the bubble sit low enough to clear the board. */
+  margin-bottom: clamp(5px, .9dvh, 9px);
+}
+
+.play-ui-v4 .speech-bubble-chrome {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* showMessage() splits the line into <strong> highlights plus bare text
+   nodes. Under `display: grid` each of those became its own grid item and
+   was forced onto its own row, which is what produced breaks like
+   "오잉" / ", 클리어!". This is a plain block so the parts stay one run of
+   inline text and wrap normally; it is centred vertically by its own
+   half-height offset, which stays exact at one line or two. */
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  position: absolute;
+  z-index: 2;
+  left: 10%;
+  top: 47%;
+  display: block;
+  width: 82%;
+  height: auto;
+  max-height: 84%;
+  min-height: 0;
+  margin: 0;
+  padding: 0 4%;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: #665247;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 3.7vw, 16px);
+  line-height: 1.18;
+  text-align: center;
+  text-wrap: balance;
+  word-break: keep-all;
+  transform: translateY(-50%);
+}
+
+.play-ui-v4 .cat-message.is-long,
+.play-ui-v4.is-tall-board .cat-message.is-long { font-size: clamp(11px, 3.25vw, 14px); }
+.play-ui-v4 .cat-message::before,
+.play-ui-v4 .cat-message::after { display: none; }
+
+/* 5. Item dock ---------------------------------------------------------- */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  position: relative;
+  z-index: 9;
+  display: block;
+  justify-self: center;
+  width: min(94%, 390px);
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 883 / 302;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.play-ui-v4 .play-footer-chrome {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 883 / 302;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.play-ui-v4 .item-actions {
+  position: absolute;
+  z-index: 4;
+  inset: 10% 6% 12%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  gap: 4.3%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  position: relative;
+  display: grid;
+  grid-template-rows: 66% 34%;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4% 2% 1%;
+  overflow: visible;
+  border: 0;
+  border-radius: 17%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-button:active,
+.play-ui-v4 .item-button.is-pressed { transform: translateY(2px) scale(.975); }
+
+.play-ui-v4 .item-icon {
+  align-self: end;
+  width: clamp(25px, 7.5vw, 34px);
+  height: clamp(26px, 7.8vw, 35px);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px rgba(91,69,47,.13));
+}
+
+.play-ui-v4 .item-button > span {
+  align-self: center;
+  color: #65564d;
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3.1vw, 14px);
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,.92);
+}
+
+.play-ui-v4 .item-button b {
+  top: -7%;
+  right: -4%;
+  width: clamp(19px, 5.5vw, 24px);
+  height: clamp(19px, 5.5vw, 24px);
+  border: 2px solid #fff7ed;
+  font-size: clamp(11px, 3.15vw, 14px);
+}
+
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] { opacity: .42; }
+
+/* The feedback rail is a real grid row between the status bar and the
+   board — a fixed-height spacer whose pills always land in that gap at
+   every viewport, instead of an absolute band that drifts off target. */
+.play-ui-v4 .play-feedback-rail,
+.play-ui-v4.is-stage-clearing .play-feedback-rail {
+  position: relative;
+  top: auto;
+  left: auto;
+  bottom: auto;
+  justify-self: center;
+  align-self: center;
+  width: min(92%, 360px);
+  height: clamp(21px, 2.9dvh, 27px);
+  transform: none;
+}
+
+/* The alert shares the rail's cell and is capped to the rail's height, so
+   showing it can never grow the row and nudge the whole cluster. */
+.play-ui-v4 .low-time-alert {
+  position: relative;
+  /* The shared rule positions this absolutely at left:50%/top:42px; as a
+     relative box those offsets would survive as a nudge, so clear them. */
+  inset: auto;
+  z-index: 40;
+  justify-self: center;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  height: clamp(21px, 2.9dvh, 27px);
+  padding: 0 14px;
+  border: 1px solid rgba(211,177,128,.58);
+  border-radius: 999px;
+  background: rgba(255,249,233,.97);
+  box-shadow: 0 4px 9px rgba(63,105,128,.15), inset 0 1px 0 #fff;
+  pointer-events: none;
+}
+
+.play-ui-v4 .low-time-alert strong {
+  color: #6a5548;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 3.3vw, 14px);
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* The shared keyframes carry a translate(-50%) written for the old
+   absolutely centred pill; here the grid already centres it, so this
+   layout needs its own pop that only scales and lifts. */
+.play-ui-v4 .low-time-alert {
+  animation: low-time-alert-rail 980ms cubic-bezier(.16,.82,.24,1.12) both;
+}
+
+@keyframes low-time-alert-rail {
+  0% { opacity: 0; transform: translateY(6px) scale(.74); }
+  18% { opacity: 1; transform: translateY(0) scale(1.07); }
+  34%, 76% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-6px) scale(.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .low-time-alert { animation-duration: 1ms; }
+}
+
+.screen-play.play-ui-v4.is-low-time-alerting .hud-secondline {
+  opacity: 1;
+  transform: none;
+}
+
+/* Combo milestones are the game's most frequent celebration, and the base
+   rule fades the readouts while the painted cream panel stays — so several
+   times a stage the HUD turned into an empty picture frame for ~0.8s, right
+   when the player wants to watch the combo figure tick up. The celebration
+   pill lives in the feedback rail below the bar and never needs the room. */
+.screen-play.play-ui-v4.is-combo-celebrating .hud-secondline {
+  opacity: 1;
+  transform: none;
+}
+
+/* Row assignments are unconditional (see the packed-cluster block), so the
+   alert needs no special-case grid geometry — it just occupies the rail's
+   cell while it shows. */
+
+/* Short browser viewports: preserve square cells and reduce non-board rows
+   in the requested order. */
+@media (max-height: 780px) {
+  .screen-play.play-ui-v4 {
+    --flow-gap: 3px;
+    padding-top: calc(var(--safe-top) + 5px);
+    padding-bottom: calc(var(--safe-bottom) + 4px);
+  }
+
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+    width: min(91%, 380px);
+    height: clamp(68px, 10.8dvh, 84px);
+  }
+
+  .play-ui-v4 .play-status-bar { width: min(93%, 390px); }
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach { width: min(94%, 380px); }
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer { width: min(87%, 360px); }
+}
+
+@media (max-height: 710px) {
+  .screen-play.play-ui-v4 { --flow-gap: 2px; }
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+    width: min(89%, 360px);
+    height: clamp(64px, 10.2dvh, 72px);
+  }
+  .play-ui-v4 .play-status-bar { width: min(91%, 370px); }
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach { width: min(92%, 360px); }
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer { width: min(83%, 340px); }
+}
+
+@media (max-width: 340px) {
+  .screen-play.play-ui-v4 {
+    --flow-inline: 5px;
+  }
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls { width: 100%; }
+  .play-ui-v4 .play-top-controls .hud-topline { grid-template-columns: 34% 33% 33%; }
+  .play-ui-v4 .play-top-controls .hud-controls { gap: 2px; }
+  .play-ui-v4 .play-top-controls .round-mini { width: min(100%, 104px); }
+  .play-ui-v4 .play-top-controls .time-readout { width: min(100%, 98px); }
+  .play-ui-v4 .play-top-controls .time-readout strong { font-size: clamp(16px, 5.6vw, 18px); }
+  .play-ui-v4 .item-actions { gap: 3.4%; }
+  .play-ui-v4 .item-button { min-width: 44px; }
+  .play-ui-v4 .cat-message { font-size: 12px; }
+
+  /* Fold-class screens often have spare vertical room after the board becomes
+     width-limited. Distribute that room between all five flow regions instead
+     of leaving two large bands around the board. */
+  .play-ui-v4 .board-zone {
+    container-type: inline-size;
+    align-self: auto;
+    height: auto;
+  }
+
+  .play-ui-v4 .board-frame,
+  .play-ui-v4 .board-frame[data-round],
+  .play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+    width: min(100cqw, 420px);
+  }
+}
+
+/* Visual-density pass ---------------------------------------------------
+   Keep the five structural regions, but stop distributing spare height as
+   four identical gaps. Square boards stay as one compact game cluster; tall
+   boards continue to consume the available board row. */
+.screen-play.play-ui-v4 {
+  --flow-gap: clamp(4px, .62dvh, 6px);
+}
+
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  width: min(96%, 410px);
+}
+
+.play-ui-v4 .play-status-bar {
+  width: min(98%, 420px);
+  aspect-ratio: 1799 / 300;
+}
+
+.play-ui-v4 .play-status-bar .score-readout,
+.play-ui-v4 .play-status-bar .combo-readout {
+  grid-template-rows: 44% 56%;
+  padding-top: 10%;
+  padding-bottom: 10%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span,
+.play-ui-v4 .play-status-bar .combo-readout span,
+.play-ui-v4 .play-status-bar .goal-copy {
+  font-size: clamp(10px, 2.7vw, 12px);
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .goal-copy b {
+  font-size: clamp(18px, 5.15vw, 22px);
+}
+
+.play-ui-v4 .play-status-bar .goal-meta { top: 14%; }
+
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round] {
+  box-sizing: border-box;
+  padding: clamp(3px, .9vw, 5px);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.31), rgba(220,245,255,.2)),
+    rgba(225,246,253,.24);
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,.88),
+    0 0 0 5px rgba(164,220,243,.46),
+    0 8px 18px rgba(25,111,156,.15),
+    inset 0 0 0 1px rgba(141,205,231,.28),
+    inset 0 0 14px rgba(255,255,255,.5);
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="4"],
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-cols="5"] {
+  width: min(93cqw, calc(100dvh - 370px), 366px);
+}
+
+.play-ui-v4 .board-frame[data-cols="6"][data-rows="6"] {
+  width: min(94cqw, calc(100dvh - 370px), 402px);
+}
+
+.play-ui-v4 .board-frame[data-cols="6"][data-rows="7"] {
+  width: min(91cqw, calc((100dvh - 370px) * 6 / 7), 396px);
+}
+
+.play-ui-v4 .board {
+  border-radius: calc(clamp(15px, 4vw, 22px) - 4px);
+  background-color: rgba(225,246,252,.34);
+  background-image:
+    linear-gradient(to right, rgba(104,116,192,.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(104,116,192,.09) 1px, transparent 1px);
+  box-shadow:
+    inset 0 0 12px rgba(104,132,196,.12),
+    inset 0 0 0 1px rgba(255,255,255,.26);
+}
+
+.play-ui-v4 .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(224,244,250,.72);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.43), rgba(215,241,249,.26)),
+    rgba(235,249,253,.4);
+  box-shadow:
+    inset 1px 1px 3px rgba(255,255,255,.58),
+    inset -1px -1px 3px rgba(105,181,211,.11);
+}
+
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  grid-template-columns: minmax(92px, 33%) minmax(0, 1fr);
+  width: min(99%, 412px);
+  height: clamp(62px, 8.6dvh, 74px);
+}
+
+/* The cat is drawn larger than its row and spills down across the dock
+   row, so it reads as a full-body character sitting on the meadow rather
+   than a small icon beside the bubble. Sized big enough that the tail
+   crops off the column edge — the face and paws reading large matters
+   more than the tail being whole.
+
+   How far it drops is a negative bottom margin, i.e. measured from the
+   coach row's bottom edge. It used to be translateY(%), which resolves
+   against the *cat's own* box, so every size increase also shoved it
+   further down — on a 704px-tall screen that put its feet 44px past the
+   bottom of the viewport. With the offset anchored to the row instead,
+   growing the cat grows it upward and the feet stay put. */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  /* The art is fitted by width (contain, bottom-anchored), so width is what
+     sets the drawn size. Capping it against viewport height as well keeps
+     the cat from growing tall enough to cover the board's bottom-left
+     tiles on short screens, where the gap below the board is smallest. */
+  justify-self: start;
+  width: min(100%, 13.5dvh);
+  height: 400%;
+  margin-bottom: calc(-1 * clamp(72px, 13.3dvh, 118px));
+  transform: translateX(-16%);
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  width: min(90%, 360px);
+}
+
+/* Combo deltas are compact, local feedback inside the combo segment. They no
+   longer become a second pill floating across the status bar. */
+.play-ui-v4 .combo-readout .combo-loss-pop,
+.play-ui-v4 .combo-readout .combo-reward-pop {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 61%;
+  right: auto;
+  bottom: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 19px;
+  max-width: 78%;
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.9);
+  border-radius: 999px;
+  background: rgba(255,249,235,.97);
+  box-shadow: 0 3px 7px rgba(103,77,58,.13);
+  color: #df5f77;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.play-ui-v4 .combo-readout .combo-loss-pop {
+  animation: combo-inline-loss 720ms ease-out both;
+}
+
+.play-ui-v4 .combo-readout .combo-reward-pop {
+  gap: 2px;
+  color: #b66b40;
+  animation: combo-inline-reward 1050ms cubic-bezier(.18,.8,.24,1.1) both;
+}
+
+.play-ui-v4 .combo-readout .combo-reward-pop img {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.play-ui-v4 .combo-readout .combo-reward-pop i { display: none; }
+
+.play-ui-v4 .combo-readout.is-inline-feedback > strong { opacity: .12; }
+
+/* Status bar v5 ---------------------------------------------------------
+   The bitmap is only the clean cream shell. Every live value is positioned
+   once in HTML so the reference hierarchy stays stable at every width. */
+.play-ui-v4 .play-status-bar {
+  width: min(94%, 404px);
+  aspect-ratio: 1800 / 312;
+}
+
+.play-ui-v4 .play-status-bar .hud-secondline {
+  grid-template-columns: 31% 42% 27%;
+  padding: 0 1.7%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout,
+.play-ui-v4 .play-status-bar .combo-readout {
+  display: block;
+  align-self: stretch;
+  justify-self: stretch;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.play-ui-v4 .play-status-bar .score-readout img,
+.play-ui-v4 .play-status-bar .combo-readout img {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.play-ui-v4 .play-status-bar .score-readout img {
+  left: 5%;
+  top: 21%;
+  width: 29%;
+  height: 60%;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout img {
+  right: 6%;
+  top: 23%;
+  width: 30%;
+  height: 54%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span,
+.play-ui-v4 .play-status-bar .combo-readout span {
+  position: absolute;
+  top: 20%;
+  margin: 0;
+  color: #625651;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.55vw, 11px);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span {
+  left: 35%;
+  right: 4%;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout span {
+  left: 5%;
+  right: 35%;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
+  position: absolute;
+  top: 43%;
+  margin: 0;
+  overflow: visible;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 5.7vw, 25px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
+  left: 34%;
+  right: 3%;
+  color: #173f70;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout strong {
+  left: 6%;
+  right: 34%;
+  color: #ef456d;
+  text-align: center;
+}
+
+.play-ui-v4 .play-status-bar .goal-status,
+.screen-play.play-ui-v4 .play-status-bar .goal-status {
+  display: block;
+  padding: 0;
+}
+
+.play-ui-v4 .play-status-bar .goal-meta {
+  left: 8%;
+  right: 54%;
+  top: 18%;
+  bottom: 13%;
+  display: block;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4%;
+  color: #625651;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.55vw, 11px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy b {
+  color: #ef456d;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 5vw, 23px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1;
+}
+
+
+
+.play-ui-v4 .play-status-bar .stage-mission:not([hidden]) {
+  right: 2%;
+  top: 2%;
+  max-width: 52%;
+  transform: translateY(-115%);
+}
+
+@media (max-width: 340px) {
+  .play-ui-v4 .play-status-bar { width: 96%; }
+  .play-ui-v4 .play-status-bar .score-readout span,
+  .play-ui-v4 .play-status-bar .combo-readout span,
+  .play-ui-v4 .play-status-bar .goal-copy { font-size: 9px; }
+  .play-ui-v4 .play-status-bar .score-readout strong,
+  .play-ui-v4 .play-status-bar .combo-readout strong,
+  .screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong,
+  .play-ui-v4 .play-status-bar .goal-copy b { font-size: 18px; }
+}
+
+/* Item dock v3 ----------------------------------------------------------
+   A compact 4:1 illustrated dock sits to the cat's right. The painted
+   buttons are complete squares; live counts remain independent HTML badges. */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  justify-self: end;
+  width: min(74%, 308px);
+  aspect-ratio: 1600 / 423;
+  margin-top: 0;
+  margin-right: clamp(8px, 2.8vw, 14px);
+}
+
+.play-ui-v4 .play-footer-chrome {
+  aspect-ratio: 1600 / 423;
+  object-fit: contain;
+}
+
+.play-ui-v4 .item-actions {
+  inset: 13.8% 5.8% 15.6%;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  align-items: center;
+  gap: 4.8%;
+}
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state="locked"],
+.play-ui-v4 .item-button[data-state="depleted"] {
+  align-self: center;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  aspect-ratio: 1;
+  grid-template-rows: 67% 33%;
+  padding: 5% 2% 2%;
+  border-radius: 20%;
+}
+
+.play-ui-v4 .item-icon {
+  width: clamp(28px, 8vw, 35px);
+  height: clamp(29px, 8.2vw, 36px);
+}
+
+.play-ui-v4 .item-button > span {
+  font-family: var(--font-display);
+  font-size: clamp(11px, 3vw, 13px);
+  font-weight: 400;
+}
+
+.play-ui-v4 .item-button b {
+  z-index: 8;
+  top: -9px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: clamp(21px, 5.8vw, 25px);
+  height: clamp(21px, 5.8vw, 25px);
+  border: 2px solid #fffaf2;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ff7693, #ed4169);
+  box-shadow: 0 2px 0 #c9365a, 0 4px 8px rgba(174, 51, 85, .23);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 3.3vw, 15px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.screen-play.play-ui-v4:not(.is-tall-board) .cat-coach { z-index: 10; }
+
+@media (max-width: 340px) {
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer {
+    width: 84%;
+    margin-right: 4px;
+  }
+  .play-ui-v4 .item-actions { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+  .play-ui-v4 .item-button b { top: -7px; right: -6px; }
+}
+
+@keyframes combo-inline-loss {
+  0% { opacity: 0; transform: translate(-50%, -35%) scale(.84); }
+  22%, 68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -68%) scale(.96); }
+}
+
+@keyframes combo-inline-reward {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(.78); }
+  20%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -72%) scale(.96); }
+}
+
+@media (max-height: 780px) {
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
+
+  /* Height only — the cat column keeps its share, otherwise the character
+     collapses to a thumbnail exactly on the short screens where it is
+     meant to fill the corner. */
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach { height: clamp(60px, 8.2dvh, 68px); }
+}
+
+@media (max-height: 710px) {
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
+
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach {
+    height: 58px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .low-time-alert { animation-duration: 1ms !important; }
+}
+
+/* Top chrome v5 ---------------------------------------------------------
+   The combined top bitmap made the whole cluster scale as one 3:1 block,
+   so the shield and timer grew far past the reference. Each cluster is now
+   its own painted asset (pause, sound, winged shield, timer pill) placed
+   at reference scale: buttons hug the left edge, the shield sits centred
+   and dips below the row, the timer pill hugs the right edge. */
+/* Packed cluster, biased upward. The six regions are auto rows pinned to
+   explicit row numbers — never auto-placed, because an element injected
+   mid-game (the low-time alert) would otherwise be flowed into a new
+   implicit column and collapse the board's column width. Two flexible
+   spacers wrap the stack and split surplus height 1 : 2.5, so the cluster
+   sits above centre and the extra room falls to the meadow. Both spacers
+   collapse to 0 when there is no surplus, so short viewports pack tight
+   instead of overflowing. */
+.screen-play.play-ui-v4,
+.screen-play.play-ui-v4:not(.is-tall-board),
+.screen-play.play-ui-v4.is-tall-board {
+  align-content: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto auto auto auto auto 2fr;
+  padding-top: calc(var(--safe-top) + clamp(8px, 1.4dvh, 13px));
+}
+
+.play-ui-v4 .play-top-controls { grid-area: 2 / 1; }
+.play-ui-v4 .play-status-bar { grid-area: 3 / 1; }
+.play-ui-v4 .play-feedback-rail { grid-area: 4 / 1; }
+.play-ui-v4 .low-time-alert { grid-area: 4 / 1; }
+.play-ui-v4 .board-zone { grid-area: 5 / 1; }
+.play-ui-v4 .cat-coach { grid-area: 6 / 1; }
+.play-ui-v4 .play-footer { grid-area: 7 / 1; }
+
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  width: min(94%, 400px);
+  height: clamp(58px, 8.6dvh, 72px);
+  aspect-ratio: auto;
+  margin: 0;
+  overflow: visible;
+}
+
+.play-ui-v4 .play-top-controls-chrome { display: none; }
+
+.play-ui-v4 .play-top-controls .hud-topline {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+}
+
+.play-ui-v4 .play-top-controls .hud-controls {
+  position: absolute;
+  left: 0;
+  top: 8%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  width: 25.5%;
+  height: 84%;
+  gap: 8%;
+}
+
+.play-ui-v4 .play-top-controls .pause-button,
+.play-ui-v4 .play-top-controls .hud-mini-button {
+  align-self: center;
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  opacity: 1;
+}
+
+.play-ui-v4 .play-top-controls .pause-button img,
+.play-ui-v4 .play-top-controls .music-button img { opacity: 1; }
+
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  position: absolute;
+  left: 50%;
+  top: -9%;
+  width: clamp(112px, 33%, 134px);
+  height: auto;
+  aspect-ratio: 623 / 427;
+  transform: translateX(-50%);
+}
+
+.play-ui-v4 .play-top-controls .round-mini img { opacity: 1; }
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  position: absolute;
+  left: 0;
+  top: 58%;
+  display: block;
+  width: 100%;
+  color: #244f7b;
+  font-family: var(--font-display);
+  font-size: clamp(27px, 8vw, 34px);
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(255,255,255,.9);
+  transform: translateY(-50%);
+}
+
+.play-ui-v4 .play-top-controls .time-readout {
+  position: absolute;
+  left: auto;
+  right: 0;
+  /* The pause/sound pair is grid-centred in the row, but the pill's old
+     top: 10% anchored it to the container's top — and the container's
+     height is in dvh, so on taller phones the pill drifted up to ~5px off
+     the buttons' shared centre line. Centring uses the standalone
+     `translate` property (not transform) so the is-counting /
+     is-bonus-awarded scale keyframes still compose without a jump. */
+  top: 50%;
+  translate: 0 -50%;
+  display: block;
+  width: clamp(100px, 28.5%, 116px);
+  height: auto;
+  min-height: 44px;
+  aspect-ratio: 534 / 249;
+  padding: 0;
+}
+
+.play-ui-v4 .play-top-controls .time-pill-chrome { opacity: 1; }
+
+.play-ui-v4 .play-top-controls .time-readout strong {
+  position: absolute;
+  left: 32%;
+  right: 6%;
+  top: 50%;
+  display: block;
+  color: #183f6e;
+  font-family: var(--font-display);
+  font-size: clamp(17px, 5vw, 21px);
+  font-weight: 400;
+  letter-spacing: -.025em;
+  line-height: 1;
+  text-align: center;
+  transform: translateY(-50%);
+}
+
+/* Status chrome v6: one shared vertical rhythm for all three painted
+   compartments — every label top sits at 16%, every value top at 45% —
+   so 점수/성공/콤보 read as a single aligned row. The goal progress track
+   sits on the value line, to the right of the count, as in the reference. */
+.play-ui-v4 .play-status-bar {
+  width: min(94%, 410px);
+  aspect-ratio: 1800 / 312;
+}
+
+.play-ui-v4 .board-zone { align-items: center; }
+
+.play-ui-v4 .play-status-bar .score-readout,
+.play-ui-v4 .play-status-bar .combo-readout {
+  display: block;
+  padding: 0;
+}
+
+.play-ui-v4 .play-status-bar .score-readout img,
+.play-ui-v4 .play-status-bar .combo-readout img { display: block; }
+
+.play-ui-v4 .play-status-bar .score-readout img {
+  left: 6%;
+  top: 26%;
+  width: 24%;
+  height: 50%;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout img {
+  right: 7%;
+  top: 26%;
+  width: 25%;
+  height: 50%;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span,
+.play-ui-v4 .play-status-bar .combo-readout span {
+  top: 22%;
+  color: #554b49;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.5vw, 11px);
+  font-weight: 800;
+}
+
+.play-ui-v4 .play-status-bar .score-readout span { left: 31%; right: 6%; }
+.play-ui-v4 .play-status-bar .combo-readout span { left: 6%; right: 32%; }
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.play-ui-v4 .play-status-bar .combo-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong {
+  top: 45.5%;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 5.6vw, 25px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong,
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong { left: 30%; right: 5%; }
+.play-ui-v4 .play-status-bar .combo-readout strong { left: 5%; right: 31%; }
+
+.play-ui-v4 .play-status-bar .goal-meta {
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: block;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy {
+  position: static;
+  display: contents;
+  gap: 0;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy em {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 22%;
+  color: #554b49;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.5vw, 11px);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy b {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 45.5%;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 5.6vw, 25px);
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The counter is a bare tally now, so it only needs the smaller band once it
+   reaches four digits — a length no real run gets near, but the guard keeps
+   the number inside its box if one ever does. */
+.play-ui-v4 .play-status-bar .goal-copy b[data-digits="l"] {
+  top: 47.5%;
+  font-size: clamp(14px, 4.2vw, 19px);
+}
+
+/* Every clear pulses the tally, the way the goal track used to pulse. */
+.play-ui-v4 .play-status-bar .goal-copy b.is-rewarded {
+  animation: goalTallyPulse .5s cubic-bezier(.22, 1.2, .4, 1);
+}
+
+@keyframes goalTallyPulse {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+
+@media (max-height: 780px) {
+  .screen-play.play-ui-v4:not(.is-tall-board) { align-content: stretch; }
+}
+
+@media (max-height: 710px) {
+  .screen-play.play-ui-v4:not(.is-tall-board) {
+    align-content: stretch;
+    padding-top: calc(var(--safe-top) + 10px);
+  }
+}
+
+/* Long scores step down one font band per length instead of clipping.
+   (These re-assert the ui-chrome.css bands, which this later file would
+   otherwise override at equal specificity.) */
+.play-ui-v4 .play-status-bar .score-readout strong[data-digits="l"],
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong[data-digits="l"] {
+  font-size: clamp(14px, 4.1vw, 18px);
+}
+
+.play-ui-v4 .play-status-bar .score-readout strong[data-digits="xl"],
+.screen-play.play-ui-v4[data-stage-band] .play-status-bar .score-readout strong[data-digits="xl"] {
+  font-size: clamp(12px, 3.5vw, 15px);
+}
+
+/* Fold-class widths: the three top clusters must share one 270px row
+   without overlapping, so the buttons drop below the 44px ideal and the
+   shield and timer shrink to their painted minimums. */
+@media (max-width: 340px) {
+  .play-ui-v4 .play-top-controls,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls { width: 100%; }
+
+  .play-ui-v4 .play-top-controls .hud-controls {
+    grid-template-columns: repeat(2, minmax(38px, 1fr));
+    width: 30%;
+    gap: 6%;
+  }
+
+  .play-ui-v4 .play-top-controls .pause-button,
+  .play-ui-v4 .play-top-controls .hud-mini-button {
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .play-ui-v4 .play-top-controls .round-mini,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+    width: clamp(82px, 30%, 96px);
+  }
+
+  .play-ui-v4 .play-top-controls .time-readout {
+    width: clamp(84px, 30%, 100px);
+    min-height: 38px;
+  }
+
+  .play-ui-v4 .play-top-controls .time-readout strong { font-size: 15px; }
+  .play-ui-v4 .play-top-controls .round-mini strong,
+  .screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong { font-size: 21px; }
+
+  .play-ui-v4 .board-frame,
+  .play-ui-v4 .board-frame[data-round],
+  .play-ui-v4 .board-frame:has(.board[data-cols="6"][data-rows="7"]) {
+    width: min(96cqw, 420px);
+  }
+}
+
+@media (max-width: 375px) {
+  .play-ui-v4 .play-status-bar .stage-mission:not([hidden]) { max-width: 68%; }
+}
+
+/* Hidden garden -----------------------------------------------------------
+   From STAGE 3 the secret garden sits behind the board and is read only
+   through cells that have been cleared: filled tiles keep their opaque
+   syrup art, so the picture is uncovered as the player empties the board.
+   STAGE 1-2 (data-stage-band="warmup") keep the plain glass floor, so the
+   first two boards stay a clean tutorial surface.
+
+   The garden is painted on .board-frame, one layer below .board, so the
+   board's own translucent fill plus the empty tile's veil together hold it
+   to a whisper rather than competing with the numerals. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-image:
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,245,247,.1)),
+    linear-gradient(rgba(255,252,250,.2), rgba(255,250,248,.2)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+  background-size: auto, auto, cover;
+  background-position: center, center, center;
+  background-repeat: no-repeat;
+}
+
+/* The garden artwork is one tall scene — flower field and paw-print path at
+   the bottom, the cat lying by the fences in the middle, the leafy arch and
+   open sky at the top. Each stage band opens its windows onto a different
+   part of it, so a run climbs the garden: STAGE 3-4 uncovers the flower
+   beds, 5-7 reaches the cat by the fence, and the fever stages look up at
+   the arch. Same asset, three views. The band changes while the board is
+   fully tiled (and the transition cover hides the garden anyway), so the
+   shift itself is never visible. */
+.screen-play.play-ui-v4[data-stage-band="rising"]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center 100%;
+}
+
+.screen-play.play-ui-v4[data-stage-band="wide"]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center 55%;
+}
+
+.screen-play.play-ui-v4[data-stage-band="fever"]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center 0%;
+}
+
+/* A cleared board is entirely empty tiles, so the reveal logic above shows
+   the whole picture at once for the instant between "round cleared" and the
+   next board's tiles landing. `updateHUD` can also flip `data-stage-band` to
+   a non-warmup value before that next board exists (e.g. clearing STAGE 2),
+   which would otherwise turn a still-warmup board into a full reveal too.
+   `animateRoundTransition` brackets that whole window with
+   is-round-leaving → swapBoard() → is-round-arriving, so dropping the garden
+   layer for as long as either class is present covers both cases without
+   touching the timing itself. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board-frame.is-round-leaving,
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board-frame.is-round-arriving {
+  background-image:
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,245,247,.1)),
+    linear-gradient(rgba(255,252,250,.2), rgba(255,250,248,.2));
+}
+
+/* Over the garden the board keeps only its grid lines and a light haze —
+   the opaque wash that suits the plain floor would erase the picture. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board {
+  background-color: rgba(255,252,252,.12);
+}
+
+/* The syrup tile art is translucent, so without an opaque bed under it the
+   garden bled through *filled* cells too and sat behind the numerals. This
+   backdrop paints below the art (background-color renders under
+   background-image), keeping the syrup surface intact while closing the
+   cell: the picture is then legible only where a cell is actually empty. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile.is-bonus-cat,
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile.is-board-item {
+  background-color: rgba(252,253,250,.97);
+}
+
+/* Cleared cells become the windows: a thin veil that keeps the numerals of
+   neighbouring tiles legible while letting the flowers read through. */
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"])
+  .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(255,255,255,.5);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,246,248,.07)),
+    rgba(255,252,252,.05);
+  box-shadow:
+    inset 1px 1px 3px rgba(255,255,255,.5),
+    inset -1px -1px 3px rgba(196,150,160,.09);
+}
+
+/* ==========================================================================
+   Moment polish pass
+   Everything below animates transform / opacity only (no filter or
+   box-shadow animation), so the whole set stays on the compositor and adds
+   no per-frame paint cost on a phone.
+   ========================================================================== */
+
+/* Countdown: 3-2-1 each get their own colour, then GO! ---------------------
+   The digits used to be one colour and the last beat read "뿅!", which is the
+   same word the game uses for a successful match — so the start of a round
+   and the reward for clearing one looked alike. */
+.play-ui-v4 ~ .start-countdown strong,
+.screen-play.play-ui-v4 .start-countdown strong {
+  transition: color 120ms linear;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="3"] strong {
+  color: #ff7fa6;
+  text-shadow: 0 5px 0 #e0537f, 0 11px 20px rgba(214,74,116,.24);
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="2"] strong {
+  color: #4fc7bd;
+  text-shadow: 0 5px 0 #2b9c94, 0 11px 20px rgba(46,150,142,.24);
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="1"] strong {
+  color: #ffb340;
+  text-shadow: 0 5px 0 #dd8b1c, 0 11px 20px rgba(199,126,26,.24);
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-go strong {
+  color: #6ad36b;
+  font-size: clamp(58px, 17vw, 74px);
+  letter-spacing: .01em;
+  text-shadow: 0 6px 0 #3ea94a, 0 13px 24px rgba(56,153,71,.26);
+}
+
+/* Selection: glossy candy instead of a flat yellow wash -------------------
+   Same warm hue family as before (the board's cool mint needs a warm
+   counterpart), but built like a boiled sweet: one bright specular cap, a
+   soft light bounce off the bottom edge, and a saturated core. */
+.play-ui-v4 .tile.is-selected::after,
+.play-ui-v4 .board.is-dragging .tile.is-selected::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 3.5%;
+  border: 1px solid rgba(255,226,170,.92);
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 58% 36% at 34% 18%, rgba(255,255,255,.96), rgba(255,255,255,0) 64%),
+    radial-gradient(ellipse 88% 52% at 50% 112%, rgba(255,236,190,.72), rgba(255,236,190,0) 62%),
+    linear-gradient(154deg, rgba(255,222,140,.9) 0%, rgba(255,196,104,.86) 46%, rgba(255,171,96,.8) 100%);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.96),
+    inset 0 -3px 7px rgba(206,124,44,.24),
+    0 0 12px rgba(255,178,86,.5);
+  pointer-events: none;
+}
+
+/* Sum is exactly ten: the same sweet, turned up — brighter core, wider
+   glow. It reads as "this one counts" without switching hue mid-drag. */
+.play-ui-v4 .board.is-perfect .tile.is-selected::after {
+  border-color: rgba(255,244,206,.98);
+  background:
+    radial-gradient(ellipse 58% 36% at 34% 18%, #fff, rgba(255,255,255,0) 64%),
+    radial-gradient(ellipse 88% 52% at 50% 112%, rgba(255,247,214,.86), rgba(255,247,214,0) 62%),
+    linear-gradient(154deg, rgba(255,238,158,.96) 0%, rgba(255,206,92,.94) 46%, rgba(255,176,70,.9) 100%);
+  box-shadow:
+    inset 0 1.5px 0 #fff,
+    inset 0 -3px 8px rgba(198,116,32,.26),
+    0 0 18px rgba(255,190,72,.66);
+}
+
+/* End-of-round answers: the shared rule only recolours `border-color` and
+   `box-shadow`, both of which this layout re-declares later — so the reveal
+   landed on white tiles and was invisible. This paints the whole cell. */
+.play-ui-v4 .tile.is-end-answer:not(.is-empty),
+.play-ui-v4 .tile.is-end-answer[class*="value-"] {
+  z-index: 5;
+  border: 1px solid rgba(90,196,168,.9);
+  background-color: rgba(190,245,228,.97);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.9),
+    0 0 0 2px rgba(64,183,152,.55),
+    0 4px 12px rgba(38,140,116,.28);
+}
+
+.play-ui-v4 .tile.is-end-answer span { color: #14705c; }
+
+/* Shuffle: tiles flip like cards ------------------------------------------
+   The old version threw every tile outward along its own radius, which at a
+   glance read as the whole board sliding sideways rather than the numbers
+   changing. A flip says exactly one thing — "this card's face is new" — and
+   the row/column stagger makes it travel across the board as a wave. */
+.play-ui-v4 .board.is-shuffling-out .tile,
+.play-ui-v4 .board.is-shuffling-in .tile {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.play-ui-v4 .board.is-shuffling-out .tile {
+  animation: tile-flip-away 300ms var(--shuffle-delay, 0ms) cubic-bezier(.55,.02,.72,.36) both;
+}
+
+.play-ui-v4 .board.is-shuffling-in .tile {
+  animation: tile-flip-back 380ms var(--shuffle-delay, 0ms) cubic-bezier(.2,.86,.3,1.18) both;
+}
+
+/* The flip stops well short of edge-on. Taken all the way to 90deg every
+   tile becomes a sliver at the same moment and the board vanishes, which
+   on the garden stages means the hidden picture is suddenly fully exposed
+   — a much louder event than the shuffle itself. Tilting to 58deg still
+   reads as a card turning while the cell stays a cell. */
+@keyframes tile-flip-away {
+  0% { opacity: 1; transform: perspective(560px) rotateY(0) scale(1); }
+  100% { opacity: .5; transform: perspective(560px) rotateY(58deg) scale(.86); }
+}
+
+@keyframes tile-flip-back {
+  0% { opacity: .5; transform: perspective(560px) rotateY(-58deg) scale(.86); }
+  58% { opacity: 1; transform: perspective(560px) rotateY(7deg) scale(1.05); }
+  80% { transform: perspective(560px) rotateY(-3deg) scale(.985); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* The poof bitmap is gone; what is left is a soft sheen that rides across
+   the board with the flip wave. One element, transform-only. */
+.play-ui-v4 .shuffle-fx {
+  position: absolute;
+  z-index: 15;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: none;
+  pointer-events: none;
+}
+
+.play-ui-v4 .shuffle-fx::before {
+  content: "";
+  position: absolute;
+  left: -40%;
+  top: -20%;
+  width: 42%;
+  height: 140%;
+  background: linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,.5) 46%, rgba(255,255,255,0));
+  animation: shuffle-sheen 620ms ease-out both;
+}
+
+.play-ui-v4 .shuffle-fx::after { content: none; }
+.play-ui-v4 .shuffle-fx img,
+.play-ui-v4 .shuffle-fx i,
+.play-ui-v4 .shuffle-fx b,
+.play-ui-v4 .shuffle-fx strong { display: none; }
+
+@keyframes shuffle-sheen {
+  0% { opacity: 0; transform: translateX(0) skewX(-12deg); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(340%) skewX(-12deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .board.is-shuffling-out .tile,
+  .play-ui-v4 .board.is-shuffling-in .tile,
+  .play-ui-v4 .shuffle-fx::before { animation-duration: 1ms !important; }
+}
+
+/* One selection, one highlight ------------------------------------------
+   The marquee used to paint its own tinted fill plus a white blob that
+   tracked the pointer, on top of tiles that are already lit. Two coats of
+   the same message, and the blob sat directly under the fingertip — it
+   washed out the very numeral being pointed at. The tiles now carry the
+   colour and the marquee is reduced to the outline that groups them. */
+.play-ui-v4 .selection-marquee {
+  border-color: rgba(255,206,110,.95);
+  background: none;
+  box-shadow:
+    0 0 0 2px rgba(255,251,232,.7),
+    0 0 14px rgba(255,190,80,.4);
+}
+
+.play-ui-v4 .selection-marquee.is-ten {
+  border-color: #ffc44a;
+  background: none;
+  box-shadow:
+    0 0 0 2px rgba(255,255,238,.86),
+    0 0 20px rgba(255,192,54,.6);
+}
+
+/* ==========================================================================
+   Result screen alignment pass
+   The card's contents each used their own rhythm — the three stat tiles put
+   the icon in a side column with the label and value stacked beside it, the
+   record meter was left-aligned inside an otherwise centred card, and the
+   cat and its message sat on different centre lines. Nothing here changes
+   what the screen says; it lines the pieces up on one grid.
+   ========================================================================== */
+
+/* Stat tiles: icon centred over a label and value that share one baseline,
+   so the three read as a row of matching cards rather than three small
+   left-aligned lists. */
+.screen-result .result-grid {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.screen-result .result-grid > div {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 20px auto auto;
+  justify-items: center;
+  align-content: center;
+  row-gap: 3px;
+  column-gap: 0;
+  padding: 9px 6px 8px;
+  text-align: center;
+}
+
+.screen-result .result-grid img {
+  grid-row: 1;
+  width: 19px;
+  height: 19px;
+}
+
+.screen-result .result-grid span {
+  grid-row: 2;
+  color: #8d7867;
+  font-size: 10.5px;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+
+.screen-result .result-grid b {
+  grid-row: 3;
+  font-size: 19px;
+  line-height: 1.05;
+}
+
+/* The score is the reason this screen exists, but it used to be merely the
+   largest of eight same-width bands. Retiring the meter's duplicate label
+   paid for this step up, so the total dominates without the card growing —
+   the short-screen block below still holds its own smaller size. */
+/* The ceiling is set by the widest total the card must hold, not by taste:
+   at 68px a nine-character score overflowed the card on a 430px phone. */
+.screen-result .final-score {
+  font-size: clamp(44px, 16.4vw, 64px);
+  letter-spacing: -0.06em;
+}
+
+/* styles.css already compacts the whole result screen under 690px tall;
+   this restates that intent at matching specificity so the step-up above
+   cannot silently undo it on a short phone. */
+@media (max-height: 690px) {
+  .screen-result .final-score { font-size: clamp(36px, 11.6vw, 46px); }
+}
+
+/* The coin pill above it competed for the same attention at nearly the size
+   of the stage line. Quieter, it reads as the score's caption. */
+.screen-result .result-score-label {
+  font-size: 12.5px;
+}
+
+.screen-result .result-score-label img { width: 15px; height: 15px; }
+
+/* Button hierarchy: one clear next action, then a quiet pair, then the way
+   out. The share button was mint and the ranking button cream, so the two
+   secondary actions read as rivals of different weights instead of a pair —
+   and mint is the game's "go" colour, which belongs to 한 판 더 alone. */
+.screen-result .result-actions .result-share-button,
+.screen-result .result-actions .result-ranking-button {
+  border-color: rgba(226, 205, 165, .95);
+  background: linear-gradient(#fffdf7, #fdf1dc);
+  color: #8a7259;
+}
+
+.screen-result .result-actions .result-share-button .button-icon,
+.screen-result .result-actions .result-ranking-button .button-icon {
+  opacity: .9;
+}
+
+/* Running total under the per-run rescue count. It only shows from the
+   second run on (the JS hides it while total == this run), so first-run
+   cards keep their three matching rows. */
+.screen-result .result-grid .result-cats-total {
+  grid-row: 4;
+  color: #b08894;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* The record meter is now bar-only: its printed label repeated the
+   comparison line above it word for word, so the text is kept for assistive
+   tech and taken out of the visual flow. The height that frees up goes to
+   the score, which is what the screen is actually about. */
+.screen-result .result-record-meter {
+  gap: 0;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.screen-result .result-record-meter > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.screen-result .result-record-meter > i {
+  height: 9px;
+  background: rgba(236, 221, 190, .55);
+}
+
+/* Cat and message: bottom-aligned so the cat stands on the same line the
+   bubble points at, instead of both being centred against each other. */
+.screen-result .result-cat-row {
+  align-items: end;
+  gap: 2px;
+  padding-bottom: 4px;
+}
+
+.screen-result .result-message {
+  align-self: end;
+  margin-bottom: 14px;
+}
+
+/* The kicker was a small pill drifting above the card with nothing tying it
+   down. Tucking it against the card reads as a card title. */
+.screen-result .result-kicker {
+  margin-bottom: 2px;
+  letter-spacing: .02em;
+}
+
+/* Live readouts stay on top of flying feedback -------------------------
+   Score flights and item drops animate at z-index 28, above the status bar
+   at 13, so an item on its way to the dock could park itself over the combo
+   figure and hide it. Reward animations should read as landing *into* the
+   HUD, so the HUD now sits above them. */
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls { z-index: 60; }
+.play-ui-v4 .play-status-bar { z-index: 61; }
+
+/* The combo segment's icon rules were written for the painted star and used
+   a bare descendant selector, so they also caught the reward pop's item
+   icon — blowing it up to a quarter of the segment and parking it, absolutely
+   positioned, on top of the combo figure. The pop is an inline badge; give it
+   back its own size and flow. */
+.play-ui-v4 .play-status-bar .combo-readout .combo-reward-pop img,
+.play-ui-v4 .play-status-bar .combo-readout .combo-loss-pop img {
+  position: static;
+  left: auto;
+  right: auto;
+  top: auto;
+  width: 13px;
+  height: 13px;
+  filter: none;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout .combo-reward-pop {
+  gap: 3px;
+  min-height: 0;
+  padding: 2px 7px;
+  border-width: 1px;
+}
+
+/* Fading the figure to 12% while the pop sits over it made the segment look
+   broken for half a second. The pop is small now, so the number can stay. */
+.play-ui-v4 .combo-readout.is-inline-feedback > strong { opacity: .5; }
+
+/* Shuffle must not open a window onto the garden ------------------------
+   The tiles are what hide the hidden picture, so any animation that thins
+   them lets it through — that is true of a flip at any angle, not just a
+   full one. Rather than weaken the motion further, the board itself goes
+   opaque for the length of the shuffle: the picture is covered by one flat
+   surface while the cards turn, and returns when they land. */
+.play-ui-v4 .board.is-shuffling-out,
+.play-ui-v4 .board.is-shuffling-in,
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board.is-shuffling-out,
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .board.is-shuffling-in {
+  background-color: #eaf6fb;
+  transition: background-color 90ms linear;
+}
+
+/* One connected pool of syrup, not one sweet per cell -------------------
+   The fill lives on the cells, not on the marquee: the marquee is a sibling
+   of the board and would paint over the numerals, while a cell's ::after
+   sits under its own numeral. Pulled 1px past each edge, neighbouring cells
+   close the grid gap between them and read as one body of syrup, and the
+   marquee is left to draw the single outline around the group. */
+.play-ui-v4 .tile.is-selected::after,
+.play-ui-v4 .board.is-dragging .tile.is-selected::after {
+  inset: -1px;
+  border: 0;
+  border-radius: 5px;
+  background:
+    radial-gradient(ellipse 120% 70% at 40% 8%, rgba(255,255,255,.5), rgba(255,255,255,0) 70%),
+    linear-gradient(162deg, rgba(255,246,196,.94), rgba(255,238,172,.9));
+  box-shadow: none;
+}
+
+.play-ui-v4 .board.is-perfect .tile.is-selected::after {
+  border: 0;
+  background:
+    radial-gradient(ellipse 120% 70% at 40% 8%, rgba(255,255,255,.66), rgba(255,255,255,0) 70%),
+    linear-gradient(162deg, rgba(255,243,175,.97), rgba(255,229,146,.94));
+  box-shadow: none;
+}
+
+.play-ui-v4 .selection-marquee {
+  border: 1.5px solid rgba(252,206,138,.9);
+  border-radius: clamp(12px, 3.4vw, 18px);
+  background: none;
+  box-shadow:
+    0 0 0 2px rgba(255,252,238,.62),
+    0 3px 12px rgba(226,169,74,.18);
+}
+
+.play-ui-v4 .selection-marquee.is-ten {
+  border-color: rgba(250,188,96,.98);
+  background: none;
+  box-shadow:
+    0 0 0 2px rgba(255,254,246,.8),
+    0 4px 16px rgba(233,171,64,.26);
+}
+
+/* Timer readability -----------------------------------------------------
+   The v4 pill is a painted image, so the shared .time-readout warning
+   styles in styles.css (which colour the element's own border and
+   background) are hidden behind the artwork, and this file's own
+   `strong { color: #183f6e }` outranked the warning colour — leaving the
+   figure the same calm navy at three seconds left as at two minutes. The
+   colour has to live here, at this specificity, to be seen at all. */
+.play-ui-v4 .play-top-controls .time-readout.is-low-time strong {
+  color: #c9741a;
+}
+
+.play-ui-v4 .play-top-controls .time-readout.is-warning strong {
+  color: #e03150;
+}
+
+/* Under ten seconds the pill itself keeps a steady halo, so the clock is
+   findable in peripheral vision while the eyes are down on the board. The
+   per-second `is-counting` scale pulse rides on top of this. */
+.play-ui-v4 .play-top-controls .time-readout.is-warning {
+  animation: play-timer-urgent 1s ease-in-out infinite;
+}
+
+@keyframes play-timer-urgent {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(224, 49, 80, 0)); }
+  50% { filter: drop-shadow(0 0 7px rgba(224, 49, 80, .55)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .play-top-controls .time-readout.is-warning {
+    animation: none;
+    filter: drop-shadow(0 0 5px rgba(224, 49, 80, .45));
+  }
+}
+
+/* HUD swap: 콤보 to the wide centre, 성공 to the right ------------------
+   The combo is the HUD's only live, second-by-second figure, so it earns
+   the widest painted compartment plus the gauge line the goal track used
+   to occupy — now filled with progress toward the next combo item, the
+   original's "아이템까지 N" readout. The success tally is a quiet count
+   and sits happily in the narrow corner. */
+.play-ui-v4 .play-status-bar .combo-readout { grid-column: 2; }
+.play-ui-v4 .play-status-bar .goal-status,
+.screen-play.play-ui-v4 .play-status-bar .goal-status { grid-column: 3; }
+
+/* Centre compartment: star icon left, "콤보" label and countdown on the
+   top line, the number beside the star, the track along the bottom. */
+/* The star is measured against the wide centre compartment, so matching
+   the coin's on-screen size means a smaller percentage than the coin's
+   own — 17.5% of 42% lands within a pixel of the coin's 25px. */
+.play-ui-v4 .play-status-bar .combo-readout img {
+  left: 5%;
+  right: auto;
+  top: 50%;
+  width: 17.5%;
+  height: auto;
+  aspect-ratio: 266 / 256;
+  translate: 0 -50%;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout span {
+  left: 27%;
+  right: auto;
+  top: 18%;
+}
+
+.play-ui-v4 .play-status-bar .combo-readout strong {
+  left: 27%;
+  right: auto;
+  top: 40%;
+  text-align: left;
+}
+
+.play-ui-v4 .play-status-bar .combo-item-label {
+  position: absolute;
+  right: 6%;
+  top: 18%;
+  color: #8a7d76;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 2.3vw, 10px);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.play-ui-v4 .play-status-bar .combo-item-track {
+  position: absolute;
+  left: 50%;
+  right: 6%;
+  top: 47%;
+  height: 17%;
+  min-height: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(197, 167, 123, .46);
+  border-radius: 999px;
+  background: #f1e7d5;
+  box-shadow: inset 0 1px 2px rgba(93, 69, 43, .09);
+}
+
+.play-ui-v4 .play-status-bar .combo-item-track b {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffc75e, #ff9d54);
+  transition: width .28s ease;
+}
+
+/* Right compartment: the tally alone, centred like the other values. */
+.play-ui-v4 .play-status-bar .goal-copy b { color: #ef5477; }
+
+/* Board time gauge -------------------------------------------------------
+   The original's green-to-red bar, sitting right on top of the numbers so
+   the remaining time reads in peripheral vision while the eyes stay on
+   the board. Colour bands match the timer pill: amber under 30s, red
+   under 10s, icy while frozen. */
+.play-ui-v4 .board-time-gauge {
+  justify-self: center;
+  width: min(92%, 352px);
+  height: 7px;
+  /* It first sat 6.8px above the board, reading as part of the board's
+     frame. It now hangs directly under the feedback rail — as close to the
+     status bar as the rail allows — with real air beneath it, so it groups
+     with the HUD rather than with the tiles. Any less bottom margin and it
+     re-attaches itself to the board's top edge. */
+  margin-block: 0 clamp(11px, 2.3dvh, 18px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .42);
+  box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14);
+}
+
+/* Fill colours are sampled from this screen's own flower field — grass
+   green, the yellow blooms, the apricot ones — so the bar belongs to the
+   art instead of importing the original's dark-theme palette. It still
+   switches on the original's remaining percentages (40% and 15%) rather
+   than absolute seconds, so a time bonus stretches the bands. */
+.play-ui-v4 .board-time-gauge i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: #7cb342;
+  transform-origin: left center;
+  transition: transform .3s linear, background-color .3s linear;
+}
+
+.play-ui-v4 .board-time-gauge[data-band="mid"] i { background: #e8c74a; }
+.play-ui-v4 .board-time-gauge[data-band="low"] i { background: #e8734a; }
+.play-ui-v4 .board-time-gauge[data-band="frozen"] i { background: #5db7f0; }
+.play-ui-v4 .board-time-gauge[hidden] { display: none; }
+
+/* Board size morph -------------------------------------------------------
+   When the ladder grows a column the tiles drop a size (82px to 65px at
+   the 4-to-5 step), and an instant swap read as "someone replaced my
+   board". The new board instead arrives scaled so its tiles match the old
+   tile size, then settles into place — one board reflowing, not two
+   boards traded. --arrive-scale is measured in JS from real tile widths. */
+.play-ui-v4 .board-frame.is-size-morphing {
+  animation: board-size-morph 620ms cubic-bezier(.2, .8, .24, 1) both;
+  transform-origin: 50% 12%;
+}
+
+@keyframes board-size-morph {
+  0% { transform: scale(var(--arrive-scale, 1.18)); opacity: .35; }
+  55% { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .board-frame.is-size-morphing { animation: none; }
+}
+
+/* Text-only celebration language ----------------------------------------
+   The original announces everything—milestones, board changes, time up—as
+   one line of glowing Jua text with no card behind it. Every boxed banner
+   below adopts that: background chrome gone, text and glow kept. */
+
+/* Combo milestone: the original's "N combo 🔥" line, ported verbatim. */
+.combo-text-pop {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: 26%;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 7.5vw, 32px);
+  font-weight: 400;
+  letter-spacing: .01em;
+  /* White on a hard coral outline: gold at 15px vanished against the sky. */
+  -webkit-text-stroke: 3px #f2557c;
+  paint-order: stroke fill;
+  text-shadow: 0 0 14px rgba(242, 85, 124, .75), 0 3px 0 rgba(190, 52, 88, .35);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: combo-text-float 1.2s ease forwards;
+}
+
+@keyframes combo-text-float {
+  0% { opacity: 0; transform: translate(-50%, 6px); }
+  18% { opacity: 1; transform: translate(-50%, 0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -38px); }
+}
+
+.play-ui-v4 .round-clear,
+.play-ui-v4 .round-clear.is-milestone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  text-align: center;
+}
+
+.play-ui-v4 .round-clear strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 6.6vw, 29px);
+  font-weight: 400;
+  letter-spacing: .01em;
+  /* Teal on sky was invisible; white with a hard mint outline reads at any
+     brightness the background art throws at it. */
+  -webkit-text-stroke: 3px #16a085;
+  paint-order: stroke fill;
+  text-shadow: 0 0 15px rgba(22, 160, 133, .7), 0 3px 0 rgba(11, 110, 91, .35);
+  white-space: nowrap;
+}
+
+.play-ui-v4 .time-up {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.play-ui-v4 .time-up strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 11vw, 48px);
+  font-weight: 400;
+  -webkit-text-stroke: 4px #e0345a;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(224, 52, 90, .7), 0 3px 0 rgba(160, 30, 60, .35);
+  white-space: nowrap;
+}
+
+.play-ui-v4 .stage-entry,
+.play-ui-v4 .stage-entry.is-milestone {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.play-ui-v4 .stage-entry strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 9vw, 40px);
+  font-weight: 400;
+  letter-spacing: .02em;
+  -webkit-text-stroke: 4px #3d8fce;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(61, 143, 206, .65), 0 3px 0 rgba(32, 96, 145, .35);
+  white-space: nowrap;
+}
+
+.play-ui-v4 .stage-entry.is-milestone strong {
+  -webkit-text-stroke: 4px #16a085;
+  text-shadow: 0 0 18px rgba(22, 160, 133, .65), 0 3px 0 rgba(11, 110, 91, .35);
+}
+
+/* The clock flight is a line of text now, not a boxed icon. */
+.play-ui-v4 .clock-flight {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.play-ui-v4 .clock-flight img { display: none; }
+
+.play-ui-v4 .clock-flight strong {
+  color: #2c9e8a;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 400;
+  text-shadow: 0 0 10px rgba(44, 158, 138, .55), 0 2px 0 rgba(255, 255, 255, .9);
+}
+
+/* Time gain reads on the gauge itself ------------------------------------ */
+.play-ui-v4 .board-time-gauge { position: relative; overflow: visible; }
+.play-ui-v4 .board-time-gauge i { border-radius: inherit; }
+
+.play-ui-v4 .board-time-gauge.is-bonus::after {
+  content: attr(data-bonus);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 3px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 17px;
+  -webkit-text-stroke: 3px #2c9e8a;
+  paint-order: stroke fill;
+  text-shadow: 0 0 10px rgba(44, 158, 138, .6);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: gauge-bonus-float 1.1s ease forwards;
+}
+
+@keyframes gauge-bonus-float {
+  0% { opacity: 0; transform: translate(-50%, 6px); }
+  20% { opacity: 1; transform: translate(-50%, 0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
+}
+
+.play-ui-v4 .board-time-gauge.is-bonus { animation: gauge-bonus-flash .7s ease; }
+
+@keyframes gauge-bonus-flash {
+  0%, 100% { box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14); }
+  40% { box-shadow: inset 0 1px 2px rgba(31, 84, 122, .14), 0 0 10px rgba(124, 179, 66, .8); }
+}
+
+/* Result as a bottom sheet ----------------------------------------------- */
+/* The finished board stays on screen with its remaining answers lit, and
+   the result rises over it — the original's own ending, and far better
+   motivation to hit retry than a screen that replaces the board. */
+.screen-play.is-behind-sheet {
+  pointer-events: none;
+  filter: saturate(.92);
+}
+
+.screen-result.is-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  justify-content: flex-end;
+  padding: 0;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(10, 45, 78, 0) 0%, rgba(10, 45, 78, .18) 34%, rgba(10, 45, 78, .46) 100%);
+  animation: result-sheet-scrim .42s ease both;
+}
+
+@keyframes result-sheet-scrim {
+  from { background-color: rgba(10, 45, 78, 0); }
+}
+
+.screen-result.is-sheet .result-decor,
+.screen-result.is-sheet .result-kicker { display: none; }
+
+.screen-result.is-sheet > *:not(.result-decor):not(.result-kicker) {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 430px;
+}
+
+.screen-result.is-sheet .result-card {
+  margin-top: auto;
+  border-radius: 26px 26px 0 0;
+  animation: result-sheet-rise .46s cubic-bezier(.2, .84, .28, 1) both;
+}
+
+.screen-result.is-sheet .result-cat-row,
+.screen-result.is-sheet .result-actions,
+.screen-result.is-sheet .result-secondary-actions {
+  padding-inline: 16px;
+  background: rgba(255, 253, 247, .96);
+  animation: result-sheet-rise .46s cubic-bezier(.2, .84, .28, 1) both;
+}
+
+.screen-result.is-sheet .result-secondary-actions {
+  padding-bottom: calc(12px + var(--safe-bottom));
+  border-radius: 0 0 0 0;
+}
+
+@keyframes result-sheet-rise {
+  from { opacity: 0; transform: translateY(34px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Legacy per-breakpoint rules in styles.css still colour these three by
+   class combinations that outrank the blocks above (.play-feedback-rail
+   .round-clear.is-milestone strong is 0,3,1). The outlined-white treatment
+   is restated here at matching weight so it wins wherever it is used. */
+.play-ui-v4 .play-feedback-rail .round-clear strong,
+.play-ui-v4 .play-feedback-rail .round-clear.is-milestone strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 6.6vw, 29px);
+  font-weight: 400;
+  -webkit-text-stroke: 3px #16a085;
+  paint-order: stroke fill;
+  text-shadow: 0 0 15px rgba(22, 160, 133, .7), 0 3px 0 rgba(11, 110, 91, .35);
+}
+
+.play-ui-v4 .board-frame .time-up strong {
+  color: #fff;
+  font-size: clamp(34px, 11vw, 48px);
+  -webkit-text-stroke: 4px #e0345a;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(224, 52, 90, .7), 0 3px 0 rgba(160, 30, 60, .35);
+}
+
+.play-ui-v4 .board-frame .stage-entry strong,
+.play-ui-v4 .board-frame .stage-entry.is-milestone strong {
+  color: #fff;
+  font-size: clamp(30px, 9vw, 40px);
+  -webkit-text-stroke: 4px #3d8fce;
+  paint-order: stroke fill;
+  text-shadow: 0 0 18px rgba(61, 143, 206, .65), 0 3px 0 rgba(32, 96, 145, .35);
+}
+
+.play-ui-v4 .board-frame .stage-entry.is-milestone strong {
+  -webkit-text-stroke-color: #16a085;
+  text-shadow: 0 0 18px rgba(22, 160, 133, .65), 0 3px 0 rgba(11, 110, 91, .35);
+}
+
+/* Result sheet, laid out after the original's end panel ------------------
+   Three zones on one line — share on the left, the score in the middle
+   with its record comparison under it, the run's two headline numbers on
+   the right — then the cat's line, then a wide retry beside a narrow
+   ranking button. Same shape as the original's bottom panel, in this
+   game's own materials. The rescued-cat tile is gone: that count belongs
+   to the garden, which is where it accumulates. */
+.screen-result.is-sheet .result-card {
+  display: block;
+  margin-top: auto;
+  padding: 12px 14px 10px;
+  border-radius: 24px 24px 0 0;
+}
+
+.screen-result.is-sheet .result-headline {
+  display: grid;
+  grid-template-columns: minmax(58px, 21%) 1fr minmax(66px, 25%);
+  align-items: center;
+  gap: 8px;
+}
+
+.result-share-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgba(226, 186, 108, .9);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fdeec4, #f6dda1);
+  box-shadow: 0 2px 0 rgba(186, 146, 74, .28);
+  color: #8a6524;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.result-share-chip img { width: 13px; height: 13px; object-fit: contain; }
+.result-share-chip:active { transform: translateY(1px); box-shadow: none; }
+
+.screen-result.is-sheet .result-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.screen-result.is-sheet .final-score {
+  font-size: clamp(36px, 11.5vw, 50px);
+  line-height: 1;
+}
+
+.screen-result.is-sheet .score-compare-primary {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #7d8794;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.result-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  text-align: right;
+}
+
+.result-stats > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.result-stats dt {
+  color: #8b95a2;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.result-stats dd {
+  margin: 0;
+  color: #3b526e;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.screen-result.is-sheet .result-stage-progress {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.screen-result.is-sheet .new-record { margin: 6px auto 0; }
+.screen-result.is-sheet .score-compare-secondary { margin: 4px 0 0; font-size: 11px; text-align: center; }
+.screen-result.is-sheet .result-record-meter { margin-top: 7px; }
+
+/* Cat line and buttons share the card's surface so the sheet reads as one
+   panel rather than stacked strips with board showing through. */
+.screen-result.is-sheet .result-cat-row,
+.screen-result.is-sheet .result-actions {
+  background: rgba(255, 253, 247, .97);
+  border: 0;
+  box-shadow: none;
+}
+
+.screen-result.is-sheet .result-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 14px 4px;
+}
+
+.screen-result.is-sheet .result-character-stage { width: 54px; flex: 0 0 auto; }
+.screen-result.is-sheet .result-message {
+  flex: 1;
+  padding: 7px 11px;
+  font-size: 12.5px;
+}
+
+.screen-result.is-sheet .result-actions {
+  display: grid;
+  grid-template-columns: 1fr minmax(84px, 30%);
+  align-items: stretch;
+  gap: 8px;
+  padding: 4px 14px calc(8px + var(--safe-bottom));
+}
+
+.screen-result.is-sheet .result-actions .btn { min-height: 46px; margin: 0; }
+.screen-result.is-sheet #retry-button { grid-column: 1; font-size: 16px; }
+.screen-result.is-sheet .result-ranking-button { grid-column: 2; font-size: 13px; }
+.screen-result.is-sheet .result-ranking-button .button-icon { width: 15px; height: 15px; }
+
+.screen-result.is-sheet .result-home-button {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 2px;
+}
+
+.screen-result.is-sheet { gap: 0; }
+.screen-result.is-sheet > * { margin: 0; }
+
+/* The share chip wrapped mid-word and the comparison line pushed into the
+   score; the middle column needs the room and the chip must never wrap. */
+.screen-result.is-sheet .result-headline {
+  grid-template-columns: minmax(52px, 17%) 1fr minmax(74px, 27%);
+  gap: 6px;
+}
+
+.result-share-chip {
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.result-share-chip img { width: 14px; height: 14px; }
+
+.screen-result.is-sheet .score-compare-primary {
+  font-size: 10.5px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Sheet geometry ---------------------------------------------------------
+   The sheet is one panel on a single rhythm, not four stacked components
+   each keeping its full-screen metrics. The measurements that made it read
+   as a prototype: .result-cat-row still carried min-height:137px and the
+   portrait had a width cap but no height cap, so one line of the cat's
+   dialogue occupied 143px — forty per cent of the sheet — as blank cream.
+   Everything below pins the heights and puts every zone on the same
+   16px gutter. */
+:root { --sheet-gutter: 16px; }
+
+.screen-result.is-sheet .result-card,
+.screen-result.is-sheet .result-cat-row,
+.screen-result.is-sheet .result-actions {
+  padding-inline: var(--sheet-gutter);
+  background: linear-gradient(180deg, rgba(255, 254, 250, .985), rgba(255, 251, 242, .985));
+  border: 0;
+  box-shadow: none;
+}
+
+.screen-result.is-sheet .result-card {
+  padding-block: 13px 9px;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -9px 24px rgba(28, 78, 120, .17);
+}
+
+/* Headline: a fixed-width chip, the score, and the two run numbers, all
+   centred on one 62px row so nothing floats against dead space. */
+.screen-result.is-sheet .result-headline {
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 62px;
+}
+
+.result-share-chip { width: 64px; min-height: 40px; }
+
+.screen-result.is-sheet .final-score { font-size: clamp(34px, 10.5vw, 46px); }
+
+.screen-result.is-sheet .score-compare-primary {
+  margin-top: 1px;
+  font-size: 11px;
+}
+
+.result-stats { gap: 2px; }
+.result-stats dd { font-size: 16px; }
+
+/* A hairline under the headline gives the numbers a floor to sit on. */
+.screen-result.is-sheet .result-stage-progress {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(203, 186, 156, .34);
+  color: #8b95a2;
+  font-size: 11.5px;
+}
+
+/* Hidden meter must not leave its margin behind. */
+.screen-result.is-sheet .result-record-meter[hidden],
+.screen-result.is-sheet .result-record-meter:not([style*="--record-progress"]) { margin-top: 0; }
+.screen-result.is-sheet .result-record-meter { margin-top: 8px; }
+
+/* Cat line: a small square portrait and one speech line, on a 52px row. */
+.screen-result.is-sheet .result-cat-row {
+  min-height: 0;
+  padding-block: 6px;
+  gap: 9px;
+}
+
+.screen-result.is-sheet .result-character-stage {
+  width: 46px;
+  height: 46px;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.screen-result.is-sheet .result-character-stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.screen-result.is-sheet .result-message {
+  min-height: 0;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+/* Actions on the same gutter, home tucked under without extra air. */
+.screen-result.is-sheet .result-actions {
+  padding-block: 2px calc(10px + var(--safe-bottom));
+  gap: 9px;
+  row-gap: 6px;
+}
+
+.screen-result.is-sheet .result-actions .btn { min-height: 48px; }
+.screen-result.is-sheet .result-home-button { margin-top: 0; min-height: 34px; }
+
+/* Hint dimming without transparency --------------------------------------
+   Three generations of hint styles dimmed the non-hint tiles by dropping
+   their opacity (0.58-0.68). The tiles are translucent glass over the
+   hidden-garden art, so lowering opacity didn't darken them — it let the
+   garden bleed straight through the middle of a live board. Dim with
+   filter only; opacity stays at 1 so the tile face keeps hiding what it
+   is supposed to hide. */
+.play-ui-v4 .board.is-hinting .tile:not(.is-hint),
+.play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
+  opacity: 1;
+  filter: saturate(.72);
+}
+
+/* Dimming the tiles themselves forced a choice between two bad options:
+   opacity let the hidden garden bleed through a live board, and a
+   brightness filter strong enough to read as "dimmed" made the numerals
+   look switched off. The veil sits *over* the board instead - one
+   translucent sheet between the ordinary tiles (z-index 1) and the
+   highlighted ones (5+), so the faded-back look is the pale wash the
+   pre-fix version had while every tile face stays fully opaque and keeps
+   hiding the art underneath it. */
+.play-ui-v4 .board.is-hinting::after,
+.play-ui-v4 .board.is-tutorial-active::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 253, 249, .44);
+  pointer-events: none;
+  animation: hint-veil-in 140ms ease-out both;
+}
+
+@keyframes hint-veil-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.play-ui-v4 .board.is-hinting .tile.is-hint,
+.play-ui-v4 .board.is-tutorial-active .tile.is-tutorial {
+  opacity: 1;
+}
+
+/* Full-clear payoff ------------------------------------------------------ */
+.play-ui-v4 .tile.is-sweeping {
+  animation: tile-sweep .4s ease var(--sweep-delay, 0ms) both;
+  pointer-events: none;
+}
+
+@keyframes tile-sweep {
+  0% { opacity: 1; transform: scale(1); }
+  45% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(.5) rotate(7deg); }
+}
+
+/* The empty board holds still for a beat so the finished garden reads as
+   the clear's reward; PERFECT warms the glow a step. */
+.play-ui-v4 .board-frame.is-garden-complete {
+  animation: garden-complete-glow .65s ease both;
+}
+
+.play-ui-v4 .board-frame.is-garden-complete.is-garden-perfect {
+  animation: garden-perfect-glow .8s ease both;
+}
+
+@keyframes garden-complete-glow {
+  0% { filter: brightness(1); }
+  35% { filter: brightness(1.1) saturate(1.12); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes garden-perfect-glow {
+  0% { filter: brightness(1); }
+  30% { filter: brightness(1.18) saturate(1.2) drop-shadow(0 0 18px rgba(255, 214, 110, .55)); }
+  70% { filter: brightness(1.08) saturate(1.1) drop-shadow(0 0 10px rgba(255, 214, 110, .35)); }
+  100% { filter: brightness(1); }
+}
+
+/* PERFECT gets the gold treatment on the clear line. */
+.play-ui-v4 .play-feedback-rail .round-clear[data-perfect="1"] strong {
+  -webkit-text-stroke-color: #d9a021;
+  text-shadow: 0 0 16px rgba(217, 160, 33, .75), 0 3px 0 rgba(160, 112, 18, .35);
+}
+
+/* Bigger-board pass (실기기 피드백): from the tall boards on, the tiles were
+   shrinking faster than the chrome around them. The rail and the gauge give
+   back their spare air, the coach row tucks in, and the height budget in the
+   board-frame width formula above hands every reclaimed pixel to the tiles.
+   The gauge also moves up against the status bar, where the player's eye
+   already lives. */
+.play-ui-v4.is-tall-board .play-feedback-rail,
+.play-ui-v4.is-tall-board.is-stage-clearing .play-feedback-rail {
+  height: clamp(12px, 1.7dvh, 16px);
+}
+
+.play-ui-v4.is-tall-board .board-time-gauge {
+  margin-block: 0 clamp(6px, 1.2dvh, 10px);
+}
+
+.play-ui-v4.is-tall-board .cat-coach {
+  height: clamp(46px, 6.9dvh, 58px);
+}
+
+/* Start countdown: the original OING's own 3-2-1-GO! ----------------------
+   Ported from the reference build verbatim - the dark scrim, Jua at 120px
+   with a 3px self-coloured stroke, the amber/vermilion/blue digits, the
+   glow that spreads twice per digit (6px then 14px), and the pop that
+   overshoots to 1.2 before settling. The pacing is the original's too:
+   650ms per digit and 500ms on GO!, where ours ran nearly twice as fast
+   and never let a digit finish its bloom. */
+.screen-play.play-ui-v4 .start-countdown {
+  background: rgba(8, 17, 31, .88);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-visible {
+  animation: classic-countdown-in 130ms ease-out both;
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-leaving {
+  animation: classic-countdown-out 150ms ease-in both;
+}
+
+@keyframes classic-countdown-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes classic-countdown-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* The original's overlay is bare: no cloud decor, no paper blob, no kicker
+   line - just the digit on the scrim. */
+.screen-play.play-ui-v4 .start-countdown::before,
+.screen-play.play-ui-v4 .start-countdown::after,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-copy::before,
+.screen-play.play-ui-v4 .start-countdown small,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-burst,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-paws,
+.screen-play.play-ui-v4 .start-countdown .start-countdown-cat {
+  display: none;
+}
+
+.screen-play.play-ui-v4 .start-countdown .start-countdown-copy {
+  min-width: 0;
+  min-height: 0;
+}
+
+.play-ui-v4 ~ .start-countdown strong,
+.screen-play.play-ui-v4 .start-countdown strong,
+.screen-play.play-ui-v4 .start-countdown[data-step="3"] strong,
+.screen-play.play-ui-v4 .start-countdown[data-step="2"] strong,
+.screen-play.play-ui-v4 .start-countdown[data-step="1"] strong {
+  font-family: var(--font-display);
+  font-size: clamp(96px, 30vw, 120px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -4px;
+  -webkit-text-stroke: 3px currentColor;
+  paint-order: normal;
+  transition: none;
+  transform-origin: 50% 50%;
+  animation: none;
+}
+
+/* animateStartCountdown re-adds .is-popping after a forced reflow, so
+   scoping the pop here is what restarts it on every beat. */
+.screen-play.play-ui-v4 .start-countdown strong.is-popping {
+  animation: classic-countpop .85s ease forwards;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="3"] strong {
+  color: #DA9845;
+  text-shadow: 0 0 6px #DA9845, 0 0 14px #DA9845;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="2"] strong {
+  color: #DD6032;
+  text-shadow: 0 0 6px #DD6032, 0 0 14px #DD6032;
+}
+
+.screen-play.play-ui-v4 .start-countdown[data-step="1"] strong {
+  color: #2f7ec9;
+  text-shadow: 0 0 6px #2f7ec9, 0 0 14px #2f7ec9;
+}
+
+@keyframes classic-countpop {
+  0% { opacity: 0; transform: scale(.3); }
+  30% { opacity: 1; transform: scale(1.2); }
+  60% { transform: scale(.95); }
+  80% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-go strong {
+  color: #7fe895;
+  font-size: clamp(62px, 20vw, 80px);
+  letter-spacing: -2px;
+  -webkit-text-stroke: 2px currentColor;
+  text-shadow: 0 0 8px #7fe895, 0 0 16px #3fa855;
+  animation: none;
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-go strong.is-popping {
+  animation: classic-gopop .7s ease forwards;
+}
+
+@keyframes classic-gopop {
+  0% { opacity: 0; transform: scale(.5) rotate(-5deg); }
+  40% { opacity: 1; transform: scale(1.25) rotate(2deg); }
+  70% { transform: scale(.95); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* The retry countdown keeps the same skin, but READY is a word rather than
+   a digit and would otherwise run off a 360px screen. */
+.screen-play.play-ui-v4 .start-countdown[data-step="READY"] strong {
+  color: #DA9845;
+  font-size: clamp(44px, 14vw, 58px);
+  letter-spacing: -2px;
+  -webkit-text-stroke: 2px currentColor;
+  text-shadow: 0 0 6px #DA9845, 0 0 14px #DA9845;
+}
+
+/* 고양이의 모험: one scene per chapter ------------------------------------
+   The chapter's own painting arrives as --chapter-art, which ui.setChapter
+   only sets for chapters whose art has actually shipped (see hasArt in
+   CLASSIC_CHAPTERS). Until then the layer resolves to `none` and the
+   original garden painting below it shows through - the scene still reads,
+   and the board never requests a file that isn't there. */
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-image:
+    linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,245,247,.1)),
+    linear-gradient(rgba(255,252,250,.2), rgba(255,250,248,.2)),
+    var(--chapter-art, none),
+    url("../assets/backgrounds/board-secret-garden-v1.webp");
+  background-size: auto, auto, cover, cover;
+  background-position: center, center, center, center 100%;
+  background-repeat: no-repeat;
+}
+
+/* Without art of its own, each chapter still shifts the view up the one
+   painting, so consecutive scenes never look like the same frame. */
+.screen-play.play-ui-v4[data-chapter="forest"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 72%;
+}
+
+.screen-play.play-ui-v4[data-chapter="stream"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 55%;
+}
+
+.screen-play.play-ui-v4[data-chapter="village"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 38%;
+}
+
+.screen-play.play-ui-v4[data-chapter="sunset"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 18%;
+}
+
+.screen-play.play-ui-v4[data-chapter="night"][data-stage-band]:not([data-stage-band="warmup"]) .board-frame {
+  background-position: center, center, center, center 0%;
+}
+
+/* ==========================================================================
+   Bigger boards, pass 2 (실기기 피드백)
+   The row-growth ladder made the tall boards *narrower*: with a fixed
+   height budget, 6x9 could only be 336px wide where 6x7 got 365px, so the
+   deepest board - the one a good run earns - had the smallest tiles and
+   the widest empty margins beside it. The height budget is now a variable,
+   and the tall boards trim the chrome around them to fund a bigger board,
+   so every step of the ladder fills the column instead of shrinking away
+   from it. Keep --board-chrome in sync with the trims below: raise one
+   without the other and the board overlaps the cat coach.
+   ========================================================================== */
+.screen-play.play-ui-v4 {
+  --board-chrome: 336px;
+  --board-fill: 98cqw;
+}
+
+/* Measured, not guessed: at 390x844 the fixed chrome around a tall board
+   bottoms out near 326px once the flex spacers are squeezed flat, so a
+   smaller budget than that pushes the board straight through the cat
+   coach. The deepest two steps buy their extra height from the coach and
+   the dock instead (see the deep-board tier below). */
+/* Part of the chrome scales with the viewport (every clamp above is dvh
+   based) and part is fixed, so a single pixel budget only ever fits one
+   screen: measured against both 360x740 and 390x844, the fixed half is
+   ~258px and the elastic half ~8dvh. The deep tier is 18px lower because
+   its coach and dock rows are shorter. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(258px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(244px + 8dvh);
+}
+
+.screen-play.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4 .board-frame[data-round],
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame,
+.screen-play.play-ui-v4:not(.is-tall-board) .board-frame[data-round] {
+  width: min(
+    var(--board-fill),
+    calc((100dvh - var(--board-chrome)) * var(--board-cols) / var(--board-rows)),
+    430px
+  );
+}
+
+/* The pixels the formula above spends, reclaimed - tall boards only, so the
+   opening 5x5 and 6x6 keep the roomier chrome they already fit. */
+.play-ui-v4.is-tall-board .cat-coach {
+  height: clamp(40px, 5.6dvh, 50px);
+}
+
+.play-ui-v4.is-tall-board .play-footer {
+  width: min(89%, 368px);
+}
+
+.play-ui-v4.is-tall-board .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band].is-tall-board .play-top-controls {
+  height: clamp(48px, 7dvh, 58px);
+}
+
+.play-ui-v4.is-tall-board .play-feedback-rail,
+.play-ui-v4.is-tall-board.is-stage-clearing .play-feedback-rail {
+  height: clamp(10px, 1.4dvh, 13px);
+}
+
+.screen-play.play-ui-v4.is-tall-board {
+  padding-top: calc(var(--safe-top) + clamp(3px, 0.6dvh, 7px));
+}
+
+/* ==========================================================================
+   Tile separation (실기기 피드백: 칸 구분이 안 된다)
+   The syrup tile is deliberately one pale mint for every cell, which rests
+   the eye over two minutes but left neighbouring tiles bleeding into each
+   other - the only thing between them was a bright hairline. Colour and
+   the lit face stay exactly as tuned; the fix is entirely in the dark end:
+   a crisp cool rim, a real drop under the tile, and a deeper bottom edge
+   inside it, so each cell reads as its own raised button.
+
+   The highlight states (hint / tutorial / end-of-run answers) own the
+   tile's box-shadow themselves and are excluded - otherwise this rule,
+   being later and more specific, would erase their glow.
+   ========================================================================== */
+.play-ui-v4 .board {
+  gap: clamp(1.5px, .52vw, 2.6px);
+}
+
+/* Separation used to ride box-shadow, which quietly erased every state that
+   owns the tile's shadow — the clover hint's green ring, the hint glow, the
+   success and fail flashes. The rim is an outline instead: nothing else in
+   the stylesheet sets one, so it can never overwrite a state again. The
+   shading moved into background layers for the same reason.
+
+   The palette also went the wrong way. A cool-grey rim over the mint art
+   read muddy and heavy enough to look cramped. The rim is now
+   a soft violet-blue and the wash on the tile face tints the same way, so
+   the board reads cooler and the seams read lighter while still separating. */
+.play-ui-v4 .tile[class*="value-"],
+.play-ui-v4 .tile.is-bonus-cat,
+.play-ui-v4 .tile.is-board-item {
+  outline: 1px solid rgba(118, 130, 206, .42);
+  outline-offset: -1px;
+}
+
+/* The syrup art is translucent, so the colour a tile reads as comes from the
+   bed underneath it. Tinting that bed shifts the whole cell violet-blue
+   without laying anything over the art — a pale wash on top only bleached
+   the face and cost the separation the rim had just bought. The selector
+   matches the garden-mode bed rule so it wins on the stages where the
+   hidden picture is showing through. */
+.play-ui-v4 .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"] {
+  background-color: rgba(221, 227, 252, .97);
+  background-image:
+    linear-gradient(to bottom, rgba(92, 106, 186, 0) 64%, rgba(92, 106, 186, .1) 100%),
+    var(--tile-art);
+}
+
+/* The tile's own cast shadow, deepened to match. It rides `filter` (which
+   follows the rounded shape) rather than another box-shadow layer, and the
+   hint veil's saturate() has to repeat it or the shadows would pop off the
+   moment a hint appears. */
+.play-ui-v4 .tile {
+  /* box-shadow, not drop-shadow: filter() forces the browser to keep a
+     rasterized layer per tile and re-filter it on every repaint, and with
+     up to 54 tiles that was the play loop's single biggest constant GPU
+     cost. The element's own border-radius matches the art closely enough
+     that the cast shadow reads the same. */
+  filter: none;
+  box-shadow: 0 2px 3px rgba(78, 88, 158, .24);
+}
+
+.play-ui-v4 .board.is-hinting .tile:not(.is-hint),
+.play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
+  filter: saturate(.72);
+}
+
+/* Deep boards (8-9 rows): the run's payoff boards, and the ones the height
+   budget squeezes hardest. The cat keeps speaking but takes a shorter row,
+   and the painted dock gives up its outer margin - both are chrome, and the
+   board is the game. */
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  height: clamp(34px, 4.6dvh, 42px);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  width: min(82%, 340px);
+}
+
+/* ==========================================================================
+   Pressure and payoff pass
+   A two-minute score attack needs its stakes visible without shouting over
+   the board. Four beats: the clock closing in, the multiplier's own tiers,
+   the 판갈이 that buys the run more time, and the scene a deep run earns.
+   ========================================================================== */
+
+/* The original's #timeDangerFx, values intact: a red rim and a soft inner
+   glow that breathe between half and full opacity, and only inside the last
+   ten seconds. An earlier pass lit this from thirty seconds out, which put
+   the screen in alarm for a quarter of the run and stopped meaning
+   anything. */
+.screen-play.play-ui-v4::after {
+  content: "";
+  position: absolute;
+  z-index: 40;
+  inset: 0;
+  box-shadow:
+    inset 0 0 0 3px rgba(239, 68, 68, .5),
+    inset 0 0 70px 20px rgba(239, 68, 68, .24);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s ease;
+}
+
+.screen-play.play-ui-v4.is-final-countdown::after {
+  animation: time-danger-breathe .8s ease-in-out infinite;
+}
+
+@keyframes time-danger-breathe {
+  0%, 100% { opacity: .5; }
+  50% { opacity: 1; }
+}
+
+/* And the original's danger-pulse on the digits themselves — the same two
+   vermilions alternating twice a second. */
+.play-ui-v4 .time-readout.is-warning strong,
+.screen-play.play-ui-v4 .time-readout.is-warning strong {
+  animation: time-danger-pulse .5s infinite;
+}
+
+@keyframes time-danger-pulse {
+  0%, 100% { color: #DD6032; }
+  50% { color: #f08050; }
+}
+
+/* Combo tiers. The fever band tops out at 8, which classic passes in the
+   first few clears; these are keyed to the figures that pay — the score cap
+   at 25 and the two steps past it. Rim only, so the numbers stay clean. */
+.play-ui-v4 .board-frame[data-combo-tier="25"] {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .78),
+    0 0 0 6px rgba(255, 214, 122, .5),
+    0 8px 18px rgba(25, 111, 156, .15),
+    inset 0 0 12px rgba(255, 255, 255, .38);
+}
+
+.play-ui-v4 .board-frame[data-combo-tier="40"] {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .82),
+    0 0 0 7px rgba(255, 168, 92, .58),
+    0 0 22px rgba(255, 150, 74, .32),
+    inset 0 0 12px rgba(255, 255, 255, .4);
+}
+
+.play-ui-v4 .board-frame[data-combo-tier="60"] {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .88),
+    0 0 0 8px rgba(255, 110, 138, .62),
+    0 0 30px rgba(255, 96, 128, .42),
+    inset 0 0 14px rgba(255, 255, 255, .46);
+  animation: combo-tier-pulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes combo-tier-pulse {
+  from { filter: saturate(1); }
+  to { filter: saturate(1.14) brightness(1.03); }
+}
+
+/* 판갈이: the one lifeline in the loop, so it lands as a beat instead of a
+   quiet swap — a bright wash across the frame and a single kick. */
+.play-ui-v4 .board-frame.is-board-change {
+  animation: board-change-kick 620ms cubic-bezier(.2, .78, .26, 1.1) both;
+}
+
+.play-ui-v4 .board-frame.is-board-change::after {
+  content: "";
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 46%, rgba(255,255,255,.72), rgba(255,244,212,.28) 58%, transparent 78%);
+  pointer-events: none;
+  animation: board-change-flash 620ms ease-out both;
+}
+
+@keyframes board-change-kick {
+  0% { transform: scale(1); }
+  22% { transform: scale(1.028); }
+  55% { transform: scale(.994); }
+  100% { transform: scale(1); }
+}
+
+@keyframes board-change-flash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+
+
+
+
+/* The record slot: quiet while it is a target, lit once the run is past it. */
+.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy b,
+.screen-play.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy b {
+  color: #e8734a;
+}
+
+.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy em,
+.screen-play.play-ui-v4 .play-status-bar .goal-status.is-ahead .goal-copy em {
+  color: #e8734a;
+}
+
+.play-ui-v4 .play-status-bar .goal-status.is-ahead {
+  animation: record-ahead-pop 620ms ease both;
+}
+
+@keyframes record-ahead-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* Clover hint: the player has just spent an item to be shown where to look,
+   so the answer needs a line they cannot miss. The green frame is drawn on
+   the tile's own outline as well as its ring, which also survives whatever
+   the separation pass above does to ordinary tiles. */
+.play-ui-v4 .tile.is-clover-hint,
+.play-ui-v4 .tile.is-clover-hint[class*="value-"],
+.play-ui-v4 .tile.is-clover-hint.is-bonus-cat {
+  z-index: 8;
+  outline: 2.5px solid rgba(46, 176, 96, .92);
+  outline-offset: -2px;
+}
+
+/* ==========================================================================
+   HUD pass: the STAGE badge stops dominating the top row
+   At clamp(112px, 33%, 134px) the shield stood 92px tall in a ~62px control
+   row, so it hung down over the score bar and pushed the whole board down
+   with it. Sized to ~62% and re-seated inside its own row, it clears the
+   status bar, and the control row and the board's height budget both give
+   back the pixels it was borrowing.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  top: -14%;
+  width: clamp(72px, 22%, 86px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  top: 55%;
+  font-size: clamp(18px, 5.2vw, 24px);
+}
+
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  height: clamp(50px, 7.4dvh, 62px);
+}
+
+.play-ui-v4.is-tall-board .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band].is-tall-board .play-top-controls {
+  height: clamp(44px, 6.2dvh, 52px);
+}
+
+/* The board takes what the shrunken control row released. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(250px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(242px + 8dvh);
+}
+
+/* ==========================================================================
+   The cat stops sitting on the hint button
+   Drawn at min(100%, 13.5dvh) the cat measured 114px across and its right
+   edge landed 23px *inside* the hint button, so the first item in the dock
+   was physically covered. It is now ~80% of that, pushed further into the
+   left margin (the tail was already accepted as cropped), and lifted so its
+   feet stop at the screen edge instead of past it. The coach's first column
+   narrows to match, which is what carries the speech bubble across with it.
+   The dock and its buttons are untouched - the hit boxes stay as they were.
+   ========================================================================== */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach {
+  grid-template-columns: minmax(74px, 26%) minmax(0, 1fr);
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: min(100%, 10.8dvh);
+  margin-bottom: calc(-1 * clamp(56px, 10.4dvh, 92px));
+  transform: translateX(-26%);
+}
+
+/* ==========================================================================
+   1. The dead band between the status bar and the time gauge
+   At 6x9 the two sat 23dp apart: a 5.2dp row gap, a 12dp reserved feedback
+   rail, another 5.2dp row gap. The rail's own children are absolutely
+   positioned, so the reserved height bought nothing except a strip of empty
+   sky - the STAGE CLEAR banner and the tutorial callout still land on the
+   same line with the row collapsed, they just float over the board's top
+   edge instead of above it. Classic never raises the banner at all.
+   ========================================================================== */
+.screen-play.play-ui-v4 {
+  row-gap: 4px;
+}
+
+.screen-play.play-ui-v4 .play-feedback-rail,
+.screen-play.play-ui-v4.is-stage-clearing .play-feedback-rail {
+  height: 0;
+  overflow: visible;
+}
+
+.screen-play.play-ui-v4 .board-time-gauge {
+  margin-block: 0 6px;
+}
+
+/* Everything the band gave up goes to the board. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(228px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(214px + 8dvh);
+}
+
+/* ==========================================================================
+   2. The item dock, restored
+   A previous pass drove the dock's height directly at min(58px, 8dvh) and
+   let the tray's aspect set its width. On a phone the dvh half of that
+   clamp is the visible viewport, not the window, so the dock came out under
+   40dp and the depleted buttons' labels stopped being readable. The tray is
+   back on its pre-shrink sizing - width-driven, with the painted aspect
+   giving the height - so the labels read again and a count dropping to zero
+   never changes a button's box.
+   ========================================================================== */
+/* ==========================================================================
+   3. The speech bubble gets its own row and stops touching anything
+   The bubble lived inside the cat coach row, whose height moved with the
+   board size (73dp on a 5x5, 34dp on a 6x9) while the bubble stayed 52dp -
+   so it spilled past the row and touched the board above and the dock
+   below at the same time. The row is now a fixed 30dp lane with 6dp of
+   daylight on each side, and it keeps that height whether or not there is a
+   message: a lane that collapses and re-opens would resize the board
+   mid-drag and pull the aim off.
+
+   A two-line message grows the bubble instead of the lane - rows do not
+   clip, so it simply overhangs, and pointer-events:none means an overhang
+   across the dock can never swallow a button press.
+   ========================================================================== */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  height: 30px;
+  /* 4dp of screen row-gap either side, plus 2dp here, is the 6dp asked for. */
+  margin-block: 2px;
+}
+
+.play-ui-v4 .cat-speech {
+  align-self: center;
+  height: auto;
+  min-height: 30px;
+  aspect-ratio: auto;
+  margin-bottom: 0;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+/* The painted bubble follows the box now that the box can grow past 30dp;
+   `contain` would letterbox and leave a two-line message outside its own
+   bubble. */
+.play-ui-v4 .speech-bubble-chrome {
+  object-fit: fill;
+}
+
+/* No message: the lane stays, the bubble fades. */
+.play-ui-v4 .cat-speech:has(.cat-message:empty) {
+  opacity: 0;
+}
+
+/* The message drove nothing while it was absolutely positioned - a second
+   line was simply clipped at 84% of the lane. In flow it sets the bubble's
+   height instead, so two lines grow the bubble (and the painted chrome
+   stretches with it) while the lane underneath stays 30dp. The padding
+   stands in for the offsets the absolute version used to keep the text
+   inside the art. */
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: 5px 12%;
+  transform: none;
+}
+
+.play-ui-v4 .cat-speech {
+  display: grid;
+  align-content: center;
+}
+
+/* The lane is shorter than the coach row was, so the board takes the rest -
+   less what the restored dock takes back (about 20dp taller than the
+   shrunken one it replaces). */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(220px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(208px + 8dvh);
+}
+
+/* ==========================================================================
+   4. The cat comes back inside the screen
+   It was pushed 26% of its own width into the left margin, which was the
+   only way to clear the hint button while the dock still ran the full width
+   of the screen. The dock is now 219dp wide and sits right, so that shove
+   buys nothing and only costs the cat its left side. Dropping it leaves the
+   cat at the coach row's own left edge - about 10dp in - with its size
+   untouched: the art is fitted by width, and the width is unchanged.
+   ========================================================================== */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  transform: none;
+}
+
+/* ==========================================================================
+   5. The timer pill slims down
+   The pill measured 100x47dp. Its height comes from the painted chrome's
+   534/249 aspect, so narrowing it is what shortens it.
+
+   The digits are deliberately NOT reduced by the same 15%. The brief asks
+   the timer to stay the largest number in the HUD, and it already was not:
+   measured before any change, the timer read 19.5px against 21.8px for
+   score, combo and best at 390x844 (18px against 20.2px at 360x740). Taking
+   another 15% off would have widened a gap that is already the wrong way
+   round, so the box shrinks and the digits hold their size - which is the
+   "shrink less if the constraint breaks" case the brief describes.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls .time-readout,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .time-readout {
+  width: clamp(80px, 23.5%, 86px);
+  /* A 44px floor was holding the height up regardless of the width; the
+     534/249 chrome sets it now. */
+  min-height: 36px;
+}
+
+/* ==========================================================================
+   6. STAGE badge, enlarged as far as the constraint allows
+   The brief asks for x1.2 while requiring the badge to stay visually
+   lighter than the timer pill in both area and contrast. Measured from the
+   shipped art - the shield is 59.5% opaque pixels, the pill 81.2% - those
+   two cannot both hold:
+
+     390x844  badge ink 2428 vs pill ink 2530 - already 96% of it
+     360x740  badge ink 2099 vs pill ink 2404 - 87%
+     at x1.2  the badge reaches 138% / 126% of the pill
+
+   This is not a side effect of the pill shrinking in the previous commit:
+   even at the 86x40dp the brief itself specifies for the pill, the largest
+   badge that stays lighter is x1.073. The binding viewport is 390x844,
+   where the ceiling is x1.021 - so that is what is applied here, and the
+   remaining call is the user's to make.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  width: clamp(73px, 22.5%, 88px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  font-size: clamp(18px, 5.3vw, 25px);
+}
+
+/* ==========================================================================
+   Speech bubble: full width, and it only ever grows downward
+   Pinning the lane to 30dp also pinned the bubble's width at 205dp - under
+   half the screen - so 31 of the 131 strings showMessage can raise needed
+   three lines to fit. The bubble now fills the coach's second column, which
+   runs from the cat's right edge to 12dp short of the screen edge.
+
+   Height stays variable: 30dp at one line, taller at two. Growth is
+   downward only (align-self: start inside the fixed lane), so the board
+   above never moves when a longer line arrives mid-drag, and the overhang
+   across the dock stays click-through.
+   ========================================================================== */
+.play-ui-v4 .cat-speech {
+  align-self: start;
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+}
+
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  padding: 4px 14px;
+}
+
+/* ==========================================================================
+   3. STAGE badge at x1.5
+   The brief's priority is explicit: the shield must be at least as tall as
+   the pause button (44dp), the size must not be reduced to resolve a
+   collision, and the 6dp gap to the status bar holds. Raising the badge's
+   top cannot resolve it on its own - at x1.5 the shield is 85dp tall and
+   the status bar starts 71dp down at 390x844, so the badge would have to
+   begin above the top of the screen. The remaining lever is the control
+   row, which grows to seat the bigger badge and pushes the status bar down
+   with it. That costs the board; the exact figure is in the report.
+
+   The numeral grows faster than the shield, as asked, so it fills the
+   plate rather than floating in it.
+   ========================================================================== */
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  height: clamp(74px, 10.2dvh, 86px);
+}
+
+.play-ui-v4.is-tall-board .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band].is-tall-board .play-top-controls {
+  height: clamp(76px, 9.8dvh, 84px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  top: -4%;
+  width: clamp(110px, 33.75%, 132px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  top: 56%;
+  font-size: clamp(27px, 7.9vw, 36px);
+}
+
+/* The control row took the height, so the board's budget gives it up. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(258px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(246px + 8dvh);
+}
+
+/* Chapter art through cleared cells only ------------------------------------
+   The hidden-picture loop is the point: classic empties a board completely,
+   so the painting should open up cell by cell as the player clears. What it
+   should NOT do is leak through the 1.5px gutters and the rounded-corner
+   voids between live tiles - the board bed under the grid was near
+   transparent (.12), so every seam sampled the painting and read as stains.
+
+   Sealing the bed alone would also seal the windows, because an empty cell
+   was only ever a transparent hole over the frame art. So the roles move:
+   the bed goes opaque (quiet violet-white, the same family as the tile bed),
+   and each cleared cell paints the painting itself - the board-sized image
+   is positioned per cell from --win-size/--win-pos, which ui.js measures
+   from layout (offsetLeft/Top, immune to the flip animations' transforms).
+   Adjacent cleared cells therefore assemble into one continuous picture. */
+.play-ui-v4 .board { position: relative; }
+
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
+  background-color: rgba(232, 237, 251, .97);
+  background-image:
+    linear-gradient(to right, rgba(104, 116, 192, .08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(104, 116, 192, .08) 1px, transparent 1px);
+}
+
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 1px solid rgba(255, 255, 255, .38);
+  border-radius: clamp(7px, 1.9vw, 11px);
+  background-color: rgba(255, 255, 255, .04);
+  /* The mist over the picture. The window system dropped this to 10% when it
+     moved the art from the frame into the cells; the frame used to carry
+     about 28% and the board read far calmer for it. It is back, and it
+     breathes: ui.js lowers --win-veil as the board empties, so an early
+     board stays quiet under a heavy mist and a nearly-cleared one lets the
+     scene bloom. No filter is involved - saturate() would put a rasterized
+     layer back on every cell, which is exactly what was taken off the tiles
+     to cool the play loop. A white wash desaturates on its own. */
+  background-image:
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .34)), rgba(255, 255, 255, var(--win-veil-b, .28))),
+    var(--chapter-art);
+  background-size: auto, var(--win-size, cover);
+  background-position: 0 0, var(--win-pos, center);
+  background-repeat: no-repeat;
+  /* Recessed, like a cell lifted out of the board rather than a sticker. */
+  box-shadow:
+    inset 0 2px 4px rgba(64, 76, 128, .20),
+    inset 0 0 0 1px rgba(255, 255, 255, .18);
+  filter: none;
+  opacity: 1;
+}
+
+/* The reveal beat empties the whole frame for the new scene; the opaque bed
+   above outranks the original reveal rule, so it is re-lowered here. */
+
+/* 2026-08 device-report batch ----------------------------------------------
+   Fixes from a real-device pass: the dock jumping in size at board 3, the
+   flat bubble that came with it, the timer pill sitting small against its
+   own digits, the STAGE numeral crowding the ribbon, hint glow spilling
+   onto cleared cells, and the bonus-cat cell blending into the board. */
+
+/* The dock grew a tier at every ladder step - 74% wide on square boards,
+   89% on tall, 82% on deep - so at board 3 the buttons jumped 52 to 63dp
+   for no reason a player can see. One size now, the one boards 1-2 had. */
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  width: min(74%, 308px);
+}
+
+/* Timer pill: the box hugged its digits. Grown to balance the x1.5 badge
+   across the row; the digits stay, the art breathes around them. */
+.play-ui-v4 .play-top-controls .time-readout,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .time-readout {
+  width: clamp(90px, 26.5%, 98px);
+  min-height: 41px;
+}
+
+/* STAGE numeral sat against the ribbon; down into the plate's belly. */
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  top: 60%;
+}
+
+/* The bubble ran nearly to the screen edge. Its left edge stays attached
+   at the cat; only the right side pulls in. */
+.play-ui-v4 .cat-speech {
+  width: calc(100% - 24px);
+}
+
+/* The bonus-cat cell read as just another pale tile. A warmer bed and a
+   peach rim give it the one-glance difference the peach art alone lost
+   against 40 mint neighbours. */
+.play-ui-v4 .tile.is-bonus-cat {
+  background-color: rgba(255, 216, 182, .97);
+  outline: 1.5px solid rgba(233, 158, 92, .6);
+  outline-offset: -1px;
+}
+
+/* The chapter arrival beat read as a glitch - a bare painting flashing
+   between boards. A stronger plate makes it read as the feature it is. */
+
+/* will-change: transform sat on the base .tile rule, so every cell on the
+   board - up to 54 of them - was permanently promoted to its own compositor
+   layer, held there for the whole run whether or not anything was moving.
+   That is the same standing GPU cost the drop-shadow filter was removed for.
+   The press feedback it was hinting at is a 32ms transform; the browser
+   promotes for that on its own, at the moment it happens, and drops it
+   again after. */
+.play-ui-v4 .tile {
+  will-change: auto;
+}
+
+
+/* Split dock ---------------------------------------------------------------
+   The item roster settled the original's way: hint and shuffle are the only
+   buttons, everything else spawns on the board. But two identical wells
+   side by side in one tray invited mispresses mid-frenzy - the original
+   avoids that by making the two controls different sizes in different
+   places, and that is what this does. The tray art is set aside; each well
+   is cut from it (item-well-*-v1) and becomes a standalone toy button:
+   hint, the reach-for-it-in-a-panic one, sits big in the bottom-right
+   thumb zone; shuffle, rarer and more drastic, sits smaller by the cat on
+   the far left. A whole screen width apart, different sizes - no confusing
+   them. The meadow stays open in between. The bomb/clock buttons and the
+   stage-mode code paths are untouched; only their display goes. */
+.play-ui-v4 .bomb-button,
+.play-ui-v4 .bomb-button[data-state],
+.play-ui-v4 .clock-button,
+.play-ui-v4 .clock-button[data-state] {
+  display: none;
+}
+
+.play-ui-v4 .play-footer-chrome {
+  display: none;
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  width: 100%;
+  aspect-ratio: auto;
+  height: clamp(62px, 9dvh, 73px);
+  margin-right: 0;
+  justify-self: stretch;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-actions {
+  position: static;
+  inset: auto;
+  display: flex;
+  /* DOM order is hint then shuffle; reversed so hint lands in the
+     bottom-right thumb zone and shuffle by the cat on the left. */
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0 4px 0 clamp(96px, 27.5vw, 110px);
+  gap: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-actions::before,
+.play-ui-v4 .item-actions::after {
+  display: none;
+}
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state] {
+  background: none;
+  border: 0;
+  padding: 6% 4% 3%;
+}
+
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state] {
+  width: clamp(56px, 15.5vw, 62px);
+  height: clamp(56px, 15.5vw, 62px);
+  min-width: 0;
+  min-height: 0;
+  background: url("../assets/ui/item-well-hint-v1.webp") center / 100% 100% no-repeat;
+}
+
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(44px, 12.5vw, 48px);
+  height: clamp(44px, 12.5vw, 48px);
+  min-width: 44px;
+  min-height: 44px;
+  align-self: flex-end;
+  background: url("../assets/ui/item-well-shuffle-v1.webp") center / 100% 100% no-repeat;
+}
+
+/* Device pass: equal buttons, bigger cat, bubble hugging it -----------------
+   The size asymmetry between hint and shuffle read as inconsistency rather
+   than hierarchy, so both buttons share one size now - the screen-width
+   gap and the colors already make them impossible to confuse. The cat
+   grows into the opened meadow, the shuffle clearance follows it, and the
+   bubble drops toward the cat's head into the empty dock center (visual
+   shift only - the lane's layout, growth direction and hit-through
+   behavior are untouched). */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(50px, 14vw, 56px);
+  height: clamp(50px, 14vw, 56px);
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(90px, 25vw, 98px);
+}
+
+.play-ui-v4 .item-actions {
+  padding-left: clamp(106px, 29.5vw, 118px);
+}
+
+.play-ui-v4 .cat-speech {
+  margin-left: -6px;
+  transform: translateY(10px);
+}
+
+/* Device pass 3: hint legibility, board separation, weightier buttons ------ */
+/* The hint ring read faint over pale scenes; deeper mint, thicker line,
+   stronger white halo. */
+.hint-region {
+  border: 3.5px solid rgba(23, 152, 116, .95);
+  box-shadow:
+    0 0 0 5px rgba(255, 255, 255, .85),
+    0 0 26px rgba(35, 170, 140, .55),
+    inset 0 0 18px rgba(255, 255, 255, .5);
+}
+
+/* When a chapter scene and the sky share a palette the board melted into
+   the backdrop. A crisp white ring plus a real cast shadow cuts it out. */
+.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  box-shadow:
+    0 0 0 2.5px rgba(255, 255, 255, .92),
+    0 4px 10px rgba(64, 84, 128, .22),
+    0 16px 34px rgba(64, 84, 128, .26);
+}
+
+/* Bigger, deeper toy buttons, lifted off the meadow; hint steps in from
+   the edge. Two filtered elements, not fifty-four - negligible cost. */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(56px, 16vw, 64px);
+  height: clamp(56px, 16vw, 64px);
+  filter: saturate(1.25) drop-shadow(0 5px 8px rgba(84, 62, 28, .32));
+}
+
+.play-ui-v4 .item-actions {
+  padding-right: 18px;
+}
+
+.play-ui-v4 .cat-speech {
+  transform: translateY(8px);
+}

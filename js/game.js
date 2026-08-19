@@ -8,16 +8,32 @@ import {
   TIME_FREEZE_SECONDS,
   TIME_ITEM_CAP_SCORE,
   availableItemTimeBonus,
-  boardDropReward,
+  boardDropRewardForRun,
   buildResultReaction,
+  buildClassicResultReaction,
   cappedSessionTime,
   chooseBoardDrop,
+  classicBoardChangeSeconds,
+  classicBoardForIndex,
+  classicRefundWithFatigue,
+  CLASSIC_REFUND_FATIGUE,
+  classicChapterArtUrl,
+  classicChapterCollected,
+  classicChapterForBoard,
+  classicChapterGallery,
+  classicComboAfterFailure,
+  classicComboGain,
+  classicDropStage,
+  classicRoundForBoard,
+  classicScoreForBlast,
+  classicScoreForClear,
+  classicStartBoardIndex,
+  classicTimeAfterBoardChange,
   comboAfterIdle,
   comboAfterIncorrectSelection,
   comboGainForClear,
   comboMilestoneCrossed,
   comboWindowMsForStage,
-  completesStageChallenge,
   freezeTimeline,
   getRoundConfig,
   itemUnlockGrantForStage,
@@ -25,13 +41,12 @@ import {
   nextBoardDropPity,
   pickMessage,
   rebasePausedTimeline,
+  gardenRevealPercent,
+  nextGardenRevealBest,
   recordEligibleForStartStage,
   roundTimeBonusSeconds,
   specialTilePlanForStage,
-  stageChallengeBonus,
-  stageChallengeForStage,
-  stageChallengeProgress,
-  stageProgressGainForClear,
+  successFeedbackLevel,
   stageShowcaseBoardDrop,
   stageIntroForStage,
   stageClearBonus,
@@ -44,7 +59,10 @@ import {
   scoreForMegaBomb,
   shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
-  shouldAdvanceRound,
+  stageEndDecision,
+  normalClearThresholdForStage,
+  isWowClear,
+  isNiceClear,
 } from './data.js';
 import { BoardModel, boardAssistForPerformance } from './board.js';
 import { BoardItemField } from './board-items.js';
@@ -76,7 +94,7 @@ import {
   playClockSound,
   playCloverSound,
   playFreezeSound,
-  playCountdownTick,
+  playTimeWarnBeeps,
   playFailSound,
   playGameOverSound,
   playHintSound,
@@ -111,6 +129,11 @@ import {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
+// Drops worth taking the lead of a moment. Bomb and clock are the everyday
+// rewards; these three are the ones a player should stop and look at.
+// The garden only shows through from STAGE 3, so earlier boards cannot
+// uncover any of it and must not count toward the reveal record.
+const GARDEN_REVEAL_FIRST_STAGE = 3;
 
 class OingGame {
   constructor() {
@@ -138,6 +161,7 @@ class OingGame {
     this.frozenTimeLeft = 0;
     this.pauseStartedAt = 0;
     this.lowTimeSpoken = false;
+    this.timeWarned = false;
     this.lastCountdownSecond = null;
     this.inputGuardUntil = 0;
     this.tutorialActive = false;
@@ -159,9 +183,9 @@ class OingGame {
     this.selectionWasPerfect = false;
     this.telemetry = null;
     this.stageDuration = 0;
+    this.classic = null;
     this.retryStage = 1;
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
-    this.autoShuffleUsed = false;
     this.state = this.freshState();
     this.input = attachStickyRectangleInput({
       boardEl: this.ui.board,
@@ -207,8 +231,8 @@ class OingGame {
     this.bindEvents();
     this.applySettings();
     this.renderBoard();
-    this.ui.updateBestScore(storageAdapter.getBestScore());
-    this.ui.updateHighestStage(storageAdapter.getHighestStage());
+    this.refreshClassicRecordSurfaces();
+    this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     this.ui.showScreen('home');
     schedulePlayAssetsPreload();
   }
@@ -229,13 +253,20 @@ class OingGame {
       round: stage,
       startStage: stage,
       recordEligible: eligible,
-      progress: 0,
       timeLeft: this.runtime?.duration || GAME_DURATION_SECONDS,
       comboExpiresAt: 0,
       successCount: 0,
       failureCount: 0,
       consecutiveFailures: 0,
       maxClearCells: 0,
+      maxGardenReveal: 0,
+      rescueShuffles: 0,
+      stageRescues: 0,
+      normalClears: 0,
+      stageNormalClears: 0,
+      stageBombUsed: false,
+      initialPlayableCells: 0,
+      cleanClears: 0,
       catsCollected: 0,
       catBonusScore: 0,
       cloverBoostPending: false,
@@ -249,9 +280,6 @@ class OingGame {
       stageShowcaseGiven: false,
       stageShowcaseEligible: this.runtime?.testMode || rareShowcaseCount < 3,
       stageShowcaseIndex: this.runtime?.testMode ? 0 : rareShowcaseCount,
-      stageChallengeComplete: false,
-      stageChallengeStreak: 0,
-      stageChallengeScore: 0,
       items: this.inventory.snapshot(),
     };
   }
@@ -261,15 +289,19 @@ class OingGame {
       document.querySelector('#start-button'),
       document.querySelector('#retry-button'),
       document.querySelector('#ranking-play-button'),
-    ];
+      document.querySelector('#garden-play-button'),
+    ].filter(Boolean);
     const primePlay = () => { preloadPlayAssets({ urgent: true }); };
     playButtons.forEach((button) => {
       button.addEventListener('pointerdown', primePlay, { passive: true });
       button.addEventListener('pointerenter', primePlay, { passive: true, once: true });
       button.addEventListener('focus', primePlay, { passive: true, once: true });
     });
-    document.querySelector('#start-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1));
-    document.querySelector('#retry-button').addEventListener('click', () => this.start(this.runtime.forcedRound || 1, { quickCountdown: true }));
+    // Classic is the only mode reachable from the UI now — every "play"
+    // entry point launches it. The stage ladder stays in the codebase (test
+    // harness, tests/) but nothing on screen starts it any more.
+    document.querySelector('#start-button').addEventListener('click', () => this.start(1, { classic: true }));
+    document.querySelector('#retry-button').addEventListener('click', () => this.startCurrentMode({ quickCountdown: true }));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
@@ -290,10 +322,21 @@ class OingGame {
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
-    document.querySelector('#ranking-close').addEventListener('click', () => this.ui.setOverlay('ranking-overlay', false));
+    document.querySelector('#ranking-close').addEventListener('click', () => {
+      this.ui.setOverlay('ranking-overlay', false);
+      this.setResultTucked(false);
+    });
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
-      this.start(this.runtime.forcedRound || 1);
+      this.setResultTucked(false);
+      this.start(1, { classic: true });
+    });
+    document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
+    document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
+    document.querySelector('#chapter-viewer-close').addEventListener('click', () => this.ui.setOverlay('chapter-viewer', false));
+    document.querySelector('#garden-play-button').addEventListener('click', () => {
+      this.ui.setOverlay('garden-overlay', false);
+      this.start(1, { classic: true });
     });
     const toggleSound = () => {
       this.settings.sound = !this.settings.sound;
@@ -322,10 +365,22 @@ class OingGame {
       this.settings.haptic = !this.settings.haptic;
       this.applySettings();
     });
+    // Best-effort privacy screen for the OS app switcher: the cover swaps in
+    // synchronously the moment the tab goes background, so the snapshot the
+    // switcher takes shows the logo instead of the board. Browsers give no
+    // hard guarantee about snapshot timing - a real guarantee needs a native
+    // wrapper - but in practice the swap wins the race.
+    const privacyCover = document.querySelector('#privacy-cover');
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') this.pause('background');
+      if (document.visibilityState === 'hidden') {
+        if (privacyCover) privacyCover.hidden = false;
+        this.pause('background');
+      } else if (privacyCover) {
+        privacyCover.hidden = true;
+      }
     });
     window.addEventListener('pagehide', (event) => {
+      if (privacyCover) privacyCover.hidden = false;
       this.pause('background');
       if (!event.persisted && this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'pagehide');
     });
@@ -347,6 +402,67 @@ class OingGame {
     this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
+  // Retry/restart keep whatever mode is on screen — a classic run retries
+  // as classic (same board size), a stage run as stage mode.
+  startCurrentMode(options = {}) {
+    return this.start(this.runtime?.forcedRound || 1, this.classic
+      ? { ...options, classic: true }
+      : options);
+  }
+
+  // The scene behind the board for the board the run is on. Reaching it is
+  // what unlocks it in the gallery, so the mark happens here — at the moment
+  // the player actually sees it — not when a run ends.
+  applyClassicChapter() {
+    const chapter = classicChapterForBoard(this.classic.boardIndex);
+    if (this.classic.chapterKey === chapter.key) return chapter;
+    this.classic.chapterKey = chapter.key;
+    this.classic.chapterLabel = chapter.label;
+    this.ui.setChapter(chapter.key, classicChapterArtUrl(chapter));
+    // Arriving is not collecting; markChapterCollected does that, and only
+    // once the board has actually been opened up.
+    return chapter;
+  }
+
+  // A scene enters the album when the board carrying it was cleared to the
+  // collect ratio - the same work that opens the painting on the board. The
+  // chapter read here is the one still on screen, so this must run before
+  // boardIndex advances.
+  markChapterCollected(clearedRatio) {
+    if (!this.classic || this.runtime.testMode) return false;
+    if (!classicChapterCollected(clearedRatio)) return false;
+    const chapter = classicChapterForBoard(this.classic.boardIndex);
+    const alreadySeen = storageAdapter.getSeenChapters().includes(chapter.key);
+    storageAdapter.markChapterSeen(chapter.key);
+    // Only a first-time collect is this run's news; the result sheet reads
+    // the list so the album progress lands where the retry decision is made.
+    if (!alreadySeen) (this.classic.collectedLabels ||= []).push(chapter.label);
+    return true;
+  }
+
+  // Classic hides the ladder's item unlock schedule: bomb/clock stay at
+  // stage-1 locked art, and the clock is out of play entirely.
+  // Item payouts have to speak the same currency as a clear, or a bomb reads
+  // as a different game. Classic pays blasts on its own cells×combo scale;
+  // the stage mode keeps its tuned figures.
+  // Classic scores sit an order of magnitude below the stage mode's, so the
+  // consolation for a time item that can no longer add time scales with it.
+  timeItemCapScore() {
+    return this.classic ? Math.round(TIME_ITEM_CAP_SCORE * 0.1) : TIME_ITEM_CAP_SCORE;
+  }
+
+  classicBlastScore(cellCount, catCount) {
+    return classicScoreForBlast(cellCount, catCount, this.state.combo);
+  }
+
+  itemHudState() {
+    return {
+      ...this.state.items,
+      stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
+      clockAvailable: this.stageDuration > 0,
+    };
+  }
+
   async start(startStage = this.runtime?.forcedRound || 1, options = {}) {
     if (this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'restart');
     preloadPlayAssets({ urgent: true });
@@ -362,7 +478,28 @@ class OingGame {
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
     this.inventory = createRunInventory();
     this.ui.resetItemAvailabilityHistory();
-    this.state = this.freshState(startStage, options);
+    // Classic mode: state.round is the generation depth ramp, not a stage —
+    // the ladder machinery is bypassed at every branch below.
+    // A personal best buys a later starting board, permanently — the only
+    // progress in the game that outlives a run. boardsPlayed is tracked
+    // separately from boardIndex so an unlocked start does not inflate the
+    // result sheet's 판갈이 count.
+    this.classic = options.classic
+      ? {
+        /* TODO: to bring back score-gated start boards, restore
+           classicStartBoardIndex(storageAdapter.getClassicBestScore()) here. */
+        boardIndex: 0,
+        boardsPlayed: 1,
+        chapterKey: null,
+        chapterLabel: '',
+      }
+      : null;
+    if (!this.classic) this.ui.setChapter(null);
+    this.state = this.freshState(
+      this.classic ? classicRoundForBoard(this.classic.boardIndex) : startStage,
+      options,
+    );
+    if (this.classic) this.state.recordEligible = true;
     this.retryStage = 1;
     this.stageDuration = this.runtime?.duration || GAME_DURATION_SECONDS;
     this.state.timeLeft = this.stageDuration;
@@ -373,10 +510,11 @@ class OingGame {
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
     this.ui.setFreezeActive(false);
-    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems(this.itemHudState());
     this.state.running = true;
     this.state.inputLocked = true;
     this.lowTimeSpoken = false;
+    this.timeWarned = false;
     this.beginnerAutoHintShown = false;
     this.lastInteractionAt = performance.now();
     this.activeResolution = false;
@@ -385,15 +523,14 @@ class OingGame {
     this.finishGraceTimer = null;
     this.finishPending = false;
     this.finishing = false;
-    this.autoShuffleUsed = false;
     this.lastCountdownSecond = null;
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
     this.ui.setOverlay('pause-overlay', false);
     this.buildRound();
     this.forceTestBoardItem();
-    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems(this.itemHudState());
     this.ui.showScreen('play');
-    this.ui.setPlayCharacter('peek');
+    this.ui.setPlayCharacter('wave');
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();
@@ -435,7 +572,6 @@ class OingGame {
     this.telemetry?.playReady();
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 100;
-    this.announceStageChallenge();
     if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
     else this.beginCountdown();
     return true;
@@ -469,11 +605,27 @@ class OingGame {
   buildRound() {
     this.boardItems.carry();
     this.itemTapCandidate = null;
-    const config = getRoundConfig(this.state.round);
+    const classicBoard = this.classic ? classicBoardForIndex(this.classic.boardIndex) : null;
+    if (this.classic) this.applyClassicChapter();
+    const config = classicBoard
+      ? { size: classicBoard.cols, cols: classicBoard.cols, rows: classicBoard.rows }
+      : getRoundConfig(this.state.round);
     this.generateBoard(config.size, config.rows);
-    this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round, Math.random, {
-      timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
-    }));
+    // Classic keeps the numbers themselves clean — no special tiles baked
+    // into the grid — but earned board drops land on it like they do in the
+    // stage mode, so a combo past the score cap still buys something.
+    if (!this.classic) this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round));
+    // A fresh classic board has no empty cells except the cat seats, so an
+    // item carried over a 판갈이 would sit invisible in the queue until the
+    // first clear - which read as the bomb simply vanishing. Instead the
+    // carried item buys its seat from a cat: one reserved cat cell (max two)
+    // opens up and the item lands there immediately, exactly where a player
+    // expects their saved bomb to be waiting.
+    if (this.classic && this.boardItems.pending.length && this.model.bonusCats.size > 1) {
+      const yield_ = Math.min(2, this.boardItems.pending.length, this.model.bonusCats.size - 1);
+      const seats = [...this.model.bonusCats].slice(0, yield_);
+      seats.forEach((key) => this.model.bonusCats.delete(key));
+    }
     const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
     this.renderBoard();
     this.updateHUD();
@@ -481,17 +633,20 @@ class OingGame {
   }
 
   generateBoard(cols, rows = cols) {
-    const grid = this.model.generate(cols, {
-      cols,
-      rows,
-      round: this.state.round,
-      assist: boardAssistForPerformance({
-        stage: this.state.round,
-        successCount: this.state.successCount,
-        failureCount: this.state.failureCount,
-        maxCombo: this.state.maxCombo,
-      }),
-    });
+    const grid = this.classic
+      ? this.model.generateClassic(cols, rows, this.state.round)
+      : this.model.generate(cols, {
+        cols,
+        rows,
+        round: this.state.round,
+        assist: boardAssistForPerformance({
+          stage: this.state.round,
+          successCount: this.state.successCount,
+          failureCount: this.state.failureCount,
+          maxCombo: this.state.maxCombo,
+        }),
+      });
+    this.state.initialPlayableCells = this.model.remainingPlayableCells();
     this.telemetry?.boardGenerated(this.model.findAnswers().length);
     return grid;
   }
@@ -586,20 +741,38 @@ class OingGame {
 
   advanceCombo(amount = 1) {
     const previousCombo = this.state.combo;
+    const previousMaxCombo = this.state.maxCombo;
     this.state.combo = previousCombo + Math.max(1, Math.round(Number(amount) || 1));
     this.refreshComboDeadline();
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
-    if (!this.runtime.testMode) storageAdapter.saveBestCombo(this.state.maxCombo);
-    const reward = boardDropReward(previousCombo, this.state.combo);
+    // Classic combos ride an uncapped-feeling ramp on a different clock —
+    // they stay out of the stage mode's best-combo record.
+    if (!this.runtime.testMode && !this.classic) storageAdapter.saveBestCombo(this.state.maxCombo);
+    // Each seven-combo boundary pays once per run; see boardDropRewardForRun
+    // for why the step is measured from the run's high-water mark. The rule
+    // is covered by regression tests in tests/board-items.test.mjs.
+    const reward = boardDropRewardForRun({
+      previousCombo,
+      nextCombo: this.state.combo,
+      bestComboBefore: previousMaxCombo,
+    });
     let earnedDrop = null;
+    // The original paid an item at every seventh combo, which is what kept a
+    // combo above the score cap worth having. Classic dropped items to keep
+    // the score scale clean and lost that valve with them; it is back, gated
+    // on board depth rather than on the number mix so an unlocked start does
+    // not open the late-run rarities on its first board.
     if (reward && this.state.round >= 3) {
       const drop = chooseBoardDrop(this.state.combo, Math.random, {
         cloverGiven: this.state.cloverDropped,
         pity: this.state.boardDropPity,
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
-        stage: this.state.round,
+        stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
         timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
+        // Same line the refund fatigue charges from: boardsPlayed counts the
+        // board being played, so board 7 is the first one past it.
+        lateRun: Boolean(this.classic && this.classic.boardsPlayed > CLASSIC_REFUND_FATIGUE.fromBoard),
       });
       if (drop) {
         earnedDrop = drop;
@@ -618,7 +791,8 @@ class OingGame {
   }
 
   refreshComboDeadline(now = performance.now()) {
-    this.state.comboExpiresAt = this.state.combo > 0
+    // Classic combo never times out — only a wrong answer cuts it (원조 규칙).
+    this.state.comboExpiresAt = this.state.combo > 0 && !this.classic
       ? now + comboWindowMsForStage(this.state.round)
       : 0;
   }
@@ -680,122 +854,180 @@ class OingGame {
     }
   }
 
+  // A second thing to chase besides the score, built from what the board
+  // already knows: on the stages where the garden shows through, how much of
+  // it did this run manage to uncover at once? Kept deliberately small — one
+  // number per run and one personal best, no new screen.
+  trackGardenReveal() {
+    if (this.state.round < GARDEN_REVEAL_FIRST_STAGE) return;
+    const cells = this.model.rows * this.model.cols;
+    if (cells <= 0) return;
+    const cleared = cells - this.model.remainingPlayableCells();
+    const percent = gardenRevealPercent(cleared, cells);
+    this.state.maxGardenReveal = nextGardenRevealBest(this.state.maxGardenReveal, percent);
+  }
+
   async handleSuccess(rect, stats) {
     this.state.inputLocked = true;
+    // The hint is spent the moment its answer is played — drop the veil now
+    // rather than leaving it over the clear animation and the next move.
+    this.ui.clearHint();
     const specials = stats.specials || [];
-    const hasClockTile = specials.some(({ type }) => type === 'clock');
     const bombSpecials = specials.filter(({ type }) => type === 'bomb');
     const blastCells = this.model.specialBombCells(bombSpecials, rect, 4);
     const blastValue = blastCells.reduce((sum, { r, c }) => sum + this.model.valueAt(r, c), 0);
     const catCount = stats.catCount || 0;
     const clearedCellCount = stats.count + catCount;
-    const comboGain = comboGainForClear(clearedCellCount);
+    const comboGain = this.classic
+      ? classicComboGain(clearedCellCount)
+      : comboGainForClear(clearedCellCount);
     const { previousCombo, earnedDrop } = this.advanceCombo(comboGain);
     const comboMilestone = comboMilestoneCrossed(previousCombo, this.state.combo);
     this.state.successCount += 1;
     this.state.consecutiveFailures = 0;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, clearedCellCount);
-    const clearPoints = scoreForClear(clearedCellCount, this.state.combo);
-    const wideBonusPoints = scoreForWideClear(clearedCellCount, this.state.combo);
-    const catBonusPoints = scoreForCatBonus(catCount, this.state.combo);
+    // Classic pays the original's single formula — cats and wide clears are
+    // folded in, and no side bonus (clutch/clover) touches the scale.
+    const clearPoints = this.classic
+      ? classicScoreForClear(clearedCellCount, catCount, this.state.combo)
+      : scoreForClear(clearedCellCount, this.state.combo);
+    const wideBonusPoints = this.classic ? 0 : scoreForWideClear(clearedCellCount, this.state.combo);
+    const catBonusPoints = this.classic ? 0 : scoreForCatBonus(catCount, this.state.combo);
     const specialBonusPoints = blastCells.length ? scoreForBomb(blastValue, blastCells.length) : 0;
     const cloverBasePoints = clearPoints + wideBonusPoints + catBonusPoints + specialBonusPoints;
     const cloverBonusPoints = this.state.cloverBoostPending ? scoreForCloverBonus(cloverBasePoints) : 0;
-    const clutchBonusPoints = this.freezeEndsAt > performance.now()
+    const clutchBonusPoints = this.classic || this.freezeEndsAt > performance.now()
       ? 0
       : scoreForClutch(this.state.timeLeft, this.state.combo);
     this.state.cloverBoostPending = false;
     this.state.cloverBonusScore += cloverBonusPoints;
     this.state.clutchBonusScore += clutchBonusPoints;
-    this.state.stageChallengeStreak += 1;
-    const challenge = stageChallengeForStage(this.state.round);
-    const challengeCompleted = !this.state.stageChallengeComplete && completesStageChallenge(challenge, {
-      cellCount: clearedCellCount,
-      catCount,
-      stageStreak: this.state.stageChallengeStreak,
-    });
-    const challengeBonusPoints = challengeCompleted ? stageChallengeBonus(this.state.round) : 0;
-    if (challengeCompleted) {
-      this.state.stageChallengeComplete = true;
-      this.state.stageChallengeScore += challengeBonusPoints;
-    }
     const points = clearPoints + wideBonusPoints + catBonusPoints + specialBonusPoints
-      + challengeBonusPoints + cloverBonusPoints + clutchBonusPoints;
+      + cloverBonusPoints + clutchBonusPoints;
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
-    this.state.progress += stageProgressGainForClear(clearedCellCount);
+    // Cells still on the board once this clear (and any bomb blast) is gone.
+    // Emptying the board outright is the run's peak moment now that stages
+    // have no target to hit, so it takes the top rank.
+    const emptiesBoard = this.model.remainingPlayableCells() - clearedCellCount - blastCells.length <= 0;
+    const wow = isWowClear(clearedCellCount);
+    const nice = isNiceClear(clearedCellCount);
+
+    // One rank for the whole moment, so the celebrations stop competing.
+    // Every system used to fire independently, which made the best clears the
+    // busiest frames on screen — measured at nine simultaneous effects. The
+    // rank decides who is the lead and who steps back; it never suppresses a
+    // number, so score and combo keep updating in the HUD regardless.
+    const successLevel = successFeedbackLevel({
+      emptiesBoard,
+      wow,
+      earnedDrop,
+      comboMilestone,
+      catCount,
+    });
     this.completeTutorial();
     successHaptic(this.state.combo);
-    duckMusic(comboGain > 1 ? 560 : 390, comboGain > 1 ? 0.48 : 0.64);
-    if (comboGain > 1) playWideClearSound();
-    else if (this.state.combo >= 2) playComboSound(this.state.combo);
+    duckMusic(wow ? 560 : 390, wow ? 0.48 : 0.64);
+    // playWideClearSound is a port of the original's WOW fanfare — a rising
+    // three-chord arpeggio and a sparkle — so it fires on the same five-cell
+    // threshold the original used, alongside the centred WOW! card.
+    if (wow) {
+      playWideClearSound();
+      this.ui.showWowMoment();
+    } else if (this.state.combo >= 2) playComboSound(this.state.combo);
     else playSuccessSound();
     if (catCount > 0) {
-      const catSoundOffset = hasClockTile || blastCells.length
+      const catSoundOffset = blastCells.length
         ? 0.36
-        : comboGain > 1 ? 0.25 : 0.17;
+        : wow ? 0.25 : 0.17;
       playCatBonusSound(catSoundOffset);
     }
-    if (earnedDrop) this.ui.showComboReward(earnedDrop, comboMilestone ? 300 : 40);
-    const scoreFeedback = () => this.ui.showScoreBurst(points, rect, { rows: this.model.rows, cols: this.model.cols }, this.state.combo, clearedCellCount, {
-      catCount,
-      catBonusPoints,
-      comboGain,
-      wideBonusPoints,
-      specialBonusPoints,
-      challengeBonusPoints,
-      cloverBonusPoints,
-      clutchBonusPoints,
-    });
+    // The NICE tag steps aside for the ranks that own the frame outright —
+    // emptying the board (5) and WOW or a rare drop (4) — so it only ever
+    // decorates a moment that would otherwise pass with just a number.
+    const scoreFeedback = () => this.ui.showScoreBurst(
+      points,
+      rect,
+      { rows: this.model.rows, cols: this.model.cols },
+      this.state.combo,
+      clearedCellCount,
+      { nice: nice && successLevel < 4 },
+    );
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
-    this.speakForSuccess(catCount, comboGain);
-    if (challengeCompleted) {
-      this.ui.setPlayCharacter('success', 1000);
-      this.showCatMessage('challengeComplete');
-    }
+    this.speakForSuccess(catCount, wow, successLevel);
     if (cloverBonusPoints > 0) {
       this.showCatMessage('cloverSuccess');
-    }
-    if (clutchBonusPoints > 0 && !challengeCompleted && cloverBonusPoints === 0) {
+    } else if (clutchBonusPoints > 0) {
       this.showCatMessage('clutch');
-    }
-    if (hasClockTile) this.addStageTime(5);
-    if (hasClockTile) {
-      playClockSound();
-      clockHaptic();
     }
     if (blastCells.length) {
       playBombSound();
       bombHaptic();
     }
-    this.ui.showMatchConfirmation(rect, this.state.combo);
+    // "딱 10!" belongs to the quiet clears. From rank 3 up something louder
+    // is already confirming the success over the same tiles.
+    if (successLevel <= 2) this.ui.showMatchConfirmation(rect, this.state.combo);
     const successAnimation = this.ui.animateSuccess(rect, this.state.combo);
     const specialAnimation = this.ui.animateSpecialTiles(specials, blastCells);
     await delay(96);
     scoreFeedback();
     if (this.state.combo >= 2) {
       await delay(this.state.combo >= 5 ? 90 : 68);
-      this.ui.showComboMoment(this.state.combo);
+      // The chip always punches — that is the combo's own escalation. The
+      // banner across the board is held back for rank 3 and below, so a rare
+      // item or a stage clear is never fighting a COMBO card for the centre.
+      // `comboMilestone` is the same crossing check successLevel used, so
+      // the banner and the rank can never disagree about this success.
+      this.ui.showComboMoment(this.state.combo, { allowCelebration: successLevel <= 3, milestone: comboMilestone });
     }
     await Promise.all([successAnimation, specialAnimation]);
     this.model.remove(rect);
     if (blastCells.length) this.model.removeCells(blastCells);
+    // Read after every cell from this success (including a bomb blast) is
+    // actually gone, and before the board is rebuilt for the next stage —
+    // this is the one moment the model reflects what the run just revealed.
+    this.trackGardenReveal();
     if (this.finishPending) {
       this.renderBoard({ preserveScoreBurst: true });
       return;
     }
 
-    const config = getRoundConfig(this.state.round);
     const remainingAnswer = this.model.findAnswer();
-    const perfect = this.model.remainingPlayableCells() === 0;
-    if (shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
+    const remaining = this.model.remainingPlayableCells();
+    if (this.classic) {
+      // Drops land on cells the player has cleared, and a freshly generated
+      // board has none — so the placement pass belongs here, after every
+      // success, not only at 판갈이.
+      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+      this.renderBoard({ preserveScoreBurst: true });
+      if (placed.length) {
+        this.announceBoardItems(placed, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
+      }
+      if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
+      this.state.inputLocked = false;
+      this.updateHUD();
+      return;
+    }
+    const decision = stageEndDecision({
+      hasAnswer: Boolean(remainingAnswer),
+      boardEmpty: remaining === 0,
+      remaining,
+      initialPlayable: this.state.initialPlayableCells,
+      stageRescues: this.state.stageRescues,
+      threshold: normalClearThresholdForStage(this.state.round),
+    });
+    if (decision === 'advance') {
       this.renderBoard({ preserveScoreBurst: true });
       if (comboMilestone) await delay(220);
-      await this.clearRound({ perfect });
-    } else if (!remainingAnswer) {
-      await this.handleNoAnswers();
+      await this.clearRound();
+    } else if (decision === 'normal') {
+      this.renderBoard({ preserveScoreBurst: true });
+      await this.normalDryClear();
+    } else if (decision === 'rescue') {
+      this.renderBoard({ preserveScoreBurst: true });
+      await this.rescueShuffle();
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard({ preserveScoreBurst: true });
@@ -803,6 +1035,139 @@ class OingGame {
     }
     this.state.inputLocked = false;
     this.updateHUD();
+  }
+
+  // The stage never ends with tiles on the board. When the answers run out
+  // instead, the cat quietly rearranges what is left — and if the values
+  // themselves can no longer make ten (a bomb blast is the usual culprit),
+  // the model repairs the smallest possible pair. Cleared cells are never
+  // refilled, and the shuffle item's count is never touched. If fewer than
+  // two numbers remain, nothing can ever sum to ten again: the leftovers
+  // are swept off as blast debris and the stage completes.
+  // The normal clear: the tens ran out, so the stage is over — that is the
+  // rule, not an assist. The clear is confirmed FIRST (haptic + the stage
+  // sound land before anything moves), then the leftover tiles pop away as
+  // part of the transition, then the garden and the banner follow. No cat
+  // commentary, no score, no combo, no drops from the cleanup.
+  async normalDryClear() {
+    const numbers = this.model.grid.flat().filter((value) => value > 0).length;
+    const reason = numbers <= 1 ? 'orphanTail' : this.state.stageBombUsed ? 'bombDeadEnd' : 'naturalDeadEnd';
+    this.state.normalClears += 1;
+    this.state.stageNormalClears += 1;
+    this.telemetry?.normalClear?.(reason);
+    await delay(220);
+    roundHaptic();
+    playRoundClearSound();
+    const sweep = this.model.sweepRemaining();
+    if (sweep.length) await this.ui.animateSweep(sweep);
+    this.renderBoard({ preserveScoreBurst: true });
+    this.trackGardenReveal();
+    await this.clearRound({ clearAnnounced: true });
+  }
+
+  async rescueShuffle() {
+    this.state.rescueShuffles += 1;
+    this.state.stageRescues += 1;
+    this.telemetry?.rescueShuffle?.();
+    // The cat explains the first rescue of a stage; repeats stay wordless so
+    // a tail that needs two nudges doesn't turn into a monologue.
+    if (this.state.stageRescues === 1) {
+      this.showCatMessage('rescue');
+      this.ui.setPlayCharacter('wave', 1000);
+    }
+    duckMusic(420, 0.66);
+    playShuffleSound();
+    itemHaptic();
+    const outcome = this.model.rescueRemaining();
+    if (!outcome) {
+      const sweep = this.model.sweepRemaining();
+      if (sweep.length) await this.ui.animateSweep(sweep);
+      this.renderBoard({ preserveScoreBurst: true });
+      this.trackGardenReveal();
+      await this.clearRound();
+      return;
+    }
+    await this.ui.animateShuffleOut();
+    this.renderBoard();
+    await this.ui.animateShuffleIn();
+    itemHaptic();
+    this.inputGuardUntil = performance.now() + 140;
+  }
+
+  // 판갈이: the classic loop's only lifeline. The answers ran out — whether
+  // the board was emptied or stranded — so a fresh board slides in and the
+  // clock gains +15s, exactly like the original. The timer never stops and
+  // the combo carries straight through.
+  async classicBoardChange({ emptied = false } = {}) {
+    // The bonus is earned by the board just finished — a dried 5×5 pays its
+    // own small refund, not the full board's.
+    const clearedBoard = classicBoardForIndex(this.classic.boardIndex);
+    // How much of the board the player actually got through. This is what
+    // the refund is paid on, so the stubborn last corner of a 6×9 is worth
+    // real seconds and a tidy finish beats breaking a few and moving on.
+    const initial = Math.max(1, this.state.initialPlayableCells);
+    const clearedRatio = Math.min(1, Math.max(0, 1 - this.model.remainingPlayableCells() / initial));
+    this.markChapterCollected(clearedRatio);
+    // The board just finished is #boardsPlayed (it starts at 1); read it
+    // before the counters advance, since fatigue is charged on it.
+    const finishedBoardNumber = this.classic.boardsPlayed;
+    this.classic.boardIndex += 1;
+    this.classic.boardsPlayed += 1;
+    const nextBoard = classicBoardForIndex(this.classic.boardIndex);
+    this.state.round = classicRoundForBoard(this.classic.boardIndex);
+    const previousTime = this.state.timeLeft;
+    this.state.timeLeft = classicTimeAfterBoardChange(
+      previousTime,
+      classicRefundWithFatigue(
+        classicBoardChangeSeconds(clearedBoard, clearedRatio),
+        finishedBoardNumber,
+      ),
+    );
+    const gainedTime = Math.round(this.state.timeLeft - previousTime);
+    const boardGrew = nextBoard.rows * nextBoard.cols > clearedBoard.rows * clearedBoard.cols;
+    // buildRound applies the chapter further down; compare against the one
+    // still on screen so a new scene can announce itself as it arrives.
+    const nextChapter = classicChapterForBoard(this.classic.boardIndex);
+    const enteredChapter = nextChapter.key !== this.classic.chapterKey ? nextChapter : null;
+    if (this.timer) this.endAt += (this.state.timeLeft - previousTime) * 1000;
+    if (this.state.timeLeft > 10) {
+      this.lowTimeSpoken = false;
+      this.lastCountdownSecond = null;
+    }
+    roundHaptic();
+    playRoundClearSound();
+    duckMusic(420, 0.6);
+    if (emptied) {
+      // A scaled-down take on the original's perfect-clear carry (3 hints):
+      // emptying the board yourself earns one hint.
+      this.grantItems({ hint: 1 });
+      this.ui.showMessage('싹 비웠다냥! 힌트 +1', 1800, 'classicClear');
+      this.ui.setPlayCharacter('cheer', 1000);
+    } else if (enteredChapter) {
+      // A new scene is the run's own milestone — it outranks the board-grew
+      // line, which the player can see for themselves.
+      this.ui.showMessage(`${enteredChapter.label}에 도착했다냥!`, 1900, 'classicChapter');
+      this.ui.setPlayCharacter('cheer', 1000);
+    } else if (boardGrew) {
+      this.ui.showMessage(gainedTime > 0 ? `판이 커졌다냥! +${gainedTime}초` : '판이 커졌다냥!', 1600, 'classicBoard');
+      this.ui.setPlayCharacter('cheer', 900);
+    } else {
+      this.ui.showMessage(gainedTime > 0 ? `판갈이다냥! +${gainedTime}초` : '판갈이다냥!', 1600, 'classicBoard');
+      this.ui.setPlayCharacter('wave', 900);
+    }
+    if (gainedTime > 0) this.ui.showStageTimeBonus(gainedTime);
+    this.ui.flashBoardChange();
+    this.updateHUD();
+    await this.ui.animateShuffleOut();
+    // The new scene's skin goes on before the fresh board arrives, but it is
+    // never shown outright: a card that displays the whole painting is a
+    // preview, and this picture is only supposed to be earned cell by cell.
+    // The arrival still gets announced — in the speech bubble, in words.
+    if (enteredChapter) this.applyClassicChapter();
+    this.buildRound();
+    await this.ui.animateShuffleIn();
+    itemHaptic();
+    this.inputGuardUntil = performance.now() + 160;
   }
 
   addStageTime(seconds = 5) {
@@ -822,31 +1187,14 @@ class OingGame {
     return gainedTime > 0;
   }
 
-  async handleNoAnswers() {
-    this.autoShuffleUsed = true;
-    this.showCatMessage('noAnswer');
-    this.ui.setPlayCharacter('wave', 1000);
-    duckMusic(420, 0.66);
-    playShuffleSound();
-    itemHaptic();
-    await this.ui.animateShuffleOut();
-    const shuffled = this.model.shuffleRemaining();
-    let carried = [];
-    if (!shuffled) carried = this.buildRound();
-    else this.renderBoard();
-    await this.ui.animateShuffleIn();
-    itemHaptic();
-    if (carried.length) this.announceBoardItems(carried, { playSound: false });
-    this.inputGuardUntil = performance.now() + 140;
-  }
-
   async handleFailure(rect, stats = {}) {
     this.state.inputLocked = true;
     const previousCombo = this.state.combo;
     this.state.failureCount += 1;
     this.state.consecutiveFailures += 1;
-    this.state.combo = comboAfterIncorrectSelection(previousCombo, stats.sum);
-    this.state.stageChallengeStreak = 0;
+    this.state.combo = this.classic
+      ? classicComboAfterFailure(previousCombo)
+      : comboAfterIncorrectSelection(previousCombo, stats.sum);
     this.refreshComboDeadline();
     failHaptic();
     playFailSound();
@@ -871,40 +1219,53 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
-  speakForSuccess(catCount = 0, comboGain = 1) {
+  speakForSuccess(catCount = 0, wow = false, successLevel = 1) {
+    // The cat used to have a line for literally every clear, which measured
+    // at 3.67 message changes per success — it talked over the game instead
+    // of reacting to it. It now speaks for moments with feeling behind them:
+    // the first clear, a big or lucky one, the step before a reward, and the
+    // combo milestones. An ordinary clear passes in silence, which is what
+    // makes the next line worth reading.
     if (catCount > 0) {
       this.ui.setPlayCharacter('success', 950);
       this.showCatMessage('catBonus');
-    } else if (comboGain > 1) {
+    } else if (wow) {
       this.ui.setPlayCharacter('success', 1000);
       this.showCatMessage('wow');
-    } else if (getRoundConfig(this.state.round).target - this.state.progress === 1) {
-      this.ui.setPlayCharacter('wave', 900);
-      this.showCatMessage('nearGoal');
     } else if (this.state.successCount === 1) {
       this.ui.setPlayCharacter('success', 800);
       this.showCatMessage('firstSuccess');
     } else if (this.state.combo === 3) {
       this.ui.setPlayCharacter('cheer', 900);
       this.showCatMessage('combo3');
-    } else if (this.state.round >= 3
+    } else if (!this.classic
+      && this.state.round >= 3
       && this.state.combo > 0
       && this.state.combo % ITEM_REWARD_INTERVAL === ITEM_REWARD_INTERVAL - 1) {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
       this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
-    } else if (this.state.combo >= 5) {
+    } else if (this.state.combo === 5 || this.state.combo === 8) {
       this.ui.setPlayCharacter('success', 900);
       this.showCatMessage(this.state.combo >= 8 ? 'combo8' : 'combo5');
-    } else {
+    } else if (successLevel >= 3) {
+      // A milestone or a reward landed; a short line is earned.
       this.showCatMessage('success');
     }
   }
 
-  async clearRound({ perfect = false } = {}) {
+  async clearRound({ clearAnnounced = false } = {}) {
+    // PERFECT means the player emptied the board alone — no rescue shuffle
+    // and no transition cleanup of a dried-out tail.
+    const perfect = this.state.stageRescues === 0 && this.state.stageNormalClears === 0;
     this.state.inputLocked = true;
     this.telemetry?.roundCleared({ perfect });
     this.stopTimer();
+    if (perfect) this.state.cleanClears += 1;
+    // The finished garden is the clear's reward: the board is empty, so the
+    // art beneath it is fully visible for the first time — hold on it
+    // briefly before anything covers it.
+    await this.ui.celebrateFullGarden({ perfect });
     const clearedStage = this.state.round;
     const nextRound = clearedStage + 1;
     const clearedConfig = getRoundConfig(clearedStage);
@@ -913,9 +1274,9 @@ class OingGame {
     const awardedTimeBonus = Math.max(0, Math.round(cappedSessionTime(this.state.timeLeft, timeBonus) - this.state.timeLeft));
     const scoreBonus = stageClearBonus(clearedStage, this.state.timeLeft, perfect);
     this.state.score += scoreBonus;
-    roundHaptic();
+    if (!clearAnnounced) roundHaptic();
     duckMusic(680, 0.46);
-    playRoundClearSound();
+    if (!clearAnnounced) playRoundClearSound();
     this.ui.showRoundClear({
       scoreBonus,
       timeBonus: awardedTimeBonus,
@@ -923,28 +1284,22 @@ class OingGame {
       nextStage: nextRound,
       rows: nextConfig.rows,
       cols: nextConfig.cols,
+      perfect,
       boardGrew: nextConfig.rows !== clearedConfig.rows || nextConfig.cols !== clearedConfig.cols,
     });
     this.ui.setPlayCharacter('cheer', 1000);
-    this.showCatMessage('stage');
-    if (perfect) {
-      this.grantItems({ hint: 1 }, { source: 'earned' });
-      this.showCatMessage('perfect');
-      this.ui.toast('PERFECT! 힌트 +1');
-    }
+    this.showCatMessage(perfect ? 'perfect' : 'stage');
     this.updateHUD();
     const [storedItems] = await Promise.all([
       this.storeRoundItems({ soundDelay: 260 }),
       delay(760),
     ]);
     this.state.round = nextRound;
-    this.state.progress = 0;
-    this.state.stageChallengeComplete = false;
-    this.state.stageChallengeStreak = 0;
-    this.autoShuffleUsed = false;
+    this.state.stageRescues = 0;
+    this.state.stageNormalClears = 0;
+    this.state.stageBombUsed = false;
     this.retryStage = nextRound;
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
-    this.ui.updateHighestStage(this.runtime.testMode ? nextRound : storageAdapter.getHighestStage());
     const unlockGrant = itemUnlockGrantForStage(nextRound);
     if (unlockGrant) this.grantItems(unlockGrant, { source: 'earned' });
     const showcaseDrop = this.state.stageShowcaseEligible
@@ -972,13 +1327,12 @@ class OingGame {
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
     this.ui.setFreezeActive(false);
-    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems(this.itemHudState());
     let carriedItems = [];
     await this.ui.animateRoundTransition(nextRound, () => {
       carriedItems = this.buildRound();
     }, {
       ...stageIntroForStage(nextRound),
-      target: nextConfig.target,
       boardGrew: nextConfig.rows !== clearedConfig.rows || nextConfig.cols !== clearedConfig.cols,
     });
     this.state.inputLocked = false;
@@ -989,19 +1343,7 @@ class OingGame {
     this.inputGuardUntil = performance.now() + STAGE_TRANSITION_INPUT_GUARD_MS;
     this.refreshComboDeadline(this.inputGuardUntil);
     this.ui.showRoundReady(360);
-    this.announceStageChallenge();
     this.beginCountdown();
-  }
-
-  announceStageChallenge() {
-    const challenge = stageChallengeForStage(this.state.round);
-    if (!challenge || this.state.stageChallengeComplete) return;
-    const type = challenge.kind === 'wide'
-      ? 'challengeWide'
-      : challenge.kind === 'cat'
-        ? 'challengeCat'
-        : 'challengeChain';
-    this.showCatMessage(type);
   }
 
   async storeRoundItems({ soundDelay = 0 } = {}) {
@@ -1124,8 +1466,10 @@ class OingGame {
       await delay(130);
     }
     const catCount = Number(stats.catCount) || 0;
-    const catBonusPoints = scoreForCatBonus(catCount, Math.max(1, this.state.combo));
-    const points = scoreForBomb(stats.sum, stats.count) + catBonusPoints;
+    const catBonusPoints = this.classic ? 0 : scoreForCatBonus(catCount, Math.max(1, this.state.combo));
+    const points = this.classic
+      ? this.classicBlastScore(stats.count + catCount, catCount)
+      : scoreForBomb(stats.sum, stats.count) + catBonusPoints;
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
@@ -1144,8 +1488,10 @@ class OingGame {
 
   async resolveMegaBomb({ row, col, rect, cells, stats }, boardItemKey) {
     const catCount = cells.reduce((count, cell) => count + (this.model.hasBonusCat(cell.r, cell.c) ? 1 : 0), 0);
-    const catBonusPoints = scoreForCatBonus(catCount, Math.max(1, this.state.combo));
-    const points = scoreForMegaBomb(stats.sum, stats.count) + catBonusPoints;
+    const catBonusPoints = this.classic ? 0 : scoreForCatBonus(catCount, Math.max(1, this.state.combo));
+    const points = this.classic
+      ? this.classicBlastScore(stats.count + catCount, catCount)
+      : scoreForMegaBomb(stats.sum, stats.count) + catBonusPoints;
     this.state.score += points;
     this.state.catsCollected += catCount;
     this.state.catBonusScore += catBonusPoints;
@@ -1164,13 +1510,36 @@ class OingGame {
 
   async finishBlast(boardItemKey = null) {
     if (boardItemKey) this.boardItems.delete(boardItemKey);
-    const config = getRoundConfig(this.state.round);
+    this.state.stageBombUsed = true;
     const remainingAnswer = this.model.findAnswer();
-    if (shouldAdvanceRound(this.state.progress, config.target, Boolean(remainingAnswer))) {
+    const remaining = this.model.remainingPlayableCells();
+    if (this.classic) {
+      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+      this.renderBoard();
+      if (placed.length) this.announceBoardItems(placed);
+      if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
+      this.inputGuardUntil = performance.now() + 180;
+      this.state.inputLocked = false;
+      this.updateHUD();
+      return;
+    }
+    const decision = stageEndDecision({
+      hasAnswer: Boolean(remainingAnswer),
+      boardEmpty: remaining === 0,
+      remaining,
+      initialPlayable: this.state.initialPlayableCells,
+      stageRescues: this.state.stageRescues,
+      threshold: normalClearThresholdForStage(this.state.round),
+    });
+    if (decision === 'advance') {
       this.renderBoard();
       await this.clearRound();
-    } else if (!remainingAnswer) {
-      await this.handleNoAnswers();
+    } else if (decision === 'normal') {
+      this.renderBoard();
+      await this.normalDryClear();
+    } else if (decision === 'rescue') {
+      this.renderBoard();
+      await this.rescueShuffle();
     } else {
       const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
       this.renderBoard();
@@ -1201,13 +1570,13 @@ class OingGame {
     const previousTime = this.state.timeLeft;
     const requestedTime = availableItemTimeBonus(this.state.itemTimeBonusUsed, 5);
     if (requestedTime <= 0) {
-      this.state.score += TIME_ITEM_CAP_SCORE;
+      this.state.score += this.timeItemCapScore();
       if (boardItemKey) {
         this.boardItems.delete(boardItemKey);
         this.renderBoard();
       }
       this.updateHUD();
-      this.ui.toast(`시간 보너스 MAX · +${TIME_ITEM_CAP_SCORE}점`);
+      this.ui.toast(`시간 보너스 MAX · +${this.timeItemCapScore()}점`);
       this.inputGuardUntil = performance.now() + 100;
       this.state.inputLocked = false;
       return;
@@ -1247,11 +1616,11 @@ class OingGame {
       : Math.max(0, this.timer ? (this.endAt - now) / 1000 : this.state.timeLeft);
     const freezeSeconds = availableItemTimeBonus(this.state.itemTimeBonusUsed, TIME_FREEZE_SECONDS);
     if (freezeSeconds <= 0) {
-      this.state.score += TIME_ITEM_CAP_SCORE;
+      this.state.score += this.timeItemCapScore();
       this.boardItems.delete(boardItemKey);
       this.renderBoard();
       this.updateHUD();
-      this.ui.toast(`시간 보너스 MAX · +${TIME_ITEM_CAP_SCORE}점`);
+      this.ui.toast(`시간 보너스 MAX · +${this.timeItemCapScore()}점`);
       this.inputGuardUntil = performance.now() + 80;
       this.state.inputLocked = false;
       return;
@@ -1342,7 +1711,7 @@ class OingGame {
 
   syncInventory() {
     this.state.items = this.inventory.snapshot();
-    this.ui.updateItems({ ...this.state.items, stage: this.state.round, clockAvailable: this.stageDuration > 0 });
+    this.ui.updateItems(this.itemHudState());
   }
 
   grantItems(grants, metadata = {}) {
@@ -1354,7 +1723,7 @@ class OingGame {
   tick() {
     if (!this.state.running || this.state.paused) return;
     const now = performance.now();
-    this.maybeShowBeginnerAutoHint(now);
+    if (!this.classic) this.maybeShowBeginnerAutoHint(now);
     const isFrozen = this.freezeEndsAt > now;
     if (isFrozen) {
       this.state.timeLeft = this.frozenTimeLeft;
@@ -1380,16 +1749,25 @@ class OingGame {
       && !isFrozen
       && this.state.timeLeft <= 10
       && !this.lowTimeSpoken) {
+      // The cat says it once; the timer already turns red and pulses, and
+      // the banner that used to appear here covered the clock itself.
       this.lowTimeSpoken = true;
       this.showCatMessage('lowTime');
       this.ui.setPlayCharacter('cheer', 1800);
-      this.ui.showLowTimeAlert(Math.ceil(this.state.timeLeft));
+    }
+    // The original sounds the alarm once as the clock crosses ten and then
+    // leaves the player alone, re-arming only if a bonus lifts time back
+    // above twelve. A tick every second was the part that grated.
+    if (!isFrozen && this.state.timeLeft > 0 && this.state.timeLeft <= 10 && !this.timeWarned) {
+      this.timeWarned = true;
+      playTimeWarnBeeps();
+      countdownHaptic(3);
+    } else if (this.state.timeLeft > 12) {
+      this.timeWarned = false;
     }
     const countdownSecond = Math.ceil(this.state.timeLeft);
     if (!isFrozen && countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
       this.lastCountdownSecond = countdownSecond;
-      playCountdownTick(countdownSecond);
-      countdownHaptic(countdownSecond);
       if (countdownSecond <= 3) this.ui.showFinalSecond(countdownSecond);
     }
     this.updateHUD();
@@ -1490,7 +1868,7 @@ class OingGame {
     const now = performance.now();
     if (now <= this.restartConfirmUntil) {
       this.resetRestartConfirmation();
-      this.start(this.runtime?.forcedRound || 1);
+      this.startCurrentMode();
       return;
     }
     this.restartConfirmUntil = now + 2200;
@@ -1507,6 +1885,7 @@ class OingGame {
   }
 
   async finish() {
+    if (this.classic) return this.finishClassic();
     if (!this.state.running || this.finishing) return;
     this.finishing = true;
     clearTimeout(this.finishGraceTimer);
@@ -1552,24 +1931,37 @@ class OingGame {
     fadeOutMusic();
     playGameOverSound(newRecord);
     gameOverHaptic(newRecord);
-    await this.ui.animateGameEnd({
-      score: this.state.score,
-      maxCombo: this.state.maxCombo,
-      newRecord,
-      answers: endAnswers,
-    });
+    await this.ui.animateGameEnd({ answers: endAnswers });
     if (!this.runtime.testMode && newRecord) storageAdapter.saveBestScore(this.state.score);
     if (!this.runtime.testMode && recordEligible) storageAdapter.saveBestCombo(this.state.maxCombo);
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(this.state.round);
-    this.ui.updateBestScore(recordEligible ? Math.max(oldBest, this.state.score) : oldBest);
+    // Rescued cats accumulate across runs — the result card's per-run count
+    // reads as part of a growing collection instead of a number that
+    // evaporates when the screen closes.
+    const catsRescuedTotal = this.runtime.testMode
+      ? this.state.catsCollected
+      : storageAdapter.addCatsRescued(this.state.catsCollected);
+    // The garden reveal is the run's second scoreboard. Capture the previous
+    // best before saving so the result card can tell the player they beat it.
+    const cleanClears = Math.max(0, Math.round(this.state.cleanClears || 0));
+    const cleanClearsTotal = this.runtime.testMode
+      ? cleanClears
+      : storageAdapter.addCleanClears(cleanClears);
+    // The home figure belongs to classic, so a stage run refreshes it from
+    // storage rather than writing its own (much larger) score into it.
+    this.refreshClassicRecordSurfaces();
+    this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
       score: this.state.score,
       maxCombo: this.state.maxCombo,
       round: this.state.round,
-      progress: this.state.progress,
-      target: config.target,
+      successCount: this.state.successCount,
       maxClearCells: this.state.maxClearCells,
       catsCollected: this.state.catsCollected,
+      catsRescuedTotal,
+      cleanClears,
+      cleanClearsTotal,
+      rescueShuffles: this.state.rescueShuffles,
       newRecord,
       previousBest: oldBest,
       previousScore,
@@ -1606,16 +1998,39 @@ class OingGame {
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
     this.ui.setOverlay('pause-overlay', false);
-    this.ui.updateBestScore(storageAdapter.getBestScore());
-    this.ui.updateHighestStage(storageAdapter.getHighestStage());
+    this.refreshClassicRecordSurfaces();
     this.ui.showScreen('home');
   }
 
+  setResultTucked(tucked) {
+    document.querySelector('.result-card')?.classList.toggle('is-tucked', tucked);
+  }
+
   async openRanking() {
+    // From the result screen the sheet bows out so the panel reads
+    // full-screen; every close path brings it back.
+    if (document.querySelector('#result-screen')?.classList.contains('is-active')) {
+      this.setResultTucked(true);
+    }
     const records = await rankingAdapter.open();
-    this.ui.updateBestScore(storageAdapter.getBestScore());
+    this.refreshClassicRecordSurfaces();
     this.ui.renderRanking(records);
+    this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
+    // The album lives in the records sheet now: the garden it used to sit in
+    // is parked, and this is the surface a player already opens to look back
+    // at a run.
+    this.ui.renderChapterGallery(classicChapterGallery({
+      seenKeys: storageAdapter.getSeenChapters(),
+      bestScore: storageAdapter.getClassicBestScore(),
+    }));
     this.ui.setOverlay('ranking-overlay', true);
+  }
+
+  openGarden() {
+    const total = storageAdapter.getCatsRescued();
+    this.ui.updateCatsRescued(total);
+    this.ui.renderGarden(total, storageAdapter.getCleanClears());
+    this.ui.setOverlay('garden-overlay', true);
   }
 
   async shareResult() {
@@ -1630,30 +2045,144 @@ class OingGame {
     else if (result.reason !== 'cancelled') this.ui.toast('이 브라우저에선 공유가 어렵다냥');
   }
 
+  // Classic mode runs its own record book: the score sits on the original's
+  // scale, the "stage" figure is the board count, and nothing here touches
+  // the stage mode's best score, ranking history, or highest stage.
+  async finishClassic() {
+    if (!this.state.running || this.finishing) return;
+    this.finishing = true;
+    clearTimeout(this.finishGraceTimer);
+    this.finishGraceTimer = null;
+    this.activeGesture = false;
+    this.finishPending = false;
+    this.state.running = false;
+    this.state.inputLocked = true;
+    this.state.timeLeft = 0;
+    this.freezeEndsAt = 0;
+    this.frozenTimeLeft = 0;
+    this.ui.setFreezeActive(false);
+    this.stopTimer();
+    this.input.cancel();
+    this.tutorialActive = false;
+    this.waitingForFirstDrag = false;
+    this.ui.hideTutorial();
+    // The board the timer ran out on never gets a 판갈이, so its scene would
+    // otherwise be unclaimable no matter how far the player got through it.
+    this.markChapterCollected(
+      1 - this.model.remainingPlayableCells() / Math.max(1, this.state.initialPlayableCells),
+    );
+    const endAnswers = this.model.findAnswers();
+    this.ui.showMessage('기록을 정리한다냥!', 1300, 'result');
+    this.ui.setPlayCharacter(this.state.maxCombo >= 8 ? 'success' : 'cheer');
+    const oldBest = storageAdapter.getClassicBestScore();
+    const newRecord = this.state.score > oldBest;
+    // Built before saveClassicRunScore below, so recentScores are strictly
+    // past runs - the judgement compares today against yesterday.
+    const classicReaction = buildClassicResultReaction({
+      score: this.state.score,
+      newRecord,
+      previousBest: oldBest,
+      recentScores: storageAdapter.getClassicRecentScores(),
+    }, {
+      recentMessages: storageAdapter.getRecentResultMessages(),
+    });
+    if (!this.runtime.testMode) storageAdapter.rememberResultMessage(classicReaction.message);
+    this.telemetry?.finish(this.state, 'timer');
+    fadeOutMusic();
+    playGameOverSound(newRecord);
+    gameOverHaptic(newRecord);
+    await this.ui.animateGameEnd({ answers: endAnswers });
+    if (!this.runtime.testMode && newRecord) storageAdapter.saveClassicBestScore(this.state.score);
+    const catsRescuedTotal = this.runtime.testMode
+      ? this.state.catsCollected
+      : storageAdapter.addCatsRescued(this.state.catsCollected);
+    this.ui.updateCatsRescued(catsRescuedTotal);
+    this.lastResultSummary = {
+      score: this.state.score,
+      maxCombo: this.state.maxCombo,
+      round: this.classic.boardsPlayed,
+      successCount: this.state.successCount,
+      maxClearCells: this.state.maxClearCells,
+      catsCollected: this.state.catsCollected,
+      catsRescuedTotal,
+      cleanClears: 0,
+      cleanClearsTotal: 0,
+      rescueShuffles: 0,
+      newRecord,
+      previousBest: oldBest,
+      previousScore: null,
+      recordEligible: true,
+      resultMessage: classicReaction.message,
+      classic: {
+        boards: this.classic.boardsPlayed,
+        collectedLabels: this.classic.collectedLabels || [],
+      },
+    };
+    this.retryStage = 1;
+    if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
+    this.refreshClassicRecordSurfaces();
+    this.ui.showResult(this.lastResultSummary);
+    this.finishing = false;
+  }
+
+  // The home card and the records sheet are about classic now: one figure,
+  // the classic best. How far the cat has travelled is the chapter gallery's
+  // job, so the card no longer carries a second line for it.
+  refreshClassicRecordSurfaces() {
+    this.ui.updateBestScore(storageAdapter.getClassicBestScore());
+  }
+
   updateHUD() {
-    const config = getRoundConfig(this.state.round);
     const comboWindowMs = comboWindowMsForStage(this.state.round);
-    const stageChallenge = stageChallengeForStage(this.state.round);
     this.ui.updateHUD({
       ...this.state,
-      stageMission: stageChallengeProgress(stageChallenge, {
-        completed: this.state.stageChallengeComplete,
-        stageStreak: this.state.stageChallengeStreak,
-      }),
-      stageMissionBonus: stageChallenge ? stageChallengeBonus(this.state.round) : 0,
-      rewardRemaining: itemRewardCountdown(this.state.combo, this.state.round),
-      comboRemainingMs: this.state.combo > 0
-        ? Math.max(0, this.state.comboExpiresAt - performance.now())
-        : 0,
+      // Classic HUD: the badge counts boards (판갈이), the item countdown is
+      // out of play, and the combo urgency bar sits full — there is no
+      // timeout to drain it.
+      round: this.classic ? this.classic.boardsPlayed : this.state.round,
+      rewardRemaining: this.classic ? 0 : itemRewardCountdown(this.state.combo, this.state.round),
+      comboRemainingMs: this.classic
+        ? comboWindowMs
+        : this.state.combo > 0
+          ? Math.max(0, this.state.comboExpiresAt - performance.now())
+          : 0,
       comboWindowMs,
-      target: config.target,
-      duration: this.stageDuration,
+      duration: this.classic ? Math.max(this.stageDuration, this.state.timeLeft) : this.stageDuration,
       timed: this.stageDuration > 0,
       freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),
+      gardenFromStart: Boolean(this.classic),
+      bestScore: this.classic ? storageAdapter.getClassicBestScore() : storageAdapter.getBestScore(),
     });
   }
 
+  // The chatty categories get a cooldown. A near-expert QA run logged 187
+  // bubble lines in under seven minutes - one every 2.2s - with the cat
+  // bonus trio alone firing 59 times; at that density the bubble is noise.
+  // Only the high-frequency celebration categories are cooled: feedback the
+  // player acts on (fail, nearMiss, lowTime), rare events (wow, clutch,
+  // freeze, clover) and player-triggered lines (hint, shuffle, rescue) all
+  // still speak every time. Cooldowns scale naturally with skill - at a
+  // novice's pace almost nothing is suppressed.
+  static CAT_MESSAGE_COOLDOWN_MS = Object.freeze({
+    catBonus: 15000,
+    itemDrop: 10000,
+    bomb: 8000,
+    megabomb: 8000,
+    combo3: 8000,
+    combo5: 8000,
+    combo8: 8000,
+    success: 5000,
+    tapEnd: 6000,
+  });
+
   showCatMessage(type) {
+    const cooldown = OingGame.CAT_MESSAGE_COOLDOWN_MS[type] || 0;
+    if (cooldown) {
+      const now = performance.now();
+      const last = this.catMessageLastAt?.[type] || 0;
+      if (now - last < cooldown) return;
+      (this.catMessageLastAt ||= {})[type] = now;
+    }
     const message = pickMessage(type, this.lastCatMessage);
     this.lastCatMessage = message;
     const duration = ['itemDrop', 'lowTime', 'freeze', 'clover'].includes(type) ? 1800 : 1500;
@@ -1687,10 +2216,32 @@ if (game.runtime.testMode) {
       }
       return structuredClone(game.state);
     },
+    startClassic: async () => {
+      const countdown = game.ui.animateStartCountdown;
+      game.ui.animateStartCountdown = async (_steps, onStep = () => {}) => {
+        onStep('GO!');
+        return true;
+      };
+      try {
+        await game.start(1, { classic: true });
+      } finally {
+        game.ui.animateStartCountdown = countdown;
+      }
+      return structuredClone(game.state);
+    },
+    getClassic: () => (game.classic ? { ...game.classic } : null),
+    classicJumpBoard: (boardIndex = 0) => {
+      if (!game.classic) return null;
+      game.classic.boardIndex = Math.max(0, Math.floor(Number(boardIndex) || 0));
+      game.state.round = classicRoundForBoard(game.classic.boardIndex);
+      game.buildRound();
+      return game.classic.boardIndex;
+    },
     getState: () => structuredClone(game.state),
     getBoard: () => game.model.grid.map((row) => row.slice()),
     getBoardItems: () => game.boardItems.snapshot(),
     findAnswer: () => game.model.findAnswer(),
+    findAnswers: () => game.model.findAnswers(),
     setCombo: (combo) => {
       game.state.combo = Math.max(0, Math.floor(Number(combo) || 0));
       game.refreshComboDeadline();
@@ -1713,6 +2264,11 @@ if (game.runtime.testMode) {
       game.updateHUD();
       return game.freezeEndsAt;
     },
+    setScore: (points = 0) => {
+      game.state.score = Math.max(0, Math.round(Number(points) || 0));
+      game.updateHUD();
+      return game.state.score;
+    },
     setTimeLeft: (seconds = 3) => {
       game.state.timeLeft = Math.max(0, Number(seconds) || 0);
       game.endAt = performance.now() + game.state.timeLeft * 1000;
@@ -1723,18 +2279,10 @@ if (game.runtime.testMode) {
     setStage: (stage = 1) => {
       game.stopTimer();
       game.state.round = Math.max(1, Math.floor(Number(stage) || 1));
-      game.state.progress = 0;
-      game.autoShuffleUsed = false;
       game.buildRound();
       game.state.inputLocked = false;
       game.beginCountdown();
       return game.state.round;
-    },
-    setProgress: (progress = 0) => {
-      const target = getRoundConfig(game.state.round).target;
-      game.state.progress = Math.max(0, Math.min(target, Math.floor(Number(progress) || 0)));
-      game.updateHUD();
-      return game.state.progress;
     },
     commit: (rect) => game.commit(rect),
   };

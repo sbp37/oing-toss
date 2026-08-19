@@ -1,6 +1,6 @@
 # OING Toss v2 asset usage
 
-배포 에셋은 `oing-toss-assets-v1/` 원본을 기준으로 사용했다. 캐릭터·아이콘·UI는 lossless WebP 원본을 유지하고, 배경 두 장만 실제 화면 비교 후 WebP quality 86으로 재압축했다. 콘셉트 보드나 마스터 시트의 일부는 다시 크롭하지 않았다.
+배포 에셋은 `oing-toss-assets-v1/` 원본을 기준으로 사용했다. 기존 캐릭터·아이콘·UI는 lossless WebP 원본을 유지하고, 배경 두 장만 실제 화면 비교 후 WebP quality 86으로 재압축했다. 신규 상·하단 크롬은 1536px 투명 PNG를 원본으로 보관하고, 모바일 첫 로딩을 위해 눈에 띄는 손실이 없는 WebP quality 92 배포본을 사용한다. 콘셉트 보드나 마스터 시트의 일부는 다시 크롭하지 않았다.
 
 플레이 보드는 모든 칸이 같은 타일 하나(`tiles-syrup-v4/tile-mint.webp`)를 쓴다. 색을 칸마다 다르게 주는 방향은 여러 번 시도했지만, 보드는 한 판에 2분을 계속 쳐다보는 화면이라 42칸에 깔린 채도가 누적된다. 눈이 편할 만큼 옅으면 흐려 보이고 의도가 읽힐 만큼 진하면 피로해서, 그 사이에 성립하는 값이 없었다.
 
@@ -22,6 +22,34 @@
 | `assets/sounds/oing-original-bgm.mp3` | 원조 OING `https://sbp37.github.io/oing/bgm.mp3` | 플레이 배경음악(사용자가 음악 ON 시에만 로드) | 기본 슬라이더 40%, 제곱 게인 0.16 |
 | `assets/backgrounds/home-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/home-bg@2x.webp` | 홈·결과 배경 | 최대 430×932 |
 | `assets/backgrounds/play-bg@2x.webp` | `oing-toss-assets-v1/assets/backgrounds/play-bg@2x.webp` | 플레이 배경 | 최대 430×932 |
+| `assets/backgrounds/board-secret-garden-v1.webp` | imagegen으로 신규 제작한 `assets/source/board-secret-garden-v1.png` | STAGE 3부터 보드 뒤에 깔려 빈칸을 통해서만 드러나는 하부 일러스트 (STAGE 1–2는 기존 유리 바닥 유지) | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-garden.webp` | 기존 승인 원본 `assets/backgrounds/board-secret-garden-v1.webp` | 챕터 1 비밀의 정원 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-forest.webp` | `design/chapter-art/source/chapter-forest.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 2 이끼 숲길 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-stream.webp` | `design/chapter-art/source/chapter-stream.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 3 반짝이는 개울 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-village.webp` | `design/chapter-art/source/chapter-village.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 4 고양이 마을 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-sunset.webp` | `design/chapter-art/source/chapter-sunset.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 5 노을 언덕 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-night.webp` | `design/chapter-art/source/chapter-night.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 6 별빛 지붕 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/backgrounds/chapter-aurora.webp` | `design/chapter-art/source/chapter-aurora.png` (승인 정원 원본을 스타일 기준으로 imagegen 신규 제작) | 챕터 7 오로라 항구 보드 하부 일러스트 | 보드 내부 320–400px, cover |
+| `assets/ui/play-hud-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 상단의 빈 버튼·STAGE 휘장·타이머·점수/목표/콤보 셸 | 화면 폭 296–406px, 고유 비율 유지 |
+| `assets/ui/play-footer-chrome-v1.webp` | 첨부 레퍼런스를 구조·재질 참고로 imagegen 신규 제작 후 외곽 연결 크로마키만 제거 | 플레이 하단의 빈 말풍선·4색 아이템 도크 셸 | 화면 폭 296–406px, 고유 비율 유지 |
+| `assets/backgrounds/play-bg-v4.webp` | 첨부 플레이 레퍼런스는 색감·구도만 참고하고 imagegen으로 새로 제작한 `assets/source/play-bg-v4.png` | 플레이 화면의 선명한 푸른 하늘과 하단 꽃밭 | 모바일 전체 화면, cover |
+| `assets/backgrounds/play-bg-clear-sky-v5.webp` | 첨부 목표 시안은 무드·구도만 참고하고 imagegen으로 새로 제작한 `design/play-layout-v1/source/play-bg-clear-sky-v1.png` | 이전 플레이 배경. `play-bg-rose-morning-v2`로 교체되어 현재 런타임에서 로드하지 않는다 | — |
+| `assets/backgrounds/play-bg-rose-morning-v2.webp` | 현재 플레이 배경의 구도만 참고해 imagegen으로 신규 제작한 `design/play-layout-v1/source/play-bg-rose-morning-v2.png` | 플레이 화면 배경: 채도를 낮춘 핑크빛 하늘과 고양이 배치용으로 높인 하단 꽃밭 | 모바일 전체 화면, center bottom / cover |
+| `assets/ui/play-hud-chrome-v2.webp` | imagegen 신규 제작 `assets/source/play-hud-chrome-v2-chroma.png`에서 외곽 연결 크로마키만 제거 | 독립 일시정지·사운드 버튼, STAGE 배지, 타이머, 기록 패널 | 화면 폭 300–400px, 고유 비율 유지 |
+| `assets/ui/play-control-pause-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 일시정지 버튼 | 44–55px, 1:1 유지 |
+| `assets/ui/play-control-sound-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 사운드 버튼 | 44–55px, 1:1 유지 |
+| `assets/ui/play-stage-badge-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 분리하고 기존 리본에 STAGE 라벨만 정리 | 플레이 중앙 독립 STAGE 배지 | 86–142px, 고유 비율 유지 |
+| `assets/ui/play-timer-pill-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 우측 타이머 셸 | 98–145px, 고유 비율 유지 |
+| `assets/ui/play-status-bar-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 기록 패널만 분리하고 샘플 게이지를 제거 | 점수·성공 진행·콤보 공용 상태 패널 | 화면 폭 255–412px, 고유 비율 유지 |
+| `assets/ui/play-status-bar-v4.webp` | `play-status-bar-v3.png`의 모서리를 보존한 세로 9-slice 확장 | 플레이 상태바의 라벨·수치·진행바 정렬 공간 | 화면 폭 255–412px, 1799×300 고유 비율 유지 |
+| `assets/ui/play-status-bar-v5.png/.webp` | 프로젝트 전용 신규 렌더(동적 정보 없는 3분할 크림 프레임) | 플레이 점수·성공·콤보 상태바 | 화면 폭 약 338–404px, 1800×312 고유 비율 유지 |
+| `assets/ui/item-dock-v3.png/.webp` | 프로젝트 전용 신규 렌더(배지 홈 없는 4개 정사각 버튼) | 플레이 하단 아이템 도크 | 화면 폭 약 281–335px, 1200×300 고유 비율 유지 |
+| `assets/ui/item-dock-v4.png/.webp` | `design/play-layout-v1/source/item-dock-v4-chroma.png` (ImageGen 생성 후 마젠타 크로마키 제거) | 플레이 하단 아이템 도크 | 화면 폭 약 281–335px, 1600×423 고유 비율 유지 |
+| `assets/ui/item-dock-v5.png/.webp` | `item-dock-v4.png`의 첫 두 슬롯과 원본 우측 트레이 캡을 픽셀 보존 방식으로 봉합 | 힌트·섞기 전용 2슬롯 아이템 도크 | 화면 폭 약 150px, 870×423 고유 비율 유지 |
+| `assets/ui/item-dock-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 하단 4색 아이템 도크 셸 | 화면 폭 282–370px, 고유 비율 유지 |
+| `assets/ui/speech-bubble-v2.webp` | imagegen 신규 제작 `assets/source/play-footer-chrome-v2-chroma.png`에서 자동 분리 | 플레이 고양이 말풍선 프레임 | 화면 폭 168–230px, 고유 비율 유지 |
+| `assets/ui/speech-bubble-wide-v3.webp` | 프로젝트 소유 `speech-bubble-v2.png`를 `design/play-layout-v1/build-assets.py`에서 9-slice 확장 | 고양이 옆 가로형 2줄 말풍선 | 화면 폭 176–302px, 고유 비율 유지 |
+| `assets/ui/shuffle-poof-v2.webp` | imagegen으로 신규 제작한 `assets/source/shuffle-poof-v2.png` | 선형 효과를 대체하는 젤리 구름 셔플 팝 | 보드 중앙 118–170px |
 | `assets/characters/cat-idle.webp` | `oing-toss-assets-v1/assets/cat/cat-idle.webp` | 홈 중심 캐릭터 | 홈 약 188–270px |
 | `assets/characters/cat-wave.webp` | `oing-toss-assets-v1/assets/cat/cat-wave.webp` | 힌트 반응 | 플레이 stage 62–96px |
 | `assets/characters/cat-cheer.webp` | `oing-toss-assets-v1/assets/cat/cat-cheer.webp` | 콤보 3·라운드·10초 경고·일반 결과 | 플레이 stage 62–80px, 결과 102–142px |
@@ -97,4 +125,4 @@
 | `assets/fonts/Jua-Korean-Game.woff2` | Google Fonts Jua | 제목·버튼·숫자 | 화면 문구 전체를 다시 스캔한 로컬 서브셋 |
 | `assets/fonts/Pretendard-OING.woff2` | Pretendard 1.3.9 | HUD·설명·고양이 멘트 | 외부 CDN 없이 동작하는 게임 전용 로컬 서브셋 |
 
-섞기 연출은 정지 이미지 대신 타일 이동과 CSS 기반 시럽 입자 모션을 사용한다.
+섞기 연출은 타일 이동과 단일 젤리 구름 에셋의 transform/opacity 모션을 조합하며 선형 CSS 장식은 사용하지 않는다.

@@ -20,48 +20,44 @@ export const COMBO_WINDOW_MS = Object.freeze({
   expert: 2900,
 });
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
+// Classic scale, matched to the measured skill tiers (fresh-account bots
+// and simulation): a first session lands around 1-2k, a settled player
+// around 10-15k, a fast one 30-50k. The old 15k/40k/80k were stage-mode
+// numbers - under them virtually every classic run fell into the lowest
+// pool, which is why the result cat sounded flat no matter how well a run
+// went.
 export const RESULT_SCORE_THRESHOLDS = Object.freeze({
-  normal: 15000,
-  high: 40000,
-  legend: 80000,
+  normal: 2000,
+  high: 12000,
+  legend: 35000,
 });
 
 export function recordEligibleForStartStage(stage = 1) {
   return Math.max(1, Math.round(Number(stage) || 1)) === 1;
 }
 
-// The board sits in a recess painted into design/ui-chrome/ui-chrome.webp, so
-// both of its dimensions are fixed and the grid can only subdivide them. Tile
-// type scales off the short cell edge (css/ui-chrome.css:
-// min(chrome-width * 0.6074 / cols, chrome-height * 0.2917 / rows)).
+// Main-mode board growth is capped at 6x7, holds every size for two stages,
+// and only ever grows in square steps: 4x4, then 5x5 twice, then 6x6 twice,
+// then 6x7. The in-between rectangles (4x5, 5x6) are gone — growing a
+// rectangle into the next square shrank the board's height on screen, so a
+// bigger stage read as a smaller board. A repeated size raises the value
+// mix one phase instead, which is the original OING's own difficulty model.
+// 7x7+ remains reserved for a future hard mode. `size` doubles as the
+// column count for the board generator.
 //
-// The board stops growing at 6x7, measured at 390px wide:
-//
-//   7x8  cell 47.0 x 42.7  ratio 1.099  numerals 30.8px   (previous cap)
-//   6x8  cell 54.8 x 42.7  ratio 1.283  numerals 30.8px
-//   6x7  cell 54.8 x 48.9  ratio 1.122  numerals 35.2px   (current cap)
-//
-// Seven columns read as visual clutter, but dropping cols alone flattens the
-// cell to 1.283 while the numerals stay put, because rows is what binds the
-// type size. The tile art is square, so that ratio visibly ovalises its rounded
-// corners. Dropping rows to 7 alongside holds the cell at 1.122 — within a
-// hair of the 1.099 the board already shipped — and hands back 14% of numeral
-// height for free.
-//
-// The cost is 42 cells instead of 56, so difficulty rides entirely on `target`
-// and the clock/bomb odds past STAGE 5. Widening either cap needs the artwork
-// redrawn first.
+// There is deliberately no success target here. A stage ends when its board
+// is completely empty — every number and bonus cat cleared — and only then.
 export const STAGE_CONFIG = Object.freeze([
-  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, target: 3, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 2, round: 2, size: 5, cols: 5, rows: 5, target: 5, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 3, round: 3, size: 6, cols: 6, rows: 6, target: 8, timeLimit: 120, clockChance: 0, bombChance: 0 },
-  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, target: 9, timeLimit: 120, clockChance: 0, bombChance: 0.08 },
-  { stage: 5, round: 5, size: 6, cols: 6, rows: 7, target: 11, timeLimit: 120, clockChance: 0.015, bombChance: 0.12 },
-  { stage: 6, round: 6, size: 6, cols: 6, rows: 7, target: 12, timeLimit: 120, clockChance: 0.03, bombChance: 0.16 },
-  { stage: 7, round: 7, size: 6, cols: 6, rows: 7, target: 13, timeLimit: 120, clockChance: 0.035, bombChance: 0.2 },
-  { stage: 8, round: 8, size: 6, cols: 6, rows: 7, target: 14, timeLimit: 120, clockChance: 0.04, bombChance: 0.24 },
-  { stage: 9, round: 9, size: 6, cols: 6, rows: 7, target: 15, timeLimit: 120, clockChance: 0.045, bombChance: 0.28 },
-  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, target: 17, timeLimit: 120, clockChance: 0.05, bombChance: 0.32 },
+  { stage: 1, round: 1, size: 4, cols: 4, rows: 4, timeLimit: 120, bombChance: 0 },
+  { stage: 2, round: 2, size: 5, cols: 5, rows: 5, timeLimit: 120, bombChance: 0 },
+  { stage: 3, round: 3, size: 5, cols: 5, rows: 5, timeLimit: 120, bombChance: 0 },
+  { stage: 4, round: 4, size: 6, cols: 6, rows: 6, timeLimit: 120, bombChance: 0.08 },
+  { stage: 5, round: 5, size: 6, cols: 6, rows: 6, timeLimit: 120, bombChance: 0.12 },
+  { stage: 6, round: 6, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.16 },
+  { stage: 7, round: 7, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.2 },
+  { stage: 8, round: 8, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.24 },
+  { stage: 9, round: 9, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.28 },
+  { stage: 10, round: 10, size: 6, cols: 6, rows: 7, timeLimit: 120, bombChance: 0.32 },
 ]);
 
 // Legacy export name retained so older tests/tools importing ROUND_CONFIG do
@@ -100,7 +96,7 @@ export function stageShowcaseBoardDrop(stage = 1, random = Math.random, alreadyG
   return BOARD_DROP_ITEMS[STAGE_SHOWCASE_DROP_IDS[Math.floor(roll * STAGE_SHOWCASE_DROP_IDS.length)]];
 }
 
-function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = false) {
+function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = false, lateRun = false) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   // 시뮬레이션(scripts/item-drop-compare.mjs)으로 확인한 사실: 콤보는 거의
@@ -116,10 +112,21 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   // 클로버는 게임당 1회 한정(!cloverGiven)이고 보너스가 커서 비중은 그대로 1.
   const bombWeight = streak >= 14 ? 12 : streak >= 7 ? 13 : 15;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
-  if (level >= 5 && !timeBonusCapped) pool.push('clock');
-  if (level >= 6 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 6 && streak >= 14 && !timeBonusCapped) pool.push('freeze');
-  if (level >= 6 && streak >= 21 && !cloverGiven) pool.push('clover');
+  // Past the refund-fatigue line the run is supposed to be converging; a
+  // clock or a freeze there reopens the time economy the fatigue just
+  // closed (measured: they stretched a near-expert run past its simulated
+  // ceiling). Board-action items keep dropping - the reward beat stays -
+  // but the time-givers stop.
+  if (level >= 5 && !timeBonusCapped && !lateRun) pool.push('clock');
+  // Reachability pass: across three full instrumented runs (casual to
+  // near-perfect pace) freeze and clover never appeared once — the old
+  // level>=6 + streak 14/21 gates sat past where most runs end. Megabomb
+  // and freeze now open on STAGE 5 and clover's streak halves, so a decent
+  // run meets each rare item while the bomb-heavy weighting still keeps
+  // board actions dominant (see the late-drop distribution test).
+  if (level >= 5 && streak >= 7) pool.push('megabomb', 'megabomb');
+  if (level >= 5 && streak >= 10 && !timeBonusCapped && !lateRun) pool.push('freeze');
+  if (level >= 6 && streak >= 14 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
 
@@ -130,6 +137,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
   rewardIndex = 0,
   stage = 1,
   timeBonusCapped = false,
+  lateRun = false,
 } = {}) {
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   const earned = Math.max(0, Math.round(Number(rewardIndex) || 0));
@@ -138,11 +146,11 @@ export function chooseBoardDrop(combo, random = Math.random, {
   // The first earned board item always demonstrates the most tactile reward.
   if (earned === 0) return BOARD_DROP_ITEMS.bomb;
   const previousWasTimeItem = ['clock', 'freeze'].includes(previousType);
-  if (!cloverGiven && level >= 6 && streak >= 21
+  if (!cloverGiven && level >= 6 && streak >= 14
     && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
     return BOARD_DROP_ITEMS.clover;
   }
-  if (!timeBonusCapped && !previousWasTimeItem && level >= 6 && streak >= 14
+  if (!timeBonusCapped && !lateRun && !previousWasTimeItem && level >= 5 && streak >= 10
     && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
     return BOARD_DROP_ITEMS.freeze;
   }
@@ -150,12 +158,12 @@ export function chooseBoardDrop(combo, random = Math.random, {
   // 후반과 동일하게 유지하고 pity만 짧게 둬 regular의 등장 판 비율이
   // 20% 아래로 굶지 않게 한다. STAGE 8+는 긴 pity로 희귀도를 회복한다.
   const megabombPityLimit = level <= 7 ? EARLY_MEGABOMB_PITY_LIMIT : BOARD_DROP_PITY_LIMITS.megabomb;
-  if (level >= 6 && streak >= 7
+  if (level >= 5 && streak >= 7
     && Math.max(0, pity.megabomb || 0) >= megabombPityLimit
     && previousType !== 'megabomb') {
     return BOARD_DROP_ITEMS.megabomb;
   }
-  const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped);
+  const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped, lateRun);
   if (!pool.length) return null;
   // Avoid back-to-back rare effects without forcing a clock after every bomb.
   const repeatSafePool = previousType && previousType !== 'bomb'
@@ -174,9 +182,9 @@ export function nextBoardDropPity(pity = {}, dropType = '', { stage = 1, combo =
   const previousClover = Math.max(0, Math.round(Number(pity.clover) || 0));
   const previousFreeze = Math.max(0, Math.round(Number(pity.freeze) || 0));
   return Object.freeze({
-    megabomb: level >= 6 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
-    clover: level >= 6 && streak >= 21 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
-    freeze: level >= 6 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
+    megabomb: level >= 5 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
+    clover: level >= 6 && streak >= 14 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
+    freeze: level >= 5 && streak >= 10 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
   });
 }
 
@@ -185,6 +193,28 @@ export function boardDropReward(previousCombo, nextCombo) {
   const next = Math.max(0, Math.round(Number(nextCombo) || 0));
   if (Math.floor(next / ITEM_REWARD_INTERVAL) > Math.floor(previous / ITEM_REWARD_INTERVAL)) return 'milestone';
   return null;
+}
+
+// Each seven-combo boundary pays once per run. boardDropReward alone compares
+// the two ends of a single step, so a combo that falls back below a boundary
+// and climbs over it again re-earns the drop every time — a run that broke
+// and rebuilt around 14 could farm the same reward indefinitely.
+//
+// The rule lives here rather than inline at the call site so it is testable:
+// measure the step from the run's high-water mark, never from the current
+// combo. A rebuild inside ground the run has already covered pays nothing,
+// while the first crossing of each new boundary pays exactly once — including
+// when a wide clear jumps two combo in one step.
+export function boardDropRewardForRun({
+  previousCombo = 0,
+  nextCombo = 0,
+  bestComboBefore = 0,
+} = {}) {
+  const floor = Math.max(
+    Math.max(0, Math.round(Number(previousCombo) || 0)),
+    Math.max(0, Math.round(Number(bestComboBefore) || 0)),
+  );
+  return boardDropReward(floor, nextCombo);
 }
 
 export function comboAfterFailure(combo) {
@@ -229,6 +259,253 @@ export function comboAfterIdle(combo, stage = 1) {
   return Math.max(0, current - decay);
 }
 
+// ── Classic mode (원조 스타일 2분 모드) ──────────────────────────────
+// The original OING is one continuous two-minute score attack: a fixed
+// board, a board reset with +15s whenever the answers dry up, and a score
+// that is literally cells × combo where the combo never times out — only a
+// wrong answer cuts it to 70%. These helpers reproduce those rules on the
+// original's own number scale, so the mode can be felt side by side with
+// the stage ladder without touching the ladder's tuning.
+export const CLASSIC_COMBO_CAP = 25;
+export const CLASSIC_COMBO_SOFT_RATE = 0.25;
+export const CLASSIC_TIME_CAP_SECONDS = 300;
+// The board ladder folds the stage mode's onboarding ramp into the classic
+// loop itself: one 5×5 opener so a first-timer is never dropped onto a
+// wall of numbers (a skilled player clears it in seconds), then 6×6, and
+// from there one extra row per 판갈이 until the vertical cap. With a combo
+// that never times out, the small boards are where the multiplier spools
+// up and the tall boards are where it pays out — the scan field a player
+// earns grows with how deep they got. Each step carries its own 판갈이
+// bonus: small boards dry fast, so a flat +15s would turn the opening
+// into a time fountain.
+// timeFloor is what a board pays for merely drying up; timeBonus is what a
+// board pays when it is emptied outright. Everything between is earned in
+// proportion to how much of the board the player actually cleared — see
+// classicBoardChangeSeconds. A flat refund made "clear it properly" and
+// "break a few and move on" worth the same number of seconds, which is
+// the one thing a puzzle game cannot afford.
+export const CLASSIC_BOARD_LADDER = Object.freeze([
+  Object.freeze({ rows: 5, cols: 5, timeFloor: 4, timeBonus: 11 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
+  Object.freeze({ rows: 7, cols: 6, timeFloor: 6, timeBonus: 19 }),
+  Object.freeze({ rows: 8, cols: 6, timeFloor: 6, timeBonus: 19 }),
+  Object.freeze({ rows: 9, cols: 6, timeFloor: 6, timeBonus: 19 }),
+]);
+
+// Seconds the finished board pays out. The ratio is how much of it the
+// player cleared, so the last stubborn corner of a 6×9 is worth real time
+// and the difference between a tidy finish and a messy one is felt.
+// Past the ladder's last scene the night gets stingy: each further 판갈이
+// pays half a second less, and no board change ever pays under the floor.
+// This is what bounds a run. Below the fatigue line the time economy of a
+// fast player is close to balanced, so the 120s buffer can stretch for
+// twenty minutes; a slope, however gentle, makes the economy mathematically
+// net-negative and every run converges. Tuned by simulation (10 runs per
+// cell): a 3.0s-per-move player never reaches the line (3.2min runs,
+// unchanged), a 2.0s player grazes it (4.4 to 4.3min), while the 1.2s
+// ceiling drops from 19.5min/141k to 6.5min/38k. The floor keeps the
+// 판갈이 beat itself alive - a board change that pays nothing reads as a
+// punishment, not an event.
+export const CLASSIC_REFUND_FATIGUE = Object.freeze({
+  fromBoard: 6,   // boards 1..6 - the six scenes - always pay in full
+  perBoard: 0.5,  // seconds shaved per board past the line
+  floor: 2,       // the least any 판갈이 pays
+});
+
+export function classicRefundWithFatigue(seconds, finishedBoardNumber = 1) {
+  const paid = Math.max(0, Number(seconds) || 0);
+  const past = Math.max(0, Math.round(Number(finishedBoardNumber) || 0) - CLASSIC_REFUND_FATIGUE.fromBoard);
+  if (past <= 0) return paid;
+  return Math.max(CLASSIC_REFUND_FATIGUE.floor, paid - CLASSIC_REFUND_FATIGUE.perBoard * past);
+}
+
+export function classicBoardChangeSeconds(board, clearedRatio = 0) {
+  const floor = Math.max(0, Number(board?.timeFloor) || 0);
+  const ceiling = Math.max(floor, Number(board?.timeBonus) || 0);
+  const ratio = Math.min(1, Math.max(0, Number(clearedRatio) || 0));
+  return Math.round(floor + (ceiling - floor) * ratio);
+}
+
+export function classicBoardForIndex(boardIndex = 0) {
+  const index = Math.max(0, Math.round(Number(boardIndex) || 0));
+  return CLASSIC_BOARD_LADDER[Math.min(index, CLASSIC_BOARD_LADDER.length - 1)];
+}
+
+export function classicComboGain(cellCount) {
+  return Math.round(Number(cellCount) || 0) >= 5 ? 2 : 1;
+}
+
+// A hard cap at 25 meant a skilled run spent most of its length with the
+// combo doing nothing — the HUD read ×74 while the maths used 25, and the
+// WOW bonus was decoration. Past the cap each combo is still worth a
+// quarter of one, so the ceiling keeps runaway scores in check while the
+// number on screen never stops mattering.
+export function classicComboMultiplier(combo) {
+  const value = Math.max(1, Math.round(Number(combo) || 0));
+  return Math.min(value, CLASSIC_COMBO_CAP)
+    + Math.max(0, value - CLASSIC_COMBO_CAP) * CLASSIC_COMBO_SOFT_RATE;
+}
+
+// Above the cap a 30% cut was free — 36×0.7 still lands on 25.2, so a
+// mistake cost a strong player literally nothing. It halves up there
+// instead. Below the cap the original's 30% stands, because that is where
+// a learner lives and where the penalty already stings.
+export function classicComboAfterFailure(combo) {
+  const value = Math.max(0, Math.round(Number(combo) || 0));
+  return Math.floor(value * (value > CLASSIC_COMBO_CAP ? 0.5 : 0.7));
+}
+
+// The original's exact formula: (cells + cats×5) × min(combo, 25), where
+// cellCount already counts the cat cells (the original's totalCells), and
+// a five-cell-plus WOW adds a flat +10 per cell beyond four.
+export function classicScoreForClear(cellCount, catCount, combo) {
+  const cells = Math.max(0, Math.round(Number(cellCount) || 0));
+  const cats = Math.max(0, Math.round(Number(catCount) || 0));
+  const wideBonus = cells >= 5 ? (cells - 4) * 10 : 0;
+  return Math.round((cells + cats * 5) * classicComboMultiplier(combo) + wideBonus);
+}
+
+// Bombs pay on the same scale as a clear so an item never reads as a
+// different currency, minus the WOW bonus — a blast is not a found answer.
+export function classicScoreForBlast(cellCount, catCount, combo) {
+  const cells = Math.max(0, Math.round(Number(cellCount) || 0));
+  const cats = Math.max(0, Math.round(Number(catCount) || 0));
+  return Math.round((cells + cats * 5) * classicComboMultiplier(combo));
+}
+
+// Each 판갈이 deepens the number mix one step: the first board draws the
+// mid-run bag (round 5), then +1 per board up to the deepest (round 10).
+export function classicRoundForBoard(boardIndex = 0) {
+  return Math.min(10, 5 + Math.max(0, Math.round(Number(boardIndex) || 0)));
+}
+
+// ── 고양이의 모험 (classic chapters) ──────────────────────────────────
+// The hidden picture behind the board is one leg of a journey, and the
+// journey is the run: every second 판갈이 moves the cat to the next scene,
+// so how far a player got is something they *saw*, not just a number. The
+// last scene is score-gated instead — a place only a high score reaches.
+// `art` is the asset stem; a scene whose file is not in place yet simply
+// falls back to the original garden painting (see the chapter background
+// rules in play-layout-v1.css), so chapters can ship art one at a time.
+// The opener repeats its scene once - board 1 is a ramp and board 2 is the
+// first real one, and a player is still learning the rules there - but from
+// board 3 on every 판갈이 pays a new painting. 판갈이 is the loop's only big
+// reward beat, and one that arrives with no new scene is half a reward.
+export const CLASSIC_CHAPTERS = Object.freeze([
+  Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: true }),
+  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 2, art: 'chapter-forest', hasArt: true }),
+  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 3, art: 'chapter-stream', hasArt: true }),
+  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 4, art: 'chapter-village', hasArt: true }),
+  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 5, art: 'chapter-sunset', hasArt: true }),
+  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 6, art: 'chapter-night', hasArt: true }),
+]);
+
+// Reaching a scene is not collecting it - the album asks for the board to
+// actually be opened up. But the bar has to sit BELOW where a board
+// naturally dies: boards dry up with no answers left at roughly 63-73%
+// cleared (simulated novice to expert means), so the original 0.8 was
+// above what normal play can reach - fresh-account QA bots finished their
+// first session with zero cards, and an expert bot missed three of the
+// one-shot mid scenes across 23 boards. At 0.6 an ordinary dried board
+// collects and a badly abandoned one does not.
+export const CLASSIC_CHAPTER_COLLECT_RATIO = 0.6;
+
+export function classicChapterCollected(clearedRatio = 0) {
+  return (Number(clearedRatio) || 0) >= CLASSIC_CHAPTER_COLLECT_RATIO;
+}
+
+// A scene goes live in two steps: drop assets/backgrounds/<art>.webp, then
+// flip its hasArt to true. Until then the board falls back to the garden
+// painting and never requests the missing file.
+export function classicChapterArtUrl(chapter) {
+  return chapter?.hasArt && chapter.art ? `assets/backgrounds/${chapter.art}.webp` : null;
+}
+
+// The album shows all seven scenes at once, so it reads a downscaled twin
+// rather than seven full paintings. Null until the art actually ships, which
+// is what lets the card fall back to its placeholder.
+export function classicChapterThumbUrl(chapter) {
+  return chapter?.hasArt && chapter.art ? `assets/backgrounds/thumbs/${chapter.art}.webp` : null;
+}
+
+// Reached by score alone, so it stays visible as a goal for players who
+// already know every scene the ladder can show them.
+export const CLASSIC_SECRET_CHAPTER = Object.freeze({
+  key: 'aurora',
+  label: '오로라 항구',
+  minScore: 5000,
+  art: 'chapter-aurora',
+  hasArt: true,
+});
+
+// The 5×5 opener is a ramp for a first-timer and a toll for everybody
+// else, so a personal best buys the right to start further in. This is the
+// only progress in the game that survives a run ending.
+export const CLASSIC_START_UNLOCKS = Object.freeze([
+  Object.freeze({ boardIndex: 1, minScore: 1500 }),
+  Object.freeze({ boardIndex: 2, minScore: 4000 }),
+]);
+
+export function classicStartBoardIndex(bestScore = 0) {
+  const best = Math.max(0, Math.round(Number(bestScore) || 0));
+  let index = 0;
+  for (const unlock of CLASSIC_START_UNLOCKS) {
+    if (best >= unlock.minScore) index = unlock.boardIndex;
+  }
+  return index;
+}
+
+// Board drops ramp with depth rather than with the number mix, so an
+// unlocked start does not hand out late-run rarities on its first board.
+export function classicDropStage(boardIndex = 0) {
+  return Math.min(10, 3 + Math.max(0, Math.round(Number(boardIndex) || 0)));
+}
+
+export function classicChapterForBoard(boardIndex = 0) {
+  const index = Math.max(0, Math.round(Number(boardIndex) || 0));
+  let chapter = CLASSIC_CHAPTERS[0];
+  for (const candidate of CLASSIC_CHAPTERS) {
+    if (index >= candidate.fromBoard) chapter = candidate;
+  }
+  return chapter;
+}
+
+// One row per scene for the gallery: unlocked once its board has actually
+// been cleared to the collect ratio (the ladder chapters) or once the score
+// bar is cleared (the secret one).
+export function classicChapterGallery({ seenKeys = [], bestScore = 0 } = {}) {
+  const seen = new Set(seenKeys);
+  const best = Math.max(0, Math.round(Number(bestScore) || 0));
+  const ladder = CLASSIC_CHAPTERS.map((chapter) => ({
+    ...chapter,
+    unlocked: seen.has(chapter.key),
+    requirement: `${chapter.fromBoard + 1}번째 판 ${Math.round(CLASSIC_CHAPTER_COLLECT_RATIO * 100)}%`,
+    secret: false,
+  }));
+  return [...ladder, {
+    ...CLASSIC_SECRET_CHAPTER,
+    fromBoard: null,
+    unlocked: best >= CLASSIC_SECRET_CHAPTER.minScore,
+    requirement: `${CLASSIC_SECRET_CHAPTER.minScore.toLocaleString('ko-KR')}점`,
+    secret: true,
+  }];
+}
+
+// The deepest scene a player has actually reached — the home card's one-line
+// answer to "how far did the cat get?".
+export function classicDeepestChapterLabel({ seenKeys = [], bestScore = 0 } = {}) {
+  const gallery = classicChapterGallery({ seenKeys, bestScore });
+  const unlocked = gallery.filter((chapter) => chapter.unlocked);
+  return unlocked.length ? unlocked.at(-1).label : '모험 시작 전';
+}
+
+export function classicTimeAfterBoardChange(timeLeft = 0, bonusSeconds = 15) {
+  return Math.min(
+    Math.max(0, Number(timeLeft) || 0) + Math.max(0, Number(bonusSeconds) || 0),
+    CLASSIC_TIME_CAP_SECONDS,
+  );
+}
+
 export function itemUnlockGrantForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   if (level === 3) return Object.freeze({ bomb: 1 });
@@ -243,79 +520,98 @@ export function isItemUnlockedAtStage(itemId, stage = 1) {
   return ['hint', 'shuffle'].includes(itemId);
 }
 
+// The stage-entry card is one line of plain text, like the original's
+// board-change pop — the stage number is the only information a transition
+// needs to convey. Everything else (unlocks, bonuses) announces itself when
+// it actually happens.
 export function stageIntroForStage(stage = 1) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
-  const config = getStageConfig(level);
-  if (level === 1) return Object.freeze({ kicker: 'WARM UP', title: 'STAGE 1', detail: '4×4 · 목표 3' });
-  if (level === 2) return Object.freeze({ kicker: 'BOARD UP', title: 'STAGE 2', detail: '5×5 OPEN' });
-  if (level === 3) return Object.freeze({ kicker: 'BOMB OPEN', title: 'STAGE 3', detail: '폭탄 해금 · 목표 8' });
-  if (level === 4) return Object.freeze({ kicker: 'SPECIAL DROP', title: 'STAGE 4', detail: '희귀 아이템 체험' });
-  if (level === 5) return Object.freeze({ kicker: 'CLOCK OPEN', title: 'STAGE 5', detail: '시계 해금 · 목표 11' });
-  if (level === 6) return Object.freeze({ kicker: 'MISSION ON', title: 'STAGE 6', detail: `큰 조합 보너스 · 목표 ${config.target}` });
-  if (level === 7) return Object.freeze({ kicker: 'CAT CHANCE', title: 'STAGE 7', detail: `고양이 수집 보너스 · 목표 ${config.target}` });
-  if (level === 8) return Object.freeze({ kicker: 'CHAIN FEVER', title: 'STAGE 8', detail: `연속 성공 보너스 · 목표 ${config.target}` });
-  const challenge = stageChallengeForStage(level);
-  const detail = challenge
-    ? `${challenge.label} 보너스 · 목표 ${config.target}`
-    : `${config.cols}×${config.rows} · 목표 ${config.target}`;
-  return Object.freeze({
-    kicker: level >= 8 ? 'OING FEVER' : 'LEVEL UP',
-    title: `STAGE ${level}`,
-    detail,
-  });
+  return Object.freeze({ title: `STAGE ${level}` });
 }
 
-export function stageChallengeForStage(stage = 1) {
-  const level = Math.max(1, Math.round(Number(stage) || 1));
-  if (level < 6) return null;
-  const kind = ['wide', 'cat', 'chain'][(level - 6) % 3];
-  if (kind === 'wide') return Object.freeze({ kind, label: '큰 조합', requirement: 5 });
-  if (kind === 'cat') return Object.freeze({ kind, label: '고양이 수집', requirement: 1 });
-  return Object.freeze({ kind, label: '연속 성공', requirement: 3 });
+// The single source of truth for "did this success cross a combo
+// milestone" — 3, 5, 8, then every 8 (16, 24, 32, ...). Both the success
+// feedback rank and the combo banner call this, so they can never disagree
+// about which clears count as a milestone. A wide clear can gain two combo
+// in one step, so this checks whether a boundary sits strictly between the
+// two values, not whether nextCombo lands exactly on one; when a jump spans
+// several boundaries at once (in principle, not in current play), the
+// highest one crossed is reported, since that is the moment worth
+// celebrating.
+// How much of the board a run has cleared at once, as a percentage of the
+// board's total cells. Pulled out as a pure function (rather than reading
+// `this.model` inline) so the reveal math — and the "best never falls"
+// guarantee below — can be tested without a DOM.
+export function gardenRevealPercent(clearedCells, totalCells) {
+  const total = Math.max(0, Math.round(Number(totalCells) || 0));
+  if (total <= 0) return 0;
+  const cleared = Math.max(0, Math.min(total, Math.round(Number(clearedCells) || 0)));
+  return Math.round((cleared / total) * 100);
 }
 
-export function stageChallengeBonus(stage = 1) {
-  const level = Math.max(1, Math.round(Number(stage) || 1));
-  return 450 + level * 75;
+// A run's garden-reveal record can only climb, the same way a high score
+// can only climb: a weaker clear later in the run must not overwrite a
+// stronger one from earlier.
+export function nextGardenRevealBest(previousBest, percent) {
+  const previous = Math.max(0, Math.min(100, Math.round(Number(previousBest) || 0)));
+  const next = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+  return Math.max(previous, next);
 }
 
-export function completesStageChallenge(challenge, {
-  cellCount = 0,
+// Drops worth taking the lead of a success moment. Bomb and clock are the
+// everyday rewards; these three are the ones a player should stop and look
+// at, so they outrank an ordinary combo-7 drop in successFeedbackLevel.
+export const RARE_BOARD_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
+
+// The original OING's one signature moment: five or more cells in a single
+// sum-ten clear earns the big centred "WOW!" and its fanfare. Four-cell
+// clears already pay a wide-clear bonus and a double combo step, but five is
+// where the original stopped the screen, and that threshold is what makes it
+// feel earned rather than routine.
+export function isWowClear(cellCount) {
+  return Math.max(0, Math.round(Number(cellCount) || 0)) >= 5;
+}
+
+// One step below WOW. Measured over the live generator, four-cell clears are
+// 4-19% of a stage's moves while five-plus stay at 0-4%, so four is frequent
+// enough to reward the hunt for a wider shape and rare enough that marking it
+// still means something. It is deliberately a different kind of feedback, not
+// a smaller WOW: a tag on the score pop where the clear happened, no centred
+// card and no fanfare, so five cells keeps the screen-stopping moment alone.
+export function isNiceClear(cellCount) {
+  return Math.max(0, Math.round(Number(cellCount) || 0)) === 4;
+}
+
+// LEVEL 5 board emptied · 4 WOW or rare item · 3 combo milestone
+// or an ordinary drop · 2 cat bonus · 1 plain clear. Higher ranks own the
+// frame for a success; lower-ranked flourishes (the "딱 10!" pop, the combo
+// banner) stand down for whichever rank actually applies. This is a pure
+// function specifically so the ranking and the combo banner's milestone
+// check can share one answer — comboMilestone here must already be
+// comboMilestoneCrossed's result, not recomputed.
+export function successFeedbackLevel({
+  emptiesBoard = false,
+  wow = false,
+  earnedDrop = null,
+  comboMilestone = 0,
   catCount = 0,
-  stageStreak = 0,
 } = {}) {
-  if (!challenge) return false;
-  if (challenge.kind === 'wide') return Math.max(0, Number(cellCount) || 0) >= challenge.requirement;
-  if (challenge.kind === 'cat') return Math.max(0, Number(catCount) || 0) >= challenge.requirement;
-  if (challenge.kind === 'chain') return Math.max(0, Number(stageStreak) || 0) >= challenge.requirement;
-  return false;
-}
-
-export function stageChallengeProgress(challenge, {
-  completed = false,
-  stageStreak = 0,
-} = {}) {
-  if (!challenge) return null;
-  const requirement = Math.max(1, Math.round(Number(challenge.requirement) || 1));
-  const target = challenge.kind === 'chain' ? requirement : 1;
-  const progress = completed
-    ? target
-    : challenge.kind === 'chain'
-      ? Math.min(target, Math.max(0, Math.round(Number(stageStreak) || 0)))
-      : 0;
-  return Object.freeze({
-    kind: challenge.kind,
-    label: challenge.label,
-    requirement,
-    progress,
-    target,
-    completed: Boolean(completed),
-  });
+  if (emptiesBoard) return 5;
+  const rareDrop = Boolean(earnedDrop) && RARE_BOARD_DROP_IDS.includes(earnedDrop.id);
+  if (wow || rareDrop) return 4;
+  if (comboMilestone || earnedDrop) return 3;
+  if (catCount > 0) return 2;
+  return 1;
 }
 
 export function comboMilestoneCrossed(previousCombo, nextCombo) {
   const previous = Math.max(0, Math.round(Number(previousCombo) || 0));
   const next = Math.max(previous, Math.round(Number(nextCombo) || 0));
+  if (next > 8) {
+    const previousBand = Math.floor(Math.max(previous, 8) / 8);
+    const nextBand = Math.floor(next / 8);
+    if (nextBand > previousBand) return nextBand * 8;
+  }
   return [8, 5, 3].find((milestone) => previous < milestone && next >= milestone) || 0;
 }
 
@@ -326,11 +622,56 @@ export function itemRewardCountdown(combo, stage = 1) {
   return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
 }
 
-export function shouldAdvanceRound(progress, target, hasAnswer) {
-  return Math.max(0, Number(progress) || 0) >= Math.max(1, Number(target) || 1);
+// A stage ends when — and only when — its board is completely empty. Running
+// out of answers while cells remain never ends a stage any more: that case
+// triggers the rescue shuffle instead, so the player never sees a board
+// taken away with tiles still on it.
+export function shouldAdvanceRound({ boardEmpty = false } = {}) {
+  return Boolean(boardEmpty);
 }
 
 export const shouldAdvanceStage = shouldAdvanceRound;
+
+// True when the board is stuck but not finished: numbers remain and none of
+// them make ten. The caller answers with a rescue shuffle, not a transition.
+export function needsRescueShuffle({ hasAnswer = false, boardEmpty = false } = {}) {
+  return !boardEmpty && !hasAnswer;
+}
+
+// Running out of tens is the normal way a stage ends — the rule, not an
+// assist. Once this share of the board's starting playable cells is gone
+// and no legal answer remains, the stage simply completes and the
+// leftover tiles are cleaned up by the transition. Progress-based, so it
+// means the same thing on a 4x4 and a 6x7.
+export const NORMAL_CLEAR_MIN_PROGRESS = 0.78;
+
+// Learning stages must not meet the rescue shuffle: measured dry-outs on
+// stages 1-2 cluster at 60-77% progress, so those two stages end normally
+// from 60% on — a beginner's board finishing beats a beginner's board
+// reshuffling. From stage 3 the standard line applies.
+export function normalClearThresholdForStage(stage = 1) {
+  return Math.max(1, Math.round(Number(stage) || 1)) <= 2 ? 0.6 : NORMAL_CLEAR_MIN_PROGRESS;
+}
+
+// How a stage step resolves once a selection settles:
+//  'advance'  — the player emptied the board (PERFECT when unassisted);
+//  'continue' — answers remain, play on;
+//  'normal'   — no answer left and enough of the board is cleared (or the
+//               stage already spent its one rescue): the stage ends,
+//               leftovers vanish as part of the transition — not PERFECT,
+//               not a failure, just how a stage finishes;
+//  'rescue'   — no answer while the board is still young, at most once
+//               per stage.
+export function stageEndDecision({
+  hasAnswer = false, boardEmpty = false, remaining = 0, initialPlayable = 0,
+  stageRescues = 0, threshold = NORMAL_CLEAR_MIN_PROGRESS,
+} = {}) {
+  if (boardEmpty) return 'advance';
+  if (hasAnswer) return 'continue';
+  const cleared = initialPlayable > 0 ? 1 - remaining / initialPlayable : 1;
+  if (cleared >= threshold) return 'normal';
+  return stageRescues === 0 ? 'rescue' : 'normal';
+}
 
 export function shouldShowBeginnerAutoHint({
   running = false, inputLocked = false, tutorialActive = false, alreadyShown = false,
@@ -370,21 +711,42 @@ export function roundTimeBonusSeconds(round = 1) {
   const current = getStageConfig(round);
   const next = getStageConfig(current.stage + 1);
   const grew = next.cols * next.rows > current.cols * current.rows;
-  if (!grew) return 0;
-  // The opening 4x4 -> 5x5 step is small and comes with plenty of clock left.
-  return current.stage === 1 ? 6 : 10;
+  // Non-growth clears used to pay nothing, which made STAGE 4 the run's
+  // dead stretch (rising target, no time back) and killed STAGE 6+ as a
+  // countdown nobody outruns: an instrumented near-perfect run still died
+  // on STAGE 7. A small flat bonus keeps clears feeling rewarded and lets
+  // strong runs actually reach the late-stage content; the 120s session
+  // cap still bounds total run length.
+  if (!grew) return current.stage >= 3 ? 4 : 0;
+  // The one-axis ladder grows in small steps (+4~6 cells), so each growth
+  // pays the small bonus; a big jump (a future mode, or a config change back
+  // to two-axis growth) still earns the full ten. Scaling by the actual step
+  // keeps total refill time bounded now that growth happens five times.
+  return next.cols * next.rows - current.cols * current.rows >= 9 ? 10 : 6;
 }
 
 export function stageClearBonus(stage = 1, timeLeft = 0, perfect = false) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const time = Math.max(0, Math.floor(Number(timeLeft) || 0));
-  return 220 + level * 35 + Math.min(180, time * 2) + (perfect ? 120 : 0);
+  return scaled(220 + level * 35 + Math.min(180, time * 2) + (perfect ? 120 : 0));
 }
 
-export function specialTilePlanForStage(stage = 1, random = Math.random, { timeBonusCapped = false } = {}) {
+// The clock existed on three separate paths — a special tile baked into the
+// board, a one-tap board drop, and the banked dock item — for one +5s
+// effect. The special tile was the one nobody met: its chance runs 1.5-5%
+// per board, which measured at 0.08 appearances per run, or roughly one
+// sighting every twelve games. It is retired here, leaving the two paths
+// that actually differ: found-and-spent now, or banked for later.
+//
+// The special bomb tile stays. It reads as the same kind of thing but the
+// numbers disagree: at 8-32% per board it shows up 0.55 times a run and
+// climbs late, and unlike the one-tap drop it rewards folding the tile into
+// a match. `clockChance` is gone from the stage table along with the tile
+// badge, its aria copy and the board's placement filter, so nothing in the
+// codebase still implies a clock can be baked into the grid.
+export function specialTilePlanForStage(stage = 1, random = Math.random) {
   const config = getStageConfig(stage);
   const plan = [];
-  if (!timeBonusCapped && config.timeLimit > 0 && Math.max(0, random()) < config.clockChance) plan.push('clock');
   if (Math.max(0, random()) < config.bombChance) plan.push('bomb');
   return plan;
 }
@@ -450,27 +812,22 @@ export const MESSAGES = Object.freeze({
   fail: Object.freeze(['어라?', '10이 아닌데냥...', '다시 봐봐.', '앗.', '그건 내가 못 본 걸로 한다냥.']),
   nearMiss: Object.freeze(['아깝다냥, 거의 10!', '하나 차이다냥!', '오, 거의 맞았는데?']),
   struggleHint: Object.freeze(['이건 내가 살짝 보여줄게냥!', '잠깐, 여기부터 다시 봐봐!', '이 조합은 서비스다냥.']),
-  nearGoal: Object.freeze(['하나만 더!', '거의 다 왔다냥!', '조금만 더!', '끝이 보인다냥!']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
-  autoHint: Object.freeze(['잠깐 막혔냥? 여기부터 봐보라냥!', '이 조합이 살짝 반짝인다냥!']),
-  perfect: Object.freeze(['퍼펙트! 힌트 하나 챙겼다냥!', '판을 싹 비웠다냥! 선물이다냥!']),
+  autoHint: Object.freeze(['막혔냥? 여기 봐보라냥!', '반짝이는 칸을 보라냥!']),
+  perfect: Object.freeze(['퍼펙트! 안 막혔다냥!', '싹 비웠다냥, 최고다냥!']),
+  rescue: Object.freeze(['막혔네, 섞어줄게냥!', '잠깐, 판 좀 다듬는다냥!', '요렇게 섞으면 된다냥!']),
   shuffle: Object.freeze(['판 좀 뒤집어볼까냥?', '숫자들 자리 바꾼다!', '내가 한번 섞어주지냥.']),
-  noAnswer: Object.freeze(['어라? 없네.', '이건 내가 섞어줄게냥!', '잠깐, 판 좀 뒤집자냥.', '내가 섞어줘야겠네.']),
   bomb: Object.freeze(['펑! 시원하게 뚫었다냥!', '길이 활짝 열렸다냥!']),
   megabomb: Object.freeze(['오잉! 크게 터진다냥!', '메가폭탄 나간다냥!']),
   clock: Object.freeze(['시간 +5초!', '5초 더 달려보자냥!', '시간은 내가 챙겼다.']),
-  freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '10초 동안 마음껏 찾아보라냥!', '째깍째깍 잠깐 쉬어간다냥!']),
-  clover: Object.freeze(['클로버가 정답을 찾았다냥!', '초록빛 칸을 잘 보라냥!', '이번 정답은 오래 보여준다냥!']),
-  cloverSuccess: Object.freeze(['행운 점수까지 챙겼다냥!', '클로버 보너스 성공!', '이번 조합은 점수가 더 붙는다냥!']),
+  freeze: Object.freeze(['시간이 꽁꽁 멈췄다냥!', '10초간 시간 정지다냥!', '째깍째깍 잠깐 쉬어간다냥!']),
+  clover: Object.freeze(['클로버가 정답을 찾았다냥!', '초록빛 칸을 잘 보라냥!', '정답을 오래 보여준다냥!']),
+  cloverSuccess: Object.freeze(['행운 점수까지 챙겼다냥!', '클로버 보너스 성공!', '점수가 더 붙는다냥!']),
   clutch: Object.freeze(['막판 집중력 인정!', '끝까지 잡았다냥!', '마지막까지 깔끔했다냥!']),
-  itemDrop: Object.freeze(['아이템이 나왔다냥! 톡 눌러보라냥!', '오잉, 선물이 떨어졌다냥!']),
-  challengeWide: Object.freeze(['큰 조합 노려보자냥!', '5칸 묶으면 보너스!']),
-  challengeCat: Object.freeze(['고양이 한 마리 찾아봐!', '숨은 고양이 챙겨보라냥!']),
-  challengeChain: Object.freeze(['연속 세 번 가보자냥!', '실수 없이 세 번, 할 수 있지?']),
-  challengeComplete: Object.freeze(['보너스까지 챙겼다냥!', '이번 미션도 깔끔하게 성공!', '오, 보너스 인정.']),
-  bombCollected: Object.freeze(['폭탄 챙겼다냥! 아래서 터뜨려보라냥!', '폭탄 하나 저장했다냥! 필요할 때 눌러보라냥!']),
-  clockCollected: Object.freeze(['시계를 챙겼다냥! 급할 때 써보라냥!', '시간 선물 저장 완료다냥!']),
-  catBonus: Object.freeze(['보너스 고양이까지 챙겼다냥!', '야옹! 점수 더 얹어준다냥!', '고양이 보너스도 놓치지 않았다냥!']),
+  itemDrop: Object.freeze(['아이템이다냥! 톡 눌러봐!', '오잉, 선물이 떨어졌다냥!']),
+  bombCollected: Object.freeze(['폭탄 챙겼다냥!', '폭탄 저장 완료다냥!']),
+  clockCollected: Object.freeze(['시계 챙겼다냥!', '시간 선물 저장 완료다냥!']),
+  catBonus: Object.freeze(['보너스 고양이까지 챙겼다냥!', '야옹! 점수 더 얹어준다냥!', '고양이 보너스까지!']),
   round: Object.freeze(['다음 판 가자냥!', '오잉, 클리어!', '깔끔했다!', '이 정도쯤이야.']),
   stage: Object.freeze(['다음 판 가자냥!', '오잉, 클리어!', '깔끔했다!', '이 정도쯤이야.']),
   lowTime: Object.freeze(['빨리빨리!', '시간 없다냥!', '10초 남았어!', '서둘러라냥!']),
@@ -481,6 +838,9 @@ export const MESSAGES = Object.freeze({
     '합10 보는 눈이 슬슬 열린다냥',
     '이번 판 데이터 접수! 한 판 더?',
     '출발 좋았어. 이제 속도만 붙이면 돼!',
+    '괜찮아, 다들 여기서 시작한다냥',
+    '방금 그 조합 봤어? 소질 있다냥',
+    '숫자랑 인사는 끝났으니 이제 진짜다냥',
   ]),
   resultNormal: Object.freeze([
     '숫자 조합이 제대로 보이기 시작했다냥',
@@ -489,6 +849,9 @@ export const MESSAGES = Object.freeze({
     '콤보 감각이 살아 있다냥',
     '이번 기록, 다음 판에 넘을 수 있겠어!',
     '이 정도면 손이 기억하겠다냥',
+    '판갈이 넘어가는 맛을 알아버렸구나냥',
+    '중간에 그 큰 조합, 나 살짝 소름 돋았다냥',
+    '이제 초보라고 하면 다들 안 믿는다냥',
   ]),
   resultHigh: Object.freeze([
     '속도가 장난 아니다냥',
@@ -497,6 +860,9 @@ export const MESSAGES = Object.freeze({
     '완전 고수의 흐름이다냥!',
     '이번 판은 인정. 진짜 빨랐어!',
     '보드가 따라오질 못하겠다냥',
+    '내가 판을 새로 까는 속도보다 빠르다냥',
+    '이 점수, 친구들한테 보여줘야 한다냥',
+    '깊은 판까지 갔다 왔구나. 밤 풍경 봤어?',
   ]),
   resultLegend: Object.freeze([
     '오잉게임 마스터 인정이다냥',
@@ -504,6 +870,9 @@ export const MESSAGES = Object.freeze({
     '이런 점수는 자랑부터 해야 한다냥',
     '이 정도면 숫자가 먼저 도망가겠다냥',
     '전설급 기록이다. 이번엔 진짜 인정!',
+    '나 이런 점수 처음 본다냥. 진심으로.',
+    '손끝에서 불꽃 냄새가 난다냥',
+    '이 기록은 액자에 걸어야 한다냥',
   ]),
   record: Object.freeze([
     '새 최고기록이다냥!',
@@ -566,6 +935,377 @@ export function resultToneForScore(score) {
 export function pickResultMessage(score, { newRecord = false, previous = '', random = Math.random } = {}) {
   return pickMessage(resultMessageType(score, newRecord), previous, random);
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// 원조 오잉 결과창 멘트 이식.
+// 구조가 핵심이다: 7단계 점수 구간(lines+goals), 다음 구간이 코앞일 때의
+// 목표 멘트, 그리고 과거 기록 대비 오늘 판을 판정하는 스마트 리액트 9종.
+// 원문에서 바꾼 것: 아직 랭킹이 없으므로 랭킹·1위·TOP10·친구 기록류는
+// 자기 기록/모험 표현으로 치환했고, 랭킹 도발(taunts)과 오늘 첫 판
+// (firstOfDay)은 해당 기능이 생길 때까지 보류. 원조의 규칙 두 가지는
+// 그대로 지킨다 — 낮은 구간일수록 "못했다" 뉘앙스 금지, 그리고 도발
+// (drill)은 아쉬운 판(below)에는 절대 내보내지 않는다.
+// ══════════════════════════════════════════════════════════════════════════
+export const CLASSIC_RESULT_TIERS = Object.freeze([
+  Object.freeze({ min: 30000, lines: Object.freeze([
+    '이 점수는 오잉게임 역사에 박제된다냥 📜👑',
+    '전설 위의 전설, 신화급 기록이다냥 🌌',
+    '이 판은 두고두고 회자될 거다냥 🏛️',
+    '오잉게임이 널 영원히 기억할 거다냥 ✨',
+    '3만 고지를 넘은 사람은 정말 몇 없다냥 🏔️',
+    '이건 실력이 아니라 경지다냥 🧘',
+    '숫자판이 항복 선언했다냥 🏳️',
+    '오늘의 기록이 내일의 전설이 된다냥 🌠',
+    '이 점수 실제로 본 사람 거의 없다냥, 방금 네가 해냈다냥 📸',
+  ]), goals: Object.freeze([
+    '🎯 이제 목표는 자기 자신뿐이다냥 🌌',
+    '🎯 이 기록 위엔 하늘뿐이다냥 ☁️',
+    '🎯 다음 신화를 써보자냥 📜',
+    '🎯 정상의 풍경을 즐겨보라냥 ⛰️',
+    '🎯 이 자리를 지키는 게 다음 도전이다냥 😼',
+  ]) }),
+  Object.freeze({ min: 15000, lines: Object.freeze([
+    '이건 인간의 반응속도가 아니다냥 🤖',
+    '오잉게임 전설이 되는 중이다냥 📜👑',
+    '이 정도면 아이템 운도 실력이다냥 🍀🏆',
+    '숫자판이 무서워하는 소리가 들린다냥 😱',
+    '이 점수는 앞으로도 쉽게 안 나온다냥, 자랑해도 된다냥 🎉',
+    '이제는 최고기록이랑 싸우는 단계다냥 👑',
+    '이 기록 넘는 건 미래의 나뿐이다냥 🐱',
+    '숫자가 아니라 전설을 남기고 있다냥 📜',
+    '오늘의 오잉왕 후보 확정이다냥 👑',
+    '이런 점수는 캡처부터 해야 한다냥 📸',
+    '기록판이 긴장하고 있다냥 😼',
+    '손가락에 날개 달린 거 아니냥? 🪽',
+    '오늘은 오잉게임이 널 기억할 것 같다냥 🐱',
+    '최고를 넘어 전설이 되고 있다냥 🌟',
+    '이런 플레이는 매일 나오는 게 아니다냥 🎇',
+    '이 기록, 한동안 아무도 못 깰 것 같다냥 😎',
+  ]), goals: Object.freeze([
+    '🎯 이제 상대는 자기 최고기록뿐이다냥 👑',
+    '🎯 이 기록 넘는 건 미래의 너다냥 🏆',
+    '🎯 다음 전설을 써 내려가보자냥 📜',
+    '🎯 한계를 또 한 번 넘어보자냥 🚀',
+    '🎯 새로운 역사를 만들어보자냥 ✨',
+    '🎯 다음 목표는 3만 고지다냥 🏔️',
+  ]) }),
+  Object.freeze({ min: 6000, lines: Object.freeze([
+    '말도 안 되는 실력이다냥 🏆',
+    '이 정도면 최상위권 실력이다냥 👑',
+    '완전 고수의 향기다냥...! 🔥',
+    '오잉게임 마스터 인정이다냥 🎖️',
+    '이 점수 실화냥? 대단하다냥 😳',
+    '진짜 손이 안 보였을 것 같다냥 ⚡',
+    '오늘 기록판 흔들어놓을 기세다냥 😤',
+    '손끝에 우승 DNA가 흐른다냥 🏅',
+    '이 실력 친구들한테 자랑해도 된다냥 📢',
+    '오잉게임 역사에 이름 남기는 중이다냥 📜',
+    '어제의 기록쯤은 넘볼 수 있겠다냥 🐱',
+    '집중력이 폭발했다냥 ⚡',
+    '오늘 감각이 정말 좋다냥 🐱',
+    '누구나 인정하는 고수다냥 👏',
+    '전설 등급이 슬슬 보인다냥 👀',
+  ]), goals: Object.freeze([
+    '🎯 오늘 감각이면 전설도 꿈이 아니다냥 🔥',
+    '🎯 최고기록 갱신까지 달려보자냥 🚀',
+    '🎯 전설 등급도 노려볼 만하다냥 😼',
+    '🎯 이 흐름 이어가면 더 갈 수 있다냥 💪',
+    '🎯 한 판이면 기록이 훌쩍 뛴다냥 🏃',
+    '🎯 다음 목표는 만오천 고지다냥 🏔️',
+    '🎯 콤보를 끝까지 안 끊기게 가보자냥 ⚡',
+  ]) }),
+  Object.freeze({ min: 3200, lines: Object.freeze([
+    '속도가 장난 아니다냥 ⚡',
+    '숫자가 다 보이나보다냥 😳',
+    '머리 회전이 빠르다냥 🧠',
+    '와, 이번 판 진짜 잘했다냥 🙌',
+    '콤보 타이밍이 예술이다냥 ✨',
+    '다음 판도 이 흐름 기대한다냥! 🐱',
+    '이 페이스면 기록이 몇 계단은 그냥 오른다냥 📈',
+    '오늘 컨디션 물올랐다냥, 한 판만 더 가보자냥 🔥',
+    '이 흐름 잡았으면 놓치지 말라냥! 🐱',
+    '벌써 고수 냄새가 난다냥 👃',
+    '숫자가 저절로 눈에 들어오는 경지다냥 👀',
+    '손이 점점 빨라지고 있다냥 ⚡',
+    '실력이 눈에 띄게 늘었다냥 🌟',
+  ]), goals: Object.freeze([
+    '🎯 조금만 더 하면 고수 반열이다냥 👑',
+    '🎯 이 감각 그대로 이어가보자냥 🐱',
+    '🎯 한 판 더 하면 확 달라질 수 있다냥 💪',
+    '🎯 최고기록도 노려볼 만하다냥 👀',
+    '🎯 조금만 더 집중하면 기록이 바뀐다냥 👑',
+    '🎯 긴 콤보 한 번이면 확 뛴다냥 ⚡',
+    '🎯 이 페이스면 6천 고지도 보인다냥 🔥',
+    '🎯 실수만 줄이면 자기 기록 갱신이다냥 🏆',
+  ]) }),
+  Object.freeze({ min: 1500, lines: Object.freeze([
+    '감 좋다냥! 콤보가 착착 붙는다냥 ✨',
+    '패턴이 눈에 딱딱 걸린다냥 🔍',
+    '오, 이번 판 흐름 괜찮았다냥? 🐱',
+    '숫자 조합 보는 눈이 늘고 있다냥 👀',
+    '안정적으로 잘 하고 있다냥! 🐱',
+    '이 정도면 중수는 훌쩍 넘었다냥 😎',
+    '이 페이스 유지하면 기록판에 이름 올린다냥 🐱',
+    '몸이 기억하기 시작했다냥, 계속 가보라냥 🐱',
+    '오늘 중에 자기 최고기록 갈아치울 수도 있다냥 🐱',
+    '한 끗만 더 다듬으면 확 달라진다냥 💪',
+    '이제 진짜 실력이 붙기 시작했다냥 😎',
+    '감각이 살아나고 있다냥 😼',
+    '지금이 가장 많이 늘 때다냥 📈',
+    '플레이가 훨씬 안정적이다냥 👏',
+  ]), goals: Object.freeze([
+    '🎯 조금만 더 다듬으면 고수 반열이다냥 🔥',
+    '🎯 이번엔 최고기록도 노려보라냥 🏆',
+    '🎯 지금 감각이면 충분히 가능하다냥 💪',
+    '🎯 이 감각 그대로 이어가보자냥 🐱',
+    '🎯 한 번만 터지면 기록이 확 오른다냥 🔥',
+    '🎯 콤보 한 번만 길게 이어보라냥 ✨',
+    '🎯 다음 판은 실수 하나만 줄여보자냥 🐾',
+    '🎯 고양이까지 챙기면 점수가 더 붙는다냥 🐱',
+    '🎯 남은 시간 끝까지 써보자냥 ⏱️',
+    '🎯 고수 반열까지 이제 몇 판 안 남았다냥 👀',
+    '🎯 오늘 안에 기록 하나 갈아치워보자냥 🌟',
+  ]) }),
+  Object.freeze({ min: 500, lines: Object.freeze([
+    '숫자 조합이 눈에 들어오기 시작했다냥 👀',
+    '한 판 한 판 늘고 있다냥, 이 감각 기억해두라냥 🐱',
+    '다음 판엔 조금 더 잘 보일 거다냥 🐱',
+    '조금씩 요령이 붙고 있다냥 🐱',
+    '나쁘지 않은 페이스다냥, 계속 가보라냥! 🐱',
+    '한 판 더 하면 확 달라질 거다냥, 가보라냥 🐱',
+    '숫자 사이 거리감이 슬슬 익숙해진다냥 🐱',
+    '이 판이 다음 판 실력이 된다냥, 계속해보라냥 🐱',
+    '감 잡히면 순식간에 는다냥, 조금만 더 가보라냥 💪',
+    '다들 이렇게 시작했다냥, 걱정 말라냥 🐱',
+    '이제 게임이 보이기 시작했다냥 😼',
+    '성장 속도가 꽤 빠르다냥 📈',
+    '시작이 아주 좋다냥 😺',
+    '감은 잡았다냥, 이제 속도만 올리면 된다냥 💪',
+    '오늘 최고기록 충분히 노려볼 만하다냥 🔥',
+  ]), goals: Object.freeze([
+    '🎯 이제 중수는 코앞이다냥 🐱',
+    '🎯 감각을 이어가면 금방 오른다냥 🌟',
+    '🎯 다음 판이 기대된다냥 😸',
+    '🎯 조금만 더 하면 확 달라진다냥 🔥',
+    '🎯 이 흐름 놓치지 말라냥 💪',
+    '🎯 다음 판부터 진짜 시작이다냥 😼',
+    '🎯 콤보 감만 잡으면 쭉쭉 오른다냥 📈',
+    '🎯 고양이 챙기는 재미도 붙여보라냥 🐾',
+  ]) }),
+  Object.freeze({ min: 0, lines: Object.freeze([
+    '오잉게임 은근 중독성 있다냥? 몇 판 더 하면 감 잡힌다냥 🐱',
+    '합이 10 되는 조합, 눈에 익으면 확 빨라진다냥 🐱',
+    '고양이는 챙겼냥? 다음 판도 기대한다냥 🐾',
+    '워밍업 한 판이었다고 생각하면 딱이다냥 🐱',
+    '처음엔 다 이렇다냥, 몇 판 더 해보면 확 달라진다냥 🐱',
+    '오늘의 한 판, 그 자체로 의미있다냥 🙂',
+    '천천히 봐도 된다냥, 급할 거 없다냥 🐱',
+    '그냥 눌러보는 것부터가 시작이다냥 🐱',
+    '다음 판엔 분명 다를 거다냥, 한 판만 더 가보라냥 🐱',
+    '몸 풀렸으니 이제 진짜 시작이다냥 🔥',
+    '시작이 제일 어려운 거다냥 🐱',
+    '아직 몸이 풀리는 중이다냥 ☀️',
+    '누구나 여기서 시작했다냥 😺',
+    '금방 재미가 붙을 거다냥 🐱',
+    '오늘 첫걸음도 충분히 멋지다냥 🌼',
+    '모험은 아직 시작도 안 했다냥 😼',
+    '한 판만 더 하면 달라질 것 같다냥 😸',
+  ]), goals: Object.freeze([
+    '🎯 다음 판엔 분명 더 잘할 거다냥 🐾',
+    '🎯 감만 잡으면 금방 성장한다냥 😸',
+    '🎯 조금만 더 하면 게임이 보이기 시작한다냥 👀',
+    '🎯 한 판만 더 가보자냥! 🔥',
+    '🎯 시작이 반이다냥, 계속 가보라냥 😺',
+    '🎯 고양이 한 마리만 구해보자냥 🐱',
+    '🎯 이번엔 콤보 5개 이어보기다냥 ✨',
+    '🎯 어제의 나보다 한 칸만 더 가보자냥 🐾',
+  ]) }),
+]);
+
+// 다음 구간이 코앞일 때 — 남은 점수를 들이대지 않고 부드럽게.
+export const CLASSIC_NEAR_GOAL_TEMPLATES = Object.freeze([
+  '🎯 {next}점이 코앞이다냥!',
+  '🎯 조금만 더 가면 {next}점이다냥!',
+  '🎯 {next}점, 거의 다 왔다냥!',
+  '🎯 이 흐름이면 {next}점도 금방이다냥!',
+  '🎯 다음 판엔 {next}점 넘어보자냥!',
+  '🎯 {next}점 문턱에 걸쳐 있다냥, 한 발만 더냥!',
+  '🎯 {next}점까지 손 뻗으면 닿는다냥!',
+  '🎯 다음 판 한 콤보면 {next}점이다냥!',
+]);
+
+// 과거 기록 대비 오늘 판의 판정별 대사.
+export const CLASSIC_SMART_REACT = Object.freeze({
+  record: Object.freeze([
+    '🏆 새 기록이다냥!! 이 순간을 기억하라냥 🎉',
+    '🏆 최고기록 갱신이다냥! 오늘의 너는 어제의 너를 이겼다냥 👑',
+    '🏆 신기록이다냥!! 손끝이 반짝인다냥 ✨',
+    '🎉 방금 그거 역대급이다냥! 자기 기록을 깼다냥 🏆',
+    '👑 최고점 경신이다냥! 이 감각 잊지 말라냥',
+    '✨ 새 최고기록이다냥! 실력이 한 계단 올라갔다냥 📈',
+    '🔥 신기록이다냥!! 오늘 컨디션 예술이다냥',
+    '💫 자기 최고를 넘었다냥! 방금 그 판 명장면이다냥',
+  ]),
+  near: Object.freeze([
+    '😼 최고기록까지 딱 {diff}점이었다냥... 다음 판이다냥!',
+    '👀 최고기록 코앞이었다냥! {diff}점 차이다냥',
+    '🔥 조금만 더! 최고기록이 바로 앞이다냥 ({diff}점 남았다냥)',
+    '😻 {diff}점만 더 갔으면 신기록이었다냥! 아까비다냥',
+    '💦 최고기록이 {diff}점 앞에서 손 흔들고 있었다냥',
+    '🎯 {diff}점 차이다냥... 이건 다음 판에 넘는다냥',
+    '😤 최고기록 바로 밑이다냥! {diff}점, 곧 깬다냥',
+    '✨ 자기 최고랑 {diff}점 차이다냥, 감 잡혔다냥 다시 가자냥',
+    '🐾 {diff}점 남았다냥! 신기록 냄새가 난다냥',
+  ]),
+  above: Object.freeze([
+    '📈 오늘 평소보다 확실히 좋다냥! 감각 살아있다냥 ✨',
+    '😳 오늘 판은 유난히 날카로웠다냥, 컨디션 좋아 보인다냥!',
+    '📈 평소 페이스를 훌쩍 넘었다냥! 이 흐름 아깝다냥, 한 판 더냥',
+    '✨ 오늘따라 손이 다르다냥, 컨디션 최고다냥',
+    '🚀 평소보다 확 치고 올라갔다냥! 물 만났다냥',
+    '😸 오늘 유난히 잘 풀린다냥, 이 감각 붙잡아라냥',
+    '🔥 평소 실력 위로 점프했다냥! 지금이 기회다냥',
+    '👏 오늘 판 좋다냥! 자기 평균을 가볍게 넘었다냥',
+  ]),
+  rising: Object.freeze([
+    '📊 판마다 점수가 오르고 있다냥! 지금 물올랐다냥 🔥',
+    '📈 3판 연속 상승세다냥, 여기서 멈추기 아깝다냥',
+    '🚀 계속 오르는 중이다냥! 어디까지 가나 보자냥',
+    '😼 판이 갈수록 좋아진다냥, 감 잡았다냥',
+    '📈 우상향이다냥! 다음 판도 더 오를 것 같다냥',
+    '🔥 점점 잘하고 있다냥! 리듬 제대로 탔다냥',
+    '🌊 파도 제대로 탔다냥! 이 흐름 그대로 밀어붙이라냥',
+    '🎢 점수가 계단을 그리며 오르는 중이다냥, 다음 칸도 가보자냥',
+    '⏫ 어제의 나를 매 판 이기고 있다냥, 멋지다냥',
+  ]),
+  below: Object.freeze([
+    '🐾 이런 판도 있는 거다냥~ 손은 풀렸으니 다음 판 가보자냥',
+    '😽 평소 실력 어디 안 갔다냥, 잠깐 숨 고르는 판이었다냥',
+    '🍵 아쉬운 판이었냥? 원래 그 다음 판이 진짜다냥',
+    '🐱 오늘 숫자들이 좀 얄미웠다냥, 다시 가보자냥',
+    '🌱 이번 판은 워밍업이라 치자냥, 다음 판 기대된다냥',
+    '😌 누구나 이런 판 있다냥~ 금방 원래대로 돌아온다냥',
+    '☕ 잠깐 쉬어가는 판이었다냥, 손 풀렸으니 이제부터다냥',
+    '🐾 괜찮다냥! 이 판은 그냥 다음 판을 위한 발판이다냥',
+  ]),
+  around: Object.freeze([
+    '🐾 딱 평소 페이스다냥, 안정적이다냥',
+    '😸 오늘도 꾸준하다냥! 이 페이스 나쁘지 않다냥',
+    '🐱 늘 하던 만큼은 해줬다냥, 다음 판이 진짜 승부다냥',
+    '👌 무난하게 한 판 뽑았다냥~ 슬슬 한 방 노려보자냥',
+    '🎯 평소 실력 그대로다냥, 살짝만 더 밀면 신기록이다냥',
+    '😺 흔들림 없다냥! 이런 판이 쌓여서 실력이 된다냥',
+    '🍀 안정적인 한 판이었다냥, 리듬 탔다냥',
+    '🐾 꾸준함이 무기다냥! 이 페이스 유지하라냥',
+    '😼 늘 하던 실력이다냥~ 오늘은 한 끗을 노려보자냥',
+    '✨ 편안한 한 판이다냥, 다음 판에 욕심 내보자냥',
+    '🎮 딱 자기 페이스다냥! 여기서 한 뼘만 더 가보자냥',
+    '🐱 안정권이다냥~ 이제 슬슬 자기 기록에 도전하라냥',
+    '👍 평소만큼 해냈다냥, 다음 판은 조금 더 노려보자냥',
+    '🌟 균형 잡힌 한 판이다냥, 이 리듬에서 한 번 터뜨려보자냥',
+  ]),
+  drill: Object.freeze([
+    '😼 방금 5-5 두 쌍 지나친 거 다 봤다냥',
+    '🫡 나쁘지 않다냥. 근데 어제의 너는 더 빨랐다냥',
+    '🐱 고양이들이 "좀 더 하라냥"고 전해달란다냥',
+    '😼 손은 풀린 것 같은데, 본실력은 언제 나오냥?',
+  ]),
+  plateau: Object.freeze([
+    '🧗 요즘 딱 이 근처에서 맴돈다냥~ 한 끗만 더 밀면 벽 뚫린다냥!',
+    '💪 조금만 더 해보라냥~ 다음 계단이 코앞이다냥',
+    '🎯 실력은 이미 쌓였다냥, 이제 한 판만 제대로 터뜨리면 된다냥',
+    '😼 몸에 익었다냥~ 이제 한 끗 차이로 확 오른다냥',
+    '⛰️ 정체기는 폭발 직전이라는 뜻이다냥, 한 판 더 가보자냥',
+    '🔓 벽에 손 닿았다냥, 살짝만 더 힘주면 넘는다냥',
+    '🐾 계속 비슷하다냥? 그럼 이제 슬슬 깰 타이밍이다냥!',
+    '🚪 문 앞까지 왔다냥~ 이 벽만 넘으면 새 기록이다냥',
+  ]),
+});
+
+function pickFrom(pool, recentMessages = [], random = Math.random) {
+  const blocked = new Set(recentMessages);
+  const fresh = pool.filter((line) => !blocked.has(line));
+  const choices = fresh.length ? fresh : pool;
+  return choices[Math.min(choices.length - 1, Math.floor(Math.max(0, random()) * choices.length))];
+}
+
+export function classicResultTierFor(score) {
+  const value = Math.max(0, Math.round(Number(score) || 0));
+  return CLASSIC_RESULT_TIERS.find((tier) => value >= tier.min) || CLASSIC_RESULT_TIERS.at(-1);
+}
+
+// The original's judgement thresholds, verbatim: personalisation needs three
+// past runs; record only counts against a real previous best; near is 90% of
+// a four-digit best; above/below compare to the recent average with floors so
+// a brand-new account can't trip them; plateau fires half the time when four
+// runs sit within 15% of their mean; drill swaps in at low odds on good or
+// ordinary runs and never on a down one.
+export function buildClassicResultReaction({
+  score = 0,
+  newRecord = false,
+  previousBest = 0,
+  recentScores = [],
+} = {}, { recentMessages = [], random = Math.random } = {}) {
+  const current = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  const past = (Array.isArray(recentScores) ? recentScores : [])
+    .filter(Number.isFinite)
+    .map((value) => Math.max(0, Math.round(value)));
+  const average = past.length
+    ? past.slice(-4).reduce((sum, value) => sum + value, 0) / Math.min(4, past.length)
+    : 0;
+  const say = (type, pool, message) => {
+    const text = message ?? pickFrom(pool, recentMessages, random);
+    return Object.freeze({ type, message: text });
+  };
+
+  if (newRecord && best >= 500) return say('record', CLASSIC_SMART_REACT.record);
+
+  const personalized = past.length >= 3;
+  if (personalized) {
+    if (best >= 1000 && current < best && current / best >= 0.9) {
+      const template = pickFrom(CLASSIC_SMART_REACT.near, recentMessages, random);
+      return Object.freeze({
+        type: 'near',
+        message: template.replaceAll('{diff}', (best - current).toLocaleString('ko-KR')),
+      });
+    }
+    const last = past.at(-1);
+    const beforeLast = past.at(-2);
+    if (current > last && last > beforeLast) return say('rising', CLASSIC_SMART_REACT.rising);
+    if (average >= 800 && current <= average * 0.6) return say('below', CLASSIC_SMART_REACT.below);
+    if (average >= 200 && current >= average * 1.35) {
+      if (random() < 0.15) return say('drill', CLASSIC_SMART_REACT.drill);
+      return say('above', CLASSIC_SMART_REACT.above);
+    }
+    const window = [...past.slice(-3), current];
+    const windowAvg = window.reduce((sum, value) => sum + value, 0) / window.length;
+    if (windowAvg > 0 && past.length >= 3) {
+      const spread = Math.max(...window) - Math.min(...window);
+      if (spread <= windowAvg * 0.15 && random() < 0.5) {
+        return say('plateau', CLASSIC_SMART_REACT.plateau);
+      }
+    }
+    if (random() < 0.2) return say('drill', CLASSIC_SMART_REACT.drill);
+    return say('around', CLASSIC_SMART_REACT.around);
+  }
+
+  // Fresh accounts speak in tiers. When the next tier is within reach the
+  // goal points at it by name; otherwise the tier's own lines and goals mix.
+  const tier = classicResultTierFor(current);
+  const tierIndex = CLASSIC_RESULT_TIERS.indexOf(tier);
+  const nextTier = tierIndex > 0 ? CLASSIC_RESULT_TIERS[tierIndex - 1] : null;
+  if (nextTier && current >= nextTier.min * 0.85 && random() < 0.5) {
+    const template = pickFrom(CLASSIC_NEAR_GOAL_TEMPLATES, recentMessages, random);
+    return Object.freeze({
+      type: 'nearGoal',
+      message: template.replaceAll('{next}', nextTier.min.toLocaleString('ko-KR')),
+    });
+  }
+  if (random() < 0.3 && tier.goals.length) return say('tierGoal', tier.goals);
+  return say('tier', tier.lines);
+}
+
 
 function pickFreshMessage(type, recentMessages = [], random = Math.random) {
   const pool = MESSAGES[type] || MESSAGES.resultNormal;
@@ -673,26 +1413,82 @@ export function resultRetryLabel({
   if (newRecord) return '신기록 또 넘기기!';
   const current = Math.max(0, Math.round(Number(score) || 0));
   const best = Math.max(0, Math.round(Number(previousBest) || 0));
-  if (best > 0 && current < best && (best - current <= 150 || current / best >= 0.9)) {
-    return '최고기록 넘기기!';
+  const stage = Math.max(1, Math.round(Number(round) || 1));
+  if (isRecordInReach(current, best)) {
+    return `${(best - current).toLocaleString('ko-KR')}점만 더!`;
   }
+  if (best > 0 && stage >= 2) return `이번엔 STAGE ${stage + 1} 가보자`;
   return '한 판 더!';
+}
+
+// Whether the run ended close enough that the record is the natural next
+// goal. The result card and the retry button both read from this, so the
+// headline and the button always tell the same story about the run —
+// they used to disagree, one talking about the last run while the other
+// counted down to the record. Wider than a quarter of the record reads as a
+// chore rather than a nudge, with a floor so early tiny records still count.
+export function isRecordInReach(score = 0, previousBest = 0) {
+  const current = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  const gap = best - current;
+  return best > 0 && gap > 0 && gap <= Math.max(1500, best * 0.25);
+}
+
+// The secret garden's collection ladder. Rescued cats are the only currency,
+// and every tier is reachable by ordinary play — the first lands inside a
+// single run so the ladder introduces itself, and the spacing widens so the
+// last tiers stay a long-term reason to come back.
+export const GARDEN_MILESTONES = Object.freeze([
+  Object.freeze({ id: 'sprout', cats: 3, label: '새싹', asset: 'assets/decor/flower.webp', copy: '첫 싹이 돋았다냥!' }),
+  Object.freeze({ id: 'flowers', cats: 10, label: '꽃밭', asset: 'assets/decor/flower.webp', copy: '꽃밭이 넓어졌다냥!' }),
+  Object.freeze({ id: 'hearts', cats: 25, label: '하트꽃', asset: 'assets/decor/heart.webp', copy: '정원에 하트가 피었다냥!' }),
+  Object.freeze({ id: 'stars', cats: 50, label: '별꽃', asset: 'assets/decor/star.webp', copy: '밤이면 별꽃이 빛난다냥!' }),
+  Object.freeze({ id: 'sparkle', cats: 100, label: '반짝임', asset: 'assets/decor/sparkle.webp', copy: '정원이 반짝이기 시작했다냥!' }),
+  Object.freeze({ id: 'cloud', cats: 200, label: '구름다리', asset: 'assets/decor/cloud.webp', copy: '구름까지 이어진 정원이다냥!' }),
+]);
+
+export function gardenProgress(catsRescued = 0) {
+  const cats = Math.max(0, Math.round(Number(catsRescued) || 0));
+  const unlocked = GARDEN_MILESTONES.filter((milestone) => cats >= milestone.cats);
+  const next = GARDEN_MILESTONES.find((milestone) => cats < milestone.cats) || null;
+  // Progress is measured inside the current step, not from zero, so the bar
+  // restarts after each unlock instead of crawling for the last two tiers.
+  const floor = unlocked.length ? unlocked.at(-1).cats : 0;
+  const span = next ? Math.max(1, next.cats - floor) : 1;
+  return Object.freeze({
+    cats,
+    unlocked: Object.freeze(unlocked.map((milestone) => milestone.id)),
+    latest: unlocked.length ? unlocked.at(-1) : null,
+    next,
+    remaining: next ? next.cats - cats : 0,
+    progress: next ? Math.min(1, Math.max(0, (cats - floor) / span)) : 1,
+    complete: !next,
+  });
 }
 
 export function comboMultiplier(combo) {
   return 1 + Math.min(Math.max(combo - 1, 0), 9) * 0.15;
 }
 
+// Every score in the game runs through this divisor. The original OING pays
+// (cells + cats*5) x combo — a five-cell clear at combo 7 is "+84", a number
+// you read at a glance and feel. Ours had drifted an order of magnitude
+// higher, where "+798" is just a shape. One knob keeps every relationship
+// between clears, bombs, cats and bonuses exactly as tuned while bringing
+// the figures back into a range that means something.
+const SCORE_SCALE = 0.1;
+const scaled = (points) => Math.max(1, Math.round(points * SCORE_SCALE));
+
 export function scoreForClear(cellCount, combo) {
   const base = cellCount <= 2
     ? 210
     : 210 + (cellCount - 2) * 210 + Math.max(0, cellCount - 3) * 40;
-  return Math.round(base * comboMultiplier(combo));
+  return scaled(base * comboMultiplier(combo));
 }
 
 export function scoreForWideClear(cellCount, combo) {
   const extraCells = Math.max(0, Math.round(Number(cellCount) || 0) - 4);
-  return Math.round(extraCells * 120 * comboMultiplier(combo));
+  return extraCells ? scaled(extraCells * 120 * comboMultiplier(combo)) : 0;
 }
 
 // The original OING cat cell adds five base points before its integer combo
@@ -700,7 +1496,7 @@ export function scoreForWideClear(cellCount, combo) {
 // meaningful "lucky catch" feeling without overpowering the clear itself.
 export function scoreForCatBonus(catCount, combo) {
   const cats = Math.max(0, Math.round(Number(catCount) || 0));
-  return Math.round(cats * 120 * comboMultiplier(combo));
+  return cats ? scaled(cats * 120 * comboMultiplier(combo)) : 0;
 }
 
 export function scoreForCloverBonus(basePoints) {
@@ -711,19 +1507,19 @@ export function scoreForClutch(timeLeft, combo) {
   const remaining = Math.max(0, Number(timeLeft) || 0);
   if (remaining > 10) return 0;
   const urgency = remaining <= 3 ? 180 : 90;
-  return urgency + Math.min(10, Math.max(0, Math.round(Number(combo) || 0))) * 10;
+  return scaled(urgency + Math.min(10, Math.max(0, Math.round(Number(combo) || 0))) * 10);
 }
 
 export function scoreForBomb(valueSum, cellCount = 0) {
   const value = Math.max(0, Math.round(Number(valueSum) || 0));
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
-  return 180 + cells * 55 + value * 4;
+  return scaled(180 + cells * 55 + value * 4);
 }
 
 export function scoreForMegaBomb(valueSum, cellCount = 0) {
   const value = Math.max(0, Math.round(Number(valueSum) || 0));
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
-  return 320 + cells * 70 + value * 4;
+  return scaled(320 + cells * 70 + value * 4);
 }
 
 export function getStageConfig(stageNumber) {
@@ -738,9 +1534,7 @@ export function getStageConfig(stageNumber) {
     size: last.size,
     cols: last.cols,
     rows: last.rows,
-    target: Math.min(30, last.target + extra * 2),
     timeLimit: GAME_DURATION_SECONDS,
-    clockChance: Math.min(0.065, last.clockChance + extra * 0.002),
     bombChance: Math.min(0.58, last.bombChance + extra * 0.02),
   };
 }
