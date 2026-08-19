@@ -3791,3 +3791,90 @@
   will-change: auto;
 }
 
+
+/* Split dock ---------------------------------------------------------------
+   The item roster settled the original's way: hint and shuffle are the only
+   buttons, everything else spawns on the board. But two identical wells
+   side by side in one tray invited mispresses mid-frenzy - the original
+   avoids that by making the two controls different sizes in different
+   places, and that is what this does. The tray art is set aside; each well
+   is cut from it (item-well-*-v1) and becomes a standalone toy button:
+   hint, the reach-for-it-in-a-panic one, sits big in the bottom-right
+   thumb zone; shuffle, rarer and more drastic, sits smaller by the cat on
+   the far left. A whole screen width apart, different sizes - no confusing
+   them. The meadow stays open in between. The bomb/clock buttons and the
+   stage-mode code paths are untouched; only their display goes. */
+.play-ui-v4 .bomb-button,
+.play-ui-v4 .bomb-button[data-state],
+.play-ui-v4 .clock-button,
+.play-ui-v4 .clock-button[data-state] {
+  display: none;
+}
+
+.play-ui-v4 .play-footer-chrome {
+  display: none;
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  width: 100%;
+  aspect-ratio: auto;
+  height: clamp(62px, 9dvh, 73px);
+  margin-right: 0;
+  justify-self: stretch;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-actions {
+  position: static;
+  inset: auto;
+  display: flex;
+  /* DOM order is hint then shuffle; reversed so hint lands in the
+     bottom-right thumb zone and shuffle by the cat on the left. */
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0 4px 0 clamp(96px, 27.5vw, 110px);
+  gap: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .item-actions::before,
+.play-ui-v4 .item-actions::after {
+  display: none;
+}
+
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state] {
+  background: none;
+  border: 0;
+  padding: 6% 4% 3%;
+}
+
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state] {
+  width: clamp(56px, 15.5vw, 62px);
+  height: clamp(56px, 15.5vw, 62px);
+  min-width: 0;
+  min-height: 0;
+  background: url("../assets/ui/item-well-hint-v1.webp") center / 100% 100% no-repeat;
+}
+
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(44px, 12.5vw, 48px);
+  height: clamp(44px, 12.5vw, 48px);
+  min-width: 44px;
+  min-height: 44px;
+  align-self: flex-end;
+  background: url("../assets/ui/item-well-shuffle-v1.webp") center / 100% 100% no-repeat;
+}
