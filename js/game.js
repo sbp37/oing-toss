@@ -364,10 +364,22 @@ class OingGame {
       this.settings.haptic = !this.settings.haptic;
       this.applySettings();
     });
+    // Best-effort privacy screen for the OS app switcher: the cover swaps in
+    // synchronously the moment the tab goes background, so the snapshot the
+    // switcher takes shows the logo instead of the board. Browsers give no
+    // hard guarantee about snapshot timing - a real guarantee needs a native
+    // wrapper - but in practice the swap wins the race.
+    const privacyCover = document.querySelector('#privacy-cover');
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') this.pause('background');
+      if (document.visibilityState === 'hidden') {
+        if (privacyCover) privacyCover.hidden = false;
+        this.pause('background');
+      } else if (privacyCover) {
+        privacyCover.hidden = true;
+      }
     });
     window.addEventListener('pagehide', (event) => {
+      if (privacyCover) privacyCover.hidden = false;
       this.pause('background');
       if (!event.persisted && this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'pagehide');
     });
@@ -602,6 +614,17 @@ class OingGame {
     // into the grid — but earned board drops land on it like they do in the
     // stage mode, so a combo past the score cap still buys something.
     if (!this.classic) this.model.assignSpecialTiles(specialTilePlanForStage(this.state.round));
+    // A fresh classic board has no empty cells except the cat seats, so an
+    // item carried over a 판갈이 would sit invisible in the queue until the
+    // first clear - which read as the bomb simply vanishing. Instead the
+    // carried item buys its seat from a cat: one reserved cat cell (max two)
+    // opens up and the item lands there immediately, exactly where a player
+    // expects their saved bomb to be waiting.
+    if (this.classic && this.boardItems.pending.length && this.model.bonusCats.size > 1) {
+      const yield_ = Math.min(2, this.boardItems.pending.length, this.model.bonusCats.size - 1);
+      const seats = [...this.model.bonusCats].slice(0, yield_);
+      seats.forEach((key) => this.model.bonusCats.delete(key));
+    }
     const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
     this.renderBoard();
     this.updateHUD();

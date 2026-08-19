@@ -20,10 +20,16 @@ export const COMBO_WINDOW_MS = Object.freeze({
   expert: 2900,
 });
 export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
+// Classic scale, matched to the measured skill tiers (fresh-account bots
+// and simulation): a first session lands around 1-2k, a settled player
+// around 10-15k, a fast one 30-50k. The old 15k/40k/80k were stage-mode
+// numbers - under them virtually every classic run fell into the lowest
+// pool, which is why the result cat sounded flat no matter how well a run
+// went.
 export const RESULT_SCORE_THRESHOLDS = Object.freeze({
-  normal: 15000,
-  high: 40000,
-  legend: 80000,
+  normal: 2000,
+  high: 12000,
+  legend: 35000,
 });
 
 export function recordEligibleForStartStage(stage = 1) {
@@ -832,6 +838,9 @@ export const MESSAGES = Object.freeze({
     '합10 보는 눈이 슬슬 열린다냥',
     '이번 판 데이터 접수! 한 판 더?',
     '출발 좋았어. 이제 속도만 붙이면 돼!',
+    '괜찮아, 다들 여기서 시작한다냥',
+    '방금 그 조합 봤어? 소질 있다냥',
+    '숫자랑 인사는 끝났으니 이제 진짜다냥',
   ]),
   resultNormal: Object.freeze([
     '숫자 조합이 제대로 보이기 시작했다냥',
@@ -840,6 +849,9 @@ export const MESSAGES = Object.freeze({
     '콤보 감각이 살아 있다냥',
     '이번 기록, 다음 판에 넘을 수 있겠어!',
     '이 정도면 손이 기억하겠다냥',
+    '판갈이 넘어가는 맛을 알아버렸구나냥',
+    '중간에 그 큰 조합, 나 살짝 소름 돋았다냥',
+    '이제 초보라고 하면 다들 안 믿는다냥',
   ]),
   resultHigh: Object.freeze([
     '속도가 장난 아니다냥',
@@ -848,6 +860,9 @@ export const MESSAGES = Object.freeze({
     '완전 고수의 흐름이다냥!',
     '이번 판은 인정. 진짜 빨랐어!',
     '보드가 따라오질 못하겠다냥',
+    '내가 판을 새로 까는 속도보다 빠르다냥',
+    '이 점수, 친구들한테 보여줘야 한다냥',
+    '깊은 판까지 갔다 왔구나. 밤 풍경 봤어?',
   ]),
   resultLegend: Object.freeze([
     '오잉게임 마스터 인정이다냥',
@@ -855,6 +870,9 @@ export const MESSAGES = Object.freeze({
     '이런 점수는 자랑부터 해야 한다냥',
     '이 정도면 숫자가 먼저 도망가겠다냥',
     '전설급 기록이다. 이번엔 진짜 인정!',
+    '나 이런 점수 처음 본다냥. 진심으로.',
+    '손끝에서 불꽃 냄새가 난다냥',
+    '이 기록은 액자에 걸어야 한다냥',
   ]),
   record: Object.freeze([
     '새 최고기록이다냥!',

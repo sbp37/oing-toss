@@ -3910,3 +3910,43 @@
   margin-left: -6px;
   transform: translateY(10px);
 }
+
+/* Device pass 3: hint legibility, board separation, weightier buttons ------ */
+/* The hint ring read faint over pale scenes; deeper mint, thicker line,
+   stronger white halo. */
+.hint-region {
+  border: 3.5px solid rgba(23, 152, 116, .95);
+  box-shadow:
+    0 0 0 5px rgba(255, 255, 255, .85),
+    0 0 26px rgba(35, 170, 140, .55),
+    inset 0 0 18px rgba(255, 255, 255, .5);
+}
+
+/* When a chapter scene and the sky share a palette the board melted into
+   the backdrop. A crisp white ring plus a real cast shadow cuts it out. */
+.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  box-shadow:
+    0 0 0 2.5px rgba(255, 255, 255, .92),
+    0 4px 10px rgba(64, 84, 128, .22),
+    0 16px 34px rgba(64, 84, 128, .26);
+}
+
+/* Bigger, deeper toy buttons, lifted off the meadow; hint steps in from
+   the edge. Two filtered elements, not fifty-four - negligible cost. */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(56px, 16vw, 64px);
+  height: clamp(56px, 16vw, 64px);
+  filter: saturate(1.25) drop-shadow(0 5px 8px rgba(84, 62, 28, .32));
+}
+
+.play-ui-v4 .item-actions {
+  padding-right: 18px;
+}
+
+.play-ui-v4 .cat-speech {
+  transform: translateY(8px);
+}

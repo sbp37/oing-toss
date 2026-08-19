@@ -12,23 +12,24 @@ import {
 import { buildLocalRecordSummary, buildShareText } from '../js/adapters.js';
 
 test('live cat messages keep the OING nyang voice across score tiers', () => {
-  assert.equal(resultMessageType(5000, false), 'resultLow');
-  assert.equal(resultMessageType(20000, false), 'resultNormal');
-  assert.equal(resultMessageType(50000, false), 'resultHigh');
-  assert.equal(resultMessageType(90000, false), 'resultLegend');
+  assert.equal(resultMessageType(800, false), 'resultLow');
+  assert.equal(resultMessageType(5000, false), 'resultNormal');
+  assert.equal(resultMessageType(20000, false), 'resultHigh');
+  assert.equal(resultMessageType(50000, false), 'resultLegend');
   assert.equal(resultMessageType(200, true), 'record');
-  for (const score of [5000, 20000, 50000, 90000]) {
+  for (const score of [800, 5000, 20000, 50000]) {
     assert.match(pickResultMessage(score, { random: () => 0 }), /냥/);
   }
 });
 
-test('result score tiers follow the current score scale', () => {
-  assert.equal(resultToneForScore(14999), 'low');
-  assert.equal(resultToneForScore(15000), 'normal');
-  assert.equal(resultToneForScore(39999), 'normal');
-  assert.equal(resultToneForScore(40000), 'high');
-  assert.equal(resultToneForScore(79999), 'high');
-  assert.equal(resultToneForScore(80000), 'legend');
+test('result score tiers follow the classic score scale', () => {
+  // 실측 기반 눈금: 첫 세션 1~2천, 자리잡은 플레이어 1만대, 상위권 3만대.
+  assert.equal(resultToneForScore(1999), 'low');
+  assert.equal(resultToneForScore(2000), 'normal');
+  assert.equal(resultToneForScore(11999), 'normal');
+  assert.equal(resultToneForScore(12000), 'high');
+  assert.equal(resultToneForScore(34999), 'high');
+  assert.equal(resultToneForScore(35000), 'legend');
 });
 
 test('score comparisons cover first run, previous run, record and near-record cases', () => {

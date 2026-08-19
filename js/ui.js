@@ -2060,7 +2060,7 @@ export class GameUI {
     void output.offsetWidth;
     output.classList.add('is-counting');
     const startedAt = performance.now();
-    const duration = 680;
+    const duration = 950;
     const step = (now) => {
       const progress = clamp((now - startedAt) / duration, 0, 1);
       const eased = 1 - ((1 - progress) ** 4);
@@ -2070,6 +2070,9 @@ export class GameUI {
       } else {
         output.textContent = target.toLocaleString('ko-KR');
         output.classList.remove('is-counting');
+        output.classList.remove('is-settled');
+        void output.offsetWidth;
+        output.classList.add('is-settled');
         this.finalScoreAnimationFrame = 0;
       }
     };
@@ -2180,26 +2183,40 @@ export class GameUI {
     setTimeout(() => screen.classList.remove('is-entering'), 680);
   }
 
+  // The original's record moment pops from several places at once, not one
+  // curtain from the top - so the celebration is three staggered bursts,
+  // each seeded to a different band of the screen.
   launchRecordCelebration() {
     const screen = document.querySelector('#result-screen');
     if (!screen) return;
-    screen.querySelector('.record-confetti')?.remove();
-    const confetti = document.createElement('div');
-    confetti.className = 'record-confetti';
+    screen.querySelectorAll('.record-confetti').forEach((el) => el.remove());
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const count = reducedMotion ? 12 : 54;
-    for (let index = 0; index < count; index += 1) {
-      const piece = document.createElement('i');
-      piece.style.setProperty('--confetti-x', `${6 + ((index * 37) % 89)}%`);
-      piece.style.setProperty('--confetti-delay', `${(index % 12) * 34}ms`);
-      piece.style.setProperty('--confetti-drift', `${((index * 29) % 100) - 50}px`);
-      piece.style.setProperty('--confetti-spin', `${120 + (index % 7) * 55}deg`);
-      piece.style.setProperty('--confetti-hue', String((index * 47) % 360));
-      piece.dataset.shape = index % 6 === 0 ? 'star' : 'paper';
-      confetti.appendChild(piece);
+    const spawnWave = (seed, count) => {
+      const confetti = document.createElement('div');
+      confetti.className = 'record-confetti';
+      for (let index = 0; index < count; index += 1) {
+        const piece = document.createElement('i');
+        piece.style.setProperty('--confetti-x', `${(seed * 31 + 6 + ((index * 37) % 89)) % 94}%`);
+        piece.style.setProperty('--confetti-delay', `${(index % 12) * 34}ms`);
+        piece.style.setProperty('--confetti-drift', `${((index * 29 + seed * 13) % 100) - 50}px`);
+        piece.style.setProperty('--confetti-spin', `${120 + (index % 7) * 55}deg`);
+        piece.style.setProperty('--confetti-hue', String((index * 47 + seed * 90) % 360));
+        piece.dataset.shape = index % 6 === 0 ? 'star' : 'paper';
+        confetti.appendChild(piece);
+      }
+      screen.appendChild(confetti);
+      window.setTimeout(() => confetti.remove(), reducedMotion ? 1100 : 3200);
+    };
+    if (reducedMotion) {
+      spawnWave(0, 12);
+      return;
     }
-    screen.appendChild(confetti);
-    window.setTimeout(() => confetti.remove(), reducedMotion ? 1100 : 3200);
+    spawnWave(0, 40);
+    this.confettiWaveTimers?.forEach(clearTimeout);
+    this.confettiWaveTimers = [
+      window.setTimeout(() => spawnWave(1, 34), 420),
+      window.setTimeout(() => spawnWave(2, 30), 860),
+    ];
   }
 
   setOverlay(id, visible) {
