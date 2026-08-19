@@ -4016,3 +4016,90 @@
 .play-ui-v4 .cat-speech {
   width: calc(100% - clamp(60px, 17vw, 72px));
 }
+
+/* Dock presence pass ---------------------------------------------------------
+   On device the two toys read as decals printed on the meadow rather than as
+   the controls: at 56-64dp they were smaller than a board tile, and their
+   painted wells are the same pastel family as the grass behind them, so the
+   only thing on either button with real contrast was the little red count
+   badge - the badge was outshouting the button it belonged to.
+
+   Two changes, no new geometry. They grow past tile size so they read as the
+   biggest tappable things outside the board, and they get cut out of the
+   scenery the way the tiles were: a white halo traced around the painted
+   shape (two 1px drop-shadows, which follow the well's alpha - a box-shadow
+   would draw a rectangle around a rounded, transparent-cornered sprite) and
+   a real cast shadow under it. Still two filtered elements, not fifty-four.
+
+   The cat gives up a little width so shuffle can move toward the edge with
+   it: the cat's box is what pins the dock's left inset, and shuffle sitting
+   at 40% of the screen was the part that read as no position at all. */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(66px, 18.5vw, 76px);
+  height: clamp(66px, 18.5vw, 76px);
+  filter:
+    saturate(1.2)
+    drop-shadow(0 0 1px rgba(255, 255, 255, .96))
+    drop-shadow(0 0 1px rgba(255, 255, 255, .96))
+    drop-shadow(0 5px 7px rgba(46, 58, 40, .40));
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(76px, 21.5vw, 86px);
+}
+
+.play-ui-v4 .item-actions {
+  padding-left: clamp(94px, 25.5vw, 102px);
+}
+
+/* Dock to the floor ---------------------------------------------------------
+   The stack ends [board][coach][dock], and the surplus height is split by two
+   spacer tracks 1 : 2 with the larger share trailing, so ~105dp of meadow was
+   left under the dock at 393x852 (69dp at 360x740). The dock therefore
+   floated in the middle of the grass: not under the board, not at the bottom
+   edge, which is the "no position" the buttons read as. Widening the leading
+   spacer instead would have dragged the whole stack down and put that band of
+   sky above the HUD, which is the same problem upside down.
+
+   The dock moves into the trailing track and pins to its end, so it lands on
+   the floor and the leftover meadow opens up between the coach and the dock -
+   scenery above the controls instead of under them.
+
+   That also frees the dock's left inset. It only existed to clear the cat,
+   and the cat now sits a row above, so shuffle finally reaches the left edge:
+   the two toys sit in the two bottom corners, a screen apart, which is the
+   separation the split dock wanted in the first place. */
+.play-ui-v4 .play-footer {
+  grid-area: 8 / 1;
+  align-self: end;
+  margin-bottom: clamp(6px, 1.6dvh, 16px);
+}
+
+.play-ui-v4 .item-actions {
+  padding-left: 4px;
+}
+
+/* Moving the dock into the trailing track put its 73dp inside the fraction
+   the two spacers were splitting, so the 1 : 2 share handed the leading
+   spacer ~24dp it never had and the whole stack - HUD, board and all - slid
+   down behind a taller band of sky. The ratio is restated for the new
+   arithmetic: the trailing track now carries the dock plus the meadow that
+   used to sit under it, so it needs the bigger share it already had plus the
+   dock's own height. Board and HUD land back where they were. */
+.screen-play.play-ui-v4,
+.screen-play.play-ui-v4:not(.is-tall-board),
+.screen-play.play-ui-v4.is-tall-board {
+  grid-template-rows: 1fr auto auto auto auto auto auto 3.4fr;
+}
+
+/* With the dock on the floor the cat sits directly above shuffle, and on the
+   shorter viewport its tail crossed the button's halo. A little more lift
+   keeps the two apart without pulling the cat off the bubble it speaks into. */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  bottom: clamp(16px, 3.2dvh, 28px);
+}
