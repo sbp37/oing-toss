@@ -32,7 +32,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
+          # 체크아웃을 하지 않는 잡이라 gh가 저장소를 스스로 알아내지 못한다.
           TAG="tools-pepk"
+          export GH_REPO="${{ github.repository }}"
           gh release delete "$TAG" --yes --cleanup-tag || true
           gh release create "$TAG" pepk.jar \
             --prerelease \
