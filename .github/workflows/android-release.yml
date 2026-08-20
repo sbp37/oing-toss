@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -99,6 +99,20 @@ jobs:
       - name: 키스토어 삭제
         if: always()
         run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      # 아티팩트 다운로드는 인증이 필요해서 자동화 쪽에서 집어오기가 번거롭다.
+      # 프리릴리스로도 올려두면 링크 하나로 어디서든 받을 수 있다.
+      - name: 프리릴리스로 게시
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-build-${{ github.run_number }}"
+          gh release create "$TAG" \
+            android/app/build/outputs/bundle/release/app-release.aab \
+            android/app/build/outputs/apk/release/app-release.apk \
+            --prerelease \
+            --title "안드로이드 빌드 #${{ github.run_number }}" \
+            --notes "커밋 ${{ github.sha }} · 서명 여부: ${{ steps.signing.outputs.signed }}"
 
       - uses: actions/upload-artifact@v4
         with:
