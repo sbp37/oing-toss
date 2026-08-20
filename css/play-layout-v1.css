@@ -884,10 +884,10 @@
   border-radius: calc(clamp(15px, 4vw, 22px) - 4px);
   background-color: rgba(225,246,252,.34);
   background-image:
-    linear-gradient(to right, rgba(104,116,192,.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(104,116,192,.09) 1px, transparent 1px);
+    linear-gradient(to right, rgba(96,102,116,.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(96,102,116,.09) 1px, transparent 1px);
   box-shadow:
-    inset 0 0 12px rgba(104,132,196,.12),
+    inset 0 0 12px rgba(102,110,124,.12),
     inset 0 0 0 1px rgba(255,255,255,.26);
 }
 
@@ -3155,7 +3155,7 @@
    being later and more specific, would erase their glow.
    ========================================================================== */
 .play-ui-v4 .board {
-  gap: clamp(1.5px, .52vw, 2.6px);
+  gap: clamp(2px, .62vw, 3.2px);
 }
 
 /* Separation used to ride box-shadow, which quietly erased every state that
@@ -3164,15 +3164,33 @@
    the stylesheet sets one, so it can never overwrite a state again. The
    shading moved into background layers for the same reason.
 
-   The palette also went the wrong way. A cool-grey rim over the mint art
-   read muddy and heavy enough to look cramped. The rim is now
-   a soft violet-blue and the wash on the tile face tints the same way, so
-   the board reads cooler and the seams read lighter while still separating. */
+   The palette went through both extremes. A cool-grey rim drawn over the
+   mint art read muddy and cramped, so it was swapped for a violet-blue and
+   the tile face was tinted to match - and that turned the whole board
+   periwinkle, a colour loud enough to look cheap next to the pastel art it
+   was framing. The rim is neither now: a desaturated slate that reads as a
+   line rather than as a colour. Visibility comes off the value, not the
+   hue - it is darker than the violet it replaces, so the seam separates
+   more while drawing less attention to itself. The face tint, the cast
+   shadow and the board's own grid follow it out of violet, since they were
+   only ever tinted to match the rim.
+
+   Even so the seam still did not read as a seam on a bright scene. The rim
+   sat at outline-offset -1px, i.e. inside the tile, so it drew as another
+   marking on the face rather than as the cell's edge, and the gap between
+   two tiles showed the sky straight through - a seam brighter than the
+   tiles it was meant to divide. The rim moves out onto the edge itself, so
+   two neighbours put their dark lines either side of the gap and the pair
+   reads as one groove, and the groove is widened just enough to be seen.
+   Kept at 1px: anything thicker turns the pastel board into a window
+   grille and slices the hidden picture. Empty cells are untouched - the
+   selectors only match tiles that hold something - so the picture that
+   comes through as the board clears is still uncut. */
 .play-ui-v4 .tile[class*="value-"],
 .play-ui-v4 .tile.is-bonus-cat,
 .play-ui-v4 .tile.is-board-item {
-  outline: 1px solid rgba(118, 130, 206, .42);
-  outline-offset: -1px;
+  outline: 1px solid rgba(86, 94, 110, .52);
+  outline-offset: 0;
 }
 
 /* The syrup art is translucent, so the colour a tile reads as comes from the
@@ -3183,9 +3201,9 @@
    hidden picture is showing through. */
 .play-ui-v4 .tile[class*="value-"],
 .screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"] {
-  background-color: rgba(221, 227, 252, .97);
+  background-color: rgba(232, 235, 243, .97);
   background-image:
-    linear-gradient(to bottom, rgba(92, 106, 186, 0) 64%, rgba(92, 106, 186, .1) 100%),
+    linear-gradient(to bottom, rgba(88, 94, 110, 0) 64%, rgba(88, 94, 110, .12) 100%),
     var(--tile-art);
 }
 
@@ -3200,7 +3218,7 @@
      cost. The element's own border-radius matches the art closely enough
      that the cast shadow reads the same. */
   filter: none;
-  box-shadow: 0 2px 3px rgba(78, 88, 158, .24);
+  box-shadow: 0 2px 3px rgba(84, 90, 104, .26);
 }
 
 .play-ui-v4 .board.is-hinting .tile:not(.is-hint),
@@ -3704,10 +3722,10 @@
 .play-ui-v4 .board { position: relative; }
 
 .screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
-  background-color: rgba(232, 237, 251, .97);
+  background-color: rgba(228, 231, 239, .97);
   background-image:
-    linear-gradient(to right, rgba(104, 116, 192, .08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(104, 116, 192, .08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(96, 102, 116, .08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(96, 102, 116, .08) 1px, transparent 1px);
 }
 
 .screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
@@ -3780,7 +3798,7 @@
 .play-ui-v4 .tile.is-bonus-cat {
   background-color: rgba(255, 216, 182, .97);
   outline: 1.5px solid rgba(233, 158, 92, .6);
-  outline-offset: -1px;
+  outline-offset: 0;
 }
 
 /* The chapter arrival beat read as a glitch - a bare painting flashing
@@ -3960,3 +3978,447 @@
 /* Classic keeps the painted STAGE shield: a 판 and a STAGE are the same beat
    here, so the badge that already reads as "the counter" stays the counter,
    and the mode class is left as a hook without changing the HUD. */
+
+/* Dock balance pass ---------------------------------------------------------
+   The dock is a two-toy row by design - hint bottom-right in the thumb zone,
+   shuffle by the cat on the far left, the meadow open between them so the two
+   can never be confused mid-frenzy. On device the gap read as a hole waiting
+   for a third button rather than as deliberate space, and the reason was not
+   the gap: the two toys were not on the same line, and only one of them was
+   actually at an edge.
+
+   Hint carried align-self:center from the days when it was the bigger of the
+   two, so it floated ~5px above shuffle even after the sizes were equalised -
+   just enough for the row to read as unaligned. Both sit on the dock floor
+   now. Hint also stopped 27px short of the screen edge while the cat starts
+   10px in on the other side, so the row looked shifted rather than spread;
+   the right inset now matches the cat's, and the pair reads as two anchored
+   ends with the meadow between them.
+
+   No third button: adding one halves the separation the split dock exists to
+   buy, and the middle is already the coach's lane - the bubble hangs over it
+   and the cat speaks into it. The empty ground is the point. */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state] {
+  align-self: flex-end;
+}
+
+.play-ui-v4 .item-actions {
+  padding-right: 4px;
+}
+
+/* The bubble ended over the hint well, so the coach line looked like it was
+   leaning on the button instead of hanging over the open middle. Pulling its
+   right edge back to where the hint well starts puts the message centred on
+   the gap, which is the thing the eye was reading as empty. The pull has to
+   come off the width: the bubble carries an explicit one, so a margin would
+   have been ignored and the box would have kept overhanging the well. */
+.play-ui-v4 .cat-speech {
+  width: calc(100% - clamp(60px, 17vw, 72px));
+}
+
+/* Dock presence pass ---------------------------------------------------------
+   On device the two toys read as decals printed on the meadow rather than as
+   the controls: at 56-64dp they were smaller than a board tile, and their
+   painted wells are the same pastel family as the grass behind them, so the
+   only thing on either button with real contrast was the little red count
+   badge - the badge was outshouting the button it belonged to.
+
+   Two changes, no new geometry. They grow past tile size so they read as the
+   biggest tappable things outside the board, and they get cut out of the
+   scenery the way the tiles were: a white halo traced around the painted
+   shape (two 1px drop-shadows, which follow the well's alpha - a box-shadow
+   would draw a rectangle around a rounded, transparent-cornered sprite) and
+   a real cast shadow under it. Still two filtered elements, not fifty-four.
+
+   The cat gives up a little width so shuffle can move toward the edge with
+   it: the cat's box is what pins the dock's left inset, and shuffle sitting
+   at 40% of the screen was the part that read as no position at all. */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  width: clamp(66px, 18.5vw, 76px);
+  height: clamp(66px, 18.5vw, 76px);
+  filter:
+    saturate(1.2)
+    drop-shadow(0 0 1px rgba(255, 255, 255, .96))
+    drop-shadow(0 0 1px rgba(255, 255, 255, .96))
+    drop-shadow(0 5px 7px rgba(46, 58, 40, .40));
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(76px, 21.5vw, 86px);
+}
+
+.play-ui-v4 .item-actions {
+  padding-left: clamp(94px, 25.5vw, 102px);
+}
+
+/* Dock to the floor ---------------------------------------------------------
+   The stack ends [board][coach][dock], and the surplus height is split by two
+   spacer tracks 1 : 2 with the larger share trailing, so ~105dp of meadow was
+   left under the dock at 393x852 (69dp at 360x740). The dock therefore
+   floated in the middle of the grass: not under the board, not at the bottom
+   edge, which is the "no position" the buttons read as. Widening the leading
+   spacer instead would have dragged the whole stack down and put that band of
+   sky above the HUD, which is the same problem upside down.
+
+   The dock moves into the trailing track and pins to its end, so it lands on
+   the floor and the leftover meadow opens up between the coach and the dock -
+   scenery above the controls instead of under them.
+
+   That also frees the dock's left inset. It only existed to clear the cat,
+   and the cat now sits a row above, so shuffle finally reaches the left edge:
+   the two toys sit in the two bottom corners, a screen apart, which is the
+   separation the split dock wanted in the first place. */
+.play-ui-v4 .play-footer {
+  grid-area: 8 / 1;
+  align-self: end;
+  margin-bottom: clamp(6px, 1.6dvh, 16px);
+}
+
+.play-ui-v4 .item-actions {
+  padding-left: 4px;
+}
+
+/* Moving the dock into the trailing track put its 73dp inside the fraction
+   the two spacers were splitting, so the 1 : 2 share handed the leading
+   spacer ~24dp it never had and the whole stack - HUD, board and all - slid
+   down behind a taller band of sky. The ratio is restated for the new
+   arithmetic: the trailing track now carries the dock plus the meadow that
+   used to sit under it, so it needs the bigger share it already had plus the
+   dock's own height. Board and HUD land back where they were. */
+.screen-play.play-ui-v4,
+.screen-play.play-ui-v4:not(.is-tall-board),
+.screen-play.play-ui-v4.is-tall-board {
+  grid-template-rows: 1fr auto auto auto auto auto auto 4.3fr;
+}
+
+/* With the dock on the floor the cat sits directly above shuffle, and on the
+   shorter viewport its tail crossed the button's halo. A little more lift
+   keeps the two apart without pulling the cat off the bubble it speaks into. */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  bottom: clamp(16px, 3.2dvh, 28px);
+}
+
+/* Halo off, shadow only -----------------------------------------------------
+   The white tracing around the wells was meant to read as a sticker's cut
+   edge, but drop-shadow always blurs: at 1px it came out as a soft glow
+   ringing the sprite, which reads as a badly keyed cutout rather than as an
+   outline. A crisp one would need eight zero-blur passes per button, which is
+   not worth it - the wells are already bigger and far more saturated than the
+   grass. Only the cast shadow stays, tightened into a near pair so the button
+   sits on the meadow instead of hovering over it. */
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  filter:
+    saturate(1.18)
+    drop-shadow(0 1px 1px rgba(48, 60, 42, .28))
+    drop-shadow(0 5px 8px rgba(48, 60, 42, .34));
+}
+
+/* Board rim vs scenery ------------------------------------------------------
+   The frame keeps a 3.5dp ring outside the board's own panel, and that ring
+   was only 24% opaque - so on every edge the meadow and the sky read straight
+   through the board's own border, which is why the outline looked like it was
+   floating on the art rather than closing the board off. The ring takes the
+   panel's colour so the slab is solid to its edge, the greenish tint on the
+   rim goes neutral with the rest of the board, and the outside gets the same
+   treatment the tiles got: a white keyline to cut it out, then a darker
+   hairline to define it. */
+.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  background-color: rgba(233, 236, 243, .97);
+  outline-color: rgba(255, 255, 255, .55);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .95),
+    0 0 0 4.2px rgba(88, 98, 118, .34),
+    0 5px 12px rgba(56, 72, 110, .22),
+    0 18px 36px rgba(56, 72, 110, .24);
+}
+
+/* Cat to the middle of the dock ---------------------------------------------
+   With the dock on the floor the cat was left standing alone in the meadow at
+   the far left - not beside a button, not under the board, and the widest gap
+   on the screen opened between the two toys with nothing in it. It moves to
+   the one place that reads as a position: dead centre of the dock, on the same
+   floor as shuffle and hint, which turns the bottom into a three-beat row and
+   fills the gap without adding a third button.
+
+   The cat leaves .cat-coach for .play-footer in the markup (only #play-cat is
+   queried from js, so nothing else moves) and is centred absolutely over the
+   dock, out of the item lane's flow and out of its hit-testing.
+
+   The bubble's tail had to follow. Both painted bubbles carry it at ~9% from
+   the left, drawn for a cat standing on that side, so a centred cat would have
+   been spoken to from off to one side. speech-bubble-wide-v4 is v3 with the
+   tail relocated to dead centre - the tail patch moved, the gap healed with a
+   clean stretch of the same bottom edge, re-encoded lossless (every visible
+   pixel outside the two tail areas is identical to v3). The coach lane is now
+   the bubble alone, so it spans the row and centres over the cat. */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.play-ui-v4 .cat-speech {
+  width: min(100%, 340px);
+  margin-inline: auto;
+  justify-self: center;
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer {
+  position: relative;
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  top: auto;
+  /* an earlier pass parks a -88dp bottom margin on the stage to let the cat
+     hang out of the 30dp coach lane; absolute in the dock it would only push
+     the cat through the floor. */
+  margin: 0;
+  bottom: 0;
+  width: clamp(78px, 22vw, 90px);
+  height: auto;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.play-ui-v4 #play-cat {
+  width: 100%;
+  height: auto;
+}
+
+/* Bubble hugs its message ---------------------------------------------------
+   The lane was handed a flat 340dp, so "좀 더 하라냥" and "메가폭탄 등장이다냥!
+   톡 눌러봐." were painted into the same wide slab and every short line sat in
+   a bubble mostly made of empty cream. The box shrinks to its text instead,
+   with a floor so a two-word line still reads as a bubble and a ceiling so a
+   long one still wraps inside the lane. The painted chrome is absolute, so it
+   follows the box without driving it; the message drops the percentage side
+   padding, which cannot resolve against a shrink-to-fit parent, for a real
+   one. As a bonus the art stops being stretched: at 340dp the 900x230 bubble
+   was scaled 2x wider than tall, and a narrower box lands much closer to the
+   proportions it was drawn at. */
+.play-ui-v4 .cat-speech {
+  width: fit-content;
+  min-width: clamp(116px, 33vw, 148px);
+  max-width: min(100%, 340px);
+}
+
+.screen-play.play-ui-v4 .cat-message,
+.screen-play.play-ui-v4.is-tall-board .cat-message {
+  width: auto;
+  max-width: 100%;
+  /* wide enough that the painted sparkles in the bubble's top-right corner,
+     which used to sit far from a 340dp-wide line, still clear the text now
+     that the box hugs it. */
+  padding: 5px clamp(20px, 6vw, 28px);
+}
+
+/* Item wells: bigger marks, one alignment ----------------------------------
+   The wells grew to 66-76dp but their contents did not: a 22dp top padding -
+   30% of the button - held the icon and label down in the bottom 40dp, so a
+   31dp icon and an 11.8dp label sat low in a mostly empty dish. The sprites
+   fill their own box edge to edge (no transparent margin to allow for), so
+   the padding evens out and the stack centres. Icon and label both grow, and
+   both buttons now take the identical box and identical alignment, so the
+   lightbulb and the arrows read at one size and the two labels sit on one
+   line. */
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state] {
+  /* px, not %: padding percentages resolve against the containing block's
+     width, and the dock lane is the full screen - the old 6% top read as 22dp
+     on a 73dp button, and a "smaller" 10% would have been 37dp. */
+  padding: clamp(4px, 1.2vw, 6px) 4px clamp(5px, 1.5vw, 7px);
+  align-content: center;
+  row-gap: 1px;
+}
+
+.play-ui-v4 .item-icon {
+  align-self: center;
+  justify-self: center;
+  width: clamp(34px, 9.6vw, 42px);
+  height: clamp(34px, 9.6vw, 42px);
+}
+
+.play-ui-v4 .item-button > span {
+  align-self: center;
+  justify-self: center;
+  font-size: clamp(12.5px, 3.6vw, 15px);
+}
+
+/* Coach rides the dock ------------------------------------------------------
+   The bubble was still a row of the screen grid while the cat had moved into
+   the dock, and the surplus the trailing spacer holds opened up between them -
+   ~75dp of meadow, so the cat was being spoken to from most of a board away.
+   Both now live in the footer, which stacks bubble over lane, so the gap is a
+   margin instead of whatever the spacer happens to leave.
+
+   The cat also stops being absolutely positioned and becomes the middle item
+   of the lane itself. That is what keeps the spacing honest: the lane sizes to
+   the tallest thing in it, so the bubble clears the cat's ears by a fixed
+   margin on every screen instead of by arithmetic on the cat's aspect ratio.
+   DOM order in the lane is hint, cat, shuffle, and the lane is row-reverse, so
+   it reads shuffle | cat | hint left to right. The cat stays out of hit
+   testing. */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  height: auto;
+}
+
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  grid-area: auto;
+  width: 100%;
+  height: auto;
+  margin-block: 0 clamp(4px, .8dvh, 8px);
+}
+
+.play-ui-v4 .item-actions {
+  align-items: flex-end;
+  height: auto;
+}
+
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  position: static;
+  left: auto;
+  bottom: auto;
+  align-self: flex-end;
+  flex: 0 0 auto;
+  width: clamp(78px, 22vw, 90px);
+  height: auto;
+  margin: 0;
+  transform: none;
+  pointer-events: none;
+}
+
+/* The bubble carried a translateY(8px) from when it hung in its own row above
+   an open meadow; stacked right over the cat it spends that nudge closing the
+   very gap the margin is opening, leaving under 3dp between the painted
+   bubble and the cat's ears. The nudge goes and the margin carries the whole
+   distance, so the bubble sits above the cat without touching it. */
+.play-ui-v4 .cat-speech {
+  transform: none;
+}
+
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  margin-block: 0 clamp(7px, 1.1dvh, 11px);
+}
+
+/* ...but the dock may not grow ----------------------------------------------
+   Stacking the bubble inside the footer made the footer 53dp taller, and the
+   footer is pinned to the floor, so its top - and the bubble with it - climbed
+   53dp into the board. Every --board-chrome budget in this file is measured
+   against the dock's old height (see the ladder above: "raise one without the
+   other and the board overlaps the cat coach"), and on the 8- and 9-row boards
+   that is exactly what happened.
+
+   So the footer keeps its old box and the bubble hangs outside it: absolute,
+   bottom: 100%, which is the dock's top edge whatever the dock measures. The
+   board's budgets stay valid, the bubble stays glued to the cat, and neither
+   has to know the other's number.
+
+   The offset has to clear the cat's ears, and the cat is taller than the lane
+   it stands in, so it pokes out of the dock's box by exactly its own height
+   minus a button's. Both are clamps, so calc can say it outright rather than
+   through a measured constant - only the cat art's own 1.163 aspect is a
+   number here, and it is the ratio the stage renders the sprite at. */
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  --cat-overhang: calc(clamp(78px, 22vw, 90px) * 1.163 - clamp(62px, 9dvh, 73px));
+  display: block;
+  height: clamp(62px, 9dvh, 73px);
+  overflow: visible;
+}
+
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + var(--cat-overhang) + clamp(8px, 1.2dvh, 12px));
+  width: auto;
+  margin: 0;
+}
+
+.play-ui-v4 .item-actions {
+  height: 100%;
+}
+
+/* Deep boards pay for the coach they borrowed --------------------------------
+   The 8- and 9-row tier buys its extra height from the coach and the dock, so
+   it is the one place where a bubble that now sits fully above the cat has
+   nowhere to go. Three trims, cheapest first: the cat drops to the lane's own
+   height (it stands between two buttons, so matching them reads as intended
+   rather than as a shrink), the bubble tucks closer, and only what is still
+   missing comes out of the board - about 4% of its width on the deepest step,
+   which is the tier's own borrowing being partly handed back. */
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(266px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board .play-character-stage,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-character-stage,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-character-stage {
+  /* both axes stated: `width: auto` would fall back to the sprite's intrinsic
+     430px and blow the lane apart, pushing shuffle off screen. Matching the
+     dock's own height is what takes the overhang to zero. */
+  width: calc(clamp(62px, 9dvh, 73px) / 1.163);
+  height: clamp(62px, 9dvh, 73px);
+}
+
+.screen-play.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  bottom: calc(100% + 8px);
+}
+
+/* Two guards for the short viewport ------------------------------------------
+   --board-chrome is a height budget spent through the width formula, so it
+   only binds while the board is height-bound. On a short screen the standard
+   board is width-bound instead (98cqw), and the budget has no say at all -
+   375x667 put 24dp of board under the bubble for exactly that reason. Below
+   700dp of viewport the fill gives up some width so the budget can bind, and
+   a max-height backs the formula up directly for the cases where neither
+   does. Tiles lose about a tenth of their size on those screens and nothing
+   at all on the ones above the threshold. */
+.screen-play.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4 .board-frame[data-round] {
+  max-height: calc(100dvh - var(--board-chrome));
+}
+
+@media (max-height: 700px) {
+  .screen-play.play-ui-v4 {
+    --board-fill: 84cqw;
+  }
+}
