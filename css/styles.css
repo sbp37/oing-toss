@@ -3777,6 +3777,17 @@ img {
 
 .tutorial-guide.is-visible { opacity: 1; }
 
+/* The guide is hidden by opacity alone so it can fade, but an opacity-0
+   subtree still animates: every frame of the run, long after the tutorial was
+   over, these kept ticking. Nothing here has anything to show while the guide
+   is hidden, so the animations come off entirely and go back on with the
+   class - the fade is untouched. */
+.tutorial-guide:not(.is-visible) .tutorial-focus,
+.tutorial-guide:not(.is-visible) .tutorial-focus i,
+.tutorial-guide:not(.is-visible) .tutorial-sparkle-trail i {
+  animation: none;
+}
+
 .tutorial-focus {
   position: absolute;
   z-index: 1;
@@ -3812,6 +3823,10 @@ img {
   z-index: 2;
   height: 1px;
   transform-origin: left center;
+  /* so the sparkles can travel the trail's width from a transform: 100cqw is
+     this box's inline size. Animating `left` instead put a full layout on
+     every frame the trail existed. */
+  container-type: inline-size;
 }
 
 .tutorial-sparkle-trail i {
@@ -3839,10 +3854,10 @@ img {
 }
 
 @keyframes tutorial-sparkle-swipe {
-  0%, 10% { left: 0; opacity: 0; transform: translate(-50%, -50%) rotate(-18deg) scale(0.3); }
+  0%, 10% { opacity: 0; transform: translate(-50%, -50%) rotate(-18deg) scale(0.3); }
   28% { opacity: 1; }
   76% { opacity: 0.94; }
-  100% { left: 100%; opacity: 0; transform: translate(-50%, -50%) rotate(72deg) scale(0.92); }
+  100% { opacity: 0; transform: translate(calc(100cqw - 50%), -50%) rotate(72deg) scale(0.92); }
 }
 
 .tutorial-guide > span {
