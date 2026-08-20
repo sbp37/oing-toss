@@ -848,7 +848,20 @@ class OingGame {
     this.ui.showTutorial(answer);
   }
 
-  async commit(rect) {
+  // 정답 처리는 한 번에 하나씩만 돈다.
+  //
+  // 연출이 끝나기 전에 손가락을 놓아주면서, 앞 정답의 뒷정리가 남아 있는 채로
+  // 다음 정답이 들어올 수 있게 됐다. 그렇다고 그 정답을 버리면 예전과 똑같이
+  // 손가락이 무시되는 것이라, 버리는 대신 줄을 세운다. 기다렸다가 도는 쪽은
+  // 판이 바뀐 뒤의 최신 상태로 합을 다시 계산하므로 앞뒤가 어긋나지 않는다.
+  commit(rect) {
+    this.commitChain = (this.commitChain || Promise.resolve())
+      .then(() => this.resolveCommit(rect))
+      .catch(() => {});
+    return this.commitChain;
+  }
+
+  async resolveCommit(rect) {
     if (!this.state.running || this.state.paused || this.state.inputLocked) return;
     this.selectionWasPerfect = false;
     const stats = this.model.stats(rect);
@@ -986,6 +999,23 @@ class OingGame {
     // "딱 10!" belongs to the quiet clears. From rank 3 up something louder
     // is already confirming the success over the same tiles.
     if (successLevel <= 2) this.ui.showMatchConfirmation(rect, this.state.combo);
+    // 판에서 칸을 먼저 지우고, 그 다음에 축하 연출을 튼다.
+    //
+    // 예전에는 연출이 다 끝난 뒤에야 칸을 지우고 입력을 풀었다. 그동안 화면을
+    // 누른 손가락은 무시됐다 - 지연이 아니라 통째로 버려졌다. 콤보를 이어
+    // 붙이는 사람은 정답을 맞힌 즉시 다음 사각형을 그리기 시작하는데, 그
+    // 드래그의 처음 300ms 가까이가 없던 일이 되니 판이 버벅이는 것처럼 느껴진다.
+    // 콤보가 높을수록 연출이 길어져서 잘 될수록 더 답답해지는 구조였다.
+    //
+    // 칸은 이미 사라졌고 남은 것은 축하뿐이라, 여기서 손가락을 놓아준다.
+    // 겹쳐 들어오는 정답은 commit이 차례로 세워주므로 두 처리가 서로를
+    // 밟지 않는다.
+    const caughtItems = this.boardItemsInRect(rect);
+    this.model.remove(rect);
+    if (blastCells.length) this.model.removeCells(blastCells);
+    this.trackGardenReveal();
+    this.state.inputLocked = false;
+
     const successAnimation = this.ui.animateSuccess(rect, this.state.combo);
     const specialAnimation = this.ui.animateSpecialTiles(specials, blastCells);
     await delay(96);
@@ -1000,17 +1030,6 @@ class OingGame {
       this.ui.showComboMoment(this.state.combo, { allowCelebration: successLevel <= 3, milestone: comboMilestone });
     }
     await Promise.all([successAnimation, specialAnimation]);
-    // A drop sitting inside the rect the player just drew is part of that
-    // move - it should go off, not be swept away with the cats under it.
-    // Read before the cells are removed: the drop's cell stops being a bonus
-    // cat the moment it clears, and this is the last point it is still there.
-    const caughtItems = this.boardItemsInRect(rect);
-    this.model.remove(rect);
-    if (blastCells.length) this.model.removeCells(blastCells);
-    // Read after every cell from this success (including a bomb blast) is
-    // actually gone, and before the board is rebuilt for the next stage —
-    // this is the one moment the model reflects what the run just revealed.
-    this.trackGardenReveal();
     if (this.finishPending) {
       this.renderBoard({ preserveScoreBurst: true });
       return;
