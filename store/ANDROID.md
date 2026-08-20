@@ -144,3 +144,29 @@ java -jar pepk.jar \
 - `android/keystore.properties`
 - `android/local.properties`
 - `*.aab`, `*.apk`, PEPK ZIP
+
+## 8. CI에서 뽑기 (권장)
+
+`.github/workflows/android-release.yml`이 `main` 푸시와 수동 실행에서 AAB/APK를
+만들고 `android-build-<번호>` 태그의 프리릴리스로 올린다. 로컬에 안드로이드
+SDK가 없어도 여기서 결과물을 받을 수 있다.
+
+저장소 Settings > Secrets and variables > Actions 에 아래 넷을 넣으면 CI가
+서명까지 해서 바로 올릴 수 있는 AAB를 낸다. 넷이 없으면 서명 없는 결과물이
+나오고, 그건 그것대로 조립이 되는지 확인하는 용도로 쓸 수 있다.
+
+| 시크릿 | 값 |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 oing-upload.jks` 출력 전체 |
+| `ANDROID_KEYSTORE_PASSWORD` | 키스토어 비밀번호 |
+| `ANDROID_KEY_ALIAS` | `oing-upload` |
+| `ANDROID_KEY_PASSWORD` | 키 비밀번호 |
+
+이미 만들어진 AAB를 손으로 서명하고 싶다면 (번들은 apksigner가 아니라
+jarsigner로 서명한다):
+
+```sh
+jarsigner -keystore oing-upload.jks -digestalg SHA-256 -sigalg SHA256withRSA \
+  app-release.aab oing-upload
+keytool -printcert -jarfile app-release.aab      # 지문 확인
+```
