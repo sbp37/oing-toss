@@ -2239,9 +2239,13 @@ img {
   filter: brightness(1.045) saturate(1.035);
 }
 
-.board.is-dragging .tile.is-selected::before {
-  animation: syrup-selection-sheen 220ms cubic-bezier(.2,.75,.3,1) both;
-}
+/* 선택된 칸마다 따로 돌던 반짝임을 지웠다.
+   드래그 한 번에 칸이 최대 54개까지 선택되는데, 그 칸마다 움직임이 하나씩
+   붙었다. both로 잡혀 있어 끝난 뒤에도 남고, 손가락이 도는 내내 브라우저가
+   그 칸들의 모양을 매 프레임 다시 계산하고 다시 그렸다. 실제로 재보니 드래그
+   중 살아 있는 움직임이 66개였고 그중 58개가 이것이었다.
+   반짝임은 선택 상자(.selection-marquee)가 syrup-marquee-flow로 이미 지나간다.
+   하나면 되는 연출을 판 전체에 두고 있었다. */
 
 .board.is-perfect .tile.is-selected {
   box-shadow:
@@ -2251,10 +2255,6 @@ img {
   filter: brightness(1.065) saturate(1.06);
 }
 
-@keyframes syrup-selection-sheen {
-  0% { opacity: 0; transform: translateX(-54%) skewX(-10deg); }
-  28% { opacity: 0.46; }
-  100% { opacity: 0; transform: translateX(54%) skewX(-10deg); }
 }
 
 .board.is-dragging .tile.is-selected span {

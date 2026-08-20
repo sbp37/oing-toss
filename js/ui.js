@@ -258,6 +258,11 @@ export class GameUI {
     this.elements.playScreen.style.setProperty('--board-cols', cols);
     this.elements.playScreen.style.setProperty('--board-rows', rows);
     const fragment = document.createDocumentFragment();
+    // 칸 하나를 찾을 때마다 querySelector를 돌리면 드래그 중에 값이 나간다.
+    // 판을 만들 때 한 번 담아두고 그 뒤로는 이 지도만 본다.
+    this.tileByKey = new Map();
+    this.selectedTileKeys = new Set();
+    this.cachedGrid = null;
     for (let r = 0; r < rows; r += 1) {
       for (let c = 0; c < cols; c += 1) {
         const value = model.valueAt(r, c);
@@ -331,6 +336,7 @@ export class GameUI {
             }
           }
         }
+        this.tileByKey.set(`${r}:${c}`, tile);
         fragment.appendChild(tile);
       }
     }
@@ -339,7 +345,11 @@ export class GameUI {
     requestAnimationFrame(() => this.syncChapterWindows());
     if (!this.chapterWindowResizeBound) {
       this.chapterWindowResizeBound = true;
-      window.addEventListener('resize', () => this.syncChapterWindows());
+      window.addEventListener('resize', () => {
+        // 화면이 바뀌면 재놓은 격자는 더 이상 맞지 않는다.
+        this.cachedGrid = null;
+        this.syncChapterWindows();
+      });
     }
   }
 
@@ -394,22 +404,49 @@ export class GameUI {
   }
 
   tileAt(r, c) {
-    return this.board.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+    return this.tileByKey?.get(`${r}:${c}`)
+      || this.board.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+  }
+
+  // 판의 격자는 한 판 동안 움직이지 않는다. 칸 하나하나의 좌표를 그때그때
+  // 읽는 대신, 첫 칸과 끝 칸을 한 번만 재서 칸 간격을 구해두고 그 뒤로는
+  // 계산으로 답한다. 읽기가 사라지면 브라우저가 배치를 다시 계산할 이유도
+  // 사라진다 - 드래그 중 버벅임의 가장 큰 몫이 이 읽기였다.
+  gridGeometry() {
+    if (this.cachedGrid) return this.cachedGrid;
+    const cols = Number(this.board.dataset.cols || this.board.dataset.size) || 0;
+    const rows = Number(this.board.dataset.rows || this.board.dataset.size) || 0;
+    const first = this.tileAt(0, 0)?.getBoundingClientRect();
+    const last = this.tileAt(rows - 1, cols - 1)?.getBoundingClientRect();
+    const frame = this.boardFrame.getBoundingClientRect();
+    if (!first || !last || !frame.width) return null;
+    this.cachedGrid = {
+      frame,
+      left: first.left,
+      top: first.top,
+      width: first.width,
+      height: first.height,
+      pitchX: cols > 1 ? (last.left - first.left) / (cols - 1) : first.width,
+      pitchY: rows > 1 ? (last.top - first.top) / (rows - 1) : first.height,
+    };
+    return this.cachedGrid;
   }
 
   selectionBounds(rect) {
-    const first = this.tileAt(rect.r1, rect.c1)?.getBoundingClientRect();
-    const last = this.tileAt(rect.r2, rect.c2)?.getBoundingClientRect();
-    const frame = this.boardFrame.getBoundingClientRect();
-    if (!first || !last || !frame.width) return null;
+    const grid = this.gridGeometry();
+    if (!grid) return null;
+    const left = grid.left + rect.c1 * grid.pitchX;
+    const top = grid.top + rect.r1 * grid.pitchY;
+    const right = grid.left + rect.c2 * grid.pitchX + grid.width;
+    const bottom = grid.top + rect.r2 * grid.pitchY + grid.height;
     return {
-      left: first.left - frame.left,
-      top: first.top - frame.top,
-      right: last.right - frame.left,
-      bottom: last.bottom - frame.top,
-      frameWidth: frame.width,
-      frameHeight: frame.height,
-      frame,
+      left: left - grid.frame.left,
+      top: top - grid.frame.top,
+      right: right - grid.frame.left,
+      bottom: bottom - grid.frame.top,
+      frameWidth: grid.frame.width,
+      frameHeight: grid.frame.height,
+      frame: grid.frame,
     };
   }
 
@@ -419,14 +456,29 @@ export class GameUI {
     const marquee = this.elements.marquee;
     let bounds = this.lastSelectionBounds;
     if (selectionChanged) {
-      const selected = new Set(cellsInRect(rect).map(({ r, c }) => `${r}:${c}`));
-      this.board.querySelectorAll('.tile').forEach((tile) => {
-        tile.classList.toggle(
-          'is-selected',
-          !tile.dataset.item && selected.has(`${tile.dataset.row}:${tile.dataset.col}`),
-        );
-      });
+      // 좌표를 먼저 읽고, 클래스는 그 다음에 쓴다. 순서를 바꾸면 (쓰기 -> 읽기)
+      // 브라우저가 그 자리에서 배치를 다시 계산해야 해서, 손가락이 한 칸
+      // 움직일 때마다 판 전체가 다시 계산된다.
       bounds = this.selectionBounds(rect);
+
+      // 바뀐 칸만 손댄다. 예전에는 한 칸 움직일 때마다 판의 모든 칸에
+      // classList.toggle을 걸었고, 클래스가 실제로 바뀌지 않아도 브라우저는
+      // 그 칸들의 모양을 다시 계산했다. 9x6 판이면 한 번 움직일 때 54칸.
+      // 실제로 상태가 바뀌는 것은 늘어나거나 줄어든 줄 하나뿐이라 6~9칸이면 된다.
+      const selected = new Set(cellsInRect(rect).map(({ r, c }) => `${r}:${c}`));
+      const previous = this.selectedTileKeys || new Set();
+      for (const key of previous) {
+        if (selected.has(key)) continue;
+        this.tileByKey?.get(key)?.classList.remove('is-selected');
+      }
+      for (const key of selected) {
+        if (previous.has(key)) continue;
+        const tile = this.tileByKey?.get(key);
+        if (tile && !tile.dataset.item) tile.classList.add('is-selected');
+      }
+      this.selectedTileKeys = new Set(
+        [...selected].filter((key) => !this.tileByKey?.get(key)?.dataset.item),
+      );
       this.lastSelectionKey = selectionKey;
       this.lastSelectionBounds = bounds;
       if (bounds) {
@@ -527,6 +579,7 @@ export class GameUI {
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
     this.board.querySelectorAll('.tile.is-selected').forEach((tile) => tile.classList.remove('is-selected'));
+    this.selectedTileKeys = new Set();
     this.board.querySelectorAll('.tile.is-tap-anchor').forEach((tile) => tile.classList.remove('is-tap-anchor'));
     this.elements.marquee.classList.remove('is-visible', 'is-ten', 'is-snapping', 'is-perfect-snap');
     this.elements.marquee.classList.remove('is-repositioning');
