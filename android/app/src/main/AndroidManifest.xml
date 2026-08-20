@@ -39,4 +39,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 게임의 진동 피드백(js/haptic.js의 navigator.vibrate)은 이 권한이 없으면
+         웹뷰 안에서 조용히 아무 일도 하지 않는다. 함수는 존재하고 예외도 나지
+         않아서, 설정의 진동 토글은 켜지는데 손끝에는 아무것도 오지 않는다.
+         사용자에게 따로 묻지 않는 일반 권한이다. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>
