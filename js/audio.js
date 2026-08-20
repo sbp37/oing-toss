@@ -24,17 +24,63 @@ function getMixBus(ctx) {
   return mixBus;
 }
 
-function getContext() {
-  if (!enabled) return null;
+// A running AudioContext keeps the audio render thread awake whether or not
+// anything is playing: measured on the play screen with the music paused, two
+// idle-but-running contexts alone were costing ~11% CPU for the whole session,
+// which is what a phone turns into heat. The context goes back to sleep a few
+// seconds after the last sound and wakes on the next one - unless music is
+// holding it open, which is the one case something really is playing.
+const IDLE_SUSPEND_MS = 3000;
+let idleSuspendTimer = null;
+let contextHolds = 0;
+
+function ensureContext() {
   try {
     const Context = window.AudioContext || window.webkitAudioContext;
     if (!Context) return null;
     if (!context || context.state === 'closed') context = new Context();
-    if (context.state === 'suspended') context.resume().catch(() => {});
     return context;
   } catch {
     return null;
   }
+}
+
+function armIdleSuspend() {
+  clearTimeout(idleSuspendTimer);
+  idleSuspendTimer = null;
+  if (contextHolds > 0) return;
+  idleSuspendTimer = setTimeout(() => {
+    idleSuspendTimer = null;
+    // Cues are scheduled up to about a second ahead, so the window is well
+    // clear of anything still waiting to sound.
+    if (contextHolds <= 0 && context?.state === 'running') context.suspend().catch(() => {});
+  }, IDLE_SUSPEND_MS);
+}
+
+// Music routes through this same context rather than opening a second one, and
+// pins it while it plays.
+export function getSharedAudioContext() {
+  return ensureContext();
+}
+
+export function holdAudioContext(hold) {
+  contextHolds = Math.max(0, contextHolds + (hold ? 1 : -1));
+  if (contextHolds > 0) {
+    clearTimeout(idleSuspendTimer);
+    idleSuspendTimer = null;
+    if (context?.state === 'suspended') context.resume().catch(() => {});
+    return;
+  }
+  armIdleSuspend();
+}
+
+function getContext() {
+  if (!enabled) return null;
+  const ctx = ensureContext();
+  if (!ctx) return null;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  armIdleSuspend();
+  return ctx;
 }
 
 function scheduleTone(ctx, frequency, start, duration, volume = 0.1, type = 'sine', attack = 0.012) {
