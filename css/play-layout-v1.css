@@ -4200,3 +4200,62 @@
   width: 100%;
   height: auto;
 }
+
+/* Bubble hugs its message ---------------------------------------------------
+   The lane was handed a flat 340dp, so "좀 더 하라냥" and "메가폭탄 등장이다냥!
+   톡 눌러봐." were painted into the same wide slab and every short line sat in
+   a bubble mostly made of empty cream. The box shrinks to its text instead,
+   with a floor so a two-word line still reads as a bubble and a ceiling so a
+   long one still wraps inside the lane. The painted chrome is absolute, so it
+   follows the box without driving it; the message drops the percentage side
+   padding, which cannot resolve against a shrink-to-fit parent, for a real
+   one. As a bonus the art stops being stretched: at 340dp the 900x230 bubble
+   was scaled 2x wider than tall, and a narrower box lands much closer to the
+   proportions it was drawn at. */
+.play-ui-v4 .cat-speech {
+  width: fit-content;
+  min-width: clamp(116px, 33vw, 148px);
+  max-width: min(100%, 340px);
+}
+
+.screen-play.play-ui-v4 .cat-message,
+.screen-play.play-ui-v4.is-tall-board .cat-message {
+  width: auto;
+  max-width: 100%;
+  /* wide enough that the painted sparkles in the bubble's top-right corner,
+     which used to sit far from a 340dp-wide line, still clear the text now
+     that the box hugs it. */
+  padding: 5px clamp(20px, 6vw, 28px);
+}
+
+/* Item wells: bigger marks, one alignment ----------------------------------
+   The wells grew to 66-76dp but their contents did not: a 22dp top padding -
+   30% of the button - held the icon and label down in the bottom 40dp, so a
+   31dp icon and an 11.8dp label sat low in a mostly empty dish. The sprites
+   fill their own box edge to edge (no transparent margin to allow for), so
+   the padding evens out and the stack centres. Icon and label both grow, and
+   both buttons now take the identical box and identical alignment, so the
+   lightbulb and the arrows read at one size and the two labels sit on one
+   line. */
+.play-ui-v4 .item-button,
+.play-ui-v4 .item-button[data-state] {
+  /* px, not %: padding percentages resolve against the containing block's
+     width, and the dock lane is the full screen - the old 6% top read as 22dp
+     on a 73dp button, and a "smaller" 10% would have been 37dp. */
+  padding: clamp(4px, 1.2vw, 6px) 4px clamp(5px, 1.5vw, 7px);
+  align-content: center;
+  row-gap: 1px;
+}
+
+.play-ui-v4 .item-icon {
+  align-self: center;
+  justify-self: center;
+  width: clamp(34px, 9.6vw, 42px);
+  height: clamp(34px, 9.6vw, 42px);
+}
+
+.play-ui-v4 .item-button > span {
+  align-self: center;
+  justify-self: center;
+  font-size: clamp(12.5px, 3.6vw, 15px);
+}
