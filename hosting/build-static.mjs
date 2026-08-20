@@ -12,7 +12,7 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(client, { recursive: true });
 await mkdir(server, { recursive: true });
 
-for (const entry of ["index.html", "css", "js", "assets"]) {
+for (const entry of ["index.html", "css", "js", "assets", "manifest.webmanifest", "sw.js"]) {
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
 
