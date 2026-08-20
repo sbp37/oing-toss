@@ -116,7 +116,15 @@ img {
 
 .screen.is-active {
   display: flex;
-  animation: screen-in 220ms ease both;
+  /* No fill mode. The keyframes end on opacity: 1 / transform: none, which is
+     the element's own resting state, so `both` preserved nothing - but it did
+     keep a finished transform+opacity animation attached to the element, and
+     Chromium holds a full-viewport compositor layer for as long as one is
+     there. The play screen stayed promoted for the entire session: a ~10
+     megapixel texture recomposited forever, which costs GPU and battery while
+     the main thread reads as idle. Without the fill the layer is released
+     220ms in. There is no delay, so `backwards` had nothing to do either. */
+  animation: screen-in 220ms ease;
 }
 
 @keyframes screen-in {
@@ -3771,11 +3779,19 @@ img {
   z-index: 8;
   inset: 0;
   opacity: 0;
+  /* opacity: 0 still leaves a rendered box, and the compositor kept a layer
+     for it all session. visibility takes the subtree out of rendering
+     entirely; it flips after the fade so the fade still plays. */
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 120ms ease;
+  transition: opacity 120ms ease, visibility 0s linear 120ms;
 }
 
-.tutorial-guide.is-visible { opacity: 1; }
+.tutorial-guide.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 120ms ease, visibility 0s linear 0s;
+}
 
 /* The guide is hidden by opacity alone so it can fade, but an opacity-0
    subtree still animates: every frame of the run, long after the tutorial was

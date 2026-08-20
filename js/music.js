@@ -1,3 +1,5 @@
+import { getSharedAudioContext, holdAudioContext } from './audio.js';
+
 let musicAudio = null;
 let musicContext = null;
 let musicGain = null;
@@ -6,15 +8,17 @@ let duckTimer = null;
 let enabled = false;
 let volume = 0.4;
 let gameActive = false;
+let holding = false;
 
 const targetGain = () => (volume > 0 ? volume * volume : 0);
 
 function ensureRouting() {
   if (musicGain || !musicAudio) return;
   try {
-    const Context = window.AudioContext || window.webkitAudioContext;
-    if (!Context) return;
-    musicContext = new Context();
+    // One context for the whole app: a second one doubles the audio thread's
+    // standing cost for nothing, since both ends want the same destination.
+    musicContext = getSharedAudioContext();
+    if (!musicContext) return;
     const source = musicContext.createMediaElementSource(musicAudio);
     musicGain = musicContext.createGain();
     musicGain.gain.value = targetGain();
@@ -28,12 +32,18 @@ function ensureRouting() {
   }
 }
 
+// The context is shared now, so music asks for it to be held open rather than
+// resuming and suspending it behind the sound effects' back.
 function resumeContext() {
-  if (musicContext?.state === 'suspended') musicContext.resume().catch(() => {});
+  if (holding) return;
+  holding = true;
+  holdAudioContext(true);
 }
 
 function suspendContext() {
-  if (musicContext?.state === 'running') musicContext.suspend().catch(() => {});
+  if (!holding) return;
+  holding = false;
+  holdAudioContext(false);
 }
 
 function applyGain(value = targetGain()) {
