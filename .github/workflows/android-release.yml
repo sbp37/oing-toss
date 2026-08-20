@@ -107,9 +107,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="android-build-${{ github.run_number }}"
+          # 서명 전 APK는 app-release-unsigned.apk로 나온다. 이름을 박아두면
+          # 키가 없는 빌드에서 릴리스 단계만 넘어진다.
           gh release create "$TAG" \
-            android/app/build/outputs/bundle/release/app-release.aab \
-            android/app/build/outputs/apk/release/app-release.apk \
+            android/app/build/outputs/bundle/release/*.aab \
+            android/app/build/outputs/apk/release/*.apk \
             --prerelease \
             --title "안드로이드 빌드 #${{ github.run_number }}" \
             --notes "커밋 ${{ github.sha }} · 서명 여부: ${{ steps.signing.outputs.signed }}"
