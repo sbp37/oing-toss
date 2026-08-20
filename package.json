@@ -7,6 +7,16 @@
     "build": "node hosting/build-static.mjs",
     "test": "node --test tests/*.test.mjs",
     "balance": "node scripts/simulate-balance.mjs",
-    "balance:stress": "node scripts/stress-balance.mjs"
+    "balance:stress": "node scripts/stress-balance.mjs",
+    "android:sync": "npm run build && cap sync android",
+    "android:aab": "npm run android:sync && node tools/gradle.mjs bundleRelease",
+    "android:apk": "npm run android:sync && node tools/gradle.mjs assembleRelease"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
   }
 }
