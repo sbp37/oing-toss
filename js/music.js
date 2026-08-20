@@ -64,7 +64,12 @@ export function configureMusic(audioElement, settings = {}) {
   enabled = Boolean(settings.enabled);
   volume = Math.max(0, Math.min(1, Number(settings.volume) || 0));
   if (!musicAudio) return;
-  musicAudio.preload = enabled ? 'metadata' : 'none';
+  // 'metadata' on a 2.5MB mp3 is not cheap: with no range support the browser
+  // pulls the whole file, so the home screen was spending its bandwidth on
+  // music nobody has asked to hear yet while the art queued behind it.
+  // prepareMusic() flips this to 'auto' and load()s at the first tap, which is
+  // the only moment the data is actually needed.
+  musicAudio.preload = 'none';
   applyGain();
 }
 
@@ -170,7 +175,7 @@ export function setMusicEnabled(value) {
       prepareMusic();
       playMusic();
     } else if (musicAudio) {
-      musicAudio.preload = 'metadata';
+      musicAudio.preload = 'none';
     }
   } else {
     pauseMusic();
