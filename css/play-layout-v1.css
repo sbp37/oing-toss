@@ -4352,7 +4352,7 @@
 .play-ui-v4.is-tall-board .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
-  --cat-overhang: calc(clamp(78px, 22vw, 90px) * 1.163 - clamp(62px, 9dvh, 73px));
+  --cat-overhang: calc(clamp(62px, 17.5vw, 72px) * 1.163 - clamp(62px, 9dvh, 73px));
   display: block;
   height: clamp(62px, 9dvh, 73px);
   overflow: visible;
@@ -4384,7 +4384,7 @@
    which is the tier's own borrowing being partly handed back. */
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
-  --board-chrome: calc(266px + 8dvh);
+  --board-chrome: calc(282px + 8dvh);
 }
 
 .screen-play.play-ui-v4.is-tall-board .play-character-stage,
@@ -4421,4 +4421,46 @@
   .screen-play.play-ui-v4 {
     --board-fill: 84cqw;
   }
+}
+
+/* ==========================================================================
+   Headroom pass (실기기: 말풍선이 보드를 가린다)
+   The 6-row board is the worst case and the reason is that it falls between
+   two tiers: it is not is-tall-board, so it keeps the full-size cat and the
+   base height budget, while being the tallest board that still gets them.
+   Measured against the reported screens it put the bubble 6dp into the board
+   at 360x640 and 33dp at 412x730.
+
+   Three moves, in the order asked for. The cat gives up about a fifth of its
+   size - it is the thing that pushes the bubble up, since the bubble has to
+   clear its ears and the cat stands taller than the dock it stands in. The
+   stack above the board takes less sky, so board and HUD ride higher. And the
+   height budget the board spends is raised to match, so what the stack gives
+   up becomes clearance under the board rather than a bigger board.
+   ========================================================================== */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(62px, 17.5vw, 72px);
+}
+
+.screen-play.play-ui-v4,
+.screen-play.play-ui-v4:not(.is-tall-board),
+.screen-play.play-ui-v4.is-tall-board {
+  grid-template-rows: 1fr auto auto auto auto auto auto 9fr;
+  padding-top: calc(var(--safe-top) + clamp(5px, 1dvh, 9px));
+}
+
+.screen-play.play-ui-v4 {
+  --board-chrome: 368px;
+}
+
+/* The backdrop was lifted by a white wash, which flattened it against the
+   pale board sitting on top of it. The wash goes the other way - a light,
+   cool shade - and the sky under it deepens, so the board reads as the lit
+   thing and the scenery as the room it is in. */
+.screen-play.play-ui-v4 {
+  background-color: #4ea3d8;
+  background-image:
+    linear-gradient(rgba(26, 58, 100, .17), rgba(18, 44, 82, .23)),
+    url("../assets/backgrounds/play-bg-spring-path-v2.webp");
 }
