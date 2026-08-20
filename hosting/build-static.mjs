@@ -12,7 +12,7 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(client, { recursive: true });
 await mkdir(server, { recursive: true });
 
-for (const entry of ["index.html", "css", "js", "assets"]) {
+for (const entry of ["index.html", "privacy.html", "css", "js", "assets", "manifest.webmanifest", "sw.js"]) {
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
 
@@ -24,6 +24,10 @@ for (const entry of [
   "assets/ui/item-buttons-v1",
   "assets/ui/tiles-v3",
   "assets/icons/items/megabomb.png",
+  // 1024-square masters the shipped icon sizes are derived from - source of
+  // record, not something a player ever downloads.
+  "assets/icons/app/icon-master.png",
+  "assets/icons/app/icon-mask-master.png",
 ]) {
   await rm(resolve(client, entry), { recursive: true, force: true });
 }

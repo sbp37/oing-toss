@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
   <meta name="theme-color" content="#8edcf1">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/app/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icons/app/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="오잉">
   <meta name="description" content="합이 10이면, 뿅! OING 세로 슬라이스">
   <title>OING — 합이 10이면, 뿅!</title>
   <link rel="icon" href="assets/decor/paw.webp" type="image/webp">
@@ -235,6 +242,7 @@
         <div class="setting-row"><span>진동</span><button class="toggle is-on" id="haptic-toggle" type="button" aria-pressed="true">ON</button></div>
         <label class="music-volume-row" for="music-volume"><span>배경음악 크기</span><b id="music-volume-label">40%</b></label>
         <input class="music-volume" id="music-volume" type="range" min="0" max="100" step="1" value="40" aria-label="배경음악 크기">
+        <p class="settings-legal"><a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a></p>
       </div>
     </div>
 
@@ -313,5 +321,13 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </main>
   <script type="module" src="js/game.js"></script>
+  <script>
+    // Registered after load so it never competes with the first paint's assets.
+    if ('serviceWorker' in navigator) {
+      addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>

@@ -74,6 +74,7 @@ import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
 import { RunTelemetry, clearTelemetryRuns, getLocalTelemetrySummary, readTelemetryRuns } from './telemetry.js';
 import { preloadPlayAssets, preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
+import { installBackNavigation } from './navigation.js';
 import {
   configureMusic,
   duckMusic,
@@ -2296,6 +2297,7 @@ class OingGame {
 }
 
 const game = new OingGame();
+installBackNavigation(game);
 
 if (game.runtime.testMode) {
   window.__OING_TEST__ = {
