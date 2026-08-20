@@ -59,7 +59,11 @@ const CHARACTER_ALT = Object.freeze({
 // How much mist sits over the chapter art inside cleared cells: heavy while
 // the board is still full of numbers to read, light once it is nearly empty.
 const VEIL_FULL = 0.40;
-const VEIL_CLEAR = 0.10;
+// The picture is atmosphere, not a second subject. At .10 a nearly-emptied
+// board handed it full contrast and saturation, and it started competing with
+// the dock's buttons for the eye - the loudest thing on screen was the
+// backdrop. Held soft to the end, it reads as depth behind the tiles instead.
+const VEIL_CLEAR = 0.26;
 
 // A url() inside a custom property is resolved against the stylesheet that
 // consumes it, not the document, so a document-relative path handed to CSS

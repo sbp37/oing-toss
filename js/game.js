@@ -137,6 +137,9 @@ const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 // uncover any of it and must not count toward the reveal record.
 const GARDEN_REVEAL_FIRST_STAGE = 3;
 
+// A thumb rolls while it presses; anything under this is still a tap.
+const ITEM_TAP_SLOP = 18;
+
 class OingGame {
   constructor() {
     this.ui = new GameUI();
@@ -701,7 +704,10 @@ class OingGame {
     event.preventDefault();
     event.stopImmediatePropagation();
     const distance = Math.hypot(event.clientX - candidate.startX, event.clientY - candidate.startY);
-    if (distance > 10) {
+    // 10px is a mouse's slop. A thumb on a ~60dp cell rolls further than that
+    // just pressing down, so every slightly imprecise tap was being read as a
+    // drag and thrown away - the "안 눌린다" feel.
+    if (distance > ITEM_TAP_SLOP) {
       candidate.moved = true;
       this.ui.pressBoardItem(candidate.row, candidate.col, false);
     }
@@ -716,7 +722,11 @@ class OingGame {
     const endedOnSameItem = tile
       && `${tile.dataset.row}:${tile.dataset.col}` === candidate.key;
     this.clearBoardItemTap(candidate);
-    if (!candidate.moved && endedOnSameItem) this.useBoardItem(candidate.key);
+    // A press that never travelled is a tap, full stop. Also demanding the
+    // release land back on the same element let a board re-render (a drop
+    // landing, a veil update) eat the tap: elementFromPoint then answers with
+    // a node that is no longer the one the press started on.
+    if (!candidate.moved || endedOnSameItem) this.useBoardItem(candidate.key);
   }
 
   cancelBoardItemTap(event) {
@@ -989,6 +999,11 @@ class OingGame {
       this.ui.showComboMoment(this.state.combo, { allowCelebration: successLevel <= 3, milestone: comboMilestone });
     }
     await Promise.all([successAnimation, specialAnimation]);
+    // A drop sitting inside the rect the player just drew is part of that
+    // move - it should go off, not be swept away with the cats under it.
+    // Read before the cells are removed: the drop's cell stops being a bonus
+    // cat the moment it clears, and this is the last point it is still there.
+    const caughtItems = this.boardItemsInRect(rect);
     this.model.remove(rect);
     if (blastCells.length) this.model.removeCells(blastCells);
     // Read after every cell from this success (including a bomb blast) is
@@ -1014,6 +1029,7 @@ class OingGame {
       if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
       this.state.inputLocked = false;
       this.updateHUD();
+      await this.fireCaughtBoardItems(caughtItems);
       return;
     }
     const decision = stageEndDecision({
@@ -1041,6 +1057,25 @@ class OingGame {
     }
     this.state.inputLocked = false;
     this.updateHUD();
+    await this.fireCaughtBoardItems(caughtItems);
+  }
+
+  boardItemsInRect(rect) {
+    if (!rect) return [];
+    return this.boardItems.snapshot().visible
+      .filter(({ row, col }) => row >= rect.r1 && row <= rect.r2 && col >= rect.c1 && col <= rect.c2)
+      .map(({ row, col }) => `${row}:${col}`);
+  }
+
+  // Run one after another, each awaited: every blast resolves the board on
+  // its own (판갈이 included), so overlapping them would have a second item
+  // firing at coordinates the first one already rewrote.
+  async fireCaughtBoardItems(keys = []) {
+    for (const key of keys) {
+      if (!this.state.running || this.state.paused) return;
+      if (!this.boardItems.get(key)) continue;
+      await this.useBoardItem(key);
+    }
   }
 
   // The stage never ends with tiles on the board. When the answers run out

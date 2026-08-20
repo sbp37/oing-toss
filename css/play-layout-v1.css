@@ -4521,3 +4521,18 @@
     0 3px 5px rgba(72, 80, 102, .34),
     0 7px 12px rgba(72, 80, 102, .20);
 }
+
+/* The constant shade over a cleared cell is gone. It was doing the recess's
+   job a second time - the rim already says "pressed in" - and the only thing
+   it added was mud on the painting. What keeps the picture back now is that
+   it stays soft: ui.js holds the white veil at .26 instead of thinning to
+   .10, so the scene never reaches the contrast and saturation that had it
+   competing with the dock. Light and low-contrast recedes; dark and detailed
+   does not. */
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .30)), rgba(255, 255, 255, var(--win-veil-b, .24))),
+    var(--chapter-art);
+  background-size: auto, var(--win-size, cover);
+  background-position: 0 0, var(--win-pos, center);
+}
