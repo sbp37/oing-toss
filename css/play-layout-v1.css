@@ -4536,3 +4536,39 @@
   background-size: auto, var(--win-size, cover);
   background-position: 0 0, var(--win-pos, center);
 }
+
+/* 깊은 판에서는 말풍선을 띄우지 않는다.
+   ===============================================================
+   8칸·9칸 판은 보드가 화면 아래까지 내려와서, 고양이 위에 뜨는 말풍선이
+   보드 마지막 줄과 만난다. 지금까지는 말풍선을 작게 만들고 위치를 손봐
+   왔는데, 판이 깊어질수록 남는 자리가 없다. 가려진 말풍선은 잘 보이지도
+   않고 그 아래 숫자까지 가리니 둘 다 손해다.
+
+   그래서 이 구간에서는 말풍선을 내려놓는다. 고양이는 그대로 남아 화면
+   아래를 채우고, 대사는 판이 작아지면 다시 나온다. 코치가 하는 말은 전부
+   있으면 좋은 것이지 없으면 못 하는 정보가 아니라서, 가린 채로 띄우는
+   것보다 안 띄우는 쪽이 낮은 손해다.
+
+   opacity가 아니라 display로 지우는 이유는 css/styles.css에서 배운 것과
+   같다 - 보이지 않게만 만들면 안쪽 효과가 계속 돌아 발열로 돌아온다. */
+.screen-play.play-ui-v4[data-board-rows="8"] .cat-speech,
+.screen-play.play-ui-v4[data-board-rows="9"] .cat-speech,
+.screen-play.play-ui-v4[data-board-rows="10"] .cat-speech {
+  display: none;
+}
+
+/* 지워진 칸의 그림자를 절반으로.
+   ===============================================================
+   칸이 지워지면 그 자리에 그림이 드러나는데, 판이 파인 것처럼 보이라고 얹은 위쪽
+   그림자가 너무 진해서 칸과 칸 사이가 어두운 줄처럼 보였다. 그림이 상이니
+   상을 가리는 그림자는 약할수록 좋다.
+
+   깊이는 유지하고 세기만 낮춘다 - 위쪽 그림자를 반으로, 테두리 선도 연하게,
+   아래 밝은 선은 그대로 둔다. 파인 것처럼 보이게 하는 것은 가장자리라
+   가장자리를 남겨두면 세기를 낮춰도 살아 있다. */
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  box-shadow:
+    inset 0 4px 8px rgba(32, 44, 80, .26),
+    inset 0 0 0 1px rgba(44, 56, 92, .19),
+    inset 0 -2px 5px rgba(255, 255, 255, .20);
+}
