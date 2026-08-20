@@ -55,6 +55,16 @@ test('세로 화면 게임이라 액티비티가 세로로 고정돼 있다', ()
   assert.match(manifest, /android:screenOrientation="portrait"/);
 });
 
+// navigator.vibrate는 이 권한이 없으면 웹뷰 안에서 조용히 실패한다. 예외도
+// 안 나고 함수도 존재해서, 빠졌다는 걸 알아차릴 방법이 실기기에서 만져보는
+// 것밖에 없다. 한 번 겪었으니 테스트로 붙잡아 둔다.
+test('진동 피드백을 쓰므로 VIBRATE 권한이 선언돼 있다', () => {
+  const usesVibrate = /navigator\.vibrate/.test(read('js/haptic.js'));
+  const manifest = read('android/app/src/main/AndroidManifest.xml');
+  assert.ok(usesVibrate, '진동 코드가 사라졌다면 이 테스트도 손봐야 한다');
+  assert.match(manifest, /<uses-permission android:name="android\.permission\.VIBRATE" \/>/);
+});
+
 test('키스토어 예시 파일에는 실제 비밀번호가 없다', () => {
   const example = read('android/keystore.properties.example');
   assert.match(example, /^storePassword=\s*$/m);
