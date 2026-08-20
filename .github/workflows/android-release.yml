@@ -1,0 +1,110 @@
+# 안드로이드 릴리스 빌드.
+#
+# 이 저장소를 만지는 개발 환경에서는 구글 SDK 서버가 막혀 있어 AAB를 만들 수
+# 없다. GitHub 러너에는 안드로이드 SDK가 이미 깔려 있으니 빌드는 여기서 돈다.
+#
+# 서명 비밀은 저장소 시크릿에서만 온다. 넷 다 채워져 있으면 서명된 AAB가,
+# 하나라도 비어 있으면 서명 없는 AAB가 나온다 - 껍데기가 제대로 조립되는지는
+# 키 없이도 확인할 수 있어야 하기 때문이다.
+#   ANDROID_KEYSTORE_BASE64  keystore를 base64로 인코딩한 문자열
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+name: Android release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/android-release.yml'
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: 안드로이드 SDK 구성 요소 확인
+        run: |
+          set -e
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: 웹 빌드 + 네이티브로 복사
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: 서명 키 준비
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "서명 키를 찾았다. 서명된 빌드로 진행한다."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::서명 시크릿이 없어 서명되지 않은 결과물을 만든다."
+          fi
+
+      - name: AAB / APK 빌드
+        env:
+          OING_KEYSTORE_FILE: ${{ steps.signing.outputs.signed == 'true' && format('{0}/upload.jks', runner.temp) || '' }}
+          OING_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          OING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          OING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          ./gradlew --no-daemon bundleRelease assembleRelease
+
+      - name: 결과물 확인
+        run: |
+          set -e
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          ls -la android/app/build/outputs/bundle/release/ android/app/build/outputs/apk/release/
+          echo "--- AAB 내용 (앞부분)"
+          unzip -l "$AAB" | head -25
+          echo "--- 서명"
+          keytool -printcert -jarfile "$AAB" || echo "서명 없음 (시크릿 미설정)"
+
+      - name: 키스토어 삭제
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oing-android-release
+          path: |
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
