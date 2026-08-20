@@ -40,11 +40,12 @@ const SHELL = [
   'assets/ui/logo-v2.webp',
   'assets/characters/cat-idle.webp',
   'assets/icons/app/icon-192.png',
-  'assets/icons/app/icon-512.png',
-  'assets/icons/app/icon-maskable-512.png',
   'assets/icons/app/apple-touch-icon.png',
   'assets/icons/app/favicon-32.png',
 ];
+
+// The 512s are ~300KB each and only the installer ever asks for them, so they
+// stay out of the shell and are cached if and when they are actually fetched.
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

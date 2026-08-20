@@ -24,6 +24,10 @@ for (const entry of [
   "assets/ui/item-buttons-v1",
   "assets/ui/tiles-v3",
   "assets/icons/items/megabomb.png",
+  // 1024-square masters the shipped icon sizes are derived from - source of
+  // record, not something a player ever downloads.
+  "assets/icons/app/icon-master.png",
+  "assets/icons/app/icon-mask-master.png",
 ]) {
   await rm(resolve(client, entry), { recursive: true, force: true });
 }
