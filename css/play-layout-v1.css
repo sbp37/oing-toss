@@ -4352,7 +4352,7 @@
 .play-ui-v4.is-tall-board .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
-  --cat-overhang: calc(clamp(78px, 22vw, 90px) * 1.163 - clamp(62px, 9dvh, 73px));
+  --cat-overhang: calc(clamp(62px, 17.5vw, 72px) * 1.163 - clamp(62px, 9dvh, 73px));
   display: block;
   height: clamp(62px, 9dvh, 73px);
   overflow: visible;
@@ -4384,7 +4384,7 @@
    which is the tier's own borrowing being partly handed back. */
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
-  --board-chrome: calc(266px + 8dvh);
+  --board-chrome: calc(282px + 8dvh);
 }
 
 .screen-play.play-ui-v4.is-tall-board .play-character-stage,
@@ -4421,4 +4421,103 @@
   .screen-play.play-ui-v4 {
     --board-fill: 84cqw;
   }
+}
+
+/* ==========================================================================
+   Headroom pass (실기기: 말풍선이 보드를 가린다)
+   The 6-row board is the worst case and the reason is that it falls between
+   two tiers: it is not is-tall-board, so it keeps the full-size cat and the
+   base height budget, while being the tallest board that still gets them.
+   Measured against the reported screens it put the bubble 6dp into the board
+   at 360x640 and 33dp at 412x730.
+
+   Three moves, in the order asked for. The cat gives up about a fifth of its
+   size - it is the thing that pushes the bubble up, since the bubble has to
+   clear its ears and the cat stands taller than the dock it stands in. The
+   stack above the board takes less sky, so board and HUD ride higher. And the
+   height budget the board spends is raised to match, so what the stack gives
+   up becomes clearance under the board rather than a bigger board.
+   ========================================================================== */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(62px, 17.5vw, 72px);
+}
+
+.screen-play.play-ui-v4,
+.screen-play.play-ui-v4:not(.is-tall-board),
+.screen-play.play-ui-v4.is-tall-board {
+  grid-template-rows: 1fr auto auto auto auto auto auto 9fr;
+  padding-top: calc(var(--safe-top) + clamp(5px, 1dvh, 9px));
+}
+
+.screen-play.play-ui-v4 {
+  --board-chrome: 368px;
+}
+
+/* The backdrop was lifted by a white wash, which flattened it against the
+   pale board sitting on top of it. The wash goes the other way - a light,
+   cool shade - and the sky under it deepens, so the board reads as the lit
+   thing and the scenery as the room it is in. */
+.screen-play.play-ui-v4 {
+  background-color: #4ea3d8;
+  background-image:
+    linear-gradient(rgba(26, 58, 100, .17), rgba(18, 44, 82, .23)),
+    url("../assets/backgrounds/play-bg-spring-path-v2.webp");
+}
+
+/* ==========================================================================
+   Board hierarchy (실기기: 빈 칸 그림이 밝아 선이 안 보인다)
+   The diagnosis was not the lines. A cleared cell was BRIGHTER than a live
+   tile, so the hole read as the nearest thing on the board and the tiles a
+   player is meant to press sat behind it - the depth order was inverted, and
+   no amount of darkening the seams fixes that.
+
+   Two moves, taken together (canvas options A + B).
+
+   A - the hole gets pressed in. The white keyline around a cleared cell goes,
+   a constant cool shade sits over the scene, and the recess deepens. The
+   shade is a layer of its own ABOVE the breathing veil rather than a recolour
+   of it: the veil's job is concealment and it thins to .10 as the board
+   empties, so a recoloured veil would have handed the brightness straight
+   back at exactly the moment most of the board is holes. A constant layer
+   keeps the recess at every fill level while the veil goes on doing its own
+   job.
+
+   B - the live tile comes forward: a brighter, more opaque face, a firmer
+   rim, and a two-step shadow so it sits above the bed rather than in it.
+   ========================================================================== */
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 0;
+  background-image:
+    linear-gradient(rgba(38, 54, 92, .12), rgba(30, 44, 78, .15)),
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .30)), rgba(255, 255, 255, var(--win-veil-b, .24))),
+    var(--chapter-art);
+  background-size: auto, auto, var(--win-size, cover);
+  background-position: 0 0, 0 0, var(--win-pos, center);
+  background-origin: border-box;
+  /* The recess is carried by the EDGE, not by a wash over the whole cell:
+     a deeper top shadow, a defining ring, and a lit lower lip. Shading the
+     face is what dims the painting, and the painting is the reward - so the
+     constant shade stays light and the depth cue moves to the rim. */
+  box-shadow:
+    inset 0 5px 10px rgba(32, 44, 80, .50),
+    inset 0 0 0 1px rgba(44, 56, 92, .32),
+    inset 0 -2px 5px rgba(255, 255, 255, .22);
+}
+
+.play-ui-v4 .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"] {
+  background-color: rgba(244, 247, 255, .995);
+}
+
+.play-ui-v4 .tile[class*="value-"],
+.play-ui-v4 .tile.is-bonus-cat,
+.play-ui-v4 .tile.is-board-item {
+  outline: 1px solid rgba(70, 80, 100, .66);
+}
+
+.play-ui-v4 .tile {
+  box-shadow:
+    0 3px 5px rgba(72, 80, 102, .34),
+    0 7px 12px rgba(72, 80, 102, .20);
 }
