@@ -14,6 +14,7 @@ const CACHE = 'oing-v1';
 const SHELL = [
   './',
   'index.html',
+  'privacy.html',
   'manifest.webmanifest',
   'css/styles.css',
   'css/ui-chrome.css',
@@ -80,10 +81,14 @@ self.addEventListener('fetch', (event) => {
       try {
         const fresh = await fetch(request);
         const cache = await caches.open(CACHE);
-        cache.put('index.html', fresh.clone()).catch(() => {});
+        cache.put(request, fresh.clone()).catch(() => {});
         return fresh;
       } catch {
-        return (await caches.match('index.html')) || Response.error();
+        // Offline: answer with the cached copy of the page actually asked for
+        // (the policy page is its own document), and only then the shell.
+        return (await caches.match(request))
+          || (await caches.match('index.html'))
+          || Response.error();
       }
     })());
     return;
