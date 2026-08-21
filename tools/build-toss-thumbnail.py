@@ -1,69 +1,40 @@
-# 앱인토스 썸네일(1932x828)을 원스토어에 올린 스크린샷들로만 짠다.
-# 새로 지어낸 문구나 그림은 넣지 않는다. 배경도 게임 화면의 하늘을 늘려 쓴다.
+#!/usr/bin/env python3
+"""앱인토스 목록 썸네일(1932×828)을 원스토어 그래픽 이미지에서 만든다.
+
+원본은 16:9(1669×942)이고 목표는 2.33:1이다. 폭에 맞춰 늘리면 위아래가
+잘려 로고 위 하늘과 아래 배지들이 날아간다. 그래서 그림은 하나도 자르지
+않고 높이만 맞춘 뒤, 좌우 남는 자리를 같은 그림을 크게 흐린 것으로 채운다.
+하늘과 풀밭이 그대로 이어져서 덧댄 티가 거의 나지 않는다.
+"""
 from PIL import Image, ImageDraw, ImageFilter
 
-W, H = 1932, 828
-SRC = "store/screenshots/"
+SRC = "store/toss/source/graphic-source.webp"
 OUT = "store/toss/thumbnail-1932x828.png"
+W, H = 1932, 828
+FEATHER = 70  # 이어붙인 자리를 부드럽게 넘기는 폭
 
-home = Image.open(SRC + "01-home.jpg").convert("RGB")
-wow = Image.open(SRC + "03-wow.jpg").convert("RGB")
-pic = Image.open(SRC + "04-picture.jpg").convert("RGB")
+src = Image.open(SRC).convert("RGB")
 
-# 배경: 홈 화면 위쪽 하늘을 잘라 가로로 늘리고 흐리게. 게임 안에 있던 색 그대로.
-sky = home.crop((0, 40, home.width, 620)).resize((W, H), Image.LANCZOS)
-bg = sky.filter(ImageFilter.GaussianBlur(48))
-# 스크린샷이 배경에서 뜨도록 살짝 밝게 눕힌다.
-veil = Image.new("RGB", (W, H), (255, 255, 255))
-bg = Image.blend(bg, veil, 0.28)
+# 배경: 같은 그림을 1932×828을 덮도록 키워 가운데를 쓰고 흐린다.
+scale = max(W / src.width, H / src.height)
+cover = src.resize((round(src.width * scale), round(src.height * scale)), Image.LANCZOS)
+left = (cover.width - W) // 2
+top = (cover.height - H) // 2
+bg = cover.crop((left, top, left + W, top + H)).filter(ImageFilter.GaussianBlur(30))
 
-canvas = bg.copy()
+# 앞면: 자르지 않고 높이만 맞춘 원본.
+fw = round(src.width * H / src.height)
+fg = src.resize((fw, H), Image.LANCZOS)
 
+# 좌우 끝을 서서히 흐린 배경으로 넘긴다.
+mask = Image.new("L", (fw, H), 255)
+draw = ImageDraw.Draw(mask)
+for i in range(FEATHER):
+    a = round(255 * i / FEATHER)
+    draw.line([(i, 0), (i, H)], fill=a)
+    draw.line([(fw - 1 - i, 0), (fw - 1 - i, H)], fill=a)
 
-def card(img, height, radius=34, tilt=0.0):
-    """스크린샷을 자르지 않고 높이만 맞춘 뒤 둥근 모서리 + 그림자."""
-    scale = height / img.height
-    w = round(img.width * scale)
-    shot = img.resize((w, height), Image.LANCZOS)
-
-    mask = Image.new("L", (w, height), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, w - 1, height - 1), radius, fill=255)
-
-    pad = 46
-    layer = Image.new("RGBA", (w + pad * 2, height + pad * 2), (0, 0, 0, 0))
-    shadow = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    ImageDraw.Draw(shadow).rounded_rectangle(
-        (pad, pad + 12, pad + w - 1, pad + height - 1 + 12), radius, fill=(70, 92, 140, 92)
-    )
-    layer = Image.alpha_composite(layer, shadow.filter(ImageFilter.GaussianBlur(20)))
-
-    face = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    face.paste(shot, (pad, pad), mask)
-    # 흰 테두리 한 겹
-    ring = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    ImageDraw.Draw(ring).rounded_rectangle(
-        (pad, pad, pad + w - 1, pad + height - 1), radius, outline=(255, 255, 255, 235), width=7
-    )
-    face = Image.alpha_composite(face, ring)
-    layer = Image.alpha_composite(layer, face)
-
-    if tilt:
-        layer = layer.rotate(tilt, resample=Image.BICUBIC, expand=True)
-    return layer
-
-
-mid_h, side_h = 754, 664
-c_home = card(home, mid_h)
-c_wow = card(wow, side_h, tilt=3.2)
-c_pic = card(pic, side_h, tilt=-3.2)
-
-cx = W // 2
-# 옆 두 장을 먼저 깔고 홈 화면을 가운데 위에 올린다.
-canvas.paste(c_wow, (cx - c_home.width // 2 - c_wow.width + 118,
-                     H // 2 - c_wow.height // 2), c_wow)
-canvas.paste(c_pic, (cx + c_home.width // 2 - 118,
-                     H // 2 - c_pic.height // 2), c_pic)
-canvas.paste(c_home, (cx - c_home.width // 2, H // 2 - c_home.height // 2), c_home)
-
-canvas.save(OUT, "PNG", optimize=True)
-print(OUT, canvas.size)
+out = bg.copy()
+out.paste(fg, ((W - fw) // 2, 0), mask)
+out.save(OUT, "PNG", optimize=True)
+print(OUT, out.size)
