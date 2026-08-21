@@ -267,6 +267,10 @@ class OingGame {
       failureCount: 0,
       consecutiveFailures: 0,
       maxClearCells: 0,
+      // 도감 카드가 보는 값들. 한 판 동안 세었다가 판이 끝날 때 평생 누적에
+      // 더한다 - 판 중간에 저장하면 앱이 죽었을 때 반만 쌓인 값이 남는다.
+      bigClears: 0,
+      cellsCleared: 0,
       maxGardenReveal: 0,
       rescueShuffles: 0,
       stageRescues: 0,
@@ -885,6 +889,18 @@ class OingGame {
     }
   }
 
+  // 판 하나가 끝났다. 도감이 보는 평생 누적값을 여기서 한 번에 올린다.
+  // 끝나는 자리가 스테이지와 클래식 둘이라 흩어놓으면 한쪽만 고치게 된다.
+  // 테스트 모드는 저장하지 않는다 - 자동 실행이 사람의 기록을 밀어내면 안 된다.
+  commitLifetimeTotals() {
+    if (this.runtime.testMode) return;
+    storageAdapter.addRunPlayed();
+    storageAdapter.addPlayDay();
+    storageAdapter.addBigClears(this.state.bigClears);
+    storageAdapter.addCellsCleared(this.state.cellsCleared);
+    if (this.classic) storageAdapter.saveClassicBestCombo(this.state.maxCombo);
+  }
+
   // A second thing to chase besides the score, built from what the board
   // already knows: on the stages where the garden shows through, how much of
   // it did this run manage to uncover at once? Kept deliberately small — one
@@ -917,6 +933,10 @@ class OingGame {
     this.state.successCount += 1;
     this.state.consecutiveFailures = 0;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, clearedCellCount);
+    // 5칸 이상은 WOW와 같은 기준이다 - 도감의 "한 번에 크게 지우기" 카드가
+    // 화면에서 WOW가 터진 횟수와 어긋나지 않도록 같은 수를 쓴다.
+    if (clearedCellCount >= 5) this.state.bigClears += 1;
+    this.state.cellsCleared += clearedCellCount + blastCells.length;
     // Classic pays the original's single formula — cats and wide clears are
     // folded in, and no side bonus (clutch/clover) touches the scale.
     const clearPoints = this.classic
@@ -2034,6 +2054,7 @@ class OingGame {
     const catsRescuedTotal = this.runtime.testMode
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
+    this.commitLifetimeTotals();
     // The garden reveal is the run's second scoreboard. Capture the previous
     // best before saving so the result card can tell the player they beat it.
     const cleanClears = Math.max(0, Math.round(this.state.cleanClears || 0));
@@ -2200,6 +2221,7 @@ class OingGame {
     const catsRescuedTotal = this.runtime.testMode
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
+    this.commitLifetimeTotals();
     const seenChapterKeys = storageAdapter.getSeenChapters();
     this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
