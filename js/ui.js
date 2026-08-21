@@ -6,6 +6,8 @@ import {
   classicChapterArtUrl,
   classicChapterThumbUrl,
   oingCardArtUrl,
+  oingCardThumbUrl,
+  OING_CARD_BACK_READY,
   gardenProgress,
   isRecordInReach,
   isWowClear,
@@ -2079,9 +2081,12 @@ export class GameUI {
       item.className = 'chapter-card oing-card';
       item.dataset.card = card.key;
       item.classList.toggle('is-unlocked', Boolean(card.unlocked));
-      const art = oingCardArtUrl(card);
-      item.classList.toggle('has-art', Boolean(art));
-      if (art) item.style.setProperty('--chapter-thumb', cssUrl(art));
+      item.classList.toggle('has-back', !card.unlocked && OING_CARD_BACK_READY);
+      // 격자에는 썸네일만. 얻은 카드는 자기 그림을, 아직 못 얻은 카드는
+      // 공용 뒷면을 깐다.
+      const thumb = card.unlocked ? oingCardThumbUrl(card) : null;
+      item.classList.toggle('has-art', Boolean(thumb));
+      if (thumb) item.style.setProperty('--chapter-thumb', cssUrl(thumb));
 
       const label = document.createElement('strong');
       label.textContent = card.unlocked ? card.label : '???';
@@ -2100,6 +2105,23 @@ export class GameUI {
       item.setAttribute('aria-label', card.unlocked
         ? `${card.label} 수집 완료`
         : `잠긴 카드, ${card.requirement}, ${card.current} / ${card.goal}`);
+      // 얻은 카드는 눌러서 크게 본다. 장면과 같은 창을 쓰므로 공유도 그대로
+      // 따라온다 - 수집은 자랑까지 가야 끝난다.
+      if (card.unlocked && oingCardArtUrl(card)) {
+        item.setAttribute('role', 'button');
+        item.tabIndex = 0;
+        const open = () => this.openChapterViewer(
+          { label: card.label, requirement: '수집 완료' },
+          oingCardArtUrl(card),
+        );
+        item.addEventListener('click', open);
+        item.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            open();
+          }
+        });
+      }
       return item;
     });
     this.elements.oingCardGallery.replaceChildren(...items);
@@ -2111,8 +2133,10 @@ export class GameUI {
 
   // The album card is a thumbnail; tapping an earned scene opens the real
   // painting. Locked cards stay inert - the blur is the tease.
-  openChapterViewer(chapter) {
-    const art = classicChapterArtUrl(chapter);
+  // artUrl을 따로 받는 이유: 장면은 assets/backgrounds에, 카드는 assets/cards에
+  // 있다. 창은 하나로 쓰되 그림이 어디서 오는지는 부르는 쪽이 정한다.
+  openChapterViewer(chapter, artUrl = null) {
+    const art = artUrl || classicChapterArtUrl(chapter);
     if (!art) return;
     // 공유 버튼이 어느 장면을 말하는지 알아야 하므로 지금 연 장면을 들고 있는다.
     this.openedChapter = chapter;
