@@ -9891,3 +9891,13 @@ img {
   line-height: 1.35;
   white-space: normal;
 }
+
+/* 아직 못 얻은 카드의 뒷면.
+   아홉 칸이 같은 그림 한 장을 쓰므로 요청은 한 번뿐이고, 그 다음부터는
+   브라우저가 받아둔 것을 다시 쓴다. 그림이 저장소에 들어오기 전에는
+   has-back이 붙지 않아서 예전처럼 회색으로만 남는다. */
+.oing-card.has-back {
+  background-image: url("../assets/cards/thumbs/back.webp");
+  background-size: cover;
+  background-position: center;
+}

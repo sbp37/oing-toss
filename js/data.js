@@ -520,9 +520,22 @@ export const OING_CARDS = Object.freeze([
     metric: 'bestScore', goal: 15000, requirement: '한 판 15,000점' }),
 ]);
 
+// 카드는 두 벌로 나눠 쓴다. 격자에는 썸네일만 깔고, 원본은 눌러서 크게 볼 때만
+// 받는다. 아홉 장이 한꺼번에 뜨는 자리에 원본을 깔면 기록 창을 열 때마다
+// 1.4MB를 받게 된다.
 export function oingCardArtUrl(card) {
   return card?.hasArt && card.art ? `assets/cards/${card.art}.webp` : null;
 }
+
+export function oingCardThumbUrl(card) {
+  return card?.hasArt && card.art ? `assets/cards/thumbs/${card.art}.webp` : null;
+}
+
+// 아직 못 얻은 카드는 전부 같은 뒷면 한 장을 쓴다. 한 번 받으면 브라우저가
+// 아홉 칸 모두에 다시 쓰므로 요청도 한 번뿐이다.
+// 뒷면 그림이 저장소에 들어오면 이 값을 true로 바꾼다. 없는 파일을 참조하면
+// 잠긴 칸마다 404가 나므로, 그림보다 코드가 먼저 들어오는 순서를 견디게 한다.
+export const OING_CARD_BACK_READY = false;
 
 // 진행도를 함께 돌려주는 이유: 참고한 수집형 게임들처럼 "6/9"가 보여야
 // 다음 한 장이 손에 닿는 것처럼 느껴진다. 잠긴 칸이 그냥 회색이면 목표가

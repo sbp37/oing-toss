@@ -241,10 +241,26 @@ PEPK ZIP. `.gitignore`가 막고 있고 `tests/android-signing.test.mjs`가
 2. ~~카드 정의(9장) + 조건 판정 + 갤러리 표시~~ — 완료
    (`OING_CARDS`/`oingCardRows` in `js/data.js`, `renderOingCards` in `js/ui.js`,
    기록 창에 "오잉 카드" 구역. 잠긴 칸은 조건과 진행도(96/300)를 함께 보여준다.)
-3. **그림 넣기** — 아래 규격대로 파일을 넣고 `hasArt`를 켜면 끝이다.
-   앞면은 `assets/cards/<art>.webp`, 카드 정의의 `art` 값이 파일명이다.
-   뒷면은 아직 CSS 회색 배경이므로, 뒷면 한 장이 들어오면 `.oing-card`가
-   그것을 깔도록 한 줄 고치면 된다.
+3. **그림 넣기** — 파이프라인이 준비돼 있다. 원본을 한 폴더에 모아 파일명을
+   카드 key(또는 `back`)로 맞춘 뒤:
+
+   ```sh
+   python3 tools/build-card-assets.py <원본폴더>
+   ```
+
+   두 크기가 자동으로 나온다. 목표 용량 안에 들어올 때까지 품질을 낮춰가며
+   굽고, 어느 파일이 예산을 넘겼는지 알려준다.
+
+   | 산출물 | 크기 | 예산 | 언제 받나 |
+   | --- | --- | --- | --- |
+   | `assets/cards/<art>.webp` | 1086×1448 | 180KB | 카드를 눌렀을 때 한 장씩 |
+   | `assets/cards/thumbs/<art>.webp` | 300×400 | 14KB | 기록 창을 열 때 한꺼번에 |
+
+   그 다음 `js/data.js`에서 그림이 준비된 카드의 `hasArt`를 `true`로,
+   뒷면이 들어왔으면 `OING_CARD_BACK_READY`를 `true`로 바꾼다. **한 장씩
+   들어와도 된다** - 나머지는 계속 회색으로 남는다.
+
+   `tests/card-assets.test.mjs`가 용량과 "첫 화면에서 받지 않는지"를 지킨다.
 4. 카드 획득 순간의 연출 (결과 화면에서 "새 카드!" 정도)
 
 카드 해금은 **어디에도 "열림"을 저장하지 않는다.** 기록 창을 열 때마다 지금
