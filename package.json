@@ -13,6 +13,7 @@
     "android:apk": "npm run android:sync && node tools/gradle.mjs assembleRelease"
   },
   "devDependencies": {
+    "@apps-in-toss/web-framework": "^3.0.5",
     "@capacitor/cli": "^8.5.0"
   },
   "dependencies": {
