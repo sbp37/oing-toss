@@ -5,6 +5,7 @@ import {
   buildScoreComparisons,
   classicChapterArtUrl,
   classicChapterThumbUrl,
+  oingCardArtUrl,
   gardenProgress,
   isRecordInReach,
   isWowClear,
@@ -160,6 +161,8 @@ export class GameUI {
       gardenTiers: document.querySelector('#garden-tiers'),
       chapterGallery: document.querySelector('#chapter-gallery'),
       chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
+      oingCardGallery: document.querySelector('#oing-card-gallery'),
+      oingCardNote: document.querySelector('#oing-card-note'),
       chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
       chapterViewerArt: document.querySelector('#chapter-viewer-art'),
       chapterViewerNote: document.querySelector('#chapter-viewer-note'),
@@ -2062,6 +2065,47 @@ export class GameUI {
       this.elements.chapterGalleryNote.textContent = list.length
         ? `장면 ${found}/${list.length} 수집`
         : '';
+    }
+  }
+
+  // 오잉 카드. 장면과 같은 칸 모양을 쓰되, 잠긴 칸에 진행도를 함께 보여준다.
+  // 잠긴 칸이 그냥 회색이면 목표가 아니라 벽으로 읽힌다 - 얼마나 남았는지가
+  // 보여야 다음 한 장이 손에 닿는 것처럼 느껴진다.
+  renderOingCards(cards = []) {
+    if (!this.elements.oingCardGallery) return;
+    const list = Array.isArray(cards) ? cards : [];
+    const items = list.map((card) => {
+      const item = document.createElement('li');
+      item.className = 'chapter-card oing-card';
+      item.dataset.card = card.key;
+      item.classList.toggle('is-unlocked', Boolean(card.unlocked));
+      const art = oingCardArtUrl(card);
+      item.classList.toggle('has-art', Boolean(art));
+      if (art) item.style.setProperty('--chapter-thumb', cssUrl(art));
+
+      const label = document.createElement('strong');
+      label.textContent = card.unlocked ? card.label : '???';
+      const requirement = document.createElement('span');
+      requirement.textContent = card.unlocked
+        ? '수집 완료'
+        : `${card.requirement} (${card.current.toLocaleString('ko-KR')}/${card.goal.toLocaleString('ko-KR')})`;
+      item.append(label, requirement);
+
+      if (!card.unlocked) {
+        const meter = document.createElement('i');
+        meter.className = 'oing-card-meter';
+        meter.style.setProperty('--fill', `${Math.round(card.progress * 100)}%`);
+        item.append(meter);
+      }
+      item.setAttribute('aria-label', card.unlocked
+        ? `${card.label} 수집 완료`
+        : `잠긴 카드, ${card.requirement}, ${card.current} / ${card.goal}`);
+      return item;
+    });
+    this.elements.oingCardGallery.replaceChildren(...items);
+    if (this.elements.oingCardNote) {
+      const found = list.filter((card) => card.unlocked).length;
+      this.elements.oingCardNote.textContent = list.length ? `카드 ${found}/${list.length}` : '';
     }
   }
 

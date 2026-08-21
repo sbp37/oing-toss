@@ -9845,3 +9845,49 @@ img {
   font-size: 15px;
 }
 .chapter-viewer-share .button-icon { width: 20px; height: 20px; }
+
+/* 오잉 카드 칸.
+   장면 칸과 같은 모양을 쓰되, 아직 못 얻은 칸에는 진행도 막대를 깐다.
+   회색 칸만 있으면 목표가 아니라 벽으로 읽힌다 - 얼마나 왔는지가 보여야
+   다음 한 장이 손에 닿는 것처럼 느껴진다. */
+.oing-card { position: relative; }
+.oing-card-meter {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(72, 84, 112, .22);
+  overflow: hidden;
+}
+.oing-card-meter::after {
+  content: "";
+  display: block;
+  width: var(--fill, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8fdccb, #62cdb6);
+}
+.oing-card-collection { margin-top: 12px; }
+
+/* 카드 칸은 장면 칸보다 넓다.
+   해금 조건이 "5칸 이상 한 번에 300번 (96/300)"처럼 길어서, 장면과 같은 네 칸
+   격자에 넣으면 글자가 잘려서 조건이 읽히지 않는다. 참고한 수집형
+   게임들도 세 칸으로 둔다. */
+.oing-card-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.oing-card {
+  min-height: 96px;
+  align-content: end;
+  padding-bottom: 14px;
+}
+/* 조건은 두 줄까지 보여준다. 한 줄로 자르면 진행도만 남고 목표가 사라진다. */
+.oing-card span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 9.5px;
+  line-height: 1.35;
+  white-space: normal;
+}

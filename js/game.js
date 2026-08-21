@@ -21,6 +21,7 @@ import {
   classicChapterCollected,
   classicChapterForBoard,
   classicChapterGallery,
+  oingCardRows,
   CLASSIC_CHAPTERS,
   classicComboAfterFailure,
   classicComboGain,
@@ -2135,6 +2136,17 @@ class OingGame {
     // at a run.
     this.ui.renderChapterGallery(classicChapterGallery({
       seenKeys: storageAdapter.getSeenChapters(),
+      bestScore: storageAdapter.getClassicBestScore(),
+    }));
+    // 카드는 판이 아니라 플레이한 행동으로 열린다. 기록 창을 열 때마다
+    // 지금 누적값으로 다시 판정한다 - 어딘가에 "열림"을 따로 저장해두면
+    // 조건을 손볼 때 이미 열린 카드와 어긋나기 시작한다.
+    this.ui.renderOingCards(oingCardRows({
+      runs: storageAdapter.getRunsPlayed(),
+      cats: storageAdapter.getCatsRescued(),
+      bigClears: storageAdapter.getBigClears(),
+      cellsCleared: storageAdapter.getCellsCleared(),
+      playDays: storageAdapter.getPlayDays().length,
       bestScore: storageAdapter.getClassicBestScore(),
     }));
     this.ui.setOverlay('ranking-overlay', true);
