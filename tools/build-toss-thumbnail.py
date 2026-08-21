@@ -1,40 +1,40 @@
 #!/usr/bin/env python3
 """앱인토스 목록 썸네일(1932×828)을 원스토어 그래픽 이미지에서 만든다.
 
-원본은 16:9(1669×942)이고 목표는 2.33:1이다. 폭에 맞춰 늘리면 위아래가
-잘려 로고 위 하늘과 아래 배지들이 날아간다. 그래서 그림은 하나도 자르지
-않고 높이만 맞춘 뒤, 좌우 남는 자리를 같은 그림을 크게 흐린 것으로 채운다.
-하늘과 풀밭이 그대로 이어져서 덧댄 티가 거의 나지 않는다.
+원본(1916×821)이 이미 2.334:1이라 목표 2.333:1과 사실상 같다. 자르거나
+덧대지 않고 크기만 키운다. 혹시 다른 비율의 원본으로 바뀌면, 그림을 자르는
+대신 높이만 맞추고 좌우 남는 자리를 같은 그림을 흐린 것으로 채운다.
 """
 from PIL import Image, ImageDraw, ImageFilter
 
 SRC = "store/toss/source/graphic-source.webp"
 OUT = "store/toss/thumbnail-1932x828.png"
 W, H = 1932, 828
-FEATHER = 70  # 이어붙인 자리를 부드럽게 넘기는 폭
+FEATHER = 70
 
 src = Image.open(SRC).convert("RGB")
+ratio = src.width / src.height
+target = W / H
 
-# 배경: 같은 그림을 1932×828을 덮도록 키워 가운데를 쓰고 흐린다.
-scale = max(W / src.width, H / src.height)
-cover = src.resize((round(src.width * scale), round(src.height * scale)), Image.LANCZOS)
-left = (cover.width - W) // 2
-top = (cover.height - H) // 2
-bg = cover.crop((left, top, left + W, top + H)).filter(ImageFilter.GaussianBlur(30))
+if abs(ratio - target) / target < 0.01:
+    # 비율이 같다 - 그냥 늘린다.
+    out = src.resize((W, H), Image.LANCZOS)
+else:
+    scale = max(W / src.width, H / src.height)
+    cover = src.resize((round(src.width * scale), round(src.height * scale)), Image.LANCZOS)
+    x = (cover.width - W) // 2
+    y = (cover.height - H) // 2
+    out = cover.crop((x, y, x + W, y + H)).filter(ImageFilter.GaussianBlur(30))
 
-# 앞면: 자르지 않고 높이만 맞춘 원본.
-fw = round(src.width * H / src.height)
-fg = src.resize((fw, H), Image.LANCZOS)
+    fw = round(src.width * H / src.height)
+    fg = src.resize((fw, H), Image.LANCZOS)
+    mask = Image.new("L", (fw, H), 255)
+    draw = ImageDraw.Draw(mask)
+    for i in range(FEATHER):
+        a = round(255 * i / FEATHER)
+        draw.line([(i, 0), (i, H)], fill=a)
+        draw.line([(fw - 1 - i, 0), (fw - 1 - i, H)], fill=a)
+    out.paste(fg, ((W - fw) // 2, 0), mask)
 
-# 좌우 끝을 서서히 흐린 배경으로 넘긴다.
-mask = Image.new("L", (fw, H), 255)
-draw = ImageDraw.Draw(mask)
-for i in range(FEATHER):
-    a = round(255 * i / FEATHER)
-    draw.line([(i, 0), (i, H)], fill=a)
-    draw.line([(fw - 1 - i, 0), (fw - 1 - i, H)], fill=a)
-
-out = bg.copy()
-out.paste(fg, ((W - fw) // 2, 0), mask)
 out.save(OUT, "PNG", optimize=True)
 print(OUT, out.size)
