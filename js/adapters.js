@@ -14,6 +14,14 @@ const CLEAN_CLEARS_KEY = 'oing_toss_v3_clean_clears';
 const CLASSIC_BEST_SCORE_KEY = 'oing_toss_v3_classic_best_score';
 const CLASSIC_RECENT_SCORES_KEY = 'oing_toss_v3_classic_recent_scores';
 const CLASSIC_CHAPTERS_SEEN_KEY = 'oing_toss_v3_classic_chapters_seen';
+// 도감 카드가 보는 평생 누적값들. 점수는 실력 천장이라 캐주얼한 사람은 영영
+// 못 넘을 수 있지만, 이 값들은 느려도 반드시 쌓인다 - 카드 아홉 장 중 일곱
+// 장을 여기에 묶어둔 이유다. 전부 새 키라 기존 저장값은 건드리지 않는다.
+const RUNS_PLAYED_KEY = 'oing_toss_v3_runs_played';
+const BIG_CLEARS_KEY = 'oing_toss_v3_big_clears';
+const CELLS_CLEARED_KEY = 'oing_toss_v3_cells_cleared';
+const PLAY_DAYS_KEY = 'oing_toss_v3_play_days';
+const CLASSIC_BEST_COMBO_KEY = 'oing_toss_v3_classic_best_combo';
 
 function safeRead(key, fallback) {
   try {
@@ -150,6 +158,65 @@ export const storageAdapter = {
   addCleanClears(count) {
     const next = this.getCleanClears() + Math.max(0, Math.round(Number(count) || 0));
     try { localStorage.setItem(CLEAN_CLEARS_KEY, String(next)); } catch {}
+    return next;
+  },
+  // 아래 넷은 모두 같은 모양이다: 읽고, 더하고, 더한 값을 돌려준다.
+  // 돌려주는 이유는 부른 쪽이 곧바로 "이번에 카드가 열렸나"를 판단하기 위해서다.
+  getRunsPlayed() {
+    const value = Number(safeRead(RUNS_PLAYED_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  addRunPlayed() {
+    const next = this.getRunsPlayed() + 1;
+    try { localStorage.setItem(RUNS_PLAYED_KEY, String(next)); } catch {}
+    return next;
+  },
+  getBigClears() {
+    const value = Number(safeRead(BIG_CLEARS_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  addBigClears(count) {
+    const next = this.getBigClears() + Math.max(0, Math.round(Number(count) || 0));
+    try { localStorage.setItem(BIG_CLEARS_KEY, String(next)); } catch {}
+    return next;
+  },
+  getCellsCleared() {
+    const value = Number(safeRead(CELLS_CLEARED_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  addCellsCleared(count) {
+    const next = this.getCellsCleared() + Math.max(0, Math.round(Number(count) || 0));
+    try { localStorage.setItem(CELLS_CLEARED_KEY, String(next)); } catch {}
+    return next;
+  },
+  getClassicBestCombo() {
+    const value = Number(safeRead(CLASSIC_BEST_COMBO_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  saveClassicBestCombo(combo) {
+    const next = Math.max(this.getClassicBestCombo(), Math.max(0, Math.round(Number(combo) || 0)));
+    try { localStorage.setItem(CLASSIC_BEST_COMBO_KEY, String(next)); } catch {}
+    return next;
+  },
+  // 출석은 연속이 아니라 "서로 다른 날 수"로 센다. 하루 빠졌다고 초기화되면
+  // 캐주얼한 게임에서 스트레스가 되고, 오래 쉬었다 돌아온 사람을 벌주게 된다.
+  // 기기 시계와 localStorage에만 기대므로 앱 데이터를 지우면 사라진다.
+  getPlayDays() {
+    try {
+      const values = JSON.parse(safeRead(PLAY_DAYS_KEY, '[]'));
+      return Array.isArray(values) ? values.filter((value) => typeof value === 'string') : [];
+    } catch {
+      return [];
+    }
+  },
+  addPlayDay(today = null) {
+    const day = typeof today === 'string' && today
+      ? today
+      : new Date().toLocaleDateString('sv-SE');
+    const days = this.getPlayDays();
+    if (days.includes(day)) return days;
+    const next = [...days, day];
+    try { localStorage.setItem(PLAY_DAYS_KEY, JSON.stringify(next)); } catch {}
     return next;
   },
   getCatsRescued() {
