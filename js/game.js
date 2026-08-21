@@ -342,6 +342,7 @@ class OingGame {
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
     document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
     document.querySelector('#chapter-viewer-close').addEventListener('click', () => this.ui.setOverlay('chapter-viewer', false));
+    document.querySelector('#chapter-viewer-share')?.addEventListener('click', () => this.shareChapter());
     document.querySelector('#garden-play-button').addEventListener('click', () => {
       this.ui.setOverlay('garden-overlay', false);
       this.start(1, { classic: true });
@@ -2123,6 +2124,17 @@ class OingGame {
     this.ui.updateCatsRescued(total);
     this.ui.renderGarden(total, storageAdapter.getCleanClears());
     this.ui.setOverlay('garden-overlay', true);
+  }
+
+  // 모은 장면 한 장을 자랑하는 길. 결과 화면 공유와 같은 경로를 타므로
+  // 브라우저가 공유를 막아도 같은 방식으로 클립보드에 떨어진다.
+  async shareChapter() {
+    const chapter = this.ui.openedChapter;
+    if (!chapter) return;
+    const result = await shareAdapter.shareChapter(chapter);
+    if (result.ok && result.method === 'clipboard') this.ui.toast('링크를 복사했다냥!');
+    else if (result.ok) this.ui.toast('공유창을 열었다냥!');
+    else if (result.reason !== 'cancelled') this.ui.toast('이 브라우저에선 공유가 어렵다냥');
   }
 
   async shareResult() {

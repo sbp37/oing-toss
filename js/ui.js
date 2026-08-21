@@ -162,6 +162,7 @@ export class GameUI {
       chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
       chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
       chapterViewerArt: document.querySelector('#chapter-viewer-art'),
+      chapterViewerNote: document.querySelector('#chapter-viewer-note'),
       resultChapterEarned: document.querySelector('#result-chapter-earned'),
       gardenRevealBest: document.querySelector('#garden-reveal-best'),
       gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
@@ -2069,8 +2070,13 @@ export class GameUI {
   openChapterViewer(chapter) {
     const art = classicChapterArtUrl(chapter);
     if (!art) return;
+    // 공유 버튼이 어느 장면을 말하는지 알아야 하므로 지금 연 장면을 들고 있는다.
+    this.openedChapter = chapter;
     if (this.elements.chapterViewerTitle) this.elements.chapterViewerTitle.textContent = chapter.label;
     if (this.elements.chapterViewerArt) this.elements.chapterViewerArt.src = art;
+    if (this.elements.chapterViewerNote) {
+      this.elements.chapterViewerNote.textContent = chapter.requirement || '';
+    }
     this.setOverlay('chapter-viewer', true);
   }
 

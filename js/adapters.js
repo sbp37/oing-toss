@@ -235,24 +235,33 @@ export function buildShareText({ score, maxCombo, round, classic = null }) {
   return `오잉게임에서 ${points}점 냈다냥! 최고 콤보 ${Math.max(0, Math.round(Number(maxCombo) || 0))}, ${progress}. 이겨보라냥!`;
 }
 
-export const shareAdapter = {
-  async shareResult(result) {
-    const text = buildShareText(result);
-    const url = typeof location === 'undefined' ? '' : location.href.split('?')[0];
-    try {
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-        await navigator.share({ title: '오잉게임', text, url });
-        return { ok: true, method: 'native-share' };
-      }
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(`${text}\n${url}`.trim());
-        return { ok: true, method: 'clipboard' };
-      }
-      return { ok: false, reason: 'share-unavailable', text, url };
-    } catch (error) {
-      if (error?.name === 'AbortError') return { ok: false, reason: 'cancelled' };
-      return { ok: false, reason: 'share-failed', error };
+// 공유는 한 군데로 모아둔다 - 결과 화면이든 장면이든 같은 경로를 타야
+// 브라우저마다 다르게 실패하는 일이 없다.
+async function shareTextAndUrl(text) {
+  const url = typeof location === 'undefined' ? '' : location.href.split('?')[0];
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      await navigator.share({ title: '오잉게임', text, url });
+      return { ok: true, method: 'native-share' };
     }
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(`${text}\n${url}`.trim());
+      return { ok: true, method: 'clipboard' };
+    }
+    return { ok: false, reason: 'share-unavailable', text, url };
+  } catch (error) {
+    if (error?.name === 'AbortError') return { ok: false, reason: 'cancelled' };
+    return { ok: false, reason: 'share-failed', error };
+  }
+}
+
+export const shareAdapter = {
+  async shareChapter(chapter) {
+    const label = chapter?.label || '장면';
+    return shareTextAndUrl(`오잉게임에서 '${label}' 장면을 모았다냥!`);
+  },
+  async shareResult(result) {
+    return shareTextAndUrl(buildShareText(result));
   },
 };
 
