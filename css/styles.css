@@ -9682,6 +9682,12 @@ img {
 
 #ranking-overlay { z-index: 60; }
 
+/* 그림 크게 보기 창은 기록 창보다 위에 선다.
+   장면 모음이 기록 창(z-index 60) 안에 들어 있어서, 카드를 눌러도 그림이 그
+   뒤에서 열렸다. 화면에는 아무 일도 없는 것처럼 보이니 눌러도 안 열린다는
+   말이 나온 것이다. 이 창은 장면 모음에서만 열리므로 늘 위여야 한다. */
+#chapter-viewer { z-index: 70; }
+
 @media (max-width: 340px) {
   .result-character-stage { width: 142px; height: 150px; }
   .result-message { max-width: 214px; font-size: 15px; }
@@ -9821,3 +9827,21 @@ img {
   text-align: center;
 }
 .settings-legal a { color: #8b8079; text-decoration: underline; text-underline-offset: 2px; }
+
+/* 장면 한 장을 크게 볼 때 붙는 것들.
+   조건 한 줄과 공유 버튼. 참고한 수집형 게임들처럼, 크게 본 김에
+   자랑까지 이어지는 것이 수집의 마무리다. */
+.chapter-viewer-note {
+  margin: 10px 0 0;
+  color: #7b8598;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  text-align: center;
+}
+.chapter-viewer-share {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 14px;
+  font-size: 15px;
+}
+.chapter-viewer-share .button-icon { width: 20px; height: 20px; }
