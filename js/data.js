@@ -497,26 +497,28 @@ export function classicChapterGallery({ seenKeys = [], bestScore = 0 } = {}) {
 // (초보 154칸·5칸+ 11회·고양이 6.5 / 보통 680·58·20.5 / 고수 2090·238·67.5).
 // 근거와 재현 방법은 HANDOFF.md에 있다.
 //
-// art는 아직 그림이 없으므로 hasArt가 전부 false다. 그림이 한 장씩 들어오는
-// 대로 파일을 넣고 플래그만 켜면 된다 - 장면(chapter)이 쓰는 방식과 같다.
+// art는 그림 파일 이름이다. 파일명이 카드 key와 다른 것은, 그림을 그린 쪽의
+// 이름을 그대로 두는 편이 나중에 원본을 찾기 쉽기 때문이다. 05와 09의 파일명에
+// 남은 20000/30000은 문턱을 정하기 전에 붙은 이름이고, 그림 안에는 숫자가
+// 없으므로 조건과 어긋나지 않는다.
 export const OING_CARDS = Object.freeze([
-  Object.freeze({ key: 'first-run', label: '첫 걸음', art: 'card-first-run', hasArt: false,
+  Object.freeze({ key: 'first-run', label: '첫 걸음', art: 'card-01-first-run-v1', hasArt: true,
     metric: 'runs', goal: 1, requirement: '첫 판 끝내기' }),
-  Object.freeze({ key: 'ten-runs', label: '단골 손님', art: 'card-ten-runs', hasArt: false,
+  Object.freeze({ key: 'ten-runs', label: '단골 손님', art: 'card-02-ten-runs-v1', hasArt: true,
     metric: 'runs', goal: 10, requirement: '10판 플레이' }),
-  Object.freeze({ key: 'cats-100', label: '고양이 친구', art: 'card-cats-100', hasArt: false,
+  Object.freeze({ key: 'cats-100', label: '고양이 친구', art: 'card-03-hundred-cats-v1', hasArt: true,
     metric: 'cats', goal: 100, requirement: '고양이 100마리' }),
-  Object.freeze({ key: 'big-300', label: '시원한 손', art: 'card-big-300', hasArt: false,
+  Object.freeze({ key: 'big-300', label: '시원한 손', art: 'card-04-big-clears-v1', hasArt: true,
     metric: 'bigClears', goal: 300, requirement: '5칸 이상 한 번에 300번' }),
-  Object.freeze({ key: 'score-8000', label: '반짝이는 기록', art: 'card-score-8000', hasArt: false,
+  Object.freeze({ key: 'score-8000', label: '반짝이는 기록', art: 'card-05-score-20000-v1', hasArt: true,
     metric: 'bestScore', goal: 8000, requirement: '한 판 8,000점' }),
-  Object.freeze({ key: 'days-7', label: '일주일 개근', art: 'card-days-7', hasArt: false,
+  Object.freeze({ key: 'days-7', label: '일주일 개근', art: 'card-06-seven-days-v1', hasArt: true,
     metric: 'playDays', goal: 7, requirement: '서로 다른 7일 플레이' }),
-  Object.freeze({ key: 'cells-20000', label: '대청소', art: 'card-cells-20000', hasArt: false,
+  Object.freeze({ key: 'cells-20000', label: '대청소', art: 'card-07-cells-20000-v1', hasArt: true,
     metric: 'cellsCleared', goal: 20000, requirement: '지운 칸 20,000개' }),
-  Object.freeze({ key: 'days-30', label: '한 달의 친구', art: 'card-days-30', hasArt: false,
+  Object.freeze({ key: 'days-30', label: '한 달의 친구', art: 'card-08-thirty-days-v1', hasArt: true,
     metric: 'playDays', goal: 30, requirement: '서로 다른 30일 플레이' }),
-  Object.freeze({ key: 'score-15000', label: '오잉 고수', art: 'card-score-15000', hasArt: false,
+  Object.freeze({ key: 'score-15000', label: '오잉 고수', art: 'card-09-score-30000-v1', hasArt: true,
     metric: 'bestScore', goal: 15000, requirement: '한 판 15,000점' }),
 ]);
 
@@ -535,7 +537,7 @@ export function oingCardThumbUrl(card) {
 // 아홉 칸 모두에 다시 쓰므로 요청도 한 번뿐이다.
 // 뒷면 그림이 저장소에 들어오면 이 값을 true로 바꾼다. 없는 파일을 참조하면
 // 잠긴 칸마다 404가 나므로, 그림보다 코드가 먼저 들어오는 순서를 견디게 한다.
-export const OING_CARD_BACK_READY = false;
+export const OING_CARD_BACK_READY = true;
 
 // 진행도를 함께 돌려주는 이유: 참고한 수집형 게임들처럼 "6/9"가 보여야
 // 다음 한 장이 손에 닿는 것처럼 느껴진다. 잠긴 칸이 그냥 회색이면 목표가

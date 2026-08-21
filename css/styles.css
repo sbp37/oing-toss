@@ -9897,7 +9897,7 @@ img {
    브라우저가 받아둔 것을 다시 쓴다. 그림이 저장소에 들어오기 전에는
    has-back이 붙지 않아서 예전처럼 회색으로만 남는다. */
 .oing-card.has-back {
-  background-image: url("../assets/cards/thumbs/back.webp");
+  background-image: url("../assets/cards/thumbs/card-back-v1.webp");
   background-size: cover;
   background-position: center;
 }
