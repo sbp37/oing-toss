@@ -39,7 +39,7 @@ THUMB_BUDGET = 13 * 1024     # 챕터 썸네일이 10~12KB
 def encode_within(image, size, budget, path):
     """목표 용량 안에 들어올 때까지 품질을 낮춰가며 굽는다."""
     resized = image.convert("RGB").resize(size, Image.LANCZOS)
-    for quality in (92, 88, 84, 80, 76, 72, 68, 64, 60):
+    for quality in (92, 88, 84, 80, 76, 72, 68, 64, 60, 55, 50):
         resized.save(path, "WEBP", quality=quality, method=6)
         if path.stat().st_size <= budget:
             return quality, path.stat().st_size
@@ -69,8 +69,11 @@ def main() -> None:
         stem = source.stem
         name = stem if stem.startswith("card-") or stem == "back" else f"card-{stem}"
         image = Image.open(source)
+        # 카드는 전부 3:4다. 아닌 것은 카드가 아니라 대지나 참고용 그림이므로
+        # 굽지 않는다 - 한 폴더에 섞여 들어와도 알아서 걸러진다.
         if image.width * 4 != image.height * 3:
-            print(f"  주의: {source.name}은 3:4가 아니다 ({image.width}x{image.height}) - 늘려서 맞춘다")
+            print(f"건너뜀: {source.name} (3:4가 아니다, {image.width}x{image.height})")
+            continue
 
         full_path = OUT_FULL / f"{name}.webp"
         thumb_path = OUT_THUMB / f"{name}.webp"
