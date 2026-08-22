@@ -4656,3 +4656,101 @@
   0%, 70% { opacity: 1; transform: translateX(-50%); }
   100% { opacity: 0; transform: translateX(-50%); }
 }
+
+/* Board separation and lower paint cost -----------------------------------
+   Live syrup tiles and the pale chapter scene sat in almost the same value
+   range.  Keep the single-colour tile family, but separate depth with a
+   cool board bed, a white inner keyline and one concise cast shadow.  The
+   previous two large blurred shadows painted twice for every live cell on
+   the 6x8 board; the rim now carries the separation instead. */
+.play-ui-v4 .board {
+  gap: clamp(2.6px, .75vw, 3.4px);
+  background-color: rgba(211, 223, 232, .98);
+}
+
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
+  background-color: rgba(207, 220, 230, .98);
+  background-image:
+    linear-gradient(to right, rgba(62, 78, 102, .12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(62, 78, 102, .12) 1px, transparent 1px);
+}
+
+.play-ui-v4 .tile[class*="value-"],
+.play-ui-v4 .tile.is-bonus-cat,
+.play-ui-v4 .tile.is-board-item {
+  border: 1px solid rgba(255, 255, 255, .88);
+  outline: 1px solid rgba(64, 78, 98, .58);
+  outline-offset: 0;
+}
+
+.play-ui-v4 .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"] {
+  background-color: rgba(248, 251, 255, .998);
+}
+
+.play-ui-v4 .tile {
+  filter: none;
+  box-shadow: 0 3px 5px rgba(66, 80, 104, .30);
+}
+
+/* Cleared cells remain picture windows, but sit one shallow step behind the
+   playable buttons.  A very light cool veil gives the eye a stable depth cue
+   without hiding the illustration reward. */
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 0;
+  background-image:
+    linear-gradient(rgba(38, 56, 88, .06), rgba(30, 48, 78, .075)),
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .30)), rgba(255, 255, 255, var(--win-veil-b, .24))),
+    var(--chapter-art);
+  background-size: auto, auto, var(--win-size, cover);
+  background-position: 0 0, 0 0, var(--win-pos, center);
+  box-shadow:
+    inset 0 3px 6px rgba(32, 44, 80, .22),
+    inset 0 0 0 1px rgba(44, 56, 92, .17);
+}
+
+/* State glows must sit above the cheaper base shadow.  These states touch
+   only a few cells for a few hundred milliseconds, so their focused glow is
+   both visually useful and far cheaper than blurring every idle tile. */
+.play-ui-v4 .tile.is-success {
+  outline-color: rgba(244, 116, 147, .68);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, .96),
+    0 0 0 2px rgba(255, 130, 158, .34),
+    0 6px 12px rgba(255, 156, 100, .18);
+  filter: brightness(1.06) saturate(1.06);
+}
+
+.play-ui-v4 .tile.is-fail {
+  outline-color: rgba(143, 112, 128, .64);
+  box-shadow: inset 0 0 0 2px rgba(150, 126, 138, .42);
+  filter: saturate(.66) brightness(.98);
+}
+
+.play-ui-v4 .tile.is-hint {
+  outline: 2px solid rgba(55, 184, 158, .82);
+  outline-offset: -1px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .96),
+    0 0 0 3px rgba(83, 207, 183, .34),
+    0 7px 20px rgba(52, 169, 150, .29);
+  filter: brightness(1.1) saturate(1.06);
+}
+
+.play-ui-v4 .tile.is-tutorial {
+  outline: 2px solid rgba(242, 103, 137, .76);
+  outline-offset: -1px;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, .84),
+    0 0 0 3px rgba(255, 111, 143, .34),
+    0 0 18px rgba(255, 110, 142, .30);
+}
+
+.play-ui-v4 .tile.is-clover-hint,
+.play-ui-v4 .tile.is-clover-hint[class*="value-"],
+.play-ui-v4 .tile.is-clover-hint.is-bonus-cat {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .92),
+    0 0 0 3px rgba(75, 196, 105, .32),
+    0 7px 20px rgba(51, 156, 80, .28);
+}
