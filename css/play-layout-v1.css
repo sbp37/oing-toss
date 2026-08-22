@@ -4557,6 +4557,43 @@
   display: none;
 }
 
+/* Classic counter label ----------------------------------------------------
+   The reachable game is a continuous classic run, so its shield counts
+   boards rather than promising a separate stage mission. The painted badge
+   now ships with a blank ribbon and this short label stays dynamic for the
+   dormant stage harness. */
+.play-ui-v4 .play-top-controls .round-mini .round-ribbon-label,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini .round-ribbon-label {
+  position: absolute;
+  z-index: 3;
+  left: 20%;
+  top: 18%;
+  width: 60%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #fff9ef;
+  font-family: var(--font-display);
+  font-size: clamp(7px, 2vw, 9px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .035em;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(150,50,66,.48);
+  transform: none;
+  pointer-events: none;
+}
+
+.play-ui-v4.is-classic-mode .play-top-controls .round-mini .round-ribbon-label,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini .round-ribbon-label {
+  top: 17%;
+  font-size: clamp(10px, 2.8vw, 12px);
+  letter-spacing: 0;
+}
+
 /* 지워진 칸의 그림자를 절반으로.
    ===============================================================
    칸이 지워지면 그 자리에 그림이 드러나는데, 판이 파인 것처럼 보이라고 얹은 위쪽
@@ -4571,4 +4608,51 @@
     inset 0 4px 8px rgba(32, 44, 80, .26),
     inset 0 0 0 1px rgba(44, 56, 92, .19),
     inset 0 -2px 5px rgba(255, 255, 255, .20);
+}
+
+/* A wide clear can add three combo steps at once. Keep that contribution
+   beside the combo number so it connects the clear to the item gauge without
+   adding another banner over the board. */
+.play-ui-v4 .combo-readout .combo-gain-pop {
+  position: absolute;
+  z-index: 6;
+  left: 42%;
+  top: 61%;
+  right: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 27px;
+  min-height: 18px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 999px;
+  background: rgba(255, 249, 235, .97);
+  box-shadow: 0 3px 7px rgba(103, 77, 58, .13);
+  color: #ef6f88;
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 2.45vw, 11px);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: combo-gain-pop 760ms cubic-bezier(.18, .8, .22, 1) both;
+}
+
+@keyframes combo-gain-pop {
+  0% { opacity: 0; transform: translate(-50%, 5px) scale(.74); }
+  22% { opacity: 1; transform: translate(-50%, -2px) scale(1.1); }
+  70% { opacity: 1; transform: translate(-50%, -6px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -11px) scale(.92); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .combo-readout .combo-gain-pop {
+    animation: combo-gain-fade 500ms ease-out both;
+  }
+}
+
+@keyframes combo-gain-fade {
+  0%, 70% { opacity: 1; transform: translateX(-50%); }
+  100% { opacity: 0; transform: translateX(-50%); }
 }

@@ -1181,20 +1181,37 @@ export class BoardModel {
   // clearability target to certify — the only gate is that the opening
   // board has enough to find — and the whole thing must return instantly,
   // because board changes happen while the timer keeps running.
-  generateClassic(cols, rows = cols, round = 1) {
+  generateClassic(cols, rows = cols, round = 1, options = {}) {
     this.cols = Math.max(1, Math.round(cols));
     this.rows = Math.max(1, Math.round(rows));
     this.size = this.cols;
     this.specialTiles.clear();
     this.round = Math.max(1, Math.round(Number(round) || 1));
-    const catTarget = bonusCatTargetForDimensions(this.rows, this.cols);
-    const wanted = Math.max(4, Math.round((this.rows * this.cols) / 9));
+    const baseCatTarget = bonusCatTargetForDimensions(this.rows, this.cols);
+    const catMultiplier = Math.max(1, Math.round(Number(options?.catMultiplier) || 1));
+    const catTarget = Math.min(this.rows * this.cols - 4, baseCatTarget * catMultiplier);
+    const isLearningBoard = this.cols === 6 && this.rows <= 6;
+    const wanted = Math.max(
+      4,
+      Math.round((this.rows * this.cols) / 9),
+      isLearningBoard ? 8 : 0,
+    );
+    const wantedMultiCell = isLearningBoard ? 3 : 0;
+    const maxAttempts = isLearningBoard ? 96 : 24;
     let best = null;
-    for (let attempt = 0; attempt < 24; attempt += 1) {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const candidate = makeNaturalGrid(this.rows, this.cols, this.round, catTarget);
-      const answers = findAllSumTenRects(candidate.grid).length;
-      if (!best || answers > best.answers) best = { candidate, answers };
-      if (best.answers >= wanted) break;
+      const answerRects = findAllSumTenRects(candidate.grid);
+      const answers = answerRects.length;
+      const multiCell = answerRects.filter((answer) => answer.count >= 3).length;
+      const targetCoverage = Math.min(answers, wanted)
+        + Math.min(multiCell, wantedMultiCell) * wanted;
+      if (!best
+        || targetCoverage > best.targetCoverage
+        || (targetCoverage === best.targetCoverage && answers > best.answers)) {
+        best = { candidate, answers, multiCell, targetCoverage };
+      }
+      if (answers >= wanted && multiCell >= wantedMultiCell) break;
     }
     this.grid = best.candidate.grid;
     this.bonusCats = best.candidate.cats;

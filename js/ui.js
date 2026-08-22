@@ -93,6 +93,7 @@ export class GameUI {
     this.goalPulseTimer = null;
     this.itemRewardPreviewTimer = null;
     this.comboLossTimer = null;
+    this.comboGainTimer = null;
     this.scoreBurstTimer = null;
     this.lastCountdownSecond = null;
     this.lastSelectionKey = '';
@@ -105,6 +106,7 @@ export class GameUI {
     this.startCountdownToken = 0;
     this.elements = {
       round: document.querySelector('#round-value'),
+      roundLabel: document.querySelector('#round-label'),
       score: document.querySelector('#score-value'),
       scoreReadout: document.querySelector('.score-readout'),
       time: document.querySelector('#time-value'),
@@ -731,6 +733,19 @@ export class GameUI {
     }, 720);
   }
 
+  showComboGain(amount) {
+    const gain = Math.max(1, Math.round(Number(amount) || 1));
+    if (gain <= 1) return;
+    clearTimeout(this.comboGainTimer);
+    this.elements.playScreen.querySelector('.combo-gain-pop')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'combo-gain-pop';
+    pop.textContent = `+${gain}`;
+    pop.setAttribute('aria-hidden', 'true');
+    this.elements.comboChip.appendChild(pop);
+    this.comboGainTimer = window.setTimeout(() => pop.remove(), 760);
+  }
+
   async animateSuccess(rect, combo = 1) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
@@ -910,6 +925,8 @@ export class GameUI {
   clearTransientBoardFeedback() {
     clearTimeout(this.hintTimer);
     this.hintTimer = null;
+    clearTimeout(this.comboGainTimer);
+    this.comboGainTimer = null;
     this.clearSelection();
     this.hideTutorial();
     this.board.classList.remove('is-hinting', 'is-shuffling-out', 'is-shuffling-in');
@@ -949,7 +966,7 @@ export class GameUI {
     this.elements.playScreen.querySelector('.final-second-pop')?.remove();
     this.elements.playScreen.querySelector('.time-rescue-label')?.remove();
     this.elements.playScreen.querySelector('.low-time-alert')?.remove();
-    this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop').forEach((element) => element.remove());
+    this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop, .combo-gain-pop').forEach((element) => element.remove());
     this.elements.comboChip.classList.remove('is-inline-feedback');
     this.elements.playScreen.classList.remove('is-board-growth-clear', 'is-time-rescued', 'is-low-time-alerting');
   }
@@ -1755,9 +1772,10 @@ export class GameUI {
     }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
     this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
     this.elements.round.textContent = String(round);
+    if (this.elements.roundLabel) this.elements.roundLabel.textContent = classicMode ? '판' : 'STAGE';
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수
@@ -1825,16 +1843,17 @@ export class GameUI {
     this.elements.combo.textContent = String(combo);
     const comboStep = combo % 7;
     const rewardUnlocked = rewardRemaining > 0;
-    const rewardProgress = !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
-    this.elements.comboTimerFill.style.transform = `scaleX(${rewardProgress})`;
+    const normalizedRewardProgress = Number.isFinite(rewardProgress)
+      ? clamp(rewardProgress, 0, 1)
+      : !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
+    this.elements.comboTimerFill.style.transform = `scaleX(${normalizedRewardProgress})`;
     // The centre compartment's gauge. The track is always on screen — it is
     // half of what makes the compartment look furnished, and hiding it for
     // the first two stages left an empty box exactly where new players
     // look first. Only the "아이템까지 N" caption waits for stage 3, when
     // item drops actually unlock and the number means something.
     if (this.elements.comboItemTrack) {
-      const comboCycle = combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
-      this.elements.comboItemFill.style.width = `${Math.round(comboCycle * 100)}%`;
+      this.elements.comboItemFill.style.width = `${Math.round(normalizedRewardProgress * 100)}%`;
       this.elements.comboItemLabel.hidden = !rewardUnlocked;
       if (rewardUnlocked) this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
     }

@@ -2,7 +2,7 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/backgrounds/play-bg-spring-path-v2.webp',
   'assets/ui/play-control-pause-v3.webp',
   'assets/ui/play-control-sound-v3.webp',
-  'assets/ui/play-stage-badge-v3.webp',
+  'assets/ui/play-round-badge-v1.webp',
   'assets/ui/play-timer-pill-v3.webp',
   'assets/ui/play-status-bar-v5.webp',
   'assets/ui/item-well-hint-v1.webp',

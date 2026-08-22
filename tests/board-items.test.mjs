@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, isNiceClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropPoolAfterRepeat, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, classicComboGain, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemRewardStatus, itemUnlockGrantForStage, isNearMissSum, isWowClear, isNiceClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -231,6 +231,13 @@ test('board items appear only when a seven-combo boundary is crossed', () => {
   assert.equal(boardDropReward(13, 14, 2), 'milestone');
 });
 
+test('a classic WOW can reach the next item boundary through its three combo steps', () => {
+  const before = 4;
+  const after = before + classicComboGain(5);
+  assert.equal(after, 7);
+  assert.equal(boardDropReward(before, after), 'milestone');
+});
+
 // Drives the same bookkeeping advanceCombo() does: a success calls the rule
 // and then raises the run's high-water mark, while a failure only lowers the
 // live combo. Returns the combo value at each payout.
@@ -314,6 +321,51 @@ test('the reward countdown makes the sixth combo an explicit one-more moment', (
   assert.equal(itemRewardCountdown(6, 3), 1);
   assert.equal(itemRewardCountdown(7, 3), 7);
   assert.equal(itemRewardCountdown(13, 5), 1);
+});
+
+test('the reward gauge follows the next unpaid high-water boundary', () => {
+  assert.deepEqual(itemRewardStatus(6, 6, 3), {
+    remaining: 1,
+    progress: 6 / 7,
+    target: 7,
+  });
+  assert.deepEqual(itemRewardStatus(7, 7, 3), {
+    remaining: 7,
+    progress: 0,
+    target: 14,
+  });
+  assert.deepEqual(itemRewardStatus(5, 8, 3), {
+    remaining: 9,
+    progress: 0,
+    target: 14,
+  });
+  assert.deepEqual(itemRewardStatus(6, 6, 2), {
+    remaining: 0,
+    progress: 0,
+    target: 0,
+  });
+});
+
+test('repeat filtering preserves bombs but makes room for item variety', () => {
+  const bombOnly = ['bomb', 'bomb'];
+  assert.deepEqual(boardDropPoolAfterRepeat(bombOnly, 'bomb'), bombOnly);
+
+  const weighted = [...Array.from({ length: 12 }, () => 'bomb'), 'clock', 'megabomb', 'megabomb', 'freeze'];
+  const afterBomb = boardDropPoolAfterRepeat(weighted, 'bomb');
+  assert.equal(afterBomb.filter((id) => id === 'bomb').length, 6);
+  assert.deepEqual(afterBomb.filter((id) => id !== 'bomb'), ['clock', 'megabomb', 'megabomb', 'freeze']);
+  assert.ok(afterBomb.length < weighted.length);
+
+  assert.deepEqual(boardDropPoolAfterRepeat(weighted, 'megabomb'), [
+    ...Array.from({ length: 12 }, () => 'bomb'),
+    'clock',
+    'freeze',
+  ]);
+  assert.deepEqual(boardDropPoolAfterRepeat(weighted, 'clock'), [
+    ...Array.from({ length: 12 }, () => 'bomb'),
+    'megabomb',
+    'megabomb',
+  ]);
 });
 
 test('a stage ends only on an empty board; a dry board takes a rescue instead', () => {

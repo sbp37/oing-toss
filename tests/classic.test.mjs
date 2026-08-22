@@ -4,10 +4,12 @@ import {
   CLASSIC_BOARD_LADDER,
   CLASSIC_COMBO_CAP,
   CLASSIC_COMBO_SOFT_RATE,
+  CLASSIC_WOW_BONUS_MULTIPLIER_CAP,
   CLASSIC_START_UNLOCKS,
   CLASSIC_TIME_CAP_SECONDS,
   classicBoardChangeSeconds,
   classicBoardForIndex,
+  classicBoardRuleForIndex,
   classicComboAfterFailure,
   classicComboGain,
   classicComboMultiplier,
@@ -17,6 +19,8 @@ import {
   classicScoreForClear,
   classicStartBoardIndex,
   classicTimeAfterBoardChange,
+  classicWowBonusMultiplier,
+  stageShowcaseBoardDrop,
 } from '../js/data.js';
 import { BoardModel, bonusCatTargetForDimensions, findAllSumTenRects } from '../js/board.js';
 
@@ -34,16 +38,19 @@ test('classic score is the original formula: (cells + cats×5) × min(combo, 25)
   assert.equal(classicScoreForClear(2, 0, 0), 2);
 });
 
-test('classic WOW pays +10 per cell beyond four, outside the multiplier', () => {
-  assert.equal(classicScoreForClear(5, 0, 3), 5 * 3 + 10);
+test('classic WOW bonus grows with combo but stays capped', () => {
+  assert.equal(classicScoreForClear(5, 0, 3), 5 * 3 + 13);
   assert.equal(classicScoreForClear(6, 0, 1), 6 + 20);
   assert.equal(classicScoreForClear(4, 0, 3), 12);
+  assert.equal(classicWowBonusMultiplier(1), 1);
+  assert.equal(classicWowBonusMultiplier(3), 1.3);
+  assert.equal(classicWowBonusMultiplier(100), CLASSIC_WOW_BONUS_MULTIPLIER_CAP);
 });
 
-test('classic combo: +2 only from five cells', () => {
+test('classic combo: a five-cell WOW earns three steps toward an item', () => {
   assert.equal(classicComboGain(2), 1);
   assert.equal(classicComboGain(4), 1);
-  assert.equal(classicComboGain(5), 2);
+  assert.equal(classicComboGain(5), 3);
 });
 
 test('the combo multiplier keeps climbing past the cap, at a quarter rate', () => {
@@ -75,23 +82,23 @@ test('a wrong answer always costs multiplier, above the cap as well as below', (
   }
 });
 
-test('classic ladder: one 5×5 opener, then a row per 판갈이 to the 9-row cap', () => {
+test('classic ladder keeps six columns while rows grow from five to eight', () => {
   assert.deepEqual(
     CLASSIC_BOARD_LADDER.map((step) => [step.rows, step.cols]),
-    [[5, 5], [6, 6], [7, 6], [8, 6], [9, 6]],
+    [[5, 6], [6, 6], [7, 6], [8, 6]],
   );
   // 워밍업 판일수록 판갈이 보상이 작다 — 작은 판은 금방 마르니까.
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 6, 6, 6]);
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [11, 14, 19, 19, 19]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 6, 6]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [11, 14, 19, 19]);
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
-  // 6×6부터는 가로 고정, 세로만 +1씩.
-  CLASSIC_BOARD_LADDER.slice(1).forEach((step, index) => {
+  // 첫 판부터 가로 고정, 세로만 +1씩.
+  CLASSIC_BOARD_LADDER.forEach((step, index) => {
     assert.equal(step.cols, 6);
-    assert.equal(step.rows, 6 + index);
+    assert.equal(step.rows, 5 + index);
   });
   assert.equal(classicBoardForIndex(0), CLASSIC_BOARD_LADDER[0]);
-  assert.equal(classicBoardForIndex(4), CLASSIC_BOARD_LADDER[4]);
-  assert.equal(classicBoardForIndex(9), CLASSIC_BOARD_LADDER[4]);
+  assert.equal(classicBoardForIndex(3), CLASSIC_BOARD_LADDER[3]);
+  assert.equal(classicBoardForIndex(9), CLASSIC_BOARD_LADDER[3]);
   assert.equal(classicBoardForIndex(-1), CLASSIC_BOARD_LADDER[0]);
 });
 
@@ -100,6 +107,23 @@ test('classic number depth starts mid-run and caps at the deepest mix', () => {
   assert.equal(classicRoundForBoard(3), 8);
   assert.equal(classicRoundForBoard(5), 10);
   assert.equal(classicRoundForBoard(20), 10);
+});
+
+test('classic cat bonus boards arrive on a stable four-board cadence', () => {
+  assert.equal(classicBoardRuleForIndex(0), null);
+  assert.equal(classicBoardRuleForIndex(1), null);
+  assert.equal(classicBoardRuleForIndex(2), null);
+  assert.equal(classicBoardRuleForIndex(3)?.catMultiplier, 2);
+  assert.equal(classicBoardRuleForIndex(4), null);
+  assert.equal(classicBoardRuleForIndex(7)?.message, '고양이 보너스 판이다냥!');
+  assert.equal(classicBoardRuleForIndex(-1), null);
+});
+
+test('the first classic board change reaches the rare-item showcase gate', () => {
+  assert.equal(classicDropStage(0), 3);
+  assert.equal(classicDropStage(1), 4);
+  assert.equal(stageShowcaseBoardDrop(classicDropStage(0), () => 0), null);
+  assert.equal(stageShowcaseBoardDrop(classicDropStage(1), () => 0)?.id, 'megabomb');
 });
 
 test('판갈이 pays the finished board\'s bonus up to the classic cap', () => {
@@ -157,6 +181,27 @@ test('generateClassic is instant enough for a mid-timer board change', () => {
   assert.ok(elapsed < 2000, `30 full-size classic boards took ${elapsed.toFixed(0)}ms`);
 });
 
+test('the first two classic boards always offer several visible ways to make ten', () => {
+  const model = new BoardModel(4);
+  for (const rows of [5, 6]) {
+    for (let sample = 0; sample < 200; sample += 1) {
+      model.generateClassic(6, rows, rows);
+      const answers = findAllSumTenRects(model.grid);
+      assert.ok(answers.length >= 8, `${rows}-row sample ${sample}: only ${answers.length} answers`);
+      const multiCell = answers.filter((answer) => answer.count >= 3).length;
+      assert.ok(multiCell >= 3, `${rows}-row sample ${sample}: only ${multiCell} multi-cell answers`);
+    }
+  }
+});
+
+test('a classic cat bonus board doubles cats without losing its opening answer', () => {
+  const { rows, cols } = classicBoardForIndex(3);
+  const model = new BoardModel(4);
+  model.generateClassic(cols, rows, 8, { catMultiplier: 2 });
+  assert.equal(model.bonusCats.size, bonusCatTargetForDimensions(rows, cols) * 2);
+  assert.ok(findAllSumTenRects(model.grid).length >= 1);
+});
+
 test('classic chapters cycle in order while album ownership stays key-based', async () => {
   const {
     CLASSIC_CHAPTERS, CLASSIC_SECRET_CHAPTER,
@@ -184,6 +229,15 @@ test('classic chapters cycle in order while album ownership stays key-based', as
   assert.ok(fresh.every((chapter) => !chapter.unlocked));
   assert.equal(fresh.at(-1).key, CLASSIC_SECRET_CHAPTER.key);
   assert.equal(fresh.at(-1).secret, true);
+  assert.equal(CLASSIC_SECRET_CHAPTER.minScore, 15000);
+  assert.equal(
+    classicChapterGallery({ seenKeys: [], bestScore: 14999 }).at(-1).unlocked,
+    false,
+  );
+  assert.equal(
+    classicChapterGallery({ seenKeys: [], bestScore: 15000 }).at(-1).unlocked,
+    true,
+  );
 
   const seen = classicChapterGallery({ seenKeys: ['garden', 'forest'], bestScore: 900 });
   assert.deepEqual(

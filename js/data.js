@@ -130,6 +130,26 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
 
+export function boardDropPoolAfterRepeat(pool = [], previousType = null) {
+  const choices = Array.isArray(pool) ? pool.filter(Boolean) : [];
+  if (!previousType || !choices.length) return choices;
+  const previousWasTimeItem = ['clock', 'freeze'].includes(previousType);
+  if (previousType !== 'bomb') {
+    const filtered = choices.filter((id) => id !== previousType
+      && !(previousWasTimeItem && ['clock', 'freeze'].includes(id)));
+    return filtered.length ? filtered : choices;
+  }
+
+  const alternatives = choices.filter((id) => id !== 'bomb');
+  if (!alternatives.length) return choices;
+  const bombCount = choices.length - alternatives.length;
+  const reducedBombCount = Math.max(1, Math.ceil(bombCount * 0.45));
+  return [
+    ...Array.from({ length: reducedBombCount }, () => 'bomb'),
+    ...alternatives,
+  ];
+}
+
 export function chooseBoardDrop(combo, random = Math.random, {
   cloverGiven = false,
   pity = {},
@@ -165,11 +185,10 @@ export function chooseBoardDrop(combo, random = Math.random, {
   }
   const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped, lateRun);
   if (!pool.length) return null;
-  // Avoid back-to-back rare effects without forcing a clock after every bomb.
-  const repeatSafePool = previousType && previousType !== 'bomb'
-    ? pool.filter((id) => id !== previousType && !(previousWasTimeItem && ['clock', 'freeze'].includes(id)))
-    : pool;
-  const choices = repeatSafePool.length ? repeatSafePool : pool;
+  // Rare effects never repeat immediately. Bomb stays possible because it is
+  // the core board action, but its weight drops after a bomb so the reward
+  // sequence does not feel visually identical for several milestones.
+  const choices = boardDropPoolAfterRepeat(pool, previousType);
   const index = Math.min(choices.length - 1, Math.floor(Math.max(0, random()) * choices.length));
   return BOARD_DROP_ITEMS[choices[index]];
 }
@@ -268,11 +287,13 @@ export function comboAfterIdle(combo, stage = 1) {
 // the stage ladder without touching the ladder's tuning.
 export const CLASSIC_COMBO_CAP = 25;
 export const CLASSIC_COMBO_SOFT_RATE = 0.25;
+export const CLASSIC_WOW_BONUS_MULTIPLIER_CAP = 4;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
 // The board ladder folds the stage mode's onboarding ramp into the classic
-// loop itself: one 5×5 opener so a first-timer is never dropped onto a
-// wall of numbers (a skilled player clears it in seconds), then 6×6, and
-// from there one extra row per 판갈이 until the vertical cap. With a combo
+// loop itself: a wide 6×5 opener gives a first-timer enough answers without
+// dropping them onto a wall of numbers, then one extra row per 판갈이 up
+// to 6×8. Keeping six columns from the first board holds the tile width
+// steady while the scan field grows downward. With a combo
 // that never times out, the small boards are where the multiplier spools
 // up and the tall boards are where it pays out — the scan field a player
 // earns grows with how deep they got. Each step carries its own 판갈이
@@ -285,15 +306,14 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // "break a few and move on" worth the same number of seconds, which is
 // the one thing a puzzle game cannot afford.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 5, timeFloor: 4, timeBonus: 11 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 4, timeBonus: 11 }),
   Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
   Object.freeze({ rows: 7, cols: 6, timeFloor: 6, timeBonus: 19 }),
   Object.freeze({ rows: 8, cols: 6, timeFloor: 6, timeBonus: 19 }),
-  Object.freeze({ rows: 9, cols: 6, timeFloor: 6, timeBonus: 19 }),
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the
-// player cleared, so the last stubborn corner of a 6×9 is worth real time
+// player cleared, so the last stubborn corner of a 6×8 is worth real time
 // and the difference between a tidy finish and a messy one is felt.
 // Past the ladder's last scene the night gets stingy: each further 판갈이
 // pays half a second less, and no board change ever pays under the floor.
@@ -331,8 +351,22 @@ export function classicBoardForIndex(boardIndex = 0) {
   return CLASSIC_BOARD_LADDER[Math.min(index, CLASSIC_BOARD_LADDER.length - 1)];
 }
 
+const CLASSIC_CAT_BONUS_RULE = Object.freeze({
+  id: 'cat-double',
+  catMultiplier: 2,
+  message: '고양이 보너스 판이다냥!',
+});
+
+// One readable twist at a time: every fourth board doubles the existing
+// cat target. The first three boards remain the plain learning ramp, and
+// the fixed cadence makes the rule feel earned rather than random.
+export function classicBoardRuleForIndex(boardIndex = 0) {
+  const index = Math.max(0, Math.round(Number(boardIndex) || 0));
+  return (index + 1) % 4 === 0 ? CLASSIC_CAT_BONUS_RULE : null;
+}
+
 export function classicComboGain(cellCount) {
-  return Math.round(Number(cellCount) || 0) >= 5 ? 2 : 1;
+  return Math.round(Number(cellCount) || 0) >= 5 ? 3 : 1;
 }
 
 // A hard cap at 25 meant a skilled run spent most of its length with the
@@ -355,13 +389,25 @@ export function classicComboAfterFailure(combo) {
   return Math.floor(value * (value > CLASSIC_COMBO_CAP ? 0.5 : 0.7));
 }
 
-// The original's exact formula: (cells + cats×5) × min(combo, 25), where
-// cellCount already counts the cat cells (the original's totalCells), and
-// a five-cell-plus WOW adds a flat +10 per cell beyond four.
+// The original core stays intact: (cells + cats×5) × combo. A five-cell-plus
+// WOW used to add a flat +10 per extra cell, so the biggest visual moment
+// became rounding error once the multiplier climbed. Its bonus now follows
+// 15% of the live multiplier and caps at x4: clearly worth hunting, but never
+// large enough to replace the combo economy or blow up the score scale.
+export function classicWowBonusMultiplier(combo) {
+  const multiplier = classicComboMultiplier(combo);
+  return Math.min(
+    CLASSIC_WOW_BONUS_MULTIPLIER_CAP,
+    1 + Math.max(0, multiplier - 1) * 0.15,
+  );
+}
+
 export function classicScoreForClear(cellCount, catCount, combo) {
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
   const cats = Math.max(0, Math.round(Number(catCount) || 0));
-  const wideBonus = cells >= 5 ? (cells - 4) * 10 : 0;
+  const wideBonus = cells >= 5
+    ? Math.round((cells - 4) * 10 * classicWowBonusMultiplier(combo))
+    : 0;
   return Math.round((cells + cats * 5) * classicComboMultiplier(combo) + wideBonus);
 }
 
@@ -432,12 +478,12 @@ export function classicChapterThumbUrl(chapter) {
 export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   key: 'aurora',
   label: '오로라 항구',
-  minScore: 5000,
+  minScore: 15000,
   art: 'chapter-aurora',
   hasArt: true,
 });
 
-// The 5×5 opener is a ramp for a first-timer and a toll for everybody
+// The 6×5 opener is a ramp for a first-timer and a toll for everybody
 // else, so a personal best buys the right to start further in. This is the
 // only progress in the game that survives a run ending.
 export const CLASSIC_START_UNLOCKS = Object.freeze([
@@ -724,10 +770,20 @@ export function comboMilestoneCrossed(previousCombo, nextCombo) {
 }
 
 export function itemRewardCountdown(combo, stage = 1) {
-  if (Math.max(1, Math.round(Number(stage) || 1)) < 3) return 0;
-  const streak = Math.max(0, Math.round(Number(combo) || 0));
-  const remainder = streak % ITEM_REWARD_INTERVAL;
-  return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
+  return itemRewardStatus(combo, combo, stage).remaining;
+}
+
+export function itemRewardStatus(combo, bestCombo = 0, stage = 1) {
+  if (Math.max(1, Math.round(Number(stage) || 1)) < 3) {
+    return Object.freeze({ remaining: 0, progress: 0, target: 0 });
+  }
+  const current = Math.max(0, Math.round(Number(combo) || 0));
+  const highWater = Math.max(current, Math.max(0, Math.round(Number(bestCombo) || 0)));
+  const target = (Math.floor(highWater / ITEM_REWARD_INTERVAL) + 1) * ITEM_REWARD_INTERVAL;
+  const remaining = Math.max(1, target - current);
+  const progress = Math.max(0, (ITEM_REWARD_INTERVAL - Math.min(ITEM_REWARD_INTERVAL, remaining))
+    / ITEM_REWARD_INTERVAL);
+  return Object.freeze({ remaining, progress, target });
 }
 
 // A stage ends when — and only when — its board is completely empty. Running
