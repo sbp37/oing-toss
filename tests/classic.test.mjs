@@ -189,6 +189,15 @@ test('classic chapters cycle in order while album ownership stays key-based', as
   assert.ok(fresh.every((chapter) => !chapter.unlocked));
   assert.equal(fresh.at(-1).key, CLASSIC_SECRET_CHAPTER.key);
   assert.equal(fresh.at(-1).secret, true);
+  assert.equal(CLASSIC_SECRET_CHAPTER.minScore, 15000);
+  assert.equal(
+    classicChapterGallery({ seenKeys: [], bestScore: 14999 }).at(-1).unlocked,
+    false,
+  );
+  assert.equal(
+    classicChapterGallery({ seenKeys: [], bestScore: 15000 }).at(-1).unlocked,
+    true,
+  );
 
   const seen = classicChapterGallery({ seenKeys: ['garden', 'forest'], bestScore: 900 });
   assert.deepEqual(

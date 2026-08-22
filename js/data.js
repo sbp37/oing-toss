@@ -464,7 +464,7 @@ export function classicChapterThumbUrl(chapter) {
 export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   key: 'aurora',
   label: '오로라 항구',
-  minScore: 5000,
+  minScore: 15000,
   art: 'chapter-aurora',
   hasArt: true,
 });
