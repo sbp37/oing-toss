@@ -105,6 +105,7 @@ export class GameUI {
     this.startCountdownToken = 0;
     this.elements = {
       round: document.querySelector('#round-value'),
+      roundLabel: document.querySelector('#round-label'),
       score: document.querySelector('#score-value'),
       scoreReadout: document.querySelector('.score-readout'),
       time: document.querySelector('#time-value'),
@@ -1758,6 +1759,7 @@ export class GameUI {
   updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
     this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
     this.elements.round.textContent = String(round);
+    if (this.elements.roundLabel) this.elements.roundLabel.textContent = classicMode ? '판' : 'STAGE';
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수

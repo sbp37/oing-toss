@@ -39,6 +39,7 @@
 | `assets/ui/play-control-pause-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 일시정지 버튼 | 44–55px, 1:1 유지 |
 | `assets/ui/play-control-sound-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 사운드 버튼 | 44–55px, 1:1 유지 |
 | `assets/ui/play-stage-badge-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 분리하고 기존 리본에 STAGE 라벨만 정리 | 플레이 중앙 독립 STAGE 배지 | 86–142px, 고유 비율 유지 |
+| `assets/ui/play-round-badge-v1.webp` | `assets/ui/play-stage-badge-v3.webp`의 형태·색·알파를 보존하고 리본의 고정 영문만 제거 | 플레이 중앙 판/STAGE 공용 배지, 라벨은 HTML | 73–88px, 623:427 비율 유지 |
 | `assets/ui/play-timer-pill-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 우측 타이머 셸 | 98–145px, 고유 비율 유지 |
 | `assets/ui/play-status-bar-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 기록 패널만 분리하고 샘플 게이지를 제거 | 점수·성공 진행·콤보 공용 상태 패널 | 화면 폭 255–412px, 고유 비율 유지 |
 | `assets/ui/play-status-bar-v4.webp` | `play-status-bar-v3.png`의 모서리를 보존한 세로 9-slice 확장 | 플레이 상태바의 라벨·수치·진행바 정렬 공간 | 화면 폭 255–412px, 1799×300 고유 비율 유지 |

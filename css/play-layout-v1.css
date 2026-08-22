@@ -4557,6 +4557,43 @@
   display: none;
 }
 
+/* Classic counter label ----------------------------------------------------
+   The reachable game is a continuous classic run, so its shield counts
+   boards rather than promising a separate stage mission. The painted badge
+   now ships with a blank ribbon and this short label stays dynamic for the
+   dormant stage harness. */
+.play-ui-v4 .play-top-controls .round-mini .round-ribbon-label,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini .round-ribbon-label {
+  position: absolute;
+  z-index: 3;
+  left: 20%;
+  top: 18%;
+  width: 60%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #fff9ef;
+  font-family: var(--font-display);
+  font-size: clamp(7px, 2vw, 9px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .035em;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(150,50,66,.48);
+  transform: none;
+  pointer-events: none;
+}
+
+.play-ui-v4.is-classic-mode .play-top-controls .round-mini .round-ribbon-label,
+.screen-play.play-ui-v4.is-classic-mode[data-stage-band] .play-top-controls .round-mini .round-ribbon-label {
+  top: 17%;
+  font-size: clamp(10px, 2.8vw, 12px);
+  letter-spacing: 0;
+}
+
 /* 지워진 칸의 그림자를 절반으로.
    ===============================================================
    칸이 지워지면 그 자리에 그림이 드러나는데, 판이 파인 것처럼 보이라고 얹은 위쪽

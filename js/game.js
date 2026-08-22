@@ -1050,6 +1050,7 @@ class OingGame {
       comboMilestone,
       catCount,
     });
+    const completedFirstTutorial = this.tutorialActive && !storageAdapter.hasSeenDragTutorial();
     this.completeTutorial();
     successHaptic(this.state.combo);
     duckMusic(wow ? 560 : 390, wow ? 0.48 : 0.64);
@@ -1080,7 +1081,12 @@ class OingGame {
     );
     this.updateHUD();
     this.ui.pulseGoal(this.state.combo);
-    this.speakForSuccess(catCount, wow, successLevel);
+    if (completedFirstTutorial) {
+      this.ui.setPlayCharacter('success', 900);
+      this.ui.showMessage('오잉! 사각형 안의 합이 10!', 1900, 'firstSuccess');
+    } else {
+      this.speakForSuccess(catCount, wow, successLevel);
+    }
     if (cloverBonusPoints > 0) {
       this.showCatMessage('cloverSuccess');
     } else if (clutchBonusPoints > 0) {
