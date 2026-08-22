@@ -1346,10 +1346,21 @@ export class BoardModel {
     const pool = richer.length ? richer : answers;
     const centerRow = (this.rows - 1) / 2;
     const centerCol = (this.cols - 1) / 2;
-    return pool.slice().sort((a, b) => {
+    // Cleared cells are valid parts of a selection. Prefer a readable span
+    // around the live numbers instead of reducing every hint to two glowing
+    // buttons. Cap the extra empty area so a sparse late board never gets one
+    // giant frame covering nearly the whole grid.
+    const readable = pool.filter((answer) => {
+      const area = (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1);
+      return area <= answer.count + 4;
+    });
+    const candidates = readable.length ? readable : pool;
+    return candidates.slice().sort((a, b) => {
+      const areaA = (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1);
+      const areaB = (b.r2 - b.r1 + 1) * (b.c2 - b.c1 + 1);
       const centerA = Math.abs((a.r1 + a.r2) / 2 - centerRow) + Math.abs((a.c1 + a.c2) / 2 - centerCol);
       const centerB = Math.abs((b.r1 + b.r2) / 2 - centerRow) + Math.abs((b.c1 + b.c2) / 2 - centerCol);
-      return a.count - b.count || centerA - centerB;
+      return areaB - areaA || b.count - a.count || centerA - centerB;
     })[0];
   }
 

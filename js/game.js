@@ -1358,6 +1358,7 @@ class OingGame {
     if (enteredChapter) this.applyClassicChapter();
     this.queueStageShowcase(classicDropStage(this.classic.boardIndex));
     const placedItems = this.buildRound();
+    this.ui.showClassicBoardEntry(this.classic.boardsPlayed);
     await this.ui.animateShuffleIn();
     if (placedItems.length) this.announceBoardItems(placedItems);
     else itemHaptic();

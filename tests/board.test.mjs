@@ -272,6 +272,17 @@ assert.deepEqual(analyzeAnswerSpread(hintModel.grid, hintModel.findAnswers()), {
 });
 assert.equal(hintModel.findEasyAnswer().count, 2, 'onboarding keeps the easiest two-cell answer');
 assert.ok(hintModel.findHintAnswer().count >= 3, 'live hints prioritize a richer three-cell answer');
+
+const sparseHintModel = new BoardModel(6);
+sparseHintModel.rows = 1;
+sparseHintModel.cols = 6;
+sparseHintModel.grid = [[3, 0, 0, 0, 0, 7]];
+sparseHintModel.bonusCats = new Set();
+assert.deepEqual(
+  sparseHintModel.findHintAnswer(),
+  { r1: 0, c1: 0, r2: 0, c2: 5, count: 2 },
+  'a sparse hint frames the full selectable rectangle between its live numbers',
+);
 const megaGrid = Array.from({ length: 6 }, () => Array(6).fill(2));
 megaGrid[3][3] = null;
 const megaCells = megaBombCells(megaGrid, 3, 3);

@@ -5054,3 +5054,120 @@
   .play-ui-v4 .board.is-shuffling-in .tile,
   .play-ui-v4 .shuffle-fx::before { animation-duration: 1ms !important; }
 }
+
+/* Immediate reveal, stronger frame and footer reach -----------------------
+   Correct tiles uncover the chapter after the press beat rather than after
+   every particle has finished. The board gets one solid cream/slate rim,
+   while the two real tools share a measured baseline above the safe edge. */
+#play-screen.play-ui-v4 .tile.is-cleared-reveal,
+#play-screen.play-ui-v4[data-chapter] .tile.is-cleared-reveal {
+  border: 0;
+  outline: 0;
+  background-color: transparent;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .26)), rgba(255, 255, 255, var(--win-veil-b, .20))),
+    var(--chapter-art);
+  background-size: auto, var(--win-size, cover);
+  background-position: 0 0, var(--win-pos, center);
+  box-shadow: inset 0 0 0 1px rgba(38, 67, 84, .14);
+  animation: tile-chapter-reveal 156ms ease-out both;
+}
+
+#play-screen.play-ui-v4 .tile.is-cleared-reveal > * {
+  opacity: 0;
+}
+
+@keyframes tile-chapter-reveal {
+  from { opacity: .72; transform: scale(.94); }
+  to { opacity: 1; transform: none; }
+}
+
+.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  max-width: calc(100% - 12px);
+  background-color: #e3d7c5;
+  box-shadow:
+    0 0 0 3px rgba(255, 253, 245, .98),
+    0 0 0 6px rgba(205, 181, 145, .94),
+    0 0 0 7px rgba(61, 82, 98, .44),
+    0 8px 14px rgba(45, 68, 86, .22);
+}
+
+/* Hint the selectable rectangle, including the quiet windows between the
+   numbers. The live digits still pulse, but the player reads one region. */
+#play-screen.play-ui-v4 .tile.is-hint-area:not(.is-hint) {
+  box-shadow:
+    inset 0 0 0 2px rgba(77, 190, 163, .44),
+    inset 0 0 12px rgba(193, 255, 236, .24);
+}
+
+#play-screen.play-ui-v4 .hint-region {
+  border: 4px solid rgba(28, 157, 124, .94);
+  background: rgba(122, 227, 196, .13);
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, .82),
+    0 0 0 6px rgba(43, 154, 126, .15),
+    inset 0 0 14px rgba(255, 255, 255, .48);
+}
+
+.play-ui-v4 .play-footer,
+.play-ui-v4.is-tall-board .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+  align-self: end;
+  margin-bottom: clamp(18px, 2.8dvh, 26px);
+}
+
+.play-ui-v4 .item-actions {
+  justify-items: center;
+  align-items: end;
+}
+
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state],
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  align-self: end;
+  justify-self: center;
+}
+
+/* Board count is a transition marker, not another modal. */
+.play-ui-v4 .board-entry {
+  position: absolute;
+  z-index: 24;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  min-width: 72px;
+  height: 38px;
+  padding: 0 16px;
+  border: 2px solid rgba(255, 255, 255, .94);
+  border-radius: 999px;
+  background: rgba(255, 247, 226, .96);
+  box-shadow: 0 4px 0 rgba(205, 171, 120, .48), 0 8px 16px rgba(53, 83, 102, .18);
+  color: #e5657e;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 5.8vw, 25px);
+  line-height: 1;
+  pointer-events: none;
+  animation: board-entry-beat 620ms cubic-bezier(.18, .82, .24, 1) both;
+}
+
+@keyframes board-entry-beat {
+  0% { opacity: 0; transform: translate(-50%, -38%) scale(.72); }
+  24%, 70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -62%) scale(.94); }
+}
+
+@media (max-height: 700px) {
+  .play-ui-v4 .play-footer,
+  .play-ui-v4.is-tall-board .play-footer { margin-bottom: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #play-screen.play-ui-v4 .tile.is-cleared-reveal,
+  .play-ui-v4 .board-entry { animation-duration: 1ms !important; }
+}

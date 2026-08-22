@@ -763,7 +763,13 @@ export class GameUI {
     this.boardFrame.dataset.comboImpact = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     this.spawnParticles(rect, combo);
     this.showScoreFlight(rect, combo);
-    await delay(270);
+    // Keep the press/pop beat, but uncover the chapter before the particles
+    // finish. Waiting for the whole celebration made correct cells look as
+    // though they disappeared one frame late even though the model was
+    // already clear and input had been released.
+    await delay(74);
+    tiles.forEach((tile) => tile.classList.add('is-cleared-reveal'));
+    await delay(156);
     this.elements.marquee.classList.remove('is-bursting', 'is-visible');
     this.boardFrame.classList.remove('is-success-resolving');
     delete this.boardFrame.dataset.comboImpact;
@@ -820,9 +826,11 @@ export class GameUI {
   showHint(rect) {
     clearTimeout(this.hintTimer);
     this.board.classList.remove('is-hinting');
-    const tiles = cellsInRect(rect)
+    const areaTiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
-      .filter((tile) => tile && !tile.dataset.item && !tile.classList.contains('is-empty'));
+      .filter((tile) => tile && !tile.dataset.item);
+    const tiles = areaTiles.filter((tile) => !tile.classList.contains('is-empty'));
+    areaTiles.forEach((tile) => tile.classList.add('is-hint-area'));
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--hint-index', index);
       tile.classList.add('is-hint');
@@ -863,6 +871,7 @@ export class GameUI {
       tile.classList.remove('is-hint');
       tile.style.removeProperty('--hint-index');
     });
+    this.board.querySelectorAll('.tile.is-hint-area').forEach((tile) => tile.classList.remove('is-hint-area'));
     this.board.classList.remove('is-hinting');
     this.boardFrame.querySelector('.hint-region')?.remove();
   }
@@ -933,6 +942,9 @@ export class GameUI {
     this.clearSelection();
     this.hideTutorial();
     this.board.classList.remove('is-hinting', 'is-shuffling-out', 'is-shuffling-in');
+    this.board.querySelectorAll('.tile.is-cleared-reveal, .tile.is-hint-area').forEach((tile) => {
+      tile.classList.remove('is-cleared-reveal', 'is-hint-area');
+    });
     this.board.querySelectorAll('.tile.is-bomb-target').forEach((tile) => {
       tile.classList.remove('is-bomb-target');
       tile.style.removeProperty('--bomb-preview-delay');
@@ -962,6 +974,7 @@ export class GameUI {
       '.match-confirmation',
       '.final-second-pop',
       '.stage-entry',
+      '.board-entry',
       '.stage-growth-confetti',
     ].join(',')).forEach((element) => element.remove());
     this.clearEndAnswers();
@@ -1058,10 +1071,11 @@ export class GameUI {
       effect.className = 'bomb-fx';
       effect.style.left = `${(bounds.left + bounds.right) / 2}px`;
       effect.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
-      const icon = document.createElement('img');
-      icon.src = 'assets/icons/items/bomb.webp';
-      icon.alt = '';
-      effect.append(icon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      // The bomb is already visible in its board cell (or has flown in from
+      // the inventory button). Repeating the same bomb picture at impact
+      // looked like a duplicate item landing on top of it, so impact is now
+      // rings, shards and syrup drops only.
+      effect.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
       for (let index = 0; index < 5; index += 1) {
         const drop = document.createElement('b');
         drop.style.setProperty('--bomb-drop-index', String(index));
@@ -1593,6 +1607,15 @@ export class GameUI {
     entry.remove();
     this.boardFrame.classList.remove('is-round-arriving');
     this.elements.roundMini.classList.remove('is-advancing');
+  }
+
+  showClassicBoardEntry(boardNumber = 1) {
+    this.boardFrame.querySelector('.board-entry')?.remove();
+    const entry = document.createElement('div');
+    entry.className = 'board-entry';
+    entry.textContent = `${Math.max(1, Math.round(Number(boardNumber) || 1))}판`;
+    this.boardFrame.appendChild(entry);
+    window.setTimeout(() => entry.remove(), 620);
   }
 
   showRoundReady(duration = 420) {
