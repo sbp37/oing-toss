@@ -4,7 +4,7 @@
 // stale build can never half-survive into a new one. Nothing here calls
 // skipWaiting - a new worker takes over the next time the game is launched
 // rather than swapping code out from under a run in progress.
-const CACHE = 'oing-v1';
+const CACHE = 'oing-v2';
 
 // Enough to boot with no network: the document, the styles, every module the
 // entry pulls in, the two fonts, the home art and the app icons. Everything
@@ -95,6 +95,26 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.headers.has('range')) return;
+
+  // CSS and modules keep stable filenames, so cache-first can strand a phone
+  // on an older visual or game build even after a deployment. Ask the network
+  // first for mutable code and keep the cached copy as the offline fallback.
+  // The browser HTTP cache still avoids downloading unchanged bytes.
+  if (url.pathname.includes('/css/') || url.pathname.includes('/js/')) {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(request);
+        if (fresh.ok && fresh.type === 'basic') {
+          const cache = await caches.open(CACHE);
+          cache.put(request, fresh.clone()).catch(() => {});
+        }
+        return fresh;
+      } catch {
+        return (await caches.match(request)) || Response.error();
+      }
+    })());
+    return;
+  }
 
   // Everything else is content-addressed by filename in this project, so cache
   // first is safe and is what makes a second launch instant.

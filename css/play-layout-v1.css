@@ -2819,8 +2819,8 @@
    garden bleed straight through the middle of a live board. Dim with
    filter only; opacity stays at 1 so the tile face keeps hiding what it
    is supposed to hide. */
-.play-ui-v4 .board.is-hinting .tile:not(.is-hint),
-.play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
+#play-screen.play-ui-v4 .board.is-hinting .tile:not(.is-hint),
+#play-screen.play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
   opacity: 1;
   filter: saturate(.72);
 }
@@ -4753,4 +4753,128 @@
     inset 0 0 0 1px rgba(255, 255, 255, .92),
     0 0 0 3px rgba(75, 196, 105, .32),
     0 7px 20px rgba(51, 156, 80, .28);
+}
+
+/* Crisp board grooves and steady idle paint --------------------------------
+   The previous pass tried to separate pale syrup from pale scenery with a
+   white keyline and soft shadows. On a phone those layers merged into haze,
+   while every blurred shadow enlarged the paint area of every idle cell.
+
+   Separation now comes from one quiet blue-grey bed visible in the gutter.
+   The syrup artwork keeps its baked glass edge; CSS adds only a crisp outer
+   rim and a zero-blur two-pixel lift. Cleared windows get one inset hairline,
+   not a blurred recess. This keeps the picture reward readable and removes
+   the standing blur cost from the full grid. */
+.play-ui-v4 .board,
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
+  gap: clamp(2.4px, .68vw, 3px);
+  background-color: #9ab4c4;
+  background-image: none;
+}
+
+.play-ui-v4 .tile {
+  filter: none;
+  box-shadow: none;
+  transition: transform 32ms cubic-bezier(.2, .85, .3, 1.12);
+}
+
+.play-ui-v4 .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"],
+.play-ui-v4 .tile.is-bonus-cat,
+.play-ui-v4 .tile.is-board-item {
+  border: 0;
+  outline: 1px solid rgba(50, 70, 86, .66);
+  outline-offset: 0;
+  background-color: #edf5f3;
+  box-shadow: 0 2px 0 rgba(45, 66, 82, .25);
+}
+
+.play-ui-v4 .tile.is-bonus-cat {
+  filter: none;
+}
+
+.play-ui-v4 .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"] {
+  background-image: var(--tile-art);
+}
+
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 0;
+  outline: 0;
+  background-color: transparent;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .32)), rgba(255, 255, 255, var(--win-veil-b, .26))),
+    var(--chapter-art);
+  background-size: auto, var(--win-size, cover);
+  background-position: 0 0, var(--win-pos, center);
+  box-shadow: inset 0 0 0 1px rgba(48, 75, 94, .40);
+  filter: none;
+}
+
+/* One board veil is cheaper and clearer than filtering every ordinary tile. */
+.play-ui-v4 .board.is-hinting .tile:not(.is-hint),
+.play-ui-v4 .board.is-tutorial-active .tile:not(.is-tutorial) {
+  opacity: 1;
+  filter: none;
+}
+
+#play-screen.play-ui-v4 .board.is-dragging .tile.is-selected,
+#play-screen.play-ui-v4 .board.is-perfect .tile.is-selected,
+#play-screen.play-ui-v4 .tile.is-tap-anchor {
+  filter: none;
+}
+
+/* Active states are short-lived and may keep a small focused glow. */
+#play-screen.play-ui-v4 .tile.is-success {
+  outline-color: rgba(236, 99, 132, .78);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, .88),
+    0 0 0 3px rgba(255, 124, 153, .32),
+    0 4px 8px rgba(227, 111, 100, .16);
+  filter: none;
+}
+
+#play-screen.play-ui-v4 .tile.is-fail {
+  outline-color: rgba(128, 99, 113, .72);
+  box-shadow: inset 0 0 0 2px rgba(139, 112, 125, .50);
+  filter: none;
+}
+
+#play-screen.play-ui-v4 .tile.is-hint {
+  outline: 2px solid rgba(43, 168, 144, .90);
+  outline-offset: -1px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .92),
+    0 0 0 3px rgba(70, 197, 172, .32),
+    0 4px 9px rgba(48, 147, 129, .20);
+  filter: none;
+}
+
+#play-screen.play-ui-v4 .tile.is-tutorial {
+  outline: 2px solid rgba(235, 91, 125, .84);
+  outline-offset: -1px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .88),
+    0 0 0 3px rgba(255, 106, 139, .30),
+    0 4px 9px rgba(204, 77, 108, .18);
+}
+
+#play-screen.play-ui-v4 .tile.is-clover-hint,
+#play-screen.play-ui-v4 .tile.is-clover-hint[class*="value-"],
+#play-screen.play-ui-v4 .tile.is-clover-hint.is-bonus-cat {
+  outline: 2px solid rgba(45, 166, 86, .90);
+  outline-offset: -1px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .90),
+    0 0 0 3px rgba(62, 181, 91, .34),
+    0 4px 9px rgba(45, 137, 68, .20);
+}
+
+/* One frame shadow is enough once the board bed itself supplies the edge. */
+.play-ui-v4 .board-frame,
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, .94),
+    0 0 0 4px rgba(69, 91, 109, .34),
+    0 7px 14px rgba(48, 70, 91, .20);
 }
