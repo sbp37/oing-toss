@@ -820,6 +820,23 @@ class OingGame {
     return { previousCombo, earnedDrop };
   }
 
+  queueStageShowcase(stage) {
+    if (!this.state.stageShowcaseEligible) return null;
+    const showcaseDrop = stageShowcaseBoardDrop(
+      stage,
+      () => (Math.min(2, this.state.stageShowcaseIndex) + 0.5) / 3,
+      this.state.stageShowcaseGiven,
+    );
+    if (!showcaseDrop) return null;
+    this.boardItems.queue(showcaseDrop.id, { earnedAtCombo: this.state.combo, showcase: true });
+    this.state.stageShowcaseGiven = true;
+    if (!this.runtime.testMode) storageAdapter.markRareShowcaseSeen();
+    this.state.lastBoardDropType = showcaseDrop.id;
+    if (showcaseDrop.id === 'clover') this.state.cloverDropped = true;
+    this.telemetry?.itemEarned(showcaseDrop.id);
+    return showcaseDrop;
+  }
+
   refreshComboDeadline(now = performance.now()) {
     // Classic combo never times out — only a wrong answer cuts it (원조 규칙).
     this.state.comboExpiresAt = this.state.combo > 0 && !this.classic
@@ -1329,9 +1346,11 @@ class OingGame {
     // preview, and this picture is only supposed to be earned cell by cell.
     // The arrival still gets announced — in the speech bubble, in words.
     if (enteredChapter) this.applyClassicChapter();
-    this.buildRound();
+    this.queueStageShowcase(classicDropStage(this.classic.boardIndex));
+    const placedItems = this.buildRound();
     await this.ui.animateShuffleIn();
-    itemHaptic();
+    if (placedItems.length) this.announceBoardItems(placedItems);
+    else itemHaptic();
     this.inputGuardUntil = performance.now() + 160;
   }
 
@@ -1470,21 +1489,7 @@ class OingGame {
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(nextRound);
     const unlockGrant = itemUnlockGrantForStage(nextRound);
     if (unlockGrant) this.grantItems(unlockGrant, { source: 'earned' });
-    const showcaseDrop = this.state.stageShowcaseEligible
-      ? stageShowcaseBoardDrop(
-        nextRound,
-        () => (Math.min(2, this.state.stageShowcaseIndex) + 0.5) / 3,
-        this.state.stageShowcaseGiven,
-      )
-      : null;
-    if (showcaseDrop) {
-      this.boardItems.queue(showcaseDrop.id, { earnedAtCombo: this.state.combo, showcase: true });
-      this.state.stageShowcaseGiven = true;
-      if (!this.runtime.testMode) storageAdapter.markRareShowcaseSeen();
-      this.state.lastBoardDropType = showcaseDrop.id;
-      if (showcaseDrop.id === 'clover') this.state.cloverDropped = true;
-      this.telemetry?.itemEarned(showcaseDrop.id);
-    }
+    this.queueStageShowcase(nextRound);
     this.state.timeLeft = cappedSessionTime(this.state.timeLeft, timeBonus);
     this.updateHUD();
     this.ui.showStageTimeBonus(awardedTimeBonus);

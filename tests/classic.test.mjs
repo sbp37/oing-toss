@@ -19,6 +19,7 @@ import {
   classicStartBoardIndex,
   classicTimeAfterBoardChange,
   classicWowBonusMultiplier,
+  stageShowcaseBoardDrop,
 } from '../js/data.js';
 import { BoardModel, bonusCatTargetForDimensions, findAllSumTenRects } from '../js/board.js';
 
@@ -105,6 +106,13 @@ test('classic number depth starts mid-run and caps at the deepest mix', () => {
   assert.equal(classicRoundForBoard(3), 8);
   assert.equal(classicRoundForBoard(5), 10);
   assert.equal(classicRoundForBoard(20), 10);
+});
+
+test('the first classic board change reaches the rare-item showcase gate', () => {
+  assert.equal(classicDropStage(0), 3);
+  assert.equal(classicDropStage(1), 4);
+  assert.equal(stageShowcaseBoardDrop(classicDropStage(0), () => 0), null);
+  assert.equal(stageShowcaseBoardDrop(classicDropStage(1), () => 0)?.id, 'megabomb');
 });
 
 test('판갈이 pays the finished board\'s bonus up to the classic cap', () => {
