@@ -1204,9 +1204,12 @@ export class BoardModel {
       const answerRects = findAllSumTenRects(candidate.grid);
       const answers = answerRects.length;
       const multiCell = answerRects.filter((answer) => answer.count >= 3).length;
-      const quality = answers + Math.min(multiCell, wantedMultiCell) * wanted;
-      if (!best || quality > best.quality) {
-        best = { candidate, answers, multiCell, quality };
+      const targetCoverage = Math.min(answers, wanted)
+        + Math.min(multiCell, wantedMultiCell) * wanted;
+      if (!best
+        || targetCoverage > best.targetCoverage
+        || (targetCoverage === best.targetCoverage && answers > best.answers)) {
+        best = { candidate, answers, multiCell, targetCoverage };
       }
       if (answers >= wanted && multiCell >= wantedMultiCell) break;
     }
