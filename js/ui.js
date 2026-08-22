@@ -184,6 +184,12 @@ export class GameUI {
       resultKicker: document.querySelector('#result-kicker'),
       resultStageProgress: document.querySelector('#result-stage-progress'),
       retryButton: document.querySelector('#retry-button'),
+      cardAward: document.querySelector('#result-card-award'),
+      cardAwardFace: document.querySelector('#result-card-award-face'),
+      cardAwardName: document.querySelector('#result-card-award-name'),
+      cardAwardCount: document.querySelector('#result-card-award-count'),
+      cardAwardMore: document.querySelector('#result-card-award-more'),
+      cardAwardChapter: document.querySelector('#result-card-award-chapter'),
       toast: document.querySelector('#toast'),
     };
   }
@@ -2216,9 +2222,14 @@ export class GameUI {
     score, maxCombo, round, successCount = 0, catsCollected = 0,
     catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
-    classic = null,
+    classic = null, cardAward = null,
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
+    // 지난 판의 연출이 남아 있으면 새 판의 첫 프레임에 그것이 먼저 보인다.
+    this.resetCardAward();
+    // 카드 패널이 서는 판에서는 장면 소식을 패널이 대신 전한다. 같은 말을
+    // 두 줄에 나눠 쓰면 무엇이 이번 판의 수확인지 흐려진다.
+    const cardAwardActive = Boolean(cardAward?.fresh?.length);
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
     // Classic reads its own sheet: the round figure is boards survived, and
@@ -2241,7 +2252,7 @@ export class GameUI {
         Math.max(0, Number(classic?.collectionTotal) || 0),
       );
       const collectionTotal = Math.max(0, Number(classic?.collectionTotal) || 0);
-      this.elements.resultChapterEarned.hidden = !classic || collected.length === 0;
+      this.elements.resultChapterEarned.hidden = !classic || collected.length === 0 || cardAwardActive;
       this.elements.resultChapterEarned.textContent = collected.length
         ? `새 그림 획득! ${collectionCount}/${collectionTotal}`
         : '';
@@ -2314,6 +2325,12 @@ export class GameUI {
     // pressing, and it is how the original ends a run.
     this.showScreen('result', { behind: 'play' });
     if (newRecord) this.launchRecordCelebration();
+    // 신기록 콘페티가 세 번에 나눠 터지는 동안 카드까지 같이 나오면 둘 다
+    // 배경이 된다. 콘페티가 있는 판에서는 카드를 0.4초 뒤로 물린다.
+    this.playCardAward(cardAward, {
+      chapterLabel: cardAwardActive ? (collected.at(-1) || '') : '',
+      holdBack: Boolean(newRecord),
+    });
     void this.elements.resultRecordMeter.offsetWidth;
     this.elements.resultRecordMeter.classList.add('is-animating');
     this.animateFinalScore(score);
@@ -2323,6 +2340,65 @@ export class GameUI {
     void screen.offsetWidth;
     screen.classList.add('is-entering');
     setTimeout(() => screen.classList.remove('is-entering'), 680);
+  }
+
+  resetCardAward() {
+    const panel = this.elements.cardAward;
+    if (!panel) return;
+    this.cardAwardTimers?.forEach(clearTimeout);
+    this.cardAwardTimers = [];
+    panel.hidden = true;
+    panel.classList.remove('is-shown', 'is-revealed', 'is-tucked');
+    // 그림을 남겨두면, 그림 없는 카드가 하나라도 생기는 날 지난 판의 앞면이
+    // 그대로 뒤집혀 나온다.
+    this.elements.cardAwardFace?.style.removeProperty('background-image');
+  }
+
+  // 이번 판에 처음 열린 카드를 한 장 세운다.
+  //
+  // 여러 장이 한꺼번에 열려도 크게 서는 것은 한 장뿐이다 - 카드가 줄지어
+  // 나오면 넘기는 화면이 되고, 그러면 한 장 한 장이 가벼워진다. 크게 서는
+  // 한 장은 목록의 마지막, 즉 조건이 가장 무거운 카드다.
+  //
+  // 그림은 격자에 깔던 썸네일(300x400)을 그대로 쓴다. 원본은 눌러서 크게 볼
+  // 때만 받는 물건이고, 결과 화면에서 1.4MB를 새로 받을 이유가 없다.
+  playCardAward(award, { chapterLabel = '', holdBack = false } = {}) {
+    const panel = this.elements.cardAward;
+    const hero = award?.fresh?.at(-1);
+    if (!panel || !hero) return false;
+    const others = award.fresh.length - 1;
+    const thumb = oingCardThumbUrl(hero);
+    if (this.elements.cardAwardFace && thumb) {
+      this.elements.cardAwardFace.style.backgroundImage = cssUrl(thumb);
+    }
+    this.elements.cardAwardName.textContent = hero.label;
+    this.elements.cardAwardCount.textContent = `${award.unlockedCount} / ${award.total}`;
+    // 화면에는 "3 / 9"가 맞지만, 읽어주는 기계에게 슬래시는 말이 되지 않는다.
+    this.elements.cardAwardCount.setAttribute(
+      'aria-label',
+      `오잉 카드 ${award.total}장 중 ${award.unlockedCount}장 수집`,
+    );
+    this.elements.cardAwardMore.hidden = others <= 0;
+    this.elements.cardAwardMore.textContent = others > 0 ? `외 ${others}장` : '';
+    const chapter = typeof chapterLabel === 'string' ? chapterLabel.trim() : '';
+    this.elements.cardAwardChapter.hidden = !chapter;
+    this.elements.cardAwardChapter.textContent = chapter ? `새 장면도 열렸어 · ${chapter}` : '';
+
+    // 자리는 지금 잡아둔다. 0.3초 뒤에 자리까지 같이 생기면 아래 내용이
+    // 통째로 밀려 내려가고, 그 움직임이 카드보다 크게 읽힌다.
+    panel.hidden = false;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      panel.classList.add('is-shown', 'is-revealed');
+      return true;
+    }
+    // 뒷면이 서고(0.3초) 곧 뒤집힌다(0.76초 시작). 뒤집기는 520ms인데 앞면은
+    // 90도를 넘는 순간 보이므로, 그림이 실제로 드러나는 시점은 1초 언저리다.
+    const enterAt = holdBack ? 700 : 300;
+    this.cardAwardTimers = [
+      window.setTimeout(() => panel.classList.add('is-shown'), enterAt),
+      window.setTimeout(() => panel.classList.add('is-revealed'), enterAt + 460),
+    ];
+    return true;
   }
 
   // The original's record moment pops from several places at once, not one
@@ -2423,12 +2499,15 @@ export class GameUI {
     }
   }
 
-  toast(message) {
+  // duration은 부르는 쪽이 정할 수 있게 열어둔다. 기본값은 기존 그대로라
+  // 이미 있는 토스트들의 길이는 하나도 바뀌지 않는다.
+  toast(message, duration = 1800) {
     const toast = this.elements.toast;
     toast.textContent = message;
     toast.classList.remove('is-visible');
     void toast.offsetWidth;
     toast.classList.add('is-visible');
-    setTimeout(() => toast.classList.remove('is-visible'), 1800);
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => toast.classList.remove('is-visible'), Math.max(400, Number(duration) || 1800));
   }
 }

@@ -556,6 +556,24 @@ export function oingCardRows(totals = {}) {
   });
 }
 
+// 이번 판에 새로 열린 카드는 "판 시작 때 열려 있던 목록"과 "지금 목록"의
+// 차집합이다. 카드마다 획득 플래그를 따로 저장하지 않는 이유가 여기에 있다 -
+// 저장해두면 조건을 손보는 순간 이미 열린 카드와 어긋나기 시작하고, 갤러리와
+// 결과 화면이 서로 다른 말을 하게 된다. 판정은 언제나 누적값 하나에서 나온다.
+//
+// 돌려주는 fresh는 OING_CARDS 순서를 그대로 따르므로 마지막 원소가 가장
+// 어려운 조건의 카드다. 결과 화면은 그 한 장을 크게 보여준다.
+export function newlyUnlockedOingCards(totals = {}, previousKeys = []) {
+  const before = new Set(previousKeys);
+  const rows = oingCardRows(totals);
+  const unlocked = rows.filter((card) => card.unlocked);
+  return {
+    fresh: unlocked.filter((card) => !before.has(card.key)),
+    unlockedCount: unlocked.length,
+    total: rows.length,
+  };
+}
+
 // The deepest scene a player has actually reached — the home card's one-line
 // answer to "how far did the cat get?".
 export function classicDeepestChapterLabel({ seenKeys = [], bestScore = 0 } = {}) {
@@ -627,6 +645,31 @@ export function nextGardenRevealBest(previousBest, percent) {
 // everyday rewards; these three are the ones a player should stop and look
 // at, so they outrank an ordinary combo-7 drop in successFeedbackLevel.
 export const RARE_BOARD_DROP_IDS = Object.freeze(['megabomb', 'freeze', 'clover']);
+
+// 희귀 아이템이 보드에 처음 나타난 그 한 번만 읽어주는 줄.
+//
+// 폭탄과 시계는 눌러보면 뭘 하는지 바로 알지만, 이 셋은 눌렀을 때 일어나는
+// 일이 화면 밖(시간, 다음 점수)에 있어서 처음 본 사람은 그냥 지나친다.
+// 그렇다고 판을 멈추고 설명하면 2분짜리 판에서 시간을 빼앗는 셈이라,
+// 기존 토스트 한 줄로 흘려보내고 다시는 말하지 않는다.
+export const RARE_BOARD_ITEM_INTROS = Object.freeze({
+  megabomb: '메가폭탄! 주변을 크게 터뜨려!',
+  freeze: '타임프리즈! 잠깐 시간이 멈춰!',
+  clover: '클로버! 다음 점수 보너스!',
+});
+
+// 처음 보는 것만 골라낸다. 배치가 한 번에 여러 종류를 놓아도 한 줄만
+// 내보내는 판단은 부르는 쪽이 한다 - 판을 멈추지 않는 것이 우선이다.
+export function unseenRareBoardItemTypes(placedTypes = [], seenTypes = []) {
+  const seen = new Set(seenTypes);
+  const out = [];
+  for (const type of placedTypes) {
+    if (!RARE_BOARD_ITEM_INTROS[type]) continue;
+    if (seen.has(type) || out.includes(type)) continue;
+    out.push(type);
+  }
+  return out;
+}
 
 // The original OING's one signature moment: five or more cells in a single
 // sum-ten clear earns the big centred "WOW!" and its fanfare. Four-cell

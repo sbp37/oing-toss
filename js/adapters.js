@@ -22,6 +22,10 @@ const BIG_CLEARS_KEY = 'oing_toss_v3_big_clears';
 const CELLS_CLEARED_KEY = 'oing_toss_v3_cells_cleared';
 const PLAY_DAYS_KEY = 'oing_toss_v3_play_days';
 const CLASSIC_BEST_COMBO_KEY = 'oing_toss_v3_classic_best_combo';
+// 희귀 보드 아이템을 처음 본 적이 있는지. 카드처럼 누적값에서 되짚을 수 있는
+// 값이 아니라 - "봤다"는 사실 자체가 기록이라 - 키 하나에 종류 목록으로 담는다.
+// 종류마다 키를 만들면 아이템이 늘 때마다 키가 늘어난다.
+const RARE_ITEM_INTRO_KEY = 'oing_toss_v3_rare_item_intro_seen';
 
 function safeRead(key, fallback) {
   try {
@@ -226,6 +230,22 @@ export const storageAdapter = {
   addCatsRescued(count) {
     const next = this.getCatsRescued() + Math.max(0, Math.round(Number(count) || 0));
     try { localStorage.setItem(CATS_RESCUED_KEY, String(next)); } catch {}
+    return next;
+  },
+  getSeenRareItems() {
+    try {
+      const values = JSON.parse(safeRead(RARE_ITEM_INTRO_KEY, '[]'));
+      return Array.isArray(values) ? values.filter((value) => typeof value === 'string') : [];
+    } catch {
+      return [];
+    }
+  },
+  markRareItemSeen(type) {
+    if (typeof type !== 'string' || !type) return this.getSeenRareItems();
+    const seen = this.getSeenRareItems();
+    if (seen.includes(type)) return seen;
+    const next = [...seen, type];
+    try { localStorage.setItem(RARE_ITEM_INTRO_KEY, JSON.stringify(next)); } catch {}
     return next;
   },
   getRecentResultMessages() {
