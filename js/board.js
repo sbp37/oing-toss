@@ -1181,13 +1181,15 @@ export class BoardModel {
   // clearability target to certify — the only gate is that the opening
   // board has enough to find — and the whole thing must return instantly,
   // because board changes happen while the timer keeps running.
-  generateClassic(cols, rows = cols, round = 1) {
+  generateClassic(cols, rows = cols, round = 1, options = {}) {
     this.cols = Math.max(1, Math.round(cols));
     this.rows = Math.max(1, Math.round(rows));
     this.size = this.cols;
     this.specialTiles.clear();
     this.round = Math.max(1, Math.round(Number(round) || 1));
-    const catTarget = bonusCatTargetForDimensions(this.rows, this.cols);
+    const baseCatTarget = bonusCatTargetForDimensions(this.rows, this.cols);
+    const catMultiplier = Math.max(1, Math.round(Number(options?.catMultiplier) || 1));
+    const catTarget = Math.min(this.rows * this.cols - 4, baseCatTarget * catMultiplier);
     const wanted = Math.max(4, Math.round((this.rows * this.cols) / 9));
     let best = null;
     for (let attempt = 0; attempt < 24; attempt += 1) {

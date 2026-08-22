@@ -351,6 +351,20 @@ export function classicBoardForIndex(boardIndex = 0) {
   return CLASSIC_BOARD_LADDER[Math.min(index, CLASSIC_BOARD_LADDER.length - 1)];
 }
 
+const CLASSIC_CAT_BONUS_RULE = Object.freeze({
+  id: 'cat-double',
+  catMultiplier: 2,
+  message: '고양이 보너스 판이다냥!',
+});
+
+// One readable twist at a time: every fourth board doubles the existing
+// cat target. The first three boards remain the plain learning ramp, and
+// the fixed cadence makes the rule feel earned rather than random.
+export function classicBoardRuleForIndex(boardIndex = 0) {
+  const index = Math.max(0, Math.round(Number(boardIndex) || 0));
+  return (index + 1) % 4 === 0 ? CLASSIC_CAT_BONUS_RULE : null;
+}
+
 export function classicComboGain(cellCount) {
   return Math.round(Number(cellCount) || 0) >= 5 ? 3 : 1;
 }

@@ -9,6 +9,7 @@ import {
   CLASSIC_TIME_CAP_SECONDS,
   classicBoardChangeSeconds,
   classicBoardForIndex,
+  classicBoardRuleForIndex,
   classicComboAfterFailure,
   classicComboGain,
   classicComboMultiplier,
@@ -108,6 +109,16 @@ test('classic number depth starts mid-run and caps at the deepest mix', () => {
   assert.equal(classicRoundForBoard(20), 10);
 });
 
+test('classic cat bonus boards arrive on a stable four-board cadence', () => {
+  assert.equal(classicBoardRuleForIndex(0), null);
+  assert.equal(classicBoardRuleForIndex(1), null);
+  assert.equal(classicBoardRuleForIndex(2), null);
+  assert.equal(classicBoardRuleForIndex(3)?.catMultiplier, 2);
+  assert.equal(classicBoardRuleForIndex(4), null);
+  assert.equal(classicBoardRuleForIndex(7)?.message, '고양이 보너스 판이다냥!');
+  assert.equal(classicBoardRuleForIndex(-1), null);
+});
+
 test('the first classic board change reaches the rare-item showcase gate', () => {
   assert.equal(classicDropStage(0), 3);
   assert.equal(classicDropStage(1), 4);
@@ -168,6 +179,14 @@ test('generateClassic is instant enough for a mid-timer board change', () => {
   // 30 boards well under 2s — a wide margin that still catches the
   // certified stage generator being invoked by mistake (it costs ~100ms+).
   assert.ok(elapsed < 2000, `30 full-size classic boards took ${elapsed.toFixed(0)}ms`);
+});
+
+test('a classic cat bonus board doubles cats without losing its opening answer', () => {
+  const { rows, cols } = classicBoardForIndex(3);
+  const model = new BoardModel(4);
+  model.generateClassic(cols, rows, 8, { catMultiplier: 2 });
+  assert.equal(model.bonusCats.size, bonusCatTargetForDimensions(rows, cols) * 2);
+  assert.ok(findAllSumTenRects(model.grid).length >= 1);
 });
 
 test('classic chapters cycle in order while album ownership stays key-based', async () => {

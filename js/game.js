@@ -15,6 +15,7 @@ import {
   chooseBoardDrop,
   classicBoardChangeSeconds,
   classicBoardForIndex,
+  classicBoardRuleForIndex,
   classicRefundWithFatigue,
   CLASSIC_REFUND_FATIGUE,
   classicChapterArtUrl,
@@ -653,8 +654,11 @@ class OingGame {
   }
 
   generateBoard(cols, rows = cols) {
+    const classicRule = this.classic ? classicBoardRuleForIndex(this.classic.boardIndex) : null;
     const grid = this.classic
-      ? this.model.generateClassic(cols, rows, this.state.round)
+      ? this.model.generateClassic(cols, rows, this.state.round, {
+        catMultiplier: classicRule?.catMultiplier,
+      })
       : this.model.generate(cols, {
         cols,
         rows,
@@ -1296,6 +1300,7 @@ class OingGame {
     this.classic.boardIndex += 1;
     this.classic.boardsPlayed += 1;
     const nextBoard = classicBoardForIndex(this.classic.boardIndex);
+    const nextBoardRule = classicBoardRuleForIndex(this.classic.boardIndex);
     this.state.round = classicRoundForBoard(this.classic.boardIndex);
     const previousTime = this.state.timeLeft;
     this.state.timeLeft = classicTimeAfterBoardChange(
@@ -1319,10 +1324,15 @@ class OingGame {
     roundHaptic();
     playRoundClearSound();
     duckMusic(420, 0.6);
-    if (emptied) {
+    // The reward belongs to the board that was emptied, even when the next
+    // board has its own one-line rule and therefore owns the speech bubble.
+    if (emptied) this.grantItems({ hint: 1 });
+    if (nextBoardRule) {
+      this.ui.showMessage(nextBoardRule.message, 1900, 'classicRule');
+      this.ui.setPlayCharacter('cheer', 1000);
+    } else if (emptied) {
       // A scaled-down take on the original's perfect-clear carry (3 hints):
       // emptying the board yourself earns one hint.
-      this.grantItems({ hint: 1 });
       this.ui.showMessage('싹 비웠다냥! 힌트 +1', 1800, 'classicClear');
       this.ui.setPlayCharacter('cheer', 1000);
     } else if (enteredChapter) {
