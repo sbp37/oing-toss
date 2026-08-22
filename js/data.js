@@ -130,6 +130,26 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
 
+export function boardDropPoolAfterRepeat(pool = [], previousType = null) {
+  const choices = Array.isArray(pool) ? pool.filter(Boolean) : [];
+  if (!previousType || !choices.length) return choices;
+  const previousWasTimeItem = ['clock', 'freeze'].includes(previousType);
+  if (previousType !== 'bomb') {
+    const filtered = choices.filter((id) => id !== previousType
+      && !(previousWasTimeItem && ['clock', 'freeze'].includes(id)));
+    return filtered.length ? filtered : choices;
+  }
+
+  const alternatives = choices.filter((id) => id !== 'bomb');
+  if (!alternatives.length) return choices;
+  const bombCount = choices.length - alternatives.length;
+  const reducedBombCount = Math.max(1, Math.ceil(bombCount * 0.45));
+  return [
+    ...Array.from({ length: reducedBombCount }, () => 'bomb'),
+    ...alternatives,
+  ];
+}
+
 export function chooseBoardDrop(combo, random = Math.random, {
   cloverGiven = false,
   pity = {},
@@ -165,11 +185,10 @@ export function chooseBoardDrop(combo, random = Math.random, {
   }
   const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped, lateRun);
   if (!pool.length) return null;
-  // Avoid back-to-back rare effects without forcing a clock after every bomb.
-  const repeatSafePool = previousType && previousType !== 'bomb'
-    ? pool.filter((id) => id !== previousType && !(previousWasTimeItem && ['clock', 'freeze'].includes(id)))
-    : pool;
-  const choices = repeatSafePool.length ? repeatSafePool : pool;
+  // Rare effects never repeat immediately. Bomb stays possible because it is
+  // the core board action, but its weight drops after a bomb so the reward
+  // sequence does not feel visually identical for several milestones.
+  const choices = boardDropPoolAfterRepeat(pool, previousType);
   const index = Math.min(choices.length - 1, Math.floor(Math.max(0, random()) * choices.length));
   return BOARD_DROP_ITEMS[choices[index]];
 }
@@ -737,10 +756,20 @@ export function comboMilestoneCrossed(previousCombo, nextCombo) {
 }
 
 export function itemRewardCountdown(combo, stage = 1) {
-  if (Math.max(1, Math.round(Number(stage) || 1)) < 3) return 0;
-  const streak = Math.max(0, Math.round(Number(combo) || 0));
-  const remainder = streak % ITEM_REWARD_INTERVAL;
-  return remainder === 0 ? ITEM_REWARD_INTERVAL : ITEM_REWARD_INTERVAL - remainder;
+  return itemRewardStatus(combo, combo, stage).remaining;
+}
+
+export function itemRewardStatus(combo, bestCombo = 0, stage = 1) {
+  if (Math.max(1, Math.round(Number(stage) || 1)) < 3) {
+    return Object.freeze({ remaining: 0, progress: 0, target: 0 });
+  }
+  const current = Math.max(0, Math.round(Number(combo) || 0));
+  const highWater = Math.max(current, Math.max(0, Math.round(Number(bestCombo) || 0)));
+  const target = (Math.floor(highWater / ITEM_REWARD_INTERVAL) + 1) * ITEM_REWARD_INTERVAL;
+  const remaining = Math.max(1, target - current);
+  const progress = Math.max(0, (ITEM_REWARD_INTERVAL - Math.min(ITEM_REWARD_INTERVAL, remaining))
+    / ITEM_REWARD_INTERVAL);
+  return Object.freeze({ remaining, progress, target });
 }
 
 // A stage ends when — and only when — its board is completely empty. Running

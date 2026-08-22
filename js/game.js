@@ -42,7 +42,7 @@ import {
   freezeTimeline,
   getRoundConfig,
   itemUnlockGrantForStage,
-  itemRewardCountdown,
+  itemRewardStatus,
   nextBoardDropPity,
   pickMessage,
   rebasePausedTimeline,
@@ -790,12 +790,15 @@ class OingGame {
     // on board depth rather than on the number mix so an unlocked start does
     // not open the late-run rarities on its first board.
     if (reward && this.state.round >= 3) {
+      const dropStage = this.classic
+        ? classicDropStage(this.classic.boardIndex)
+        : this.state.round;
       const drop = chooseBoardDrop(this.state.combo, Math.random, {
         cloverGiven: this.state.cloverDropped,
         pity: this.state.boardDropPity,
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
-        stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
+        stage: dropStage,
         timeBonusCapped: availableItemTimeBonus(this.state.itemTimeBonusUsed, 1) <= 0,
         // Same line the refund fatigue charges from: boardsPlayed counts the
         // board being played, so board 7 is the first one past it.
@@ -807,7 +810,7 @@ class OingGame {
         this.state.boardDropsEarned += 1;
         this.state.lastBoardDropType = drop.id;
         this.state.boardDropPity = nextBoardDropPity(this.state.boardDropPity, drop.id, {
-          stage: this.state.round,
+          stage: dropStage,
           combo: this.state.combo,
         });
         if (drop.id === 'clover') this.state.cloverDropped = true;
@@ -1080,6 +1083,7 @@ class OingGame {
       { nice: nice && successLevel < 4 },
     );
     this.updateHUD();
+    if (comboGain > 1) this.ui.showComboGain(comboGain);
     this.ui.pulseGoal(this.state.combo);
     if (completedFirstTutorial) {
       this.ui.setPlayCharacter('success', 900);
@@ -1387,6 +1391,10 @@ class OingGame {
     // the first clear, a big or lucky one, the step before a reward, and the
     // combo milestones. An ordinary clear passes in silence, which is what
     // makes the next line worth reading.
+    const rewardStage = this.classic
+      ? classicDropStage(this.classic.boardIndex)
+      : this.state.round;
+    const rewardStatus = itemRewardStatus(this.state.combo, this.state.maxCombo, rewardStage);
     if (catCount > 0) {
       this.ui.setPlayCharacter('success', 950);
       this.showCatMessage('catBonus');
@@ -1399,10 +1407,7 @@ class OingGame {
     } else if (this.state.combo === 3) {
       this.ui.setPlayCharacter('cheer', 900);
       this.showCatMessage('combo3');
-    } else if (!this.classic
-      && this.state.round >= 3
-      && this.state.combo > 0
-      && this.state.combo % ITEM_REWARD_INTERVAL === ITEM_REWARD_INTERVAL - 1) {
+    } else if (rewardStatus.remaining === 1) {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
       // The item gauge already fills in front of the player, so the bubble
@@ -2353,13 +2358,17 @@ class OingGame {
 
   updateHUD() {
     const comboWindowMs = comboWindowMsForStage(this.state.round);
+    const rewardStage = this.classic
+      ? classicDropStage(this.classic.boardIndex)
+      : this.state.round;
+    const rewardStatus = itemRewardStatus(this.state.combo, this.state.maxCombo, rewardStage);
     this.ui.updateHUD({
       ...this.state,
-      // Classic HUD: the badge counts boards (판갈이), the item countdown is
-      // out of play, and the combo urgency bar sits full — there is no
-      // timeout to drain it.
+      // Classic HUD counts boards and has no combo timeout. Its item gauge
+      // still follows the same run high-water rule used by advanceCombo().
       round: this.classic ? this.classic.boardsPlayed : this.state.round,
-      rewardRemaining: this.classic ? 0 : itemRewardCountdown(this.state.combo, this.state.round),
+      rewardRemaining: rewardStatus.remaining,
+      rewardProgress: rewardStatus.progress,
       comboRemainingMs: this.classic
         ? comboWindowMs
         : this.state.combo > 0
