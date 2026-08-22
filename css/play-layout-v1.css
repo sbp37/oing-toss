@@ -4878,3 +4878,179 @@
     0 0 0 4px rgba(69, 91, 109, .34),
     0 7px 14px rgba(48, 70, 91, .20);
 }
+
+/* Final figure-ground and feedback pass ----------------------------------
+   Live buttons, cleared picture windows and the board bed each get one
+   crisp depth cue. No idle blur or filter is used. */
+.play-ui-v4 .board,
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
+  gap: clamp(2.4px, .68vw, 3px);
+  background-color: #a8bac1;
+  background-image: none;
+}
+
+.play-ui-v4 .tile[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band]:not([data-stage-band="warmup"]) .tile[class*="value-"],
+.play-ui-v4 .tile.is-bonus-cat,
+.play-ui-v4 .tile.is-board-item {
+  border: 0;
+  outline: 1px solid rgba(54, 75, 89, .14);
+  outline-offset: 0;
+  background-color: #f7fbf6;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .86),
+    0 2px 0 rgba(48, 71, 86, .22);
+}
+
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .tile.is-empty:not(.is-board-item):not(.is-bonus-cat) {
+  border: 0;
+  outline: 0;
+  background-color: transparent;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, var(--win-veil, .26)), rgba(255, 255, 255, var(--win-veil-b, .20))),
+    var(--chapter-art);
+  background-size: auto, var(--win-size, cover);
+  background-position: 0 0, var(--win-pos, center);
+  box-shadow: inset 0 0 0 1px rgba(38, 67, 84, .14);
+}
+
+/* The centre gauge is a goal, not decoration. The record slot stays quiet
+   until a real record exists. */
+.play-ui-v4 .play-status-bar .combo-item-label {
+  color: #675f5b;
+  font-size: clamp(9px, 2.55vw, 11px);
+  font-weight: 900;
+}
+
+.play-ui-v4 .play-status-bar .combo-item-track {
+  height: 20%;
+  min-height: 6px;
+  border-color: rgba(174, 139, 91, .54);
+  background: #eadfcb;
+}
+
+.play-ui-v4 .play-status-bar .combo-item-track b {
+  background: linear-gradient(90deg, #ffca62, #ff955d);
+}
+
+.play-ui-v4 .play-status-bar .goal-copy b[data-digits="m"] {
+  min-width: 1ch;
+}
+
+.play-ui-v4 .play-status-bar .goal-copy b:not(.is-rewarded) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A board change is a short rim flash. Scaling the full frame at the same
+   time as every tile moves made the whole grid look unstable. */
+.play-ui-v4 .board-frame.is-board-change {
+  animation: none;
+}
+
+.play-ui-v4 .board-frame.is-board-change::after {
+  background: transparent;
+  box-shadow: inset 0 0 0 3px rgba(255, 225, 139, .74);
+  animation: board-change-rim 460ms ease-out both;
+}
+
+@keyframes board-change-rim {
+  0% { opacity: 0; transform: scale(.995); }
+  28% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.006); }
+}
+
+/* A soft lift replaces the edge-on card flip that read as grey shutters on
+   the phone recording. The stagger still communicates a real shuffle. */
+.play-ui-v4 .board.is-shuffling-out .tile {
+  animation: tile-soft-away 300ms var(--shuffle-delay, 0ms) cubic-bezier(.42, 0, .72, .32) both;
+}
+
+.play-ui-v4 .board.is-shuffling-in .tile {
+  animation: tile-soft-return 340ms var(--shuffle-delay, 0ms) cubic-bezier(.18, .82, .28, 1.08) both;
+}
+
+@keyframes tile-soft-away {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: .18; transform: translateY(-4px) scale(.88); }
+}
+
+@keyframes tile-soft-return {
+  0% { opacity: .18; transform: translateY(5px) scale(.88); }
+  62% { opacity: 1; transform: translateY(-1px) scale(1.025); }
+  100% { opacity: 1; transform: none; }
+}
+
+.play-ui-v4 .shuffle-fx::before {
+  width: 34%;
+  background: linear-gradient(100deg, transparent, rgba(255, 246, 199, .62) 48%, transparent);
+  animation-duration: 540ms;
+}
+
+/* The retry beat is intentionally lighter and smaller than the first-run
+   countdown. It lasts under one second and never hides the whole board in a
+   dark curtain. */
+.screen-play.play-ui-v4 .start-countdown.is-compact {
+  background: rgba(39, 94, 124, .20);
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-compact strong,
+.screen-play.play-ui-v4 .start-countdown.is-compact[data-step="READY"] strong {
+  color: #fffdf4;
+  font-size: clamp(38px, 12vw, 50px);
+  -webkit-text-stroke: 2px #e56d87;
+  text-shadow: 0 3px 0 rgba(163, 70, 91, .32), 0 0 12px rgba(255, 255, 255, .54);
+}
+
+.screen-play.play-ui-v4 .start-countdown.is-compact.is-go strong {
+  color: #fffdf4;
+  font-size: clamp(46px, 14vw, 58px);
+  -webkit-text-stroke-color: #36aa92;
+  text-shadow: 0 3px 0 rgba(31, 126, 108, .32), 0 0 12px rgba(255, 255, 255, .54);
+}
+
+/* Keep the coach, the two live tools and their speech as one compact footer.
+   The dormant tool hooks stay in the DOM but do not create dead visual slots. */
+.play-ui-v4 .item-actions {
+  display: grid;
+  grid-template-columns: minmax(64px, 1fr) clamp(62px, 17.5vw, 72px) minmax(64px, 1fr);
+  align-items: end;
+  gap: clamp(10px, 3vw, 16px);
+  width: min(100%, 354px);
+  margin-inline: auto;
+  padding-inline: clamp(8px, 2.8vw, 13px);
+}
+
+.play-ui-v4 .shuffle-button { grid-column: 1; grid-row: 1; }
+.play-ui-v4 .play-character-stage { grid-column: 2; grid-row: 1; justify-self: center; }
+.play-ui-v4 .hint-button { grid-column: 3; grid-row: 1; }
+
+.play-ui-v4 .cat-speech {
+  width: min(82%, 180px);
+  margin-inline: auto;
+}
+
+/* Idle special cells stay recognisable without keeping several compositor
+   animations alive for the entire run. Arrival, press and match reactions
+   remain animated; only the permanent breathing/twinkling is parked. */
+.play-ui-v4 .bonus-cat-art,
+.play-ui-v4 .bonus-cat-mark,
+.play-ui-v4 .board-item-sparkle {
+  animation: none;
+}
+
+.play-ui-v4 .tile.is-board-item:not(.is-item-spawning):not(.is-item-pressed) {
+  animation: none;
+}
+
+@media (max-height: 700px) {
+  .play-ui-v4 .item-actions { gap: 8px; }
+  .play-ui-v4 .cat-coach,
+  .play-ui-v4.is-tall-board .cat-coach { bottom: calc(100% + 6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .board-frame.is-board-change::after,
+  .play-ui-v4 .board.is-shuffling-out .tile,
+  .play-ui-v4 .board.is-shuffling-in .tile,
+  .play-ui-v4 .shuffle-fx::before { animation-duration: 1ms !important; }
+}

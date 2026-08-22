@@ -61,12 +61,12 @@ const CHARACTER_ALT = Object.freeze({
 
 // How much mist sits over the chapter art inside cleared cells: heavy while
 // the board is still full of numbers to read, light once it is nearly empty.
-const VEIL_FULL = 0.32;
+const VEIL_FULL = 0.26;
 // The picture is atmosphere, not a second subject. At .10 a nearly-emptied
 // board handed it full contrast and saturation, and it started competing with
 // the dock's buttons for the eye - the loudest thing on screen was the
 // backdrop. Held soft to the end, it reads as depth behind the tiles instead.
-const VEIL_CLEAR = 0.16;
+const VEIL_CLEAR = 0.10;
 
 // A url() inside a custom property is resolved against the stylesheet that
 // consumes it, not the document, so a document-relative path handed to CSS
@@ -81,8 +81,9 @@ export class GameUI {
     this.screens = [...document.querySelectorAll('[data-screen]')];
     this.board = document.querySelector('#board');
     this.boardFrame = document.querySelector('#board-frame');
-    this.messageTimer = null;
-    this.messageToken = 0;
+    this.feedbackQueue = [];
+    this.activeFeedback = null;
+    this.feedbackTimer = null;
     this.characterTimer = null;
     this.selectionSnapTimer = null;
     this.selectionSnapAnimation = null;
@@ -197,6 +198,7 @@ export class GameUI {
   }
 
   showScreen(name, { behind = null } = {}) {
+    this.clearFeedbackQueue();
     this.screens.forEach((screen) => {
       const active = screen.dataset.screen === name;
       const kept = behind && screen.dataset.screen === behind;
@@ -210,7 +212,8 @@ export class GameUI {
   async animateStartCountdown(steps, onStep = () => {}, { compact = false } = {}) {
     const token = ++this.startCountdownToken;
     const overlay = this.elements.startCountdown;
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact');
+    overlay.classList.toggle('is-compact', compact);
     overlay.setAttribute('aria-hidden', 'false');
     void overlay.offsetWidth;
     overlay.classList.add('is-visible');
@@ -235,7 +238,7 @@ export class GameUI {
     if (token !== this.startCountdownToken) return false;
     overlay.classList.add('is-leaving');
     await delay(compact ? 110 : 150);
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact');
     overlay.setAttribute('aria-hidden', 'true');
     return true;
   }
@@ -243,7 +246,7 @@ export class GameUI {
   cancelStartCountdown() {
     this.startCountdownToken += 1;
     const overlay = this.elements.startCountdown;
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact');
     overlay.setAttribute('aria-hidden', 'true');
   }
 
@@ -1550,30 +1553,6 @@ export class GameUI {
     });
   }
 
-  showStageTimeBonus(seconds = 0) {
-    const amount = Math.max(0, Math.round(Number(seconds) || 0));
-    if (!amount || !this.elements.timePill) return;
-    this.elements.playScreen.querySelector('.stage-time-bonus')?.remove();
-    const screen = this.elements.playScreen.getBoundingClientRect();
-    // Centred over the time gauge — the surface that actually shows the
-    // gain — instead of under the timer pill, where it was clipped by the
-    // HUD art and covered whatever sat beneath it.
-    const gauge = this.elements.boardTimeGauge?.getBoundingClientRect();
-    const pop = document.createElement('div');
-    pop.className = 'stage-time-bonus';
-    pop.textContent = `+${amount}초`;
-    pop.style.left = `${gauge ? gauge.left + gauge.width / 2 - screen.left : screen.width / 2}px`;
-    pop.style.top = `${gauge ? gauge.top - screen.top - 6 : 120}px`;
-    this.elements.playScreen.appendChild(pop);
-    this.elements.timePill.classList.remove('is-bonus-awarded');
-    void this.elements.timePill.offsetWidth;
-    this.elements.timePill.classList.add('is-bonus-awarded');
-    window.setTimeout(() => {
-      pop.remove();
-      this.elements.timePill.classList.remove('is-bonus-awarded');
-    }, 820);
-  }
-
   async animateRoundTransition(nextRound, swapBoard, intro = {}) {
     this.clearTransientBoardFeedback();
     const previousTileWidth = this.board.querySelector('.tile')?.getBoundingClientRect().width || 0;
@@ -1748,8 +1727,75 @@ export class GameUI {
   }
 
   showMessage(message, duration = 1500, tone = '') {
-    const token = ++this.messageToken;
-    clearTimeout(this.messageTimer);
+    this.enqueueFeedback({ kind: 'message', message, duration, tone });
+  }
+
+  feedbackPriority(kind, tone = '') {
+    if (kind === 'toast') return 4;
+    if (['firstSuccess', 'itemDrop', 'lowTime', 'freeze', 'clover', 'classicRule', 'classicChapter', 'classicBoard'].includes(tone)) return 3;
+    if (['hint', 'shuffle', 'rescue', 'wow', 'perfect', 'classicClear'].includes(tone)) return 2;
+    return 1;
+  }
+
+  enqueueFeedback({ kind, message, duration = 1500, tone = '' }) {
+    const text = String(message || '').trim();
+    if (!text) return;
+    const entry = {
+      kind,
+      message: text,
+      duration: Math.max(400, Number(duration) || 1500),
+      tone,
+      priority: this.feedbackPriority(kind, tone),
+      queuedAt: performance.now(),
+    };
+    if (this.activeFeedback?.kind === kind && this.activeFeedback.message === text) return;
+    if (this.feedbackQueue.some((queued) => queued.kind === kind && queued.message === text)) return;
+    if (this.activeFeedback?.priority === 1 && entry.priority >= 3) {
+      clearTimeout(this.feedbackTimer);
+      if (this.activeFeedback.kind === 'toast') this.elements.toast.classList.remove('is-visible');
+      else this.elements.catMessage.classList.remove('is-changing');
+      this.activeFeedback = null;
+    }
+    this.feedbackQueue.push(entry);
+    this.feedbackQueue.sort((a, b) => b.priority - a.priority || a.queuedAt - b.queuedAt);
+    if (this.feedbackQueue.length > 4) this.feedbackQueue.length = 4;
+    this.playNextFeedback();
+  }
+
+  playNextFeedback() {
+    if (this.activeFeedback) return;
+    const now = performance.now();
+    while (this.feedbackQueue.length) {
+      const next = this.feedbackQueue.shift();
+      if (next.priority === 1 && now - next.queuedAt > 2200) continue;
+      this.activeFeedback = next;
+      if (next.kind === 'toast') this.renderToast(next);
+      else this.renderMessage(next);
+      clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = window.setTimeout(() => this.finishFeedback(), next.duration);
+      return;
+    }
+  }
+
+  finishFeedback() {
+    const active = this.activeFeedback;
+    if (!active) return;
+    if (active.kind === 'toast') this.elements.toast.classList.remove('is-visible');
+    else this.elements.catMessage.classList.remove('is-changing');
+    this.activeFeedback = null;
+    clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = window.setTimeout(() => this.playNextFeedback(), 80);
+  }
+
+  clearFeedbackQueue() {
+    clearTimeout(this.feedbackTimer);
+    this.feedbackQueue.length = 0;
+    this.activeFeedback = null;
+    this.elements.toast.classList.remove('is-visible');
+    this.elements.catMessage.classList.remove('is-changing');
+  }
+
+  renderMessage({ message, tone }) {
     const bubble = this.elements.catMessage;
     bubble.dataset.tone = tone;
     bubble.classList.remove('is-changing', 'is-long');
@@ -1767,9 +1813,14 @@ export class GameUI {
     });
     bubble.replaceChildren(...nodes);
     bubble.classList.add('is-changing');
-    this.messageTimer = setTimeout(() => {
-      if (token === this.messageToken) bubble.classList.remove('is-changing');
-    }, duration);
+  }
+
+  renderToast({ message }) {
+    const toast = this.elements.toast;
+    toast.textContent = message;
+    toast.classList.remove('is-visible');
+    void toast.offsetWidth;
+    toast.classList.add('is-visible');
   }
 
   updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
@@ -1855,7 +1906,10 @@ export class GameUI {
     if (this.elements.comboItemTrack) {
       this.elements.comboItemFill.style.width = `${Math.round(normalizedRewardProgress * 100)}%`;
       this.elements.comboItemLabel.hidden = !rewardUnlocked;
-      if (rewardUnlocked) this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
+      if (rewardUnlocked) {
+        const progressStep = Math.round(normalizedRewardProgress * 7);
+        this.elements.comboItemLabel.textContent = `아이템 ${progressStep}/7`;
+      }
     }
     this.elements.comboChip.classList.toggle('is-active', combo > 0);
     const comboUrgency = combo > 0 ? clamp(comboRemainingMs / Math.max(1, comboWindowMs), 0, 1) : 1;
@@ -1882,7 +1936,7 @@ export class GameUI {
     // the slot flips into a live "you are ahead" readout.
     const best = Math.max(0, Math.round(Number(bestScore) || 0));
     const ahead = best > 0 && score > best;
-    const goalText = (ahead ? score : best).toLocaleString('ko-KR');
+    const goalText = best > 0 ? (ahead ? score : best).toLocaleString('ko-KR') : '-';
     this.elements.goal.textContent = goalText;
     if (this.elements.goalLabel) this.elements.goalLabel.textContent = ahead ? '신기록' : '최고';
     this.elements.goal.closest('.goal-status')?.classList.toggle('is-ahead', ahead);
@@ -2521,12 +2575,6 @@ export class GameUI {
   // duration은 부르는 쪽이 정할 수 있게 열어둔다. 기본값은 기존 그대로라
   // 이미 있는 토스트들의 길이는 하나도 바뀌지 않는다.
   toast(message, duration = 1800) {
-    const toast = this.elements.toast;
-    toast.textContent = message;
-    toast.classList.remove('is-visible');
-    void toast.offsetWidth;
-    toast.classList.add('is-visible');
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => toast.classList.remove('is-visible'), Math.max(400, Number(duration) || 1800));
+    this.enqueueFeedback({ kind: 'toast', message, duration });
   }
 }

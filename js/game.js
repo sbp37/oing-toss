@@ -1123,7 +1123,7 @@ class OingGame {
     }
     // "딱 10!" belongs to the quiet clears. From rank 3 up something louder
     // is already confirming the success over the same tiles.
-    if (successLevel <= 2) this.ui.showMatchConfirmation(rect, this.state.combo);
+    if (!completedFirstTutorial && successLevel <= 2) this.ui.showMatchConfirmation(rect, this.state.combo);
     // 판에서 칸을 먼저 지우고, 그 다음에 축하 연출을 튼다.
     //
     // 예전에는 연출이 다 끝난 뒤에야 칸을 지우고 입력을 풀었다. 그동안 화면을
@@ -1341,10 +1341,10 @@ class OingGame {
       this.ui.showMessage(`${enteredChapter.label}에 도착했다냥!`, 1900, 'classicChapter');
       this.ui.setPlayCharacter('cheer', 1000);
     } else if (boardGrew) {
-      this.ui.showMessage(gainedTime > 0 ? `판이 커졌다냥! +${gainedTime}초` : '판이 커졌다냥!', 1600, 'classicBoard');
+      this.ui.showMessage('판이 커졌다냥!', 1600, 'classicBoard');
       this.ui.setPlayCharacter('cheer', 900);
     } else {
-      this.ui.showMessage(gainedTime > 0 ? `판갈이다냥! +${gainedTime}초` : '판갈이다냥!', 1600, 'classicBoard');
+      this.ui.showMessage('판갈이다냥!', 1600, 'classicBoard');
       this.ui.setPlayCharacter('wave', 900);
     }
     if (gainedTime > 0) this.ui.showStageTimeBonus(gainedTime);
