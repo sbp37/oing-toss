@@ -1190,13 +1190,25 @@ export class BoardModel {
     const baseCatTarget = bonusCatTargetForDimensions(this.rows, this.cols);
     const catMultiplier = Math.max(1, Math.round(Number(options?.catMultiplier) || 1));
     const catTarget = Math.min(this.rows * this.cols - 4, baseCatTarget * catMultiplier);
-    const wanted = Math.max(4, Math.round((this.rows * this.cols) / 9));
+    const isLearningBoard = this.cols === 6 && this.rows <= 6;
+    const wanted = Math.max(
+      4,
+      Math.round((this.rows * this.cols) / 9),
+      isLearningBoard ? 8 : 0,
+    );
+    const wantedMultiCell = isLearningBoard ? 3 : 0;
+    const maxAttempts = isLearningBoard ? 96 : 24;
     let best = null;
-    for (let attempt = 0; attempt < 24; attempt += 1) {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const candidate = makeNaturalGrid(this.rows, this.cols, this.round, catTarget);
-      const answers = findAllSumTenRects(candidate.grid).length;
-      if (!best || answers > best.answers) best = { candidate, answers };
-      if (best.answers >= wanted) break;
+      const answerRects = findAllSumTenRects(candidate.grid);
+      const answers = answerRects.length;
+      const multiCell = answerRects.filter((answer) => answer.count >= 3).length;
+      const quality = answers + Math.min(multiCell, wantedMultiCell) * wanted;
+      if (!best || quality > best.quality) {
+        best = { candidate, answers, multiCell, quality };
+      }
+      if (answers >= wanted && multiCell >= wantedMultiCell) break;
     }
     this.grid = best.candidate.grid;
     this.bonusCats = best.candidate.cats;

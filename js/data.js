@@ -290,9 +290,10 @@ export const CLASSIC_COMBO_SOFT_RATE = 0.25;
 export const CLASSIC_WOW_BONUS_MULTIPLIER_CAP = 4;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
 // The board ladder folds the stage mode's onboarding ramp into the classic
-// loop itself: one 5×5 opener so a first-timer is never dropped onto a
-// wall of numbers (a skilled player clears it in seconds), then 6×6, and
-// from there one extra row per 판갈이 until the vertical cap. With a combo
+// loop itself: a wide 6×5 opener gives a first-timer enough answers without
+// dropping them onto a wall of numbers, then one extra row per 판갈이 up
+// to 6×8. Keeping six columns from the first board holds the tile width
+// steady while the scan field grows downward. With a combo
 // that never times out, the small boards are where the multiplier spools
 // up and the tall boards are where it pays out — the scan field a player
 // earns grows with how deep they got. Each step carries its own 판갈이
@@ -305,15 +306,14 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // "break a few and move on" worth the same number of seconds, which is
 // the one thing a puzzle game cannot afford.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 5, timeFloor: 4, timeBonus: 11 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 4, timeBonus: 11 }),
   Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
   Object.freeze({ rows: 7, cols: 6, timeFloor: 6, timeBonus: 19 }),
   Object.freeze({ rows: 8, cols: 6, timeFloor: 6, timeBonus: 19 }),
-  Object.freeze({ rows: 9, cols: 6, timeFloor: 6, timeBonus: 19 }),
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the
-// player cleared, so the last stubborn corner of a 6×9 is worth real time
+// player cleared, so the last stubborn corner of a 6×8 is worth real time
 // and the difference between a tidy finish and a messy one is felt.
 // Past the ladder's last scene the night gets stingy: each further 판갈이
 // pays half a second less, and no board change ever pays under the floor.
@@ -483,7 +483,7 @@ export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   hasArt: true,
 });
 
-// The 5×5 opener is a ramp for a first-timer and a toll for everybody
+// The 6×5 opener is a ramp for a first-timer and a toll for everybody
 // else, so a personal best buys the right to start further in. This is the
 // only progress in the game that survives a run ending.
 export const CLASSIC_START_UNLOCKS = Object.freeze([

@@ -1285,11 +1285,11 @@ class OingGame {
   // clock gains +15s, exactly like the original. The timer never stops and
   // the combo carries straight through.
   async classicBoardChange({ emptied = false } = {}) {
-    // The bonus is earned by the board just finished — a dried 5×5 pays its
+    // The bonus is earned by the board just finished — a dried 6×5 pays its
     // own small refund, not the full board's.
     const clearedBoard = classicBoardForIndex(this.classic.boardIndex);
     // How much of the board the player actually got through. This is what
-    // the refund is paid on, so the stubborn last corner of a 6×9 is worth
+    // the refund is paid on, so the stubborn last corner of a 6×8 is worth
     // real seconds and a tidy finish beats breaking a few and moving on.
     const initial = Math.max(1, this.state.initialPlayableCells);
     const clearedRatio = Math.min(1, Math.max(0, 1 - this.model.remainingPlayableCells() / initial));
