@@ -826,12 +826,27 @@ class OingGame {
 
   announceBoardItems(items, { playSound = true } = {}) {
     this.ui.showBoardItemDrops(items);
-    const showcase = items.find((item) => item.showcase);
-    if (showcase) {
-      const label = BOARD_DROP_ITEMS[showcase.type]?.label || '희귀 아이템';
-      this.ui.showMessage(`${label} 등장이다냥! 톡 눌러봐.`, 2200, 'itemDrop');
+    // 처음 보는 희귀 아이템이면 그 한 번은 "무엇을 하는 물건인지"가 인사를
+    // 대신한다. 기존 등장 문구는 누르는 법만 말해주고 효과는 말해주지 않는데,
+    // 이 셋은 눌렀을 때 벌어지는 일이 화면 밖(시간, 다음 점수)에 있어 처음 본
+    // 사람은 그냥 지나친다.
+    //
+    // 말풍선이 아니라 토스트로 내보내는 이유는 판이 깊어지면(8줄 이상) 말풍선
+    // 자리가 접히기 때문이다. 대신 같은 순간에 말풍선까지 뜨면 두 글자 덩어리가
+    // 겹치므로, 이 한 번은 말풍선을 양보한다. 소리와 진동, 반짝임, 고양이가
+    // 손 흔드는 반응은 그대로 남는다 - 사라지는 것은 겹치는 말뿐이다.
+    const introType = this.pendingRareBoardItemIntro(items);
+    if (introType) {
+      storageAdapter.markRareItemSeen(introType);
+      this.ui.toast(RARE_BOARD_ITEM_INTROS[introType], 1600);
     } else {
-      this.showCatMessage('itemDrop');
+      const showcase = items.find((item) => item.showcase);
+      if (showcase) {
+        const label = BOARD_DROP_ITEMS[showcase.type]?.label || '희귀 아이템';
+        this.ui.showMessage(`${label} 등장이다냥! 톡 눌러봐.`, 2200, 'itemDrop');
+      } else {
+        this.showCatMessage('itemDrop');
+      }
     }
     this.ui.setPlayCharacter('wave', 1000);
     if (playSound) {
@@ -939,29 +954,24 @@ class OingGame {
     return award.fresh.length ? award : null;
   }
 
-  // 아이템 배치는 다섯 군데에서 일어난다. 첫 등장 안내를 각 자리에 흩어놓으면
+  // 아이템 배치는 여섯 군데에서 일어난다. 첫 등장 판정을 각 자리에 흩어놓으면
   // 한 곳을 빠뜨리고, 빠뜨린 경로로 처음 만난 사람은 영영 설명을 못 듣는다.
   placeBoardItems() {
-    const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
-    this.announceRareBoardItems(placed);
-    return placed;
+    return this.boardItems.place(this.model.grid, this.model.bonusCats);
   }
 
-  // 처음 보는 희귀 아이템이 판에 놓였다면 한 줄만 흘린다. 한 번에 여러 종류가
-  // 놓여도 한 줄로 끝낸다 - 토스트가 겹치면 읽히지 않고, 남은 종류는 다음에
-  // 나올 때 자기 차례를 갖는다.
-  announceRareBoardItems(placed = []) {
-    if (this.runtime.testMode || !Array.isArray(placed) || !placed.length) return;
-    // 배치는 정답을 맞힌 직후에도 일어난다 - 드래그가 끝나자마자 도는 자리다.
-    // 희귀 아이템이 하나도 없으면 저장소를 아예 읽지 않는다. 폭탄과 시계가
-    // 떨어질 때마다 JSON을 파싱할 이유는 없다.
-    const types = placed.map((item) => item?.type);
-    if (!types.some((type) => RARE_BOARD_ITEM_INTROS[type])) return;
-    const unseen = unseenRareBoardItemTypes(types, storageAdapter.getSeenRareItems());
-    const type = unseen[0];
-    if (!type) return;
-    storageAdapter.markRareItemSeen(type);
-    this.ui.toast(RARE_BOARD_ITEM_INTROS[type], 1600);
+  // 이번에 놓인 것 중 처음 보는 희귀 아이템 한 종류. 없으면 null.
+  //
+  // 여기서는 고르기만 하고 "봤다"고 적지는 않는다. 배치와 안내가 같은 자리에서
+  // 일어나지 않는 경로가 있어서(판갈이는 배치 뒤 애니메이션을 한 번 거친다),
+  // 놓자마자 적어버리면 아무 말도 못 한 채 기회를 잃는다.
+  pendingRareBoardItemIntro(items = []) {
+    if (this.runtime.testMode || !Array.isArray(items) || !items.length) return null;
+    // 아이템이 떨어질 때마다 도는 자리다. 희귀한 것이 하나도 없으면 저장소를
+    // 아예 읽지 않는다 - 폭탄과 시계 때문에 JSON을 파싱할 이유는 없다.
+    const types = items.map((item) => item?.type);
+    if (!types.some((type) => RARE_BOARD_ITEM_INTROS[type])) return null;
+    return unseenRareBoardItemTypes(types, storageAdapter.getSeenRareItems())[0] || null;
   }
 
   // A second thing to chase besides the score, built from what the board

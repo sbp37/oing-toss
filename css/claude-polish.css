@@ -156,7 +156,7 @@
   box-shadow:
     0 3px 8px rgba(80, 92, 120, .24),
     inset 0 0 0 1.5px rgba(255, 255, 255, .7);
-  transition: transform 560ms cubic-bezier(.3, .72, .28, 1);
+  transition: transform 520ms cubic-bezier(.3, .72, .28, 1);
 }
 
 /* 두 면이 같은 방향으로 돈다. 앞면을 0도에서 시작시키면 뒤집힐 때 반대로

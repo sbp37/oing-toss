@@ -2349,6 +2349,9 @@ export class GameUI {
     this.cardAwardTimers = [];
     panel.hidden = true;
     panel.classList.remove('is-shown', 'is-revealed', 'is-tucked');
+    // 그림을 남겨두면, 그림 없는 카드가 하나라도 생기는 날 지난 판의 앞면이
+    // 그대로 뒤집혀 나온다.
+    this.elements.cardAwardFace?.style.removeProperty('background-image');
   }
 
   // 이번 판에 처음 열린 카드를 한 장 세운다.
@@ -2370,6 +2373,11 @@ export class GameUI {
     }
     this.elements.cardAwardName.textContent = hero.label;
     this.elements.cardAwardCount.textContent = `${award.unlockedCount} / ${award.total}`;
+    // 화면에는 "3 / 9"가 맞지만, 읽어주는 기계에게 슬래시는 말이 되지 않는다.
+    this.elements.cardAwardCount.setAttribute(
+      'aria-label',
+      `오잉 카드 ${award.total}장 중 ${award.unlockedCount}장 수집`,
+    );
     this.elements.cardAwardMore.hidden = others <= 0;
     this.elements.cardAwardMore.textContent = others > 0 ? `외 ${others}장` : '';
     const chapter = typeof chapterLabel === 'string' ? chapterLabel.trim() : '';
@@ -2383,10 +2391,12 @@ export class GameUI {
       panel.classList.add('is-shown', 'is-revealed');
       return true;
     }
+    // 뒷면이 서고(0.3초) 곧 뒤집힌다(0.76초 시작). 뒤집기는 520ms인데 앞면은
+    // 90도를 넘는 순간 보이므로, 그림이 실제로 드러나는 시점은 1초 언저리다.
     const enterAt = holdBack ? 700 : 300;
     this.cardAwardTimers = [
       window.setTimeout(() => panel.classList.add('is-shown'), enterAt),
-      window.setTimeout(() => panel.classList.add('is-revealed'), enterAt + 620),
+      window.setTimeout(() => panel.classList.add('is-revealed'), enterAt + 460),
     ];
     return true;
   }
