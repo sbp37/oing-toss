@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, isNiceClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, classicComboGain, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, isWowClear, isNiceClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -229,6 +229,13 @@ test('board items appear only when a seven-combo boundary is crossed', () => {
   assert.equal(boardDropReward(6, 8, 1), 'milestone');
   assert.equal(boardDropReward(7, 8, 2), null);
   assert.equal(boardDropReward(13, 14, 2), 'milestone');
+});
+
+test('a classic WOW can reach the next item boundary through its three combo steps', () => {
+  const before = 4;
+  const after = before + classicComboGain(5);
+  assert.equal(after, 7);
+  assert.equal(boardDropReward(before, after), 'milestone');
 });
 
 // Drives the same bookkeeping advanceCombo() does: a success calls the rule

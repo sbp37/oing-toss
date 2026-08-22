@@ -268,6 +268,7 @@ export function comboAfterIdle(combo, stage = 1) {
 // the stage ladder without touching the ladder's tuning.
 export const CLASSIC_COMBO_CAP = 25;
 export const CLASSIC_COMBO_SOFT_RATE = 0.25;
+export const CLASSIC_WOW_BONUS_MULTIPLIER_CAP = 4;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
 // The board ladder folds the stage mode's onboarding ramp into the classic
 // loop itself: one 5×5 opener so a first-timer is never dropped onto a
@@ -332,7 +333,7 @@ export function classicBoardForIndex(boardIndex = 0) {
 }
 
 export function classicComboGain(cellCount) {
-  return Math.round(Number(cellCount) || 0) >= 5 ? 2 : 1;
+  return Math.round(Number(cellCount) || 0) >= 5 ? 3 : 1;
 }
 
 // A hard cap at 25 meant a skilled run spent most of its length with the
@@ -355,13 +356,25 @@ export function classicComboAfterFailure(combo) {
   return Math.floor(value * (value > CLASSIC_COMBO_CAP ? 0.5 : 0.7));
 }
 
-// The original's exact formula: (cells + cats×5) × min(combo, 25), where
-// cellCount already counts the cat cells (the original's totalCells), and
-// a five-cell-plus WOW adds a flat +10 per cell beyond four.
+// The original core stays intact: (cells + cats×5) × combo. A five-cell-plus
+// WOW used to add a flat +10 per extra cell, so the biggest visual moment
+// became rounding error once the multiplier climbed. Its bonus now follows
+// 15% of the live multiplier and caps at x4: clearly worth hunting, but never
+// large enough to replace the combo economy or blow up the score scale.
+export function classicWowBonusMultiplier(combo) {
+  const multiplier = classicComboMultiplier(combo);
+  return Math.min(
+    CLASSIC_WOW_BONUS_MULTIPLIER_CAP,
+    1 + Math.max(0, multiplier - 1) * 0.15,
+  );
+}
+
 export function classicScoreForClear(cellCount, catCount, combo) {
   const cells = Math.max(0, Math.round(Number(cellCount) || 0));
   const cats = Math.max(0, Math.round(Number(catCount) || 0));
-  const wideBonus = cells >= 5 ? (cells - 4) * 10 : 0;
+  const wideBonus = cells >= 5
+    ? Math.round((cells - 4) * 10 * classicWowBonusMultiplier(combo))
+    : 0;
   return Math.round((cells + cats * 5) * classicComboMultiplier(combo) + wideBonus);
 }
 

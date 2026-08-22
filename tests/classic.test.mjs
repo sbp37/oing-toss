@@ -4,6 +4,7 @@ import {
   CLASSIC_BOARD_LADDER,
   CLASSIC_COMBO_CAP,
   CLASSIC_COMBO_SOFT_RATE,
+  CLASSIC_WOW_BONUS_MULTIPLIER_CAP,
   CLASSIC_START_UNLOCKS,
   CLASSIC_TIME_CAP_SECONDS,
   classicBoardChangeSeconds,
@@ -17,6 +18,7 @@ import {
   classicScoreForClear,
   classicStartBoardIndex,
   classicTimeAfterBoardChange,
+  classicWowBonusMultiplier,
 } from '../js/data.js';
 import { BoardModel, bonusCatTargetForDimensions, findAllSumTenRects } from '../js/board.js';
 
@@ -34,16 +36,19 @@ test('classic score is the original formula: (cells + cats×5) × min(combo, 25)
   assert.equal(classicScoreForClear(2, 0, 0), 2);
 });
 
-test('classic WOW pays +10 per cell beyond four, outside the multiplier', () => {
-  assert.equal(classicScoreForClear(5, 0, 3), 5 * 3 + 10);
+test('classic WOW bonus grows with combo but stays capped', () => {
+  assert.equal(classicScoreForClear(5, 0, 3), 5 * 3 + 13);
   assert.equal(classicScoreForClear(6, 0, 1), 6 + 20);
   assert.equal(classicScoreForClear(4, 0, 3), 12);
+  assert.equal(classicWowBonusMultiplier(1), 1);
+  assert.equal(classicWowBonusMultiplier(3), 1.3);
+  assert.equal(classicWowBonusMultiplier(100), CLASSIC_WOW_BONUS_MULTIPLIER_CAP);
 });
 
-test('classic combo: +2 only from five cells', () => {
+test('classic combo: a five-cell WOW earns three steps toward an item', () => {
   assert.equal(classicComboGain(2), 1);
   assert.equal(classicComboGain(4), 1);
-  assert.equal(classicComboGain(5), 2);
+  assert.equal(classicComboGain(5), 3);
 });
 
 test('the combo multiplier keeps climbing past the cap, at a quarter rate', () => {
