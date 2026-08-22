@@ -99,3 +99,156 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
   --board-chrome: calc(250px + 8dvh);
 }
+
+/* 새 오잉 카드 획득 연출 -----------------------------------------------------
+   결과 화면에서 이번 판에 처음 열린 카드 한 장을 짧게 세운다. 뒷면이 먼저
+   서고, 곧 뒤집혀 그림이 나온다 - 뒤집히는 동작 자체가 "뭔가 얻었다"는 신호라
+   따로 문구를 붙이지 않아도 읽힌다.
+
+   위계는 결과 화면의 기존 순서를 건드리지 않는다: 점수와 신기록이 먼저 서고,
+   이 패널은 그 아래 한 칸을 빌린다. 카드가 없는 판에서는 hidden 그대로라
+   화면이 지금과 완전히 같다.
+
+   전환은 transform과 opacity만 쓴다. 그림은 원본(1086x1448)이 아니라 격자에
+   깔던 썸네일(300x400, 11~13KB)이라, 결과 화면에 도달해서야 처음 한 장을
+   받는다 - 시작 화면 preload에는 아무것도 더하지 않는다. */
+.result-card-award {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  box-sizing: border-box;
+  width: min(100%, 350px);
+  margin: 9px auto 0;
+  padding: 11px 14px;
+  border: 1.5px solid rgba(226, 198, 145, .7);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 250, .97), rgba(255, 247, 225, .95));
+  box-shadow:
+    0 4px 0 rgba(185, 132, 65, .1),
+    0 12px 22px rgba(71, 99, 98, .11),
+    inset 0 2px 0 #fff;
+  text-align: left;
+  opacity: 0;
+  transform: translateY(10px) scale(.94);
+  transition: opacity 300ms ease, transform 380ms cubic-bezier(.2, .8, .3, 1.02);
+}
+
+.result-card-award[hidden] { display: none; }
+.result-card-award.is-shown { opacity: 1; transform: none; }
+
+.result-card-award-frame {
+  position: relative;
+  flex: 0 0 auto;
+  width: 84px;
+  height: 112px;
+  perspective: 760px;
+}
+
+.result-card-award-frame > i {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow:
+    0 3px 8px rgba(80, 92, 120, .24),
+    inset 0 0 0 1.5px rgba(255, 255, 255, .7);
+  transition: transform 560ms cubic-bezier(.3, .72, .28, 1);
+}
+
+/* 두 면이 같은 방향으로 돈다. 앞면을 0도에서 시작시키면 뒤집힐 때 반대로
+   돌아 카드가 접히는 것처럼 보인다. */
+.result-card-award-back {
+  background-image: url("../assets/cards/thumbs/card-back-v1.webp");
+  transform: rotateY(0deg);
+}
+
+.result-card-award-face { transform: rotateY(180deg); }
+.result-card-award.is-revealed .result-card-award-back { transform: rotateY(180deg); }
+.result-card-award.is-revealed .result-card-award-face { transform: rotateY(360deg); }
+
+.result-card-award-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.result-card-award-tag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8fae, #f4577f);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.result-card-award-lead {
+  margin: 4px 0 0;
+  color: #8a6a3c;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.result-card-award-name {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #3f4f74;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.16;
+}
+
+.result-card-award-count {
+  margin: 1px 0 0;
+  color: #7d8aa6;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.result-card-award-more {
+  margin: 2px 0 0;
+  color: #98a3bb;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* 장면은 보너스다. 카드 이름이 21px 제목 글꼴인 자리에서 11px 알약 하나로
+   붙어, 눈이 카드를 먼저 읽고 나서야 여기에 닿는다. */
+.result-card-award-chapter {
+  align-self: flex-start;
+  margin: 5px 0 0;
+  padding: 3px 9px;
+  border: 1px solid rgba(92, 185, 157, .28);
+  border-radius: 999px;
+  background: rgba(226, 250, 239, .82);
+  color: #347d69;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.result-card-award-more[hidden],
+.result-card-award-chapter[hidden] { display: none; }
+
+/* 기록 창이 열리면 결과 카드와 같이 물러난다. is-shown보다 뒤에 서야 이긴다. */
+.result-card-award.is-tucked {
+  opacity: 0;
+  transform: translateY(118%);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-card-award,
+  .result-card-award-frame > i { transition: none; }
+}

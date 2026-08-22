@@ -22,6 +22,9 @@ import {
   classicChapterForBoard,
   classicChapterGallery,
   oingCardRows,
+  newlyUnlockedOingCards,
+  unseenRareBoardItemTypes,
+  RARE_BOARD_ITEM_INTROS,
   CLASSIC_CHAPTERS,
   classicComboAfterFailure,
   classicComboGain,
@@ -490,6 +493,7 @@ class OingGame {
     const audioReady = this.settings.sound ? unlockAudio() : Promise.resolve(false);
     const musicReady = this.settings.music ? unlockMusic() : Promise.resolve(false);
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
+    this.snapshotUnlockedCards();
     this.inventory = createRunInventory();
     this.ui.resetItemAvailabilityHistory();
     // Classic mode: state.round is the generation depth ramp, not a stage —
@@ -642,7 +646,7 @@ class OingGame {
       const seats = [...this.model.bonusCats].slice(0, yield_);
       seats.forEach((key) => this.model.bonusCats.delete(key));
     }
-    const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+    const placed = this.placeBoardItems();
     this.renderBoard();
     this.updateHUD();
     return placed;
@@ -902,6 +906,64 @@ class OingGame {
     if (this.classic) storageAdapter.saveClassicBestCombo(this.state.maxCombo);
   }
 
+  // 도감이 보는 누적값 한 벌. 기록 창과 결과 화면이 같은 자리에서 읽어야
+  // 갤러리에 잠겨 보이는 카드가 결과 화면에서 열렸다고 뜨는 일이 없다.
+  currentCardTotals() {
+    return {
+      runs: storageAdapter.getRunsPlayed(),
+      cats: storageAdapter.getCatsRescued(),
+      bigClears: storageAdapter.getBigClears(),
+      cellsCleared: storageAdapter.getCellsCleared(),
+      playDays: storageAdapter.getPlayDays().length,
+      bestScore: storageAdapter.getClassicBestScore(),
+    };
+  }
+
+  unlockedCardKeys() {
+    return oingCardRows(this.currentCardTotals())
+      .filter((card) => card.unlocked)
+      .map((card) => card.key);
+  }
+
+  // 판이 시작될 때 열려 있던 카드를 기억해둔다. 저장소가 아니라 메모리에만
+  // 두는 값이다 - 이 판이 끝나면 쓸모가 없고, 남겨두면 저장된 사실과
+  // 실제 누적값이 갈라질 자리가 하나 더 생긴다.
+  snapshotUnlockedCards() {
+    this.cardKeysAtRunStart = this.runtime.testMode ? null : new Set(this.unlockedCardKeys());
+  }
+
+  // 이번 판에 처음 열린 카드들. 시작 스냅샷이 없으면(테스트 모드 등) 빈 결과.
+  cardsUnlockedThisRun() {
+    if (this.runtime.testMode || !this.cardKeysAtRunStart) return null;
+    const award = newlyUnlockedOingCards(this.currentCardTotals(), [...this.cardKeysAtRunStart]);
+    return award.fresh.length ? award : null;
+  }
+
+  // 아이템 배치는 다섯 군데에서 일어난다. 첫 등장 안내를 각 자리에 흩어놓으면
+  // 한 곳을 빠뜨리고, 빠뜨린 경로로 처음 만난 사람은 영영 설명을 못 듣는다.
+  placeBoardItems() {
+    const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+    this.announceRareBoardItems(placed);
+    return placed;
+  }
+
+  // 처음 보는 희귀 아이템이 판에 놓였다면 한 줄만 흘린다. 한 번에 여러 종류가
+  // 놓여도 한 줄로 끝낸다 - 토스트가 겹치면 읽히지 않고, 남은 종류는 다음에
+  // 나올 때 자기 차례를 갖는다.
+  announceRareBoardItems(placed = []) {
+    if (this.runtime.testMode || !Array.isArray(placed) || !placed.length) return;
+    // 배치는 정답을 맞힌 직후에도 일어난다 - 드래그가 끝나자마자 도는 자리다.
+    // 희귀 아이템이 하나도 없으면 저장소를 아예 읽지 않는다. 폭탄과 시계가
+    // 떨어질 때마다 JSON을 파싱할 이유는 없다.
+    const types = placed.map((item) => item?.type);
+    if (!types.some((type) => RARE_BOARD_ITEM_INTROS[type])) return;
+    const unseen = unseenRareBoardItemTypes(types, storageAdapter.getSeenRareItems());
+    const type = unseen[0];
+    if (!type) return;
+    storageAdapter.markRareItemSeen(type);
+    this.ui.toast(RARE_BOARD_ITEM_INTROS[type], 1600);
+  }
+
   // A second thing to chase besides the score, built from what the board
   // already knows: on the stages where the garden shows through, how much of
   // it did this run manage to uncover at once? Kept deliberately small — one
@@ -1063,7 +1125,7 @@ class OingGame {
       // Drops land on cells the player has cleared, and a freshly generated
       // board has none — so the placement pass belongs here, after every
       // success, not only at 판갈이.
-      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+      const placed = this.placeBoardItems();
       this.renderBoard({ preserveScoreBurst: true });
       if (placed.length) {
         this.announceBoardItems(placed, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
@@ -1093,7 +1155,7 @@ class OingGame {
       this.renderBoard({ preserveScoreBurst: true });
       await this.rescueShuffle();
     } else {
-      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+      const placed = this.placeBoardItems();
       this.renderBoard({ preserveScoreBurst: true });
       if (placed.length) this.announceBoardItems(placed, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
     }
@@ -1599,7 +1661,7 @@ class OingGame {
     const remainingAnswer = this.model.findAnswer();
     const remaining = this.model.remainingPlayableCells();
     if (this.classic) {
-      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+      const placed = this.placeBoardItems();
       this.renderBoard();
       if (placed.length) this.announceBoardItems(placed);
       if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
@@ -1626,7 +1688,7 @@ class OingGame {
       this.renderBoard();
       await this.rescueShuffle();
     } else {
-      const placed = this.boardItems.place(this.model.grid, this.model.bonusCats);
+      const placed = this.placeBoardItems();
       this.renderBoard();
       if (placed.length) this.announceBoardItems(placed);
     }
@@ -2056,6 +2118,7 @@ class OingGame {
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
     this.commitLifetimeTotals();
+    const cardAward = this.cardsUnlockedThisRun();
     // The garden reveal is the run's second scoreboard. Capture the previous
     // best before saving so the result card can tell the player they beat it.
     const cleanClears = Math.max(0, Math.round(this.state.cleanClears || 0));
@@ -2067,6 +2130,7 @@ class OingGame {
     this.refreshClassicRecordSurfaces();
     this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
+      cardAward,
       score: this.state.score,
       maxCombo: this.state.maxCombo,
       round: this.state.round,
@@ -2119,6 +2183,9 @@ class OingGame {
 
   setResultTucked(tucked) {
     document.querySelector('.result-card')?.classList.toggle('is-tucked', tucked);
+    // 카드 연출 패널도 같이 물러나야 한다. 결과 카드만 내려가면 패널 혼자
+    // 기록 창 앞에 남는다.
+    document.querySelector('.result-card-award')?.classList.toggle('is-tucked', tucked);
   }
 
   async openRanking() {
@@ -2141,14 +2208,7 @@ class OingGame {
     // 카드는 판이 아니라 플레이한 행동으로 열린다. 기록 창을 열 때마다
     // 지금 누적값으로 다시 판정한다 - 어딘가에 "열림"을 따로 저장해두면
     // 조건을 손볼 때 이미 열린 카드와 어긋나기 시작한다.
-    this.ui.renderOingCards(oingCardRows({
-      runs: storageAdapter.getRunsPlayed(),
-      cats: storageAdapter.getCatsRescued(),
-      bigClears: storageAdapter.getBigClears(),
-      cellsCleared: storageAdapter.getCellsCleared(),
-      playDays: storageAdapter.getPlayDays().length,
-      bestScore: storageAdapter.getClassicBestScore(),
-    }));
+    this.ui.renderOingCards(oingCardRows(this.currentCardTotals()));
     this.ui.setOverlay('ranking-overlay', true);
   }
 
@@ -2234,9 +2294,11 @@ class OingGame {
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
     this.commitLifetimeTotals();
+    const cardAward = this.cardsUnlockedThisRun();
     const seenChapterKeys = storageAdapter.getSeenChapters();
     this.ui.updateCatsRescued(catsRescuedTotal);
     this.lastResultSummary = {
+      cardAward,
       score: this.state.score,
       maxCombo: this.state.maxCombo,
       round: this.classic.boardsPlayed,
