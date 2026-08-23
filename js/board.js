@@ -1478,25 +1478,19 @@ export class BoardModel {
   findHintAnswer() {
     const answers = this.findAnswers();
     if (!answers.length) return null;
-    const richer = answers.filter((answer) => answer.count >= 3);
-    const pool = richer.length ? richer : answers;
     const centerRow = (this.rows - 1) / 2;
     const centerCol = (this.cols - 1) / 2;
-    // Cleared cells are valid parts of a selection. Prefer a readable span
-    // around the live numbers instead of reducing every hint to two glowing
-    // buttons. Cap the extra empty area so a sparse late board never gets one
-    // giant frame covering nearly the whole grid.
-    const readable = pool.filter((answer) => {
-      const area = (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1);
-      return area <= answer.count + 4;
-    });
-    const candidates = readable.length ? readable : pool;
-    return candidates.slice().sort((a, b) => {
+    // A hint should disclose the smallest useful answer, not frame a large
+    // sparse rectangle merely because that rectangle also sums to ten.
+    // Empty cells remain legal, but they lose before compact live answers.
+    return answers.slice().sort((a, b) => {
       const areaA = (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1);
       const areaB = (b.r2 - b.r1 + 1) * (b.c2 - b.c1 + 1);
+      const emptyA = areaA - a.count;
+      const emptyB = areaB - b.count;
       const centerA = Math.abs((a.r1 + a.r2) / 2 - centerRow) + Math.abs((a.c1 + a.c2) / 2 - centerCol);
       const centerB = Math.abs((b.r1 + b.r2) / 2 - centerRow) + Math.abs((b.c1 + b.c2) / 2 - centerCol);
-      return areaB - areaA || b.count - a.count || centerA - centerB;
+      return emptyA - emptyB || areaA - areaB || a.count - b.count || centerA - centerB;
     })[0];
   }
 

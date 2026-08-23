@@ -1684,8 +1684,10 @@ class OingGame {
     duckMusic(620, 0.44);
     playBombSound();
     bombHaptic();
-    await this.ui.animateBomb(rect);
     this.model.remove(rect);
+    this.ui.revealClearedCells(rect, [], { includeItems: true });
+    this.trackGardenReveal();
+    await this.ui.animateBomb(rect);
     await this.finishBlast(boardItemKey);
   }
 
@@ -1706,8 +1708,10 @@ class OingGame {
     duckMusic(780, 0.36);
     playMegaBombSound();
     megaBombHaptic();
-    await this.ui.animateMegaBomb(cells, { row, col });
     this.model.removeCells(cells);
+    this.ui.revealClearedCells({ r1: row, c1: col, r2: row, c2: col }, cells, { includeItems: true });
+    this.trackGardenReveal();
+    await this.ui.animateMegaBomb(cells, { row, col });
     await this.finishBlast(boardItemKey);
   }
 

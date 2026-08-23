@@ -277,9 +277,11 @@
 
 /* The help affordance sits directly above pause without stealing its edge. */
 .play-ui-v4 .play-help-button {
-  left: 8%;
-  top: 0;
+  left: 22px;
+  top: -15px;
 }
+
+.play-ui-v4 .hud-controls { overflow: visible; }
 
 /* The timer artwork's optical baseline is a touch low and right of the text. */
 .play-ui-v4 .play-top-controls .time-pill-chrome {
@@ -396,18 +398,46 @@
 }
 
 .screen-result.is-sheet .result-actions .btn {
-  min-height: 50px;
-  height: 50px;
+  min-height: 46px;
+  height: 46px;
   padding-block: 0;
 }
 .screen-result.is-sheet #retry-button { font-size: 20px; }
 .screen-result.is-sheet .result-ranking-button { font-size: 17px; }
+.screen-result.is-sheet .result-actions {
+  row-gap: 10px;
+}
+.screen-result.is-sheet .result-actions .result-home-button {
+  min-height: 36px;
+  height: 36px;
+  margin-top: 2px;
+}
+
+/* Keep the instruction and primary actions visually paired. The extra bottom
+   reserve lifts the action card away from Settings instead of overlapping it. */
+.screen-home {
+  padding-bottom: calc(100px + var(--safe-bottom));
+}
+.screen-home .home-howto { margin-top: auto; }
+.screen-home .home-actions { margin-top: 3px; }
+
+/* Bomb particles continue above the board, but consumed faces become chapter
+   windows in the same paint as the score update. */
+#play-screen.play-ui-v4 .tile.is-bombed.is-cleared-reveal,
+#play-screen.play-ui-v4 .tile.is-megabombed.is-cleared-reveal {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
 
 @media (max-height: 720px) {
   .help-cat-tip { margin-block: 3px 5px; padding-block: 3px; }
   .help-panel { max-height: calc(100dvh - var(--safe-top) - 18px); }
   .screen-result.is-sheet .result-character-stage { width: 62px; height: 62px; }
   .play-ui-v4 .cat-speech { translate: 0 -18px; }
+  .screen-home { padding-bottom: calc(88px + var(--safe-bottom)); }
+  .screen-home .home-actions { margin-top: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

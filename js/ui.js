@@ -767,7 +767,7 @@ export class GameUI {
     this.comboGainTimer = window.setTimeout(() => pop.remove(), 760);
   }
 
-  revealClearedCells(rect, extraCells = []) {
+  revealClearedCells(rect, extraCells = [], { includeItems = false } = {}) {
     this.clearSelection();
     const cells = [...cellsInRect(rect), ...extraCells];
     const seen = new Set();
@@ -776,7 +776,7 @@ export class GameUI {
       if (seen.has(key)) return;
       seen.add(key);
       const tile = this.tileAt(r, c);
-      if (!tile || tile.dataset.item) return;
+      if (!tile || (!includeItems && tile.dataset.item)) return;
       tile.classList.remove(
         'is-selected', 'is-tap-anchor', 'is-hint', 'is-hint-area',
         'is-tutorial', 'is-clover-hint',

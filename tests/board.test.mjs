@@ -271,7 +271,7 @@ assert.deepEqual(analyzeAnswerSpread(hintModel.grid, hintModel.findAnswers()), {
   dominantCellShare: 2 / 3,
 });
 assert.equal(hintModel.findEasyAnswer().count, 2, 'onboarding keeps the easiest two-cell answer');
-assert.ok(hintModel.findHintAnswer().count >= 3, 'live hints prioritize a richer three-cell answer');
+assert.equal(hintModel.findHintAnswer().count, 2, 'live hints prefer the smallest compact answer');
 
 const sparseHintModel = new BoardModel(6);
 sparseHintModel.rows = 1;

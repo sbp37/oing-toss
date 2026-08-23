@@ -66,6 +66,12 @@ test('cleared cells drop selection state synchronously, including bomb spill', (
     assert.equal(classes.get(key).has('is-cleared-reveal'), true, `${key} did not reveal immediately`);
   }
   assert.equal(classes.get('1:1').has('is-cleared-reveal'), false, 'an unconsumed board item must keep its face');
+
+  GameUI.prototype.revealClearedCells.call({
+    clearSelection() {},
+    tileAt: (r, c) => tiles.get(`${r}:${c}`),
+  }, { r1: 1, c1: 1, r2: 1, c2: 1 }, [], { includeItems: true });
+  assert.equal(classes.get('1:1').has('is-cleared-reveal'), true, 'a consumed bomb item must reveal with its blast');
 });
 
 test('the game reveals removed cells before starting delayed celebration', async () => {
@@ -114,4 +120,14 @@ test('bomb impact does not render a second bomb image', async () => {
   const impact = source.slice(source.indexOf('async animateBomb('), source.indexOf('async animateMegaBomb('));
   assert.doesNotMatch(impact, /createElement\(['"]img['"]\)/);
   assert.doesNotMatch(impact, /assets\/icons\/items\/bomb/);
+});
+
+test('bomb and megabomb clear the model and reveal cells before delayed impact FX', async () => {
+  const source = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const bomb = source.slice(source.indexOf('async resolveBomb('), source.indexOf('async resolveMegaBomb('));
+  assert.ok(bomb.indexOf('this.model.remove(rect)') < bomb.indexOf('this.ui.revealClearedCells(rect'));
+  assert.ok(bomb.indexOf('this.ui.revealClearedCells(rect') < bomb.indexOf('await this.ui.animateBomb(rect)'));
+  const mega = source.slice(source.indexOf('async resolveMegaBomb('), source.indexOf('async finishBlast('));
+  assert.ok(mega.indexOf('this.model.removeCells(cells)') < mega.indexOf('this.ui.revealClearedCells('));
+  assert.ok(mega.indexOf('this.ui.revealClearedCells(') < mega.indexOf('await this.ui.animateMegaBomb('));
 });
