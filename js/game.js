@@ -1144,6 +1144,7 @@ class OingGame {
     const caughtItems = this.boardItemsInRect(rect);
     this.model.remove(rect);
     if (blastCells.length) this.model.removeCells(blastCells);
+    this.ui.revealClearedCells(rect, blastCells);
     this.trackGardenReveal();
     this.state.inputLocked = false;
 

@@ -22,7 +22,14 @@ import {
   classicWowBonusMultiplier,
   stageShowcaseBoardDrop,
 } from '../js/data.js';
-import { BoardModel, bonusCatTargetForDimensions, findAllSumTenRects } from '../js/board.js';
+import {
+  BoardModel,
+  answerReadabilityClass,
+  bonusCatTargetForDimensions,
+  closestReadableAnswer,
+  countTrainLines,
+  findAllSumTenRects,
+} from '../js/board.js';
 
 test('classic score is the original formula: (cells + cats×5) × min(combo, 25)', () => {
   assert.equal(classicScoreForClear(2, 0, 1), 2);
@@ -179,6 +186,26 @@ test('generateClassic is instant enough for a mid-timer board change', () => {
   // 30 boards well under 2s — a wide margin that still catches the
   // certified stage generator being invoked by mistake (it costs ~100ms+).
   assert.ok(elapsed < 2000, `30 full-size classic boards took ${elapsed.toFixed(0)}ms`);
+});
+
+test('classic openings keep adjacent pairs visible without becoming a train', () => {
+  const model = new BoardModel(4);
+  let answersSeen = 0;
+  let twoCellSeen = 0;
+  for (const round of [5, 7, 10]) {
+    for (let sample = 0; sample < 20; sample += 1) {
+      model.generateClassic(6, round === 5 ? 5 : round === 7 ? 7 : 8, round);
+      const answers = findAllSumTenRects(model.grid);
+      const adjacent = answers.filter((answer) => answerReadabilityClass(answer) === 'adjacent-pair');
+      assert.ok(adjacent.length >= 2, `round ${round} sample ${sample}: only ${adjacent.length} adjacent pairs`);
+      assert.ok(countTrainLines(model.grid) <= 1, `round ${round} sample ${sample}: answer train escaped the cap`);
+      answersSeen += answers.length;
+      twoCellSeen += answers.filter((answer) => answer.count === 2).length;
+      assert.ok(closestReadableAnswer(answers), 'a generated classic opening must have a readable answer');
+    }
+  }
+  const twoCellShare = twoCellSeen / answersSeen;
+  assert.ok(twoCellShare >= 0.48 && twoCellShare <= 0.63, `two-cell share ${twoCellShare.toFixed(3)} left its readability band`);
 });
 
 test('the first two classic boards always offer several visible ways to make ten', () => {

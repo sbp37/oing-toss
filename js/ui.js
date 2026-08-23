@@ -749,6 +749,24 @@ export class GameUI {
     this.comboGainTimer = window.setTimeout(() => pop.remove(), 760);
   }
 
+  revealClearedCells(rect, extraCells = []) {
+    this.clearSelection();
+    const cells = [...cellsInRect(rect), ...extraCells];
+    const seen = new Set();
+    cells.forEach(({ r, c }) => {
+      const key = `${r}:${c}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const tile = this.tileAt(r, c);
+      if (!tile || tile.dataset.item) return;
+      tile.classList.remove(
+        'is-selected', 'is-tap-anchor', 'is-hint', 'is-hint-area',
+        'is-tutorial', 'is-clover-hint',
+      );
+      tile.classList.add('is-cleared-reveal');
+    });
+  }
+
   async animateSuccess(rect, combo = 1) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
@@ -760,8 +778,6 @@ export class GameUI {
       // the cleared cell while the success particles play.
       tile.classList.add('is-success', 'is-cleared-reveal');
     });
-    this.elements.marquee.classList.add('is-ten');
-    this.elements.marquee.classList.add('is-bursting');
     this.boardFrame.classList.add('is-success-resolving');
     this.boardFrame.dataset.comboImpact = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     this.spawnParticles(rect, combo);

@@ -303,12 +303,12 @@ export function tripleUnitCountForRound(numberCount, round = 1) {
       : stage === 4
         ? 0.24
         : stage === 5
-          ? 0.32
+          ? 0.24
           : stage <= 7
-            ? 0.42
+            ? 0.3
             : stage <= 9
-              ? 0.55
-              : 0.65;
+              ? 0.36
+              : 0.42;
   let units = Math.min(Math.floor(count / 3), Math.round((count * ratio) / 3));
   if (units % 2 !== count % 2) units += units * 3 + 3 <= count ? 1 : -1;
   return Math.max(0, units);
@@ -715,6 +715,115 @@ function optimizeNaturalBoard(grid, cats, round, pacing, iterationBudget, target
 
 function isAdjacentPair(answer) {
   return answer.count === 2 && (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1) === 2;
+}
+
+export function answerReadabilityClass(answer) {
+  if (!answer) return 'none';
+  const height = answer.r2 - answer.r1 + 1;
+  const width = answer.c2 - answer.c1 + 1;
+  const area = height * width;
+  if (answer.count === 2 && area === 2) return 'adjacent-pair';
+  if (answer.count === 3 && area <= 4) return 'near-triple';
+  if (height >= 2 && width >= 2 && area <= 6) return 'small-2d';
+  if (answer.count === 2) return 'spaced-pair';
+  return 'large';
+}
+
+const ANSWER_READABILITY_RANK = Object.freeze({
+  'adjacent-pair': 0,
+  'near-triple': 1,
+  'small-2d': 2,
+  'spaced-pair': 3,
+  large: 4,
+  none: 5,
+});
+
+export function closestReadableAnswer(answers = []) {
+  const compare = (a, b) => {
+    const classA = answerReadabilityClass(a);
+    const classB = answerReadabilityClass(b);
+    const areaA = (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1);
+    const areaB = (b.r2 - b.r1 + 1) * (b.c2 - b.c1 + 1);
+    return ANSWER_READABILITY_RANK[classA] - ANSWER_READABILITY_RANK[classB]
+      || areaA - areaB
+      || a.count - b.count
+      || a.r1 - b.r1
+      || a.c1 - b.c1;
+  };
+  let best = null;
+  for (const answer of answers) {
+    if (!best || compare(answer, best) < 0) best = answer;
+  }
+  return best;
+}
+
+function findTailAnswers(grid) {
+  const rows = grid.length;
+  const cols = grid[0]?.length || 0;
+  const sums = Array.from({ length: rows + 1 }, () => Array(cols + 1).fill(0));
+  const counts = Array.from({ length: rows + 1 }, () => Array(cols + 1).fill(0));
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      const value = grid[r]?.[c] ?? 0;
+      const present = value > 0 ? 1 : 0;
+      sums[r + 1][c + 1] = value + sums[r][c + 1] + sums[r + 1][c] - sums[r][c];
+      counts[r + 1][c + 1] = present + counts[r][c + 1] + counts[r + 1][c] - counts[r][c];
+    }
+  }
+  const totalIn = (prefix, r1, c1, r2, c2) => prefix[r2 + 1][c2 + 1]
+    - prefix[r1][c2 + 1] - prefix[r2 + 1][c1] + prefix[r1][c1];
+  const answers = [];
+  for (let r1 = 0; r1 < rows; r1 += 1) {
+    for (let c1 = 0; c1 < cols; c1 += 1) {
+      for (let r2 = r1; r2 < rows; r2 += 1) {
+        for (let c2 = c1; c2 < cols; c2 += 1) {
+          if (totalIn(sums, r1, c1, r2, c2) !== 10) continue;
+          const count = totalIn(counts, r1, c1, r2, c2);
+          if (count >= 2) answers.push({ r1, c1, r2, c2, count });
+        }
+      }
+    }
+  }
+  return answers;
+}
+
+function tailReadabilityAfterPlay(sourceGrid, sourceCats = new Set(), picker = closestReadableAnswer, threshold = 0.4) {
+  const grid = sourceGrid.map((row) => row.slice());
+  const cats = new Set(sourceCats);
+  const initial = grid.flat().filter((value) => value > 0).length + cats.size;
+  let remaining = initial;
+  while (remaining / Math.max(1, initial) > threshold) {
+    const answers = findTailAnswers(grid);
+    const answer = picker(answers);
+    if (!answer) return { answer: null, className: 'none', rank: ANSWER_READABILITY_RANK.none };
+    cellsInRect(answer).forEach(({ r, c }) => {
+      if (grid[r][c] > 0) {
+        grid[r][c] = null;
+        remaining -= 1;
+      }
+      if (cats.delete(cellKey(r, c))) remaining -= 1;
+    });
+  }
+  const answer = closestReadableAnswer(findTailAnswers(grid));
+  const className = answerReadabilityClass(answer);
+  return { answer, className, rank: ANSWER_READABILITY_RANK[className] };
+}
+
+function classicTailReadability(sourceGrid, sourceCats = new Set()) {
+  const samples = [
+    tailReadabilityAfterPlay(sourceGrid, sourceCats),
+    tailReadabilityAfterPlay(sourceGrid, sourceCats, pickAnswerLikeHuman),
+    tailReadabilityAfterPlay(sourceGrid, sourceCats, pickAnswerLikeHuman),
+    tailReadabilityAfterPlay(sourceGrid, sourceCats, pickAnswerLikeHuman),
+  ];
+  let worst = samples[0];
+  for (const sample of samples) {
+    if (sample.rank > worst.rank) worst = sample;
+  }
+  return {
+    ...worst,
+    averageRank: samples.reduce((sum, sample) => sum + sample.rank, 0) / samples.length,
+  };
 }
 
 const cellKey = (row, col) => `${row}:${col}`;
@@ -1198,21 +1307,48 @@ export class BoardModel {
     );
     const wantedMultiCell = isLearningBoard ? 3 : 0;
     const maxAttempts = isLearningBoard ? 96 : 24;
-    let best = null;
+    const wantedAdjacentPairs = 2;
+    let openingBest = null;
+    const shortlist = [];
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const candidate = makeNaturalGrid(this.rows, this.cols, this.round, catTarget);
       const answerRects = findAllSumTenRects(candidate.grid);
       const answers = answerRects.length;
       const multiCell = answerRects.filter((answer) => answer.count >= 3).length;
-      const targetCoverage = Math.min(answers, wanted)
-        + Math.min(multiCell, wantedMultiCell) * wanted;
-      if (!best
-        || targetCoverage > best.targetCoverage
-        || (targetCoverage === best.targetCoverage && answers > best.answers)) {
-        best = { candidate, answers, multiCell, targetCoverage };
+      const adjacentPairs = answerRects.filter(isAdjacentPair).length;
+      const trains = countTrainLines(candidate.grid);
+      const requirementGap = Math.max(0, wanted - answers)
+        + Math.max(0, wantedMultiCell - multiCell)
+        + Math.max(0, wantedAdjacentPairs - adjacentPairs);
+      const openingScore = Math.min(answers, wanted)
+        + Math.min(multiCell, wantedMultiCell) * wanted
+        + Math.min(adjacentPairs, wantedAdjacentPairs) * wanted
+        - trains * wanted
+        - requirementGap * wanted * 20;
+      const entry = { candidate, answers, multiCell, adjacentPairs, trains, requirementGap, openingScore };
+      if (!openingBest
+        || openingScore > openingBest.openingScore
+        || (openingScore === openingBest.openingScore && answers > openingBest.answers)) {
+        openingBest = entry;
       }
-      if (answers >= wanted && multiCell >= wantedMultiCell) break;
+      if (requirementGap === 0 && trains <= 1) shortlist.push(entry);
+      // Eight openings across four tail paths keep the selection robust while
+      // leaving enough timer headroom for an immediate mid-run board change.
+      if (shortlist.length >= 8) break;
     }
+    if (!shortlist.length && openingBest) shortlist.push(openingBest);
+    const best = shortlist
+      .map((entry) => {
+        const tail = classicTailReadability(entry.candidate.grid, entry.candidate.cats);
+        return { ...entry, tail };
+      })
+      // Every shortlisted opening already meets the visible-answer and train
+      // constraints. Prefer the board whose hardest sampled tail still has
+      // the closest readable answer; opening abundance is only a tiebreaker.
+      .sort((a, b) => a.tail.rank - b.tail.rank
+        || a.tail.averageRank - b.tail.averageRank
+        || b.openingScore - a.openingScore
+        || b.answers - a.answers)[0];
     this.grid = best.candidate.grid;
     this.bonusCats = best.candidate.cats;
     this.lastClearPlan = null;

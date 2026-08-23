@@ -5259,6 +5259,23 @@
   transition: opacity 80ms linear;
 }
 
+/* Readable hint, lighter frame -------------------------------------------
+   The answer still reads as one rectangle, but the mint rail no longer
+   covers the glass edges it is pointing at. */
+#play-screen.play-ui-v4 .tile.is-hint-area:not(.is-hint) {
+  box-shadow:
+    inset 0 0 0 1px rgba(77, 190, 163, .42),
+    inset 0 0 9px rgba(193, 255, 236, .18);
+}
+
+#play-screen.play-ui-v4 .hint-region {
+  border-width: 2.5px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .78),
+    0 0 0 4px rgba(43, 154, 126, .13),
+    inset 0 0 10px rgba(255, 255, 255, .4);
+}
+
 /* Board-item impact is a local syrup burst, not a second bomb picture. */
 #play-screen.play-ui-v4 .bomb-fx::before {
   width: 54px;
