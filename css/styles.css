@@ -1692,7 +1692,7 @@ img {
    `--tile-art` stays a variable because the bonus cat layers a glow over the
    same art; composing against the variable keeps that rule from re-naming the
    file. */
-.tile { --tile-art: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); }
+.tile { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-cream.webp"); }
 .tile.value-1, .tile.value-2, .tile.value-3, .tile.value-4, .tile.value-5,
 .tile.value-6, .tile.value-7, .tile.value-8, .tile.value-9 {
   background-image: var(--tile-art);
@@ -1723,38 +1723,15 @@ img {
   opacity: 1;
 }
 
-/* The cat cell is the one place a second tile earns its keep. It is the peach
-   from the same syrup set, and it works here for the reason a colour system
-   across the whole board did not: there are only two or three of these on a
-   board, so its chroma never accumulates.
-
-   It sits at L* 90.3 against the board's 90.1 — the same lightness, so it does
-   not punch out of the field — while ΔE 14.1 of hue separation makes it read as
-   a different cell at a glance. Numeral contrast is 6.02:1, marginally better
-   than the board tile.
-
-   This replaced a flat #ffd98c, which was a fixed yellow owing nothing to the
-   tile set and read as a sticker. An earlier pass added a white radial glow
-   here to lift the cat character, and that claimed not to dilute the peach
-   underneath — that claim was wrong. Blending white at 0.72 alpha over the
-   raw peach (C* 17.3) collapses it to C* 4.7, and the gradient does not fall
-   below 0.40 until 42% of the radius, so nearly the whole tile was reading as
-   washed cream rather than peach. The cat art has its own drop-shadow filter
-   (`.bonus-cat-art`) and does not need the tile under it lightened for
-   contrast, so the glow here is now small and faint — a glass highlight, not
-   a wash. Even at these opacities the corner of the tile is close to the raw
-   webp's C* 17.3, since the gradient reaches transparent by 60% of the
-   radius. */
+/* The bonus cat uses one brighter strawberry-milk syrup tile. Its contrast is
+   carried by the artwork itself, so the character needs no extra white wash. */
 .tile.is-bonus-cat {
-  --tile-art: url("../assets/ui/tiles-syrup-v4/tile-peach.webp");
+  --tile-art: url("../assets/ui/tiles-syrup-v5/tile-cat-pink.webp");
   z-index: 2;
   overflow: visible;
   border: 0;
   background-color: transparent;
-  background-image:
-    radial-gradient(circle at 50% 55%, rgba(255,255,255,0.22) 0 18%, rgba(255,255,255,0.10) 36%, transparent 60%),
-    var(--tile-art);
-  background-blend-mode: normal, normal;
+  background-image: var(--tile-art);
   background-position: center;
   background-size: 100% 100%;
   background-repeat: no-repeat;
@@ -1767,13 +1744,14 @@ img {
   position: absolute;
   z-index: 3;
   left: 50%;
-  bottom: 18%;
-  width: 58%;
-  height: 58%;
+  top: 50%;
+  bottom: auto;
+  width: 82%;
+  height: 82%;
   object-fit: contain;
-  object-position: center bottom;
+  object-position: center;
   pointer-events: none;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   filter: saturate(1.07) drop-shadow(0 2px 2px rgba(55, 78, 104, 0.22));
   animation: bonus-cat-peek 1.8s ease-in-out infinite alternate;
 }

@@ -5171,3 +5171,54 @@
   #play-screen.play-ui-v4 .tile.is-cleared-reveal,
   .play-ui-v4 .board-entry { animation-duration: 1ms !important; }
 }
+
+/* Bright cream tiles on one quiet groove ----------------------------------
+   The board uses one four-pixel-equivalent bed and one white keyline. The
+   older cream, gold and slate frame rings made the edge read as five stacked
+   borders, while the mint tile merged with the sky. The new artwork carries
+   its own glass edge, so idle cells need no extra outline or standing shadow. */
+.play-ui-v4 .board,
+.screen-play.play-ui-v4[data-chapter][data-stage-band]:not([data-stage-band="warmup"]) .board {
+  gap: 1.5px;
+  padding: 2px;
+  box-sizing: border-box;
+  border: 0;
+  outline: 2px solid rgba(255, 255, 255, .98);
+  outline-offset: 0;
+  border-radius: inherit;
+  background-color: #aaa2a3;
+  background-image: none;
+  box-shadow: none;
+}
+
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round],
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .tile[class*="value-"]:not(.is-selected):not(.is-success):not(.is-fail):not(.is-hint):not(.is-tutorial):not(.is-clover-hint),
+.play-ui-v4 .tile.is-bonus-cat:not(.is-selected):not(.is-success):not(.is-fail):not(.is-hint):not(.is-tutorial):not(.is-clover-hint) {
+  border: 0;
+  outline: 0;
+  background-color: transparent;
+  background-image: var(--tile-art);
+  background-position: center;
+  background-size: 104% 104%;
+  background-repeat: no-repeat;
+  box-shadow: none;
+  filter: none;
+}
+
+.play-ui-v4 .bonus-cat-art {
+  top: 50%;
+  bottom: auto;
+  width: 82%;
+  height: 82%;
+  object-position: center;
+  transform: translate(-50%, -50%);
+}
