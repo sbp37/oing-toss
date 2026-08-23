@@ -755,7 +755,10 @@ export class GameUI {
       .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--pop-delay', `${Math.min(index * 7, 42)}ms`);
-      tile.classList.add('is-success');
+      // The model is already empty when this animation starts. Reveal the
+      // chapter in the same paint instead of leaving the old tile face over
+      // the cleared cell while the success particles play.
+      tile.classList.add('is-success', 'is-cleared-reveal');
     });
     this.elements.marquee.classList.add('is-ten');
     this.elements.marquee.classList.add('is-bursting');
@@ -763,13 +766,9 @@ export class GameUI {
     this.boardFrame.dataset.comboImpact = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     this.spawnParticles(rect, combo);
     this.showScoreFlight(rect, combo);
-    // Keep the press/pop beat, but uncover the chapter before the particles
-    // finish. Waiting for the whole celebration made correct cells look as
-    // though they disappeared one frame late even though the model was
-    // already clear and input had been released.
-    await delay(74);
-    tiles.forEach((tile) => tile.classList.add('is-cleared-reveal'));
-    await delay(156);
+    // Particles may finish independently; the cleared board itself must not
+    // wait for them because that makes quick consecutive clears feel sticky.
+    await delay(230);
     this.elements.marquee.classList.remove('is-bursting', 'is-visible');
     this.boardFrame.classList.remove('is-success-resolving');
     delete this.boardFrame.dataset.comboImpact;
@@ -1609,13 +1608,24 @@ export class GameUI {
     this.elements.roundMini.classList.remove('is-advancing');
   }
 
-  showClassicBoardEntry(boardNumber = 1) {
+  showClassicBoardEntry(boardNumber = 1, timeBonus = 0, boardGrew = false) {
     this.boardFrame.querySelector('.board-entry')?.remove();
     const entry = document.createElement('div');
     entry.className = 'board-entry';
-    entry.textContent = `${Math.max(1, Math.round(Number(boardNumber) || 1))}판`;
+    const board = Math.max(1, Math.round(Number(boardNumber) || 1));
+    const bonus = Math.max(0, Math.round(Number(timeBonus) || 0));
+    const title = document.createElement('strong');
+    title.textContent = `${board}판`;
+    entry.appendChild(title);
+    if (bonus > 0) {
+      const reward = document.createElement('small');
+      reward.textContent = `+${bonus}초`;
+      entry.appendChild(reward);
+    }
+    entry.classList.toggle('is-reward', bonus > 0);
+    entry.classList.toggle('is-growth', Boolean(boardGrew));
     this.boardFrame.appendChild(entry);
-    window.setTimeout(() => entry.remove(), 620);
+    window.setTimeout(() => entry.remove(), 760);
   }
 
   showRoundReady(duration = 420) {
@@ -1674,19 +1684,21 @@ export class GameUI {
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-game-ending');
     this.showEndAnswers(answers);
-    await delay(520);
+    // Show the stop cue almost immediately. A half-second frozen board before
+    // TIME UP read as a dropped frame even though the end sequence was live.
+    await delay(180);
     const sweep = document.createElement('div');
     sweep.className = 'game-end-sweep';
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
     timeUp.classList.add('is-visible');
-    await delay(780);
+    await delay(900);
     timeUp.classList.remove('is-visible');
     sweep.remove();
     // The score is about to be the sheet's headline, so it is not announced
     // twice; the missed answers stay lit underneath it.
     this.boardFrame.classList.remove('is-game-ending');
-    await delay(140);
+    await delay(180);
   }
 
   setPlayCharacter(pose, duration = 0) {
@@ -1928,10 +1940,11 @@ export class GameUI {
     // item drops actually unlock and the number means something.
     if (this.elements.comboItemTrack) {
       this.elements.comboItemFill.style.width = `${Math.round(normalizedRewardProgress * 100)}%`;
-      this.elements.comboItemLabel.hidden = !rewardUnlocked;
-      if (rewardUnlocked) {
-        const progressStep = Math.round(normalizedRewardProgress * 7);
-        this.elements.comboItemLabel.textContent = `아이템 ${progressStep}/7`;
+      const rewardVisible = rewardUnlocked && combo > 0;
+      this.elements.comboItemTrack.hidden = !rewardVisible;
+      this.elements.comboItemLabel.hidden = !rewardVisible;
+      if (rewardVisible) {
+        this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
       }
     }
     this.elements.comboChip.classList.toggle('is-active', combo > 0);

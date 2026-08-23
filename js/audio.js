@@ -485,8 +485,8 @@ export function playGameOverSound(newRecord = false) {
     { frequency: 784, offset: 0.58, duration: 0.5 },
   ];
   fanfare.forEach(({ frequency, offset, duration }) => {
-    scheduleTone(ctx, frequency, now + offset, duration, 0.02, 'sawtooth', 0.02);
-    scheduleTone(ctx, frequency, now + offset, duration, 0.032, 'sine', 0.02);
+    scheduleTone(ctx, frequency, now + offset, duration, 0.045, 'sawtooth', 0.02);
+    scheduleTone(ctx, frequency, now + offset, duration, 0.06, 'sine', 0.02);
   });
 
   const sparkle = ctx.createOscillator();

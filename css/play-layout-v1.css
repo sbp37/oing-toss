@@ -5070,7 +5070,9 @@
   background-size: auto, var(--win-size, cover);
   background-position: 0 0, var(--win-pos, center);
   box-shadow: inset 0 0 0 1px rgba(38, 67, 84, .14);
-  animation: tile-chapter-reveal 156ms ease-out both;
+  animation: none;
+  opacity: 1;
+  transform: none;
 }
 
 #play-screen.play-ui-v4 .tile.is-cleared-reveal > * {
@@ -5221,4 +5223,122 @@
   height: 82%;
   object-position: center;
   transform: translate(-50%, -50%);
+}
+
+/* Quiet picture windows and one raised cream rim -------------------------
+   The dark groove remains between live tiles, but an uncovered cell only
+   keeps a hairline recess. The outer edge is one physical cream piece: no
+   gold/slate ring stack and no idle blur. */
+#play-screen.play-ui-v4[data-chapter] .tile.is-empty:not(.is-board-item):not(.is-bonus-cat),
+#play-screen.play-ui-v4 .tile.is-cleared-reveal {
+  border: 0;
+  outline: 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(66, 70, 72, .075),
+    inset 0 1px 0 rgba(255, 255, 255, .24);
+}
+
+.play-ui-v4 .board-frame,
+.play-ui-v4 .board-frame[data-round],
+.screen-play.play-ui-v4[data-stage-band] .board-frame {
+  max-width: calc(100% - 12px);
+  background: #fffaf0;
+  box-shadow:
+    0 0 0 4px rgba(255, 253, 247, .99),
+    0 3px 0 5px rgba(222, 211, 195, .92);
+}
+
+.play-ui-v4 .board {
+  outline-width: 1px;
+}
+
+/* The hint region disappears on the first pointer movement in game.js.
+   While idle it stays readable, but it no longer adds a second caption over
+   the live sum once the player starts selecting. */
+#play-screen.play-ui-v4 .hint-region span {
+  transition: opacity 80ms linear;
+}
+
+/* Board-item impact is a local syrup burst, not a second bomb picture. */
+#play-screen.play-ui-v4 .bomb-fx::before {
+  width: 54px;
+  height: 54px;
+  border: 0;
+  background: radial-gradient(circle, rgba(255, 252, 206, .96) 0 16%, rgba(255, 187, 112, .72) 32%, rgba(255, 120, 132, .18) 60%, transparent 72%);
+  box-shadow: none;
+  animation: bomb-soft-flash 430ms ease-out both;
+}
+
+#play-screen.play-ui-v4 .bomb-fx::after {
+  width: 72px;
+  height: 72px;
+  border: 2px solid rgba(255, 210, 104, .62);
+  box-shadow: none;
+  animation-duration: 430ms;
+}
+
+@keyframes bomb-soft-flash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.35); }
+  28% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.65); }
+}
+
+/* A board change carries its reward in the same compact beat. */
+.play-ui-v4 .board-entry {
+  grid-auto-flow: column;
+  gap: 7px;
+  min-width: 78px;
+  height: 40px;
+  animation-duration: 760ms;
+}
+
+.play-ui-v4 .board-entry strong {
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.play-ui-v4 .board-entry small {
+  padding-left: 7px;
+  border-left: 1px solid rgba(205, 171, 120, .42);
+  color: #3aa58f;
+  font-family: var(--font-display);
+  font-size: clamp(14px, 4vw, 17px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.play-ui-v4 .board-entry.is-growth {
+  box-shadow: 0 4px 0 rgba(205, 171, 120, .48), 0 0 0 4px rgba(255, 224, 146, .18);
+}
+
+/* The reward gauge only exists when it communicates live progress. */
+.play-ui-v4 .play-status-bar .combo-item-track[hidden],
+.play-ui-v4 .play-status-bar .combo-item-label[hidden] {
+  display: none;
+}
+
+/* Depleted controls remain recognisable toys instead of blank placeholders.
+   The zero badge disappears; the button itself stays clearly unavailable. */
+.play-ui-v4 .item-button[data-state="depleted"],
+.play-ui-v4 .item-button[data-state="locked"] {
+  opacity: .68;
+  filter: saturate(.48) brightness(1.04) drop-shadow(0 3px 4px rgba(84, 62, 28, .18));
+}
+
+.play-ui-v4 .item-button[data-count="0"] b {
+  display: none;
+}
+
+.play-ui-v4 .time-up.is-visible {
+  animation-duration: 880ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #play-screen.play-ui-v4 .bomb-fx::before,
+  #play-screen.play-ui-v4 .bomb-fx::after,
+  .play-ui-v4 .board-entry,
+  .play-ui-v4 .time-up.is-visible { animation-duration: 1ms !important; }
 }

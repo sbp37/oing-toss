@@ -66,6 +66,7 @@ import {
   shouldOfferStruggleHint,
   shouldShowBeginnerAutoHint,
   shouldShowClassicAutoHint,
+  shouldShowClassicSparseHint,
   stageEndDecision,
   normalClearThresholdForStage,
   isWowClear,
@@ -188,6 +189,7 @@ class OingGame {
     this.beginnerAutoHintShown = false;
     this.classicAutoHints = 0;
     this.classicAutoHintAt = -Infinity;
+    this.classicSparseHintBoard = -1;
     this.activeResolution = false;
     this.activeGesture = false;
     this.finishGraceTimer = null;
@@ -227,6 +229,9 @@ class OingGame {
       },
       onPointerStart: () => {
         this.activeGesture = true;
+        // A hint has finished its job as soon as the player acts. Leaving it
+        // under the live sum marquee showed two competing answers at once.
+        this.ui.clearHint();
         this.ui.clearSelection();
       },
       onTapAnchor: (cell) => {
@@ -537,6 +542,7 @@ class OingGame {
     this.beginnerAutoHintShown = false;
     this.classicAutoHints = 0;
     this.classicAutoHintAt = -Infinity;
+    this.classicSparseHintBoard = -1;
     this.lastInteractionAt = performance.now();
     this.activeResolution = false;
     this.activeGesture = false;
@@ -1358,7 +1364,7 @@ class OingGame {
     if (enteredChapter) this.applyClassicChapter();
     this.queueStageShowcase(classicDropStage(this.classic.boardIndex));
     const placedItems = this.buildRound();
-    this.ui.showClassicBoardEntry(this.classic.boardsPlayed);
+    this.ui.showClassicBoardEntry(this.classic.boardsPlayed, gainedTime, boardGrew);
     await this.ui.animateShuffleIn();
     if (placedItems.length) this.announceBoardItems(placedItems);
     else itemHaptic();
@@ -1907,7 +1913,9 @@ class OingGame {
   tick() {
     if (!this.state.running || this.state.paused) return;
     const now = performance.now();
-    if (this.classic) this.maybeShowClassicAutoHint(now);
+    if (this.classic) {
+      if (!this.maybeShowClassicSparseHint(now)) this.maybeShowClassicAutoHint(now);
+    }
     else this.maybeShowBeginnerAutoHint(now);
     const isFrozen = this.freezeEndsAt > now;
     if (isFrozen) {
@@ -2008,6 +2016,30 @@ class OingGame {
     this.lastInteractionAt = now;
     this.ui.showHint(answer);
     this.ui.setPlayCharacter('wave', 1000);
+    this.showCatMessage('autoHint', { force: true });
+    return true;
+  }
+
+  maybeShowClassicSparseHint(now = performance.now()) {
+    const boardIndex = this.classic?.boardIndex ?? -1;
+    if (!shouldShowClassicSparseHint({
+      running: this.state.running && !this.state.paused,
+      inputLocked: this.state.inputLocked,
+      tutorialActive: this.tutorialActive || this.waitingForFirstDrag,
+      boardIndex,
+      lastShownBoard: this.classicSparseHintBoard,
+      timeLeft: this.state.timeLeft,
+      idleMs: now - this.lastInteractionAt,
+      remaining: this.model.remainingPlayableCells(),
+      initialPlayable: this.state.initialPlayableCells,
+    })) return false;
+    const answer = this.model.findHintAnswer();
+    if (!answer) return false;
+    this.classicSparseHintBoard = boardIndex;
+    this.telemetry?.hint('sparse-tail');
+    this.lastInteractionAt = now;
+    this.ui.showHint(answer);
+    this.ui.setPlayCharacter('wave', 900);
     this.showCatMessage('autoHint', { force: true });
     return true;
   }
@@ -2306,7 +2338,6 @@ class OingGame {
       1 - this.model.remainingPlayableCells() / Math.max(1, this.state.initialPlayableCells),
     );
     const endAnswers = this.model.findAnswers();
-    this.ui.showMessage('기록을 정리한다냥!', 1300, 'result');
     this.ui.setPlayCharacter(this.state.maxCombo >= 8 ? 'success' : 'cheer');
     const oldBest = storageAdapter.getClassicBestScore();
     const newRecord = this.state.score > oldBest;

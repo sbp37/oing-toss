@@ -319,6 +319,21 @@ test('classic beginners get repeated auto-hints when they stall', async () => {
   assert.equal(shouldShowClassicAutoHint({ ...base, timeLeft: 5 }), false);
 });
 
+test('a sparse classic tail offers one quiet hint per board', async () => {
+  const { shouldShowClassicSparseHint, CLASSIC_SPARSE_HINT_IDLE_MS } = await import('../js/data.js');
+  const base = {
+    running: true, inputLocked: false, tutorialActive: false,
+    boardIndex: 4, lastShownBoard: -1, timeLeft: 30,
+    idleMs: CLASSIC_SPARSE_HINT_IDLE_MS, remaining: 10, initialPlayable: 36,
+  };
+  assert.equal(shouldShowClassicSparseHint(base), true);
+  assert.equal(shouldShowClassicSparseHint({ ...base, remaining: 16 }), false);
+  assert.equal(shouldShowClassicSparseHint({ ...base, idleMs: 1200 }), false);
+  assert.equal(shouldShowClassicSparseHint({ ...base, lastShownBoard: 4 }), false);
+  assert.equal(shouldShowClassicSparseHint({ ...base, boardIndex: 5, lastShownBoard: 4 }), true);
+  assert.equal(shouldShowClassicSparseHint({ ...base, timeLeft: 5 }), false);
+});
+
 test('past the fatigue line the board stops dropping time-givers', async () => {
   const { chooseBoardDrop } = await import('../js/data.js');
   const draw = (lateRun, seed) => chooseBoardDrop(20, () => seed, {

@@ -853,6 +853,7 @@ export function shouldShowBeginnerAutoHint({
 // the game: whenever they stall, the cat points at an answer.
 export const CLASSIC_AUTO_HINT_LIMIT = 3;
 export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 20000;
+export const CLASSIC_SPARSE_HINT_IDLE_MS = 3200;
 
 export function shouldShowClassicAutoHint({
   running = false, inputLocked = false, tutorialActive = false,
@@ -866,6 +867,26 @@ export function shouldShowClassicAutoHint({
     && sinceLastMs >= CLASSIC_AUTO_HINT_COOLDOWN_MS
     && timeLeft > 8
     && idleMs >= BEGINNER_AUTO_HINT_IDLE_MS;
+}
+
+// A nearly-cleared classic board can still contain a valid answer whose
+// digits are visually isolated by large picture windows. This is not a
+// beginner rule: after a short, genuine stall, every player may receive one
+// quiet pointer per board. It never shuffles or solves the board for them.
+export function shouldShowClassicSparseHint({
+  running = false, inputLocked = false, tutorialActive = false,
+  boardIndex = 0, lastShownBoard = -1, timeLeft = 0, idleMs = 0,
+  remaining = 0, initialPlayable = 0,
+} = {}) {
+  const initial = Math.max(1, Math.round(Number(initialPlayable) || 0));
+  const left = Math.max(0, Math.round(Number(remaining) || 0));
+  const sparseLimit = Math.min(12, Math.ceil(initial * 0.38));
+  return Boolean(running) && !inputLocked && !tutorialActive
+    && Math.round(Number(boardIndex) || 0) !== Math.round(Number(lastShownBoard) || 0)
+    && timeLeft > 6
+    && idleMs >= CLASSIC_SPARSE_HINT_IDLE_MS
+    && left >= 2
+    && left <= sparseLimit;
 }
 
 export function boardDropInventoryGrant(type) {
