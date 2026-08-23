@@ -277,14 +277,21 @@ export function playCatBonusSound(startOffset = 0.15) {
   tail.start(now + 0.15); tail.stop(now + 0.26);
 }
 
-export function playItemDropSound() {
+export function playItemDropSound(type = '') {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  [783.99, 1046.5, 1318.5].forEach((frequency, index) => {
+  const signatures = {
+    megabomb: [392, 523.25, 659.25, 987.77],
+    freeze: [987.77, 1318.5, 1760, 2093],
+    clover: [523.25, 659.25, 783.99, 1046.5],
+    clock: [659.25, 880, 659.25, 1174.66],
+  };
+  const signature = signatures[type] || [783.99, 1046.5, 1318.5, 2093];
+  signature.slice(0, 3).forEach((frequency, index) => {
     scheduleTone(ctx, frequency, now + index * 0.055, 0.16, 0.052 - index * 0.006, 'sine', 0.008);
   });
-  scheduleTone(ctx, 2093, now + 0.18, 0.11, 0.016, 'triangle', 0.006);
+  scheduleTone(ctx, signature[3], now + 0.18, 0.11, 0.016, 'triangle', 0.006);
 }
 
 export function playItemCollectSound() {
@@ -470,6 +477,16 @@ export function playCountdownTick(seconds) {
   const frequency = urgent ? 1080 + (3 - remaining) * 110 : 760 + (10 - remaining) * 24;
   tone(frequency, 0, urgent ? 0.085 : 0.055, urgent ? 0.055 : 0.026, 'triangle');
   if (urgent) tone(frequency * 1.25, 0.055, 0.07, 0.032, 'sine');
+}
+
+export function playTimeUpSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [392, 329.63, 261.63].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.11, index === 2 ? 0.28 : 0.13, 0.04, 'sine', 0.012);
+  });
+  scheduleTone(ctx, 523.25, now + 0.25, 0.16, 0.018, 'triangle', 0.008);
 }
 
 export function playGameOverSound(newRecord = false) {

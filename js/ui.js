@@ -1119,14 +1119,17 @@ export class GameUI {
     items.forEach(({ row, col, type, showcase = false }, index) => {
       const tile = this.tileAt(row, col);
       if (!tile) return;
-      const landingDelay = 300 + index * 80;
+      // The travelling reward and the real board item used to overlap for a
+      // short beat, which looked like the same item had spawned twice. Keep
+      // the destination hidden until the handoff ends, and fly a neutral
+      // reward light instead of cloning the item artwork.
+      const landingDelay = 430 + index * 80;
       tile.style.setProperty('--item-drop-delay', `${landingDelay}ms`);
       tile.classList.add('is-item-spawning');
       const tileRect = tile.getBoundingClientRect();
       const frameRect = this.boardFrame.getBoundingClientRect();
       const screenRect = this.elements.playScreen.getBoundingClientRect();
       const comboRect = this.elements.comboChip.getBoundingClientRect();
-      const definition = BOARD_DROP_ITEMS[type];
       const flight = document.createElement('div');
       flight.className = `item-reward-flight item-reward-${type}`;
       flight.style.left = `${comboRect.left + comboRect.width / 2 - screenRect.left}px`;
@@ -1138,15 +1141,15 @@ export class GameUI {
       flight.style.setProperty('--reward-mid-x', `${flightX * 0.48}px`);
       flight.style.setProperty('--reward-mid-y', `${flightY * 0.38 - 24}px`);
       flight.style.setProperty('--reward-delay', `${index * 80}ms`);
-      const flightIcon = document.createElement('img');
-      flightIcon.src = definition?.asset || '';
-      flightIcon.alt = '';
-      flight.append(flightIcon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      const orb = document.createElement('span');
+      orb.className = 'item-reward-orb';
+      orb.setAttribute('aria-hidden', 'true');
+      flight.append(orb, document.createElement('i'), document.createElement('i'));
       this.elements.playScreen.appendChild(flight);
+      setTimeout(() => flight.remove(), 560 + index * 80);
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
-        flight.remove();
-      }, 1420 + index * 80);
+      }, 1180 + index * 80);
     });
   }
 
@@ -1678,6 +1681,12 @@ export class GameUI {
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
     this.elements.scoreBurst.classList.remove('is-visible');
+    // The play screen remains visible behind the result sheet. Stop the two
+    // low-time loops before that sheet opens so an invisible countdown does
+    // not keep repainting underneath the result and card-award sequence.
+    this.elements.timePill.classList.remove('is-warning', 'is-counting');
+    this.boardFrame.classList.remove('is-counting');
+    this.elements.playScreen.classList.remove('is-final-countdown');
     const timeUp = this.elements.timeUp;
     this.boardFrame.classList.remove('is-game-ending');
     timeUp.classList.remove('is-visible');

@@ -103,6 +103,7 @@ import {
   playClockSound,
   playCloverSound,
   playFreezeSound,
+  playTimeUpSound,
   playTimeWarnBeeps,
   playFailSound,
   playGameOverSound,
@@ -866,9 +867,10 @@ class OingGame {
     // 겹치므로, 이 한 번은 말풍선을 양보한다. 소리와 진동, 반짝임, 고양이가
     // 손 흔드는 반응은 그대로 남는다 - 사라지는 것은 겹치는 말뿐이다.
     const introType = this.pendingRareBoardItemIntro(items);
+    const leadType = introType || items.find((item) => item.showcase)?.type || items[0]?.type;
     if (introType) {
       storageAdapter.markRareItemSeen(introType);
-      this.ui.toast(RARE_BOARD_ITEM_INTROS[introType], 1600);
+      this.ui.toast(RARE_BOARD_ITEM_INTROS[introType], 2500);
     } else {
       const showcase = items.find((item) => item.showcase);
       if (showcase) {
@@ -878,10 +880,11 @@ class OingGame {
         this.showCatMessage('itemDrop');
       }
     }
-    this.ui.setPlayCharacter('wave', 1000);
+    const itemPose = ({ megabomb: 'success', freeze: 'peek', clover: 'cheer' })[leadType] || 'wave';
+    this.ui.setPlayCharacter(itemPose, introType ? 1600 : 1000);
     if (playSound) {
       duckMusic(320, 0.68);
-      playItemDropSound();
+      playItemDropSound(leadType);
     }
     itemHaptic();
   }
@@ -2174,8 +2177,7 @@ class OingGame {
     });
     this.telemetry?.finish(this.state, 'timer');
     fadeOutMusic();
-    playGameOverSound(newRecord);
-    gameOverHaptic(newRecord);
+    playTimeUpSound();
     await this.ui.animateGameEnd({ answers: endAnswers });
     if (!this.runtime.testMode && newRecord) storageAdapter.saveBestScore(this.state.score);
     if (!this.runtime.testMode && recordEligible) storageAdapter.saveBestCombo(this.state.maxCombo);
@@ -2217,6 +2219,8 @@ class OingGame {
       resultMessage: resultReaction.message,
     };
     this.retryStage = 1;
+    playGameOverSound(newRecord);
+    gameOverHaptic(newRecord);
     this.ui.showResult(this.lastResultSummary);
     if (!this.runtime.testMode && recordEligible) {
       storageAdapter.saveRunScore(this.state.score);
@@ -2354,8 +2358,7 @@ class OingGame {
     if (!this.runtime.testMode) storageAdapter.rememberResultMessage(classicReaction.message);
     this.telemetry?.finish(this.state, 'timer');
     fadeOutMusic();
-    playGameOverSound(newRecord);
-    gameOverHaptic(newRecord);
+    playTimeUpSound();
     await this.ui.animateGameEnd({ answers: endAnswers });
     if (!this.runtime.testMode && newRecord) storageAdapter.saveClassicBestScore(this.state.score);
     const catsRescuedTotal = this.runtime.testMode
@@ -2392,6 +2395,8 @@ class OingGame {
     this.retryStage = 1;
     if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
     this.refreshClassicRecordSurfaces();
+    playGameOverSound(newRecord);
+    gameOverHaptic(newRecord);
     this.ui.showResult(this.lastResultSummary);
     this.finishing = false;
   }

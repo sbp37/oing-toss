@@ -102,10 +102,10 @@ test('classic ladder keeps six columns while rows grow from five to eight', () =
   assert.equal(classicBoardForIndex(-1), CLASSIC_BOARD_LADDER[0]);
 });
 
-test('classic number depth starts mid-run and caps at the deepest mix', () => {
-  assert.equal(classicRoundForBoard(0), 5);
-  assert.equal(classicRoundForBoard(3), 8);
-  assert.equal(classicRoundForBoard(5), 10);
+test('classic number depth starts on the final warm-up mix and caps at the deepest mix', () => {
+  assert.equal(classicRoundForBoard(0), 4);
+  assert.equal(classicRoundForBoard(3), 7);
+  assert.equal(classicRoundForBoard(5), 9);
   assert.equal(classicRoundForBoard(20), 10);
 });
 
@@ -321,6 +321,7 @@ test('classic beginners get repeated auto-hints when they stall', async () => {
 
 test('a sparse classic tail offers one quiet hint per board', async () => {
   const { shouldShowClassicSparseHint, CLASSIC_SPARSE_HINT_IDLE_MS } = await import('../js/data.js');
+  assert.equal(CLASSIC_SPARSE_HINT_IDLE_MS, 4500);
   const base = {
     running: true, inputLocked: false, tutorialActive: false,
     boardIndex: 4, lastShownBoard: -1, timeLeft: 30,

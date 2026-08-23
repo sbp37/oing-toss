@@ -120,6 +120,17 @@ test('item drop uses a bright compact reward flourish', () => {
   assert.equal(oscillators.at(-1).type, 'triangle');
 });
 
+test('rare item arrivals have restrained signatures before their activation sounds', () => {
+  const megabomb = newOscillators(() => audio.playItemDropSound('megabomb'));
+  const freeze = newOscillators(() => audio.playItemDropSound('freeze'));
+  const clover = newOscillators(() => audio.playItemDropSound('clover'));
+  const clock = newOscillators(() => audio.playItemDropSound('clock'));
+  assert.deepEqual(megabomb.map((item) => item.frequency.events[0].value), [392, 523.25, 659.25, 987.77]);
+  assert.deepEqual(freeze.map((item) => item.frequency.events[0].value), [987.77, 1318.5, 1760, 2093]);
+  assert.deepEqual(clover.map((item) => item.frequency.events[0].value), [523.25, 659.25, 783.99, 1046.5]);
+  assert.deepEqual(clock.map((item) => item.frequency.events[0].value), [659.25, 880, 659.25, 1174.66]);
+});
+
 test('item collection confirms the inventory arrival with a separate rising chime', () => {
   const oscillators = newOscillators(() => audio.playItemCollectSound());
   assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [880, 1174.66, 1567.98, 2349.32]);
@@ -166,6 +177,12 @@ test('final countdown grows brighter for the last three seconds', () => {
   assert.equal(second3.length, 2);
   assert.equal(second1.length, 2);
   assert.ok(second1[0].frequency.events[0].value > second3[0].frequency.events[0].value);
+});
+
+test('time up uses a short stop cue before the result fanfare', () => {
+  const oscillators = newOscillators(() => audio.playTimeUpSound());
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [392, 329.63, 261.63, 523.25]);
+  assert.equal(oscillators.at(-1).type, 'triangle');
 });
 
 test('game over keeps the original layered six-note fanfare and sparkle', () => {

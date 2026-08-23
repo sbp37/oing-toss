@@ -5342,3 +5342,57 @@
   .play-ui-v4 .board-entry,
   .play-ui-v4 .time-up.is-visible { animation-duration: 1ms !important; }
 }
+
+/* Single item handoff ------------------------------------------------------
+   The real item is revealed once at its destination. A small light carries
+   the reward from the combo HUD, avoiding a second copy of the item artwork
+   and shortening the temporary compositor work. */
+#play-screen.play-ui-v4 .item-reward-flight img {
+  display: none;
+}
+
+#play-screen.play-ui-v4 .item-reward-orb {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, .94);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff 0 12%, #fff1ad 28%, #ffcf72 62%, #f19a7e 100%);
+  box-shadow: 0 3px 8px rgba(126, 86, 58, .22);
+  transform: translate(-50%, -50%);
+  animation: item-reward-orb-flight 430ms var(--reward-delay, 0ms) ease-out forwards;
+}
+
+#play-screen.play-ui-v4 .item-reward-megabomb .item-reward-orb {
+  background: radial-gradient(circle at 34% 28%, #fff 0 11%, #ffd9bb 27%, #f59c88 60%, #d85b70 100%);
+}
+
+#play-screen.play-ui-v4 .item-reward-clock .item-reward-orb {
+  background: radial-gradient(circle at 34% 28%, #fff 0 11%, #dffaff 27%, #8fd8f0 61%, #69aee1 100%);
+}
+
+#play-screen.play-ui-v4 .item-reward-freeze .item-reward-orb {
+  background: radial-gradient(circle at 34% 28%, #fff 0 12%, #e7ffff 27%, #9de8ea 59%, #82bcd9 100%);
+}
+
+#play-screen.play-ui-v4 .item-reward-clover .item-reward-orb {
+  background: radial-gradient(circle at 34% 28%, #fff 0 12%, #f1ffd7 27%, #a9dc96 59%, #63b790 100%);
+}
+
+@keyframes item-reward-orb-flight {
+  0% { transform: translate(-50%, -50%) scale(.58); }
+  32% { transform: translate(-50%, -50%) scale(1.08); }
+  100% { transform: translate(-50%, -50%) scale(.76); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #play-screen.play-ui-v4 .item-reward-orb,
+  #play-screen.play-ui-v4 .item-reward-flight,
+  #play-screen.play-ui-v4 .item-reward-flight i {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+}

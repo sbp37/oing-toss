@@ -53,3 +53,33 @@ test('bomb impact does not render a second bomb image', async () => {
   assert.doesNotMatch(impact, /createElement\(['"]img['"]\)/);
   assert.doesNotMatch(impact, /assets\/icons\/items\/bomb/);
 });
+
+test('board item arrival uses one destination item without a flying image clone', async () => {
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const handoff = source.slice(source.indexOf('showBoardItemDrops('), source.indexOf('pressBoardItem('));
+  assert.doesNotMatch(handoff, /createElement\(['"]img['"]\)/);
+  assert.match(handoff, /item-reward-orb/);
+  assert.match(handoff, /const landingDelay = 430 \+ index \* 80/);
+  assert.match(handoff, /flight\.remove\(\), 560 \+ index \* 80/);
+});
+
+test('game end stops low-time loops before the result sheet opens', async () => {
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const ending = source.slice(source.indexOf('async animateGameEnd('), source.indexOf('setPlayCharacter('));
+  assert.match(ending, /timePill\.classList\.remove\('is-warning', 'is-counting'\)/);
+  assert.match(ending, /boardFrame\.classList\.remove\('is-counting'\)/);
+  assert.match(ending, /playScreen\.classList\.remove\('is-final-countdown'\)/);
+});
+
+test('time up and result fanfare land in separate visual beats', async () => {
+  const source = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const flows = [
+    source.slice(source.indexOf('async finish()'), source.indexOf('\n  goHome()')),
+    source.slice(source.indexOf('async finishClassic()'), source.indexOf('\n  // The home card')),
+  ];
+  for (const flow of flows) {
+    assert.ok(flow.indexOf('playTimeUpSound()') < flow.indexOf('await this.ui.animateGameEnd'));
+    assert.ok(flow.indexOf('playGameOverSound(newRecord)') > flow.indexOf('await this.ui.animateGameEnd'));
+    assert.ok(flow.indexOf('playGameOverSound(newRecord)') < flow.indexOf('this.ui.showResult'));
+  }
+});

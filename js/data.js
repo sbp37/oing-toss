@@ -8,7 +8,7 @@ export const MAX_ITEM_TIME_BONUS_SECONDS = 15;
 export const TIME_ITEM_CAP_SCORE = 300;
 export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 7, clover: 3, freeze: 3 });
 export const EARLY_MEGABOMB_PITY_LIMIT = 4;
-export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
+export const BEGINNER_AUTO_HINT_IDLE_MS = 5000;
 export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
 export const STRUGGLE_HINT_FAILURES = 3;
 export const STAGE_TRANSITION_INPUT_GUARD_MS = 420;
@@ -419,10 +419,10 @@ export function classicScoreForBlast(cellCount, catCount, combo) {
   return Math.round((cells + cats * 5) * classicComboMultiplier(combo));
 }
 
-// Each 판갈이 deepens the number mix one step: the first board draws the
-// mid-run bag (round 5), then +1 per board up to the deepest (round 10).
+// Each 판갈이 deepens the number mix one step. The opening board uses the
+// last warm-up bag, then +1 per board up to the deepest (round 10).
 export function classicRoundForBoard(boardIndex = 0) {
-  return Math.min(10, 5 + Math.max(0, Math.round(Number(boardIndex) || 0)));
+  return Math.min(10, 4 + Math.max(0, Math.round(Number(boardIndex) || 0)));
 }
 
 // ── 고양이의 모험 (classic chapters) ──────────────────────────────────
@@ -853,7 +853,7 @@ export function shouldShowBeginnerAutoHint({
 // the game: whenever they stall, the cat points at an answer.
 export const CLASSIC_AUTO_HINT_LIMIT = 3;
 export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 20000;
-export const CLASSIC_SPARSE_HINT_IDLE_MS = 3200;
+export const CLASSIC_SPARSE_HINT_IDLE_MS = 4500;
 
 export function shouldShowClassicAutoHint({
   running = false, inputLocked = false, tutorialActive = false,
