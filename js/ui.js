@@ -209,14 +209,32 @@ export class GameUI {
     document.querySelector('#result-screen')?.classList.toggle('is-sheet', name === 'result' && Boolean(behind));
   }
 
+  primeStartCountdown(step = 3, { compact = false } = {}) {
+    const overlay = this.elements.startCountdown;
+    const isGo = step === 'GO!';
+    overlay.classList.remove('is-go', 'is-leaving');
+    overlay.classList.toggle('is-compact', compact);
+    overlay.classList.toggle('is-go', isGo);
+    overlay.classList.add('is-visible', 'is-primed');
+    overlay.dataset.step = String(step);
+    overlay.setAttribute('aria-hidden', 'false');
+    this.elements.startCountdownKicker.textContent = isGo ? '합이 10이면' : '준비!';
+    this.elements.startCountdownValue.textContent = isGo ? 'GO!' : String(step);
+    this.elements.startCountdownValue.classList.remove('is-popping');
+  }
+
   async animateStartCountdown(steps, onStep = () => {}, { compact = false } = {}) {
     const token = ++this.startCountdownToken;
     const overlay = this.elements.startCountdown;
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact');
+    const isPrimed = overlay.classList.contains('is-primed');
+    overlay.classList.remove('is-go', 'is-leaving');
+    if (!isPrimed) overlay.classList.remove('is-visible');
     overlay.classList.toggle('is-compact', compact);
     overlay.setAttribute('aria-hidden', 'false');
-    void overlay.offsetWidth;
-    overlay.classList.add('is-visible');
+    if (!isPrimed) {
+      void overlay.offsetWidth;
+      overlay.classList.add('is-visible');
+    }
 
     for (const step of steps) {
       if (token !== this.startCountdownToken) return false;
@@ -238,7 +256,7 @@ export class GameUI {
     if (token !== this.startCountdownToken) return false;
     overlay.classList.add('is-leaving');
     await delay(compact ? 110 : 150);
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact');
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact', 'is-primed');
     overlay.setAttribute('aria-hidden', 'true');
     return true;
   }
@@ -246,7 +264,7 @@ export class GameUI {
   cancelStartCountdown() {
     this.startCountdownToken += 1;
     const overlay = this.elements.startCountdown;
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact');
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact', 'is-primed');
     overlay.setAttribute('aria-hidden', 'true');
   }
 
@@ -981,6 +999,7 @@ export class GameUI {
       '.megabomb-fx',
       '.item-impact-fx',
       '.game-end-sweep',
+      '.end-answer-region',
       '.end-score-summary',
       '.item-drop-fx',
       '.item-tease',
@@ -1668,6 +1687,7 @@ export class GameUI {
   }
 
   showEndAnswers(answers = []) {
+    this.boardFrame.querySelectorAll('.end-answer-region').forEach((region) => region.remove());
     this.board.querySelectorAll('.tile.is-end-answer').forEach((tile) => {
       tile.classList.remove('is-end-answer');
       tile.style.removeProperty('--answer-group');
@@ -1679,10 +1699,26 @@ export class GameUI {
         tile.classList.add('is-end-answer');
         tile.style.setProperty('--answer-group', String(group));
       });
+      const first = this.tileAt(answer.r1, answer.c1);
+      const last = this.tileAt(answer.r2, answer.c2);
+      if (!first || !last) return;
+      const firstRect = first.getBoundingClientRect();
+      const lastRect = last.getBoundingClientRect();
+      const frameRect = this.boardFrame.getBoundingClientRect();
+      const region = document.createElement('div');
+      region.className = 'end-answer-region';
+      region.setAttribute('aria-hidden', 'true');
+      region.dataset.answerGroup = String(group);
+      region.style.left = `${firstRect.left - frameRect.left - 2}px`;
+      region.style.top = `${firstRect.top - frameRect.top - 2}px`;
+      region.style.width = `${lastRect.right - firstRect.left + 4}px`;
+      region.style.height = `${lastRect.bottom - firstRect.top + 4}px`;
+      this.boardFrame.appendChild(region);
     });
   }
 
   clearEndAnswers() {
+    this.boardFrame.querySelectorAll('.end-answer-region').forEach((region) => region.remove());
     this.board.querySelectorAll('.tile.is-end-answer').forEach((tile) => {
       tile.classList.remove('is-end-answer');
       tile.style.removeProperty('--answer-group');
@@ -1957,7 +1993,7 @@ export class GameUI {
     if (this.elements.comboItemTrack) {
       this.elements.comboItemFill.style.width = `${Math.round(normalizedRewardProgress * 100)}%`;
       const rewardVisible = rewardUnlocked && combo > 0;
-      this.elements.comboItemTrack.hidden = !rewardVisible;
+      this.elements.comboItemTrack.hidden = false;
       this.elements.comboItemLabel.hidden = !rewardVisible;
       if (rewardVisible) {
         this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;

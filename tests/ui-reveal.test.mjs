@@ -76,9 +76,30 @@ test('the game reveals removed cells before starting delayed celebration', async
 });
 
 test('the final hint frame is a thin mint guide', async () => {
+  const css = await readFile(new URL('../css/claude-polish.css', import.meta.url), 'utf8');
+  const finalHintRules = css.slice(css.lastIndexOf('Keep the guide readable'));
+  assert.match(finalHintRules, /\.hint-region\s*\{[\s\S]*?border-width:\s*1\.75px;/);
+});
+
+test('time-up answers receive a connected area overlay', async () => {
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const start = source.indexOf('showEndAnswers(');
+  const reveal = source.slice(start, source.indexOf('clearEndAnswers()', start));
+  assert.match(reveal, /region\.className = 'end-answer-region'/);
+  assert.match(reveal, /lastRect\.right - firstRect\.left/);
+});
+
+test('the final clock warning does not add floating 3 2 1 labels', async () => {
+  const source = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const timer = source.slice(source.indexOf('const countdownSecond'), source.indexOf('this.updateHUD()', source.indexOf('const countdownSecond')));
+  assert.doesNotMatch(timer, /showFinalSecond/);
+});
+
+test('a cleared success window never fades back to the grey board bed', async () => {
   const css = await readFile(new URL('../css/play-layout-v1.css', import.meta.url), 'utf8');
-  const finalHintRules = css.slice(css.lastIndexOf('Readable hint, lighter frame'));
-  assert.match(finalHintRules, /\.hint-region\s*\{[\s\S]*?border-width:\s*2\.5px;/);
+  const stableWindow = css.slice(css.lastIndexOf('Cleared cells stay open'));
+  assert.match(stableWindow, /\.tile\.is-success\.is-cleared-reveal[\s\S]*?animation:\s*none;/);
+  assert.match(stableWindow, /opacity:\s*1;/);
 });
 
 test('live selection clears an idle hint before drawing its own sum', async () => {

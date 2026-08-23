@@ -46,10 +46,9 @@
         <div class="character-stage home-character-stage">
           <img class="home-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="eager" decoding="async" fetchpriority="high" alt="앉아 있는 블루 고양이">
         </div>
-        <p class="home-tagline"><span>합이 <b>10</b>이면,</span><strong>뿅!</strong></p>
       </div>
       <div class="home-howto" aria-label="사각형 안의 모든 숫자를 더해 합이 10이 되면 지우는 게임">
-        <p class="home-instruction"><img src="assets/decor/sparkle.webp" width="278" height="296" alt="">사각형으로 묶어 합이 10이면 뿅!<img src="assets/decor/heart.webp" width="283" height="254" alt=""></p>
+        <p class="home-instruction"><img src="assets/decor/sparkle.webp" width="278" height="296" alt=""><em>사각형</em>으로 묶어서 합이 <em>10</em>이면, 뿅!<img src="assets/decor/heart.webp" width="283" height="254" alt=""></p>
         <div class="home-rule-demo" aria-hidden="true">
           <div class="home-mini-board">
             <span>2</span><span>3</span><span></span><span>5</span>
@@ -94,6 +93,7 @@
               <img src="assets/ui/play-control-sound-v3.webp" width="238" height="249" decoding="async" alt=""><i></i>
             </button>
           </div>
+          <button class="play-help-button" id="play-help-button" type="button" aria-label="게임 방법 보기">i</button>
           <div class="round-mini">
             <img src="assets/ui/play-round-badge-v1.webp" width="623" height="427" decoding="async" fetchpriority="high" alt="">
             <span class="round-ribbon-label" id="round-label">판</span>
@@ -250,6 +250,34 @@
         </div>
         <button class="text-button" id="pause-home-button" type="button">홈으로 나가기</button>
       </div>
+    </div>
+
+    <div class="overlay help-overlay" id="help-overlay" hidden>
+      <section class="mini-panel help-panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <button class="overlay-close" id="help-close" type="button" aria-label="게임 방법 닫기"><i></i></button>
+        <header class="help-heading">
+          <span>HOW TO PLAY</span>
+          <h2 id="help-title">10 만드는 법</h2>
+        </header>
+        <div class="help-motion-demo" aria-label="2, 3, 빈칸, 5를 사각형으로 묶어 합 10을 만드는 반복 예시">
+          <div class="help-demo-board" aria-hidden="true">
+            <i class="help-demo-cell">2</i><i class="help-demo-cell">3</i>
+            <i class="help-demo-cell is-empty"></i><i class="help-demo-cell">5</i>
+            <b class="help-demo-selection"></b>
+            <span class="help-demo-finger"></span>
+            <img class="help-demo-sparkle" src="assets/decor/sparkle.webp" width="278" height="296" decoding="async" alt="">
+          </div>
+          <div class="help-demo-sum" aria-hidden="true"><span>합</span><b>10!</b></div>
+        </div>
+        <ol class="help-steps">
+          <li><b>1</b><span>시작 칸에서 반대쪽 칸까지 드래그</span></li>
+          <li><b>2</b><span>네모 안의 모든 숫자를 더해봐</span></li>
+          <li><b>3</b><span>합이 <em>10</em>이면 바로 뿅!</span></li>
+        </ol>
+        <p class="help-tip"><strong>빈칸은 0</strong><span>양 끝 칸을 차례로 눌러도 돼</span></p>
+        <p class="help-cat-tip"><img src="assets/characters/cat-peek.webp" width="359" height="306" decoding="async" alt=""><span><strong>고양이 칸도 0</strong>함께 지우면 보너스 점수를 받아!</span></p>
+        <button class="btn btn-primary help-resume-button" id="help-resume-button" type="button">알겠어, 계속할게!</button>
+      </section>
     </div>
 
     <div class="overlay" id="settings-overlay" hidden>

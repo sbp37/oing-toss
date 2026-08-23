@@ -9987,3 +9987,51 @@ img {
   background-size: cover;
   background-position: center;
 }
+
+/* Home rule headline -----------------------------------------------------
+   The separate pill repeated the rule and pushed every useful action down.
+   The real rectangle instruction now owns that hierarchy in the existing
+   how-to panel, while the removed row becomes breathing room above Settings. */
+.screen-home .home-howto {
+  margin-top: -2px;
+}
+
+/* Reserve a visible gap above the fixed Settings control on short phones. */
+.screen-home {
+  padding-bottom: calc(88px + var(--safe-bottom));
+}
+
+.screen-home .home-instruction {
+  gap: 4px;
+  min-height: 24px;
+  margin: 0 0 2px;
+  color: #665249;
+  font-family: var(--font-display);
+  font-size: clamp(14px, 4vw, 16px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+  white-space: nowrap;
+}
+
+.screen-home .home-instruction img {
+  width: 14px;
+  height: 14px;
+}
+
+.screen-home .home-instruction em {
+  color: var(--coral-deep);
+  font: inherit;
+}
+
+@media (max-width: 340px), (max-height: 720px) {
+  .screen-home .home-instruction {
+    gap: 3px;
+    font-size: 13.5px;
+  }
+
+  .screen-home .home-instruction img {
+    width: 13px;
+    height: 13px;
+  }
+}

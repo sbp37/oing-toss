@@ -183,6 +183,7 @@ class OingGame {
     this.startSequenceId = 0;
     this.startCountdownInProgress = false;
     this.resumeNeedsCountdown = false;
+    this.activePauseOverlay = 'pause-overlay';
     this.restartConfirmUntil = 0;
     this.restartConfirmTimer = null;
     this.lastInteractionAt = performance.now();
@@ -328,6 +329,9 @@ class OingGame {
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
     document.querySelector('#resume-button').addEventListener('click', () => this.resume());
+    document.querySelector('#play-help-button').addEventListener('click', () => this.openHelp());
+    document.querySelector('#help-close').addEventListener('click', () => this.resume());
+    document.querySelector('#help-resume-button').addEventListener('click', () => this.resume());
     document.querySelector('#pause-home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#hint-button').addEventListener('click', () => this.useHint());
     document.querySelector('#shuffle-button').addEventListener('click', () => this.useShuffle());
@@ -553,10 +557,18 @@ class OingGame {
     this.lastCountdownSecond = null;
     this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
     this.ui.setOverlay('pause-overlay', false);
+    this.ui.setOverlay('help-overlay', false);
+    this.activePauseOverlay = 'pause-overlay';
     this.buildRound();
     this.forceTestBoardItem();
     this.ui.updateItems(this.itemHudState());
     this.ui.showScreen('play');
+    // Paint the dark curtain and its first beat in the same frame as the
+    // play screen. Mobile audio/media unlock can take a noticeable moment;
+    // it must happen behind the countdown instead of exposing a bright board.
+    this.ui.primeStartCountdown(options.quickCountdown ? 'READY' : START_COUNTDOWN_STEPS[0], {
+      compact: options.quickCountdown === true,
+    });
     this.ui.setPlayCharacter('wave');
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
@@ -1962,7 +1974,6 @@ class OingGame {
     const countdownSecond = Math.ceil(this.state.timeLeft);
     if (!isFrozen && countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
       this.lastCountdownSecond = countdownSecond;
-      if (countdownSecond <= 3) this.ui.showFinalSecond(countdownSecond);
     }
     this.updateHUD();
     if (this.state.timeLeft <= 0) this.requestFinish();
@@ -2067,9 +2078,14 @@ class OingGame {
     return true;
   }
 
-  pause(reason = 'manual') {
+  openHelp() {
+    this.pause('help', 'help-overlay');
+  }
+
+  pause(reason = 'manual', overlayId = 'pause-overlay') {
     if (!this.state.running || this.state.paused) return;
     this.state.paused = true;
+    this.activePauseOverlay = overlayId;
     this.telemetry?.pause();
     this.pauseStartedAt = performance.now();
     if (this.startCountdownInProgress) {
@@ -2081,7 +2097,7 @@ class OingGame {
     this.input.cancel();
     pauseMusic();
     this.ui.setPauseReason(reason);
-    this.ui.setOverlay('pause-overlay', true);
+    this.ui.setOverlay(overlayId, true);
   }
 
   resume() {
@@ -2099,7 +2115,8 @@ class OingGame {
     this.state.paused = false;
     this.telemetry?.resume();
     this.resetRestartConfirmation();
-    this.ui.setOverlay('pause-overlay', false);
+    this.ui.setOverlay(this.activePauseOverlay, false);
+    this.activePauseOverlay = 'pause-overlay';
     if (this.resumeNeedsCountdown) {
       this.resumeNeedsCountdown = false;
       this.state.inputLocked = true;
@@ -2247,6 +2264,8 @@ class OingGame {
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
     this.ui.setOverlay('pause-overlay', false);
+    this.ui.setOverlay('help-overlay', false);
+    this.activePauseOverlay = 'pause-overlay';
     this.refreshClassicRecordSurfaces();
     this.ui.showScreen('home');
   }

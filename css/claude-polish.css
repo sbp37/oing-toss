@@ -260,3 +260,156 @@
   .result-card-award,
   .result-card-award-frame > i { transition: none; }
 }
+
+/* -- Final play/readability alignment pass ----------------------------- */
+
+/* One physical pixel less ink and one pixel lower optical centring. */
+.play-ui-v4 .tile span {
+  font-size: clamp(17px, calc((62vw / var(--board-cols)) - 1px), 42px);
+  transform: translateY(1px);
+}
+
+/* The three live score figures now belong to the same pink value family. */
+.play-ui-v4 #score-value,
+.screen-play.play-ui-v4[data-stage-band] #score-value {
+  color: #ef5477 !important;
+}
+
+/* The help affordance sits directly above pause without stealing its edge. */
+.play-ui-v4 .play-help-button {
+  left: 8%;
+  top: 0;
+}
+
+/* The timer artwork's optical baseline is a touch low and right of the text. */
+.play-ui-v4 .play-top-controls .time-pill-chrome {
+  transform: translate(-1.5px, -1px);
+}
+
+/* Keep the guide readable while removing the heavy double rail. */
+#play-screen.play-ui-v4 .hint-region {
+  border-width: 1.75px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, .76),
+    0 0 0 2.5px rgba(43, 154, 126, .10),
+    inset 0 0 8px rgba(255, 255, 255, .34);
+}
+
+/* The rules card owns the foreground; the HUD becomes quiet underneath. */
+.help-overlay {
+  z-index: 90;
+  place-items: start center;
+  padding-top: max(calc(var(--safe-top) + 12px), 18px);
+  background: rgba(30, 51, 72, .64);
+  backdrop-filter: blur(6px) saturate(.74);
+  -webkit-backdrop-filter: blur(6px) saturate(.74);
+}
+
+.help-panel {
+  z-index: 1;
+  max-height: calc(100dvh - var(--safe-top) - 28px);
+}
+
+.help-cat-tip {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0 7px;
+  padding: 5px 10px 5px 7px;
+  border: 1px solid rgba(238, 158, 175, .34);
+  border-radius: 15px;
+  background: linear-gradient(90deg, rgba(255, 226, 232, .82), rgba(255, 248, 226, .76));
+  color: #655b58;
+  font-family: var(--font-body);
+  font-size: clamp(13px, 3.65vw, 15px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.help-cat-tip img {
+  width: 36px;
+  height: 31px;
+  object-fit: contain;
+}
+
+.help-cat-tip span { display: grid; gap: 1px; }
+.help-cat-tip strong { color: #e85d7d; }
+
+/* On taller devices the coach can return on deep boards without covering it. */
+@media (min-height: 820px) {
+  .screen-play.play-ui-v4[data-board-rows="8"] .cat-speech,
+  .screen-play.play-ui-v4[data-board-rows="9"] .cat-speech,
+  .screen-play.play-ui-v4[data-board-rows="10"] .cat-speech {
+    display: grid;
+    max-width: min(74%, 250px);
+  }
+}
+
+/* The old floating 3/2/1 is retired; the clock itself still pulses and warns. */
+.screen-play.play-ui-v4 .final-second-pop { display: none !important; }
+
+/* Remaining answers are shown as connected rectangles, not green digits only. */
+.play-ui-v4 .end-answer-region {
+  position: absolute;
+  z-index: 4;
+  box-sizing: border-box;
+  border: 2px solid rgba(40, 157, 127, .88);
+  border-radius: clamp(12px, 3.8vw, 18px);
+  background: rgba(111, 222, 190, .16);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .72),
+    inset 0 0 12px rgba(220, 255, 244, .34);
+  pointer-events: none;
+  animation: end-answer-region-in 540ms ease-out both;
+}
+
+@keyframes end-answer-region-in {
+  0% { opacity: 0; transform: scale(.97); }
+  38%, 100% { opacity: 1; transform: none; }
+}
+
+/* Slightly larger coach, with the two tools lifted but still on their edges. */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(82px, 23.5vw, 96px);
+  translate: 0 -1px;
+}
+
+/* Keep the larger coach visually separate from its speech bubble. */
+.play-ui-v4 .cat-speech {
+  translate: 0 -24px;
+}
+
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  translate: 0 -4px;
+}
+
+/* Result actions stay full touch targets but lose the oversized vertical slab. */
+.screen-result.is-sheet .result-character-stage {
+  width: 69px;
+  height: 69px;
+}
+
+.screen-result.is-sheet .result-actions .btn {
+  min-height: 50px;
+  height: 50px;
+  padding-block: 0;
+}
+.screen-result.is-sheet #retry-button { font-size: 20px; }
+.screen-result.is-sheet .result-ranking-button { font-size: 17px; }
+
+@media (max-height: 720px) {
+  .help-cat-tip { margin-block: 3px 5px; padding-block: 3px; }
+  .help-panel { max-height: calc(100dvh - var(--safe-top) - 18px); }
+  .screen-result.is-sheet .result-character-stage { width: 62px; height: 62px; }
+  .play-ui-v4 .cat-speech { translate: 0 -18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .end-answer-region { animation-duration: 1ms; }
+}
