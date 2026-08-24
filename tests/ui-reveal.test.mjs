@@ -87,12 +87,21 @@ test('the final hint frame is a thin mint guide', async () => {
   assert.match(finalHintRules, /\.hint-region\s*\{[\s\S]*?border-width:\s*1\.75px;/);
 });
 
-test('time-up answers receive a connected area overlay', async () => {
+test('time-up shows one answer with green tiles and no connected area overlay', async () => {
   const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
   const start = source.indexOf('showEndAnswers(');
-  const reveal = source.slice(start, source.indexOf('clearEndAnswers()', start));
-  assert.match(reveal, /region\.className = 'end-answer-region'/);
-  assert.match(reveal, /lastRect\.right - firstRect\.left/);
+  const reveal = source.slice(start, source.indexOf('\n  clearEndAnswers() {', start));
+  assert.match(reveal, /answers\.slice\(0, 1\)/);
+  assert.match(reveal, /tile\.classList\.add\('is-end-answer'\)/);
+  assert.doesNotMatch(reveal, /region\.className = 'end-answer-region'/);
+});
+
+test('rendering a retry board clears old time-up answer markers first', async () => {
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const start = source.indexOf('renderBoard(');
+  const render = source.slice(start, source.indexOf('updateBoard(', start));
+  assert.match(render, /this\.clearEndAnswers\(\)/);
+  assert.ok(render.indexOf('this.clearEndAnswers()') < render.indexOf('const fragment = document.createDocumentFragment()'));
 });
 
 test('the final clock warning does not add floating 3 2 1 labels', async () => {

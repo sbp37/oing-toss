@@ -270,6 +270,10 @@ export class GameUI {
   }
 
   renderBoard(model, boardItems = new Map(), { preserveScoreBurst = false } = {}) {
+    // A retry can begin while the result transition is still settling. Clear
+    // the previous board's answer markers before any new tiles are created so
+    // stale TIME UP guidance can never leak into the next run.
+    this.clearEndAnswers();
     if (!preserveScoreBurst) {
       clearTimeout(this.scoreBurstTimer);
       this.elements.scoreBurst.classList.remove('is-visible');
@@ -1325,16 +1329,11 @@ export class GameUI {
     const impact = document.createElement('div');
     impact.className = 'item-impact-fx item-impact-freeze';
     for (let index = 0; index < 7; index += 1) impact.appendChild(document.createElement('i'));
-    for (let index = 0; index < 6; index += 1) impact.appendChild(document.createElement('b'));
-    const impactTitle = document.createElement('strong');
-    impactTitle.className = 'freeze-impact-title';
-    impactTitle.textContent = '시간 정지!';
-    impact.appendChild(impactTitle);
     await delay(315);
     this.boardFrame.appendChild(impact);
     await delay(255);
     flight.remove();
-    window.setTimeout(() => impact.remove(), 920);
+    window.setTimeout(() => impact.remove(), 620);
   }
 
   setFreezeActive(active) {
@@ -1704,33 +1703,17 @@ export class GameUI {
   }
 
   showEndAnswers(answers = []) {
-    this.boardFrame.querySelectorAll('.end-answer-region').forEach((region) => region.remove());
-    this.board.querySelectorAll('.tile.is-end-answer').forEach((tile) => {
-      tile.classList.remove('is-end-answer');
-      tile.style.removeProperty('--answer-group');
-    });
-    answers.slice(0, 4).forEach((answer, group) => {
+    this.clearEndAnswers();
+    // One readable answer is more useful than several overlapping rectangles.
+    // Highlight only the live tiles that form the first answer; empty cells
+    // remain transparent and no connected area overlay is drawn.
+    answers.slice(0, 1).forEach((answer, group) => {
       cellsInRect(answer).forEach(({ r, c }) => {
         const tile = this.tileAt(r, c);
         if (!tile || tile.classList.contains('is-empty')) return;
         tile.classList.add('is-end-answer');
         tile.style.setProperty('--answer-group', String(group));
       });
-      const first = this.tileAt(answer.r1, answer.c1);
-      const last = this.tileAt(answer.r2, answer.c2);
-      if (!first || !last) return;
-      const firstRect = first.getBoundingClientRect();
-      const lastRect = last.getBoundingClientRect();
-      const frameRect = this.boardFrame.getBoundingClientRect();
-      const region = document.createElement('div');
-      region.className = 'end-answer-region';
-      region.setAttribute('aria-hidden', 'true');
-      region.dataset.answerGroup = String(group);
-      region.style.left = `${firstRect.left - frameRect.left - 2}px`;
-      region.style.top = `${firstRect.top - frameRect.top - 2}px`;
-      region.style.width = `${lastRect.right - firstRect.left + 4}px`;
-      region.style.height = `${lastRect.bottom - firstRect.top + 4}px`;
-      this.boardFrame.appendChild(region);
     });
   }
 

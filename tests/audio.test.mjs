@@ -182,20 +182,18 @@ test('a new record adds a restrained four-note victory tail', () => {
   assert.deepEqual(oscillators.slice(-4).map((item) => item.frequency.events[0].value), [523.25, 659.25, 783.99, 1046.5]);
 });
 
-test('bomb sound uses the chosen soft syrup impact', () => {
+test('bomb sound keeps the previous OING impact', () => {
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playBombSound());
-  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [170, 330, 440, 554]);
-  assert.deepEqual(oscillators[0].frequency.events.map((event) => event.value), [170, 86]);
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600]);
   assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
 });
 
-test('mega bomb sound uses the chosen double-impact reward', () => {
+test('mega bomb sound keeps the previous OING impact', () => {
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playMegaBombSound());
-  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [120, 392, 523, 698, 932]);
-  assert.deepEqual(oscillators[0].frequency.events.map((event) => event.value), [120, 52]);
-  assert.equal(AudioContextMock.latest.bufferSources.length, before + 2);
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600, 400, 1600]);
+  assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
 });
 
 test('clock sound keeps the original OING three-note bell', () => {

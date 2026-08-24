@@ -376,10 +376,25 @@ export function playBombSound() {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  scheduleNoisePuff(ctx, now, 0.3, 0.296, 340);
-  scheduleGlideTone(ctx, 170, 86, now, 0.26, 0.172, 'sine');
-  [330, 440, 554].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + 0.05 + index * 0.065, 0.18, 0.07 - index * 0.006, 'triangle', 0.01);
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.3), ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.05));
+  }
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  source.buffer = buffer;
+  filter.type = 'lowpass';
+  filter.frequency.value = 400;
+  gain.gain.setValueAtTime(0.42, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(getMixBus(ctx));
+  source.start(now);
+  [800, 1200, 600].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.04, 0.12, 0.1, 'sine', 0.005);
   });
 }
 
@@ -387,11 +402,25 @@ export function playMegaBombSound() {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  scheduleNoisePuff(ctx, now, 0.42, 0.56, 520);
-  scheduleNoisePuff(ctx, now + 0.16, 0.24, 0.24, 440);
-  scheduleGlideTone(ctx, 120, 52, now, 0.38, 0.28, 'sine');
-  [392, 523, 698, 932].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + 0.05 + index * 0.045, 0.25, 0.09 - index * 0.008, 'triangle', 0.01);
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.4), ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.07));
+  }
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  source.buffer = buffer;
+  filter.type = 'lowpass';
+  filter.frequency.value = 420;
+  gain.gain.setValueAtTime(0.62, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(getMixBus(ctx));
+  source.start(now);
+  [800, 1200, 600, 400, 1600].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.035, 0.16, 0.12, 'sine', 0.005);
   });
 }
 
