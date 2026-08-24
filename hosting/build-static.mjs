@@ -1,4 +1,5 @@
-import { cp, mkdir, readdir, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +8,45 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
 const client = resolve(dist, "client");
 const server = resolve(dist, "server");
+const BUILD_TOKEN = "__OING_BUILD_ID__";
+
+async function addTreeToHash(hash, directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  entries.sort((a, b) => a.name.localeCompare(b.name));
+  for (const entry of entries) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) await addTreeToHash(hash, path);
+    else if (entry.isFile()) {
+      hash.update(path.slice(root.length));
+      hash.update(await readFile(path));
+    }
+  }
+}
+
+async function stampJavaScriptImports(directory, buildId) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) await stampJavaScriptImports(path, buildId);
+    else if (entry.isFile() && entry.name.endsWith(".js")) {
+      const source = await readFile(path, "utf8");
+      const stamped = source.replace(
+        /(from\s*["'])(\.{1,2}\/[^"']+\.js)(["'])/g,
+        `$1$2?v=${buildId}$3`,
+      );
+      await writeFile(path, stamped);
+    }
+  }
+}
+
+const buildHash = createHash("sha256");
+for (const file of ["index.html", "sw.js", "hosting/build-static.mjs"]) {
+  buildHash.update(file);
+  buildHash.update(await readFile(resolve(root, file)));
+}
+await addTreeToHash(buildHash, resolve(root, "css"));
+await addTreeToHash(buildHash, resolve(root, "js"));
+const buildId = buildHash.digest("hex").slice(0, 12);
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(client, { recursive: true });
@@ -15,6 +55,13 @@ await mkdir(server, { recursive: true });
 for (const entry of ["index.html", "privacy.html", "css", "js", "assets", "manifest.webmanifest", "sw.js"]) {
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
+
+for (const file of ["index.html", "sw.js"]) {
+  const path = resolve(client, file);
+  const source = await readFile(path, "utf8");
+  await writeFile(path, source.replaceAll(BUILD_TOKEN, buildId));
+}
+await stampJavaScriptImports(resolve(client, "js"), buildId);
 
 // Keep the isolated item FX/sound comparison lab available on branch previews.
 // It reuses the shipped runtime assets and audio module without touching the game.

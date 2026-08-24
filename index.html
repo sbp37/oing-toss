@@ -19,10 +19,10 @@
   <link rel="preload" href="assets/characters/cat-idle.webp" as="image" type="image/webp" fetchpriority="high">
   <link rel="preload" href="assets/fonts/Jua-Korean-Game.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/Pretendard-OING.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/ui-chrome.css">
-  <link rel="stylesheet" href="css/play-layout-v1.css">
-  <link rel="stylesheet" href="css/claude-polish.css">
+  <link rel="stylesheet" href="css/styles.css?v=__OING_BUILD_ID__">
+  <link rel="stylesheet" href="css/ui-chrome.css?v=__OING_BUILD_ID__">
+  <link rel="stylesheet" href="css/play-layout-v1.css?v=__OING_BUILD_ID__">
+  <link rel="stylesheet" href="css/claude-polish.css?v=__OING_BUILD_ID__">
 </head>
 <body>
   <audio id="bgm-audio" src="assets/sounds/oing-original-bgm.mp3" loop preload="none"></audio>
@@ -381,12 +381,14 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </main>
-  <script type="module" src="js/game.js"></script>
+  <script type="module" src="js/game.js?v=__OING_BUILD_ID__"></script>
   <script>
     // Registered after load so it never competes with the first paint's assets.
     if ('serviceWorker' in navigator) {
       addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+        navigator.serviceWorker.register('sw.js?v=__OING_BUILD_ID__', {
+          updateViaCache: 'none',
+        }).catch(() => {});
       });
     }
   </script>

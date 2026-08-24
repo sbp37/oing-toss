@@ -1,10 +1,11 @@
 // Offline shell.
 //
-// Bump CACHE when a release ships: the old cache is dropped on activate, so a
-// stale build can never half-survive into a new one. Nothing here calls
-// skipWaiting - a new worker takes over the next time the game is launched
-// rather than swapping code out from under a run in progress.
-const CACHE = 'oing-v2';
+// The static build replaces this token with a content hash. Apps in Toss keeps
+// its WebView storage between bundle uploads, so stable CSS/JS URLs can revive
+// an older visual from the previous AIT even when the packaged files are new.
+const BUILD_ID = '__OING_BUILD_ID__';
+const CACHE = `oing-${BUILD_ID}`;
+const versioned = (path) => `${path}?v=${BUILD_ID}`;
 
 // Enough to boot with no network: the document, the styles, every module the
 // entry pulls in, the two fonts, the home art and the app icons. Everything
@@ -16,25 +17,25 @@ const SHELL = [
   'index.html',
   'privacy.html',
   'manifest.webmanifest',
-  'css/styles.css',
-  'css/ui-chrome.css',
-  'css/play-layout-v1.css',
-  'css/claude-polish.css',
-  'js/game.js',
-  'js/adapters.js',
-  'js/audio.js',
-  'js/balance.js',
-  'js/board-items.js',
-  'js/board.js',
-  'js/data.js',
-  'js/haptic.js',
-  'js/input.js',
-  'js/inventory.js',
-  'js/music.js',
-  'js/navigation.js',
-  'js/preload.js',
-  'js/telemetry.js',
-  'js/ui.js',
+  versioned('css/styles.css'),
+  versioned('css/ui-chrome.css'),
+  versioned('css/play-layout-v1.css'),
+  versioned('css/claude-polish.css'),
+  versioned('js/game.js'),
+  versioned('js/adapters.js'),
+  versioned('js/audio.js'),
+  versioned('js/balance.js'),
+  versioned('js/board-items.js'),
+  versioned('js/board.js'),
+  versioned('js/data.js'),
+  versioned('js/haptic.js'),
+  versioned('js/input.js'),
+  versioned('js/inventory.js'),
+  versioned('js/music.js'),
+  versioned('js/navigation.js'),
+  versioned('js/preload.js'),
+  versioned('js/telemetry.js'),
+  versioned('js/ui.js'),
   'assets/fonts/Jua-Korean-Game.woff2',
   'assets/fonts/Pretendard-OING.woff2',
   'assets/backgrounds/home-bg@2x.webp',
@@ -54,6 +55,7 @@ self.addEventListener('install', (event) => {
     // One miss must not fail the whole install - a renamed asset would otherwise
     // leave the game with no worker at all.
     await Promise.all(SHELL.map((url) => cache.add(url).catch(() => {})));
+    await self.skipWaiting();
   })());
 });
 
