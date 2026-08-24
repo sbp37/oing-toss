@@ -38,10 +38,10 @@ test('이미 열려 있던 카드는 다시 신규로 잡히지 않는다', () =
 });
 
 test('한 판에 여러 장이 열리면 전부 돌려주고 순서는 정의 순서를 따른다', () => {
-  const award = newlyUnlockedOingCards({ runs: 10, cats: 100 }, ['first-run']);
-  assert.deepEqual(award.fresh.map((card) => card.key), ['ten-runs', 'cats-100']);
+  const award = newlyUnlockedOingCards({ runs: 10, cats: 300 }, ['first-run']);
+  assert.deepEqual(award.fresh.map((card) => card.key), ['ten-runs', 'cats-300']);
   // 결과 화면이 크게 세우는 것은 마지막 한 장 - 조건이 더 무거운 쪽이다.
-  assert.equal(award.fresh.at(-1).key, 'cats-100');
+  assert.equal(award.fresh.at(-1).key, 'cats-300');
   assert.equal(award.unlockedCount, 3);
 });
 

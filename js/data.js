@@ -456,7 +456,10 @@ export function classicRoundForBoard(boardIndex = 0) {
 // Display order and album ownership are deliberately separate. The board
 // walks this six-scene loop forever, while the album stores stable scene
 // keys and therefore never re-locks a picture when the display wraps.
-export const CLASSIC_CHAPTER_BOARDS_PER_SCENE = 3;
+// 2026-08 2차: 3판에 한 장면도 여전히 빨랐다. 실측(판당 도달 판 수 초보
+// 3.4 / 보통 7.9 / 숙련 13.9)으로 보면 보통이 첫 런에 장면 넷을 열어버린다.
+// 네 판에 한 장면이면 첫 런은 둘, 일곱 장 완주는 서너 런에 걸린다.
+export const CLASSIC_CHAPTER_BOARDS_PER_SCENE = 4;
 
 export const CLASSIC_CHAPTERS = Object.freeze([
   Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: true }),
@@ -577,8 +580,8 @@ export const OING_CARDS = Object.freeze([
     metric: 'runs', goal: 1, requirement: '첫 판 끝내기' }),
   Object.freeze({ key: 'ten-runs', label: '단골 손님', art: 'card-02-ten-runs-v1', hasArt: true,
     metric: 'runs', goal: 10, requirement: '10판 플레이' }),
-  Object.freeze({ key: 'cats-100', label: '고양이 친구', art: 'card-03-hundred-cats-v1', hasArt: true,
-    metric: 'cats', goal: 100, requirement: '고양이 100마리' }),
+  Object.freeze({ key: 'cats-300', label: '고양이 친구', art: 'card-03-hundred-cats-v1', hasArt: true,
+    metric: 'cats', goal: 300, requirement: '고양이 300마리' }),
   Object.freeze({ key: 'big-300', label: '시원한 손', art: 'card-04-big-clears-v1', hasArt: true,
     metric: 'bigClears', goal: 300, requirement: '5칸 이상 한 번에 300번' }),
   Object.freeze({ key: 'score-6000', label: '반짝이는 기록', art: 'card-05-score-20000-v1', hasArt: true,
@@ -589,8 +592,8 @@ export const OING_CARDS = Object.freeze([
     metric: 'cellsCleared', goal: 20000, requirement: '지운 칸 20,000개' }),
   Object.freeze({ key: 'days-30', label: '한 달의 친구', art: 'card-08-thirty-days-v1', hasArt: true,
     metric: 'playDays', goal: 30, requirement: '서로 다른 30일 플레이' }),
-  Object.freeze({ key: 'score-10000', label: '오잉 고수', art: 'card-09-score-30000-v1', hasArt: true,
-    metric: 'bestScore', goal: 10000, requirement: '한 판 10,000점' }),
+  Object.freeze({ key: 'score-13000', label: '오잉 고수', art: 'card-09-score-30000-v1', hasArt: true,
+    metric: 'bestScore', goal: 13000, requirement: '한 판 13,000점' }),
 ]);
 
 // 카드는 두 벌로 나눠 쓴다. 격자에는 썸네일만 깔고, 원본은 눌러서 크게 볼 때만

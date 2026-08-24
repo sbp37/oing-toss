@@ -367,6 +367,8 @@ class OingGame {
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openGameLeaderboard());
+    document.querySelector('#pause-leaderboard-button')?.addEventListener('click', () => this.openGameLeaderboard());
+    document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openGameLeaderboard());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
     document.querySelector('#ranking-close').addEventListener('click', () => {
@@ -450,13 +452,25 @@ class OingGame {
     this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
+  // 랭킹은 토스 게임센터가 있을 때만 존재한다. 토스 밖(일반 브라우저,
+  // 원스토어 앱)에서는 세 자리 모두 숨긴 채로 둔다 - 눌러도 아무 일도
+  // 없는 버튼을 보여주는 것보다 없는 편이 낫다.
+  //
+  // 자리가 셋인 이유: 홈은 판을 시작하기 전, 결과 화면은 방금 낸 점수를
+  // 바로 견주는 자리, 일시정지는 판 도중에 열 수 있는 유일하게 안전한
+  // 자리다(시계가 멈춰 있다). 플레이 화면에 그냥 두면 드래그 중 오터치가
+  // 나고, 시계가 도는 채로 네이티브 창이 열린다.
   async configureGameLeaderboard() {
-    const button = document.querySelector('#home-leaderboard-button');
+    const home = document.querySelector('#home-leaderboard-button');
     const actions = document.querySelector('.home-actions');
-    if (!button || !actions || !gameLeaderboardAdapter.isTossEnvironment()) return;
+    if (!home || !actions || !gameLeaderboardAdapter.isTossEnvironment()) return;
     const available = await gameLeaderboardAdapter.isAvailable();
-    button.hidden = !available;
+    home.hidden = !available;
     actions.classList.toggle('has-online-leaderboard', available);
+    const pause = document.querySelector('#pause-leaderboard-button');
+    const result = document.querySelector('#result-leaderboard-button');
+    if (pause) pause.hidden = !available;
+    if (result) result.hidden = !available;
   }
 
   // Retry/restart keep whatever mode is on screen — a classic run retries
@@ -2416,11 +2430,19 @@ class OingGame {
   }
 
   async openGameLeaderboard() {
-    const button = document.querySelector('#home-leaderboard-button');
-    if (!button || button.disabled) return;
-    button.disabled = true;
-    await gameLeaderboardAdapter.open();
-    button.disabled = false;
+    // 세 자리 어디서 눌렀든 중복 실행만 막으면 된다.
+    const buttons = ['#home-leaderboard-button', '#pause-leaderboard-button', '#result-leaderboard-button']
+      .map((selector) => document.querySelector(selector))
+      .filter(Boolean);
+    if (this.leaderboardOpening) return;
+    this.leaderboardOpening = true;
+    buttons.forEach((button) => { button.disabled = true; });
+    try {
+      await gameLeaderboardAdapter.open();
+    } finally {
+      this.leaderboardOpening = false;
+      buttons.forEach((button) => { button.disabled = false; });
+    }
   }
 
   openGarden() {

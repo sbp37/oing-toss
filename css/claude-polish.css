@@ -645,3 +645,54 @@
 .play-ui-v4 .play-help-button {
   top: max(-15px, calc(var(--safe-top, 0px) - 8px));
 }
+
+/* ==========================================================================
+   랭킹 자리 세 곳 (토스 게임센터가 있을 때만 보인다)
+   판 도중에 열 수 있는 자리는 일시정지뿐이다 - 거기서는 시계가 멈춰 있고,
+   플레이 화면에 두면 드래그 중 오터치가 난다. 일시정지의 도구 줄은 3칸
+   격자라, 랭킹이 켜지면 4칸으로 늘려 한 줄을 유지한다.
+   ========================================================================== */
+.pause-quick-actions:has(> .pause-leaderboard-button:not([hidden])) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pause-quick-actions:has(> .pause-leaderboard-button:not([hidden])) .pause-tool-button {
+  font-size: 12.5px;
+  padding-inline: 2px;
+}
+
+.pause-tool-button.pause-leaderboard-button i {
+  left: 50%;
+  top: 11px;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px 3px 6px 6px;
+  background: linear-gradient(180deg, #ffd75e, #f0a52c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+  transform: translateX(-50%);
+}
+
+.pause-tool-button.pause-leaderboard-button i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 11px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e07a52;
+  transform: translateX(-50%);
+}
+
+/* 결과 화면: 방금 낸 점수를 바로 견주는 자리. 내 기록과 나란히 둔다. */
+.result-actions:has(> .result-leaderboard-button:not([hidden])) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.result-actions:has(> .result-leaderboard-button:not([hidden])) #retry-button,
+.result-actions:has(> .result-leaderboard-button:not([hidden])) .result-home-button {
+  grid-column: 1 / -1;
+}

@@ -235,17 +235,16 @@ test('classic chapters cycle in order while album ownership stays key-based', as
   } = await import('../js/data.js');
 
   // The six normal scenes loop forever in a stable, non-random order —
-  // 2026-08부터는 세 판에 한 장면씩 (수집이 몇 판 만에 끝나지 않게).
+  // 2026-08부터는 네 판에 한 장면씩 (수집이 한 런에 끝나지 않게).
   assert.equal(classicChapterForBoard(0).key, 'garden');
-  assert.equal(classicChapterForBoard(2).key, 'garden');
-  assert.equal(classicChapterForBoard(3).key, 'forest');
-  assert.equal(classicChapterForBoard(6).key, 'stream');
-  assert.equal(classicChapterForBoard(9).key, 'village');
-  assert.equal(classicChapterForBoard(12).key, 'sunset');
-  assert.equal(classicChapterForBoard(15).key, 'night');
-  assert.equal(classicChapterForBoard(18).key, 'garden');
-  assert.equal(classicChapterForBoard(21).key, 'forest');
-  assert.equal(classicChapterForBoard(40).key, 'forest');
+  assert.equal(classicChapterForBoard(3).key, 'garden');
+  assert.equal(classicChapterForBoard(4).key, 'forest');
+  assert.equal(classicChapterForBoard(8).key, 'stream');
+  assert.equal(classicChapterForBoard(12).key, 'village');
+  assert.equal(classicChapterForBoard(16).key, 'sunset');
+  assert.equal(classicChapterForBoard(20).key, 'night');
+  assert.equal(classicChapterForBoard(24).key, 'garden');
+  assert.equal(classicChapterForBoard(28).key, 'forest');
   assert.equal(classicChapterForBoard(-3).key, 'garden');
   // Thresholds must stay ordered, or a deeper board could show an earlier scene.
   CLASSIC_CHAPTERS.forEach((chapter, index) => {

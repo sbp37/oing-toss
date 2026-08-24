@@ -1178,16 +1178,31 @@ export class GameUI {
     this.syncChapterWindows();
   }
 
+  // 터진 칸이 제자리에서 작아지기만 하면 "지워졌다"로만 읽힌다. 폭심에서
+  // 바깥으로 밀려나는 방향을 칸마다 심어줘서 파편처럼 흩어지게 한다.
+  // 방향은 폭심 기준 좌표라 항상 바깥쪽이고, 회전은 좌우로 갈라 준다.
+  setBlastVector(tile, dx, dy, index, strength = 1) {
+    const distance = Math.hypot(dx, dy) || 1;
+    const push = (16 + distance * 9) * strength;
+    tile.style.setProperty('--blast-x', `${((dx / distance) * push).toFixed(1)}px`);
+    tile.style.setProperty('--blast-y', `${((dy / distance) * push - 6).toFixed(1)}px`);
+    tile.style.setProperty('--blast-rot', `${(index % 2 ? 1 : -1) * (10 + (index % 3) * 7)}deg`);
+  }
+
   async animateBomb(rect) {
     const bounds = this.selectionBounds(rect);
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
     this.boardFrame.querySelector('.bomb-target-region')?.remove();
-    tiles.forEach((tile, index) => {
+    const center = { r: (rect.r1 + rect.r2) / 2, c: (rect.c1 + rect.c2) / 2 };
+    cellsInRect(rect).forEach(({ r, c }, index) => {
+      const tile = this.tileAt(r, c);
+      if (!tile || tile.dataset.item) return;
       tile.classList.remove('is-bomb-target');
       tile.style.removeProperty('--bomb-preview-delay');
       tile.style.setProperty('--blast-delay', `${Math.min(index * 22, 120)}ms`);
+      this.setBlastVector(tile, c - center.c, r - center.r, index);
       tile.classList.add('is-bombed');
     });
     if (bounds) {
@@ -1215,8 +1230,11 @@ export class GameUI {
     const tiles = cells
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
-    tiles.forEach((tile, index) => {
+    cells.forEach(({ r, c }, index) => {
+      const tile = this.tileAt(r, c);
+      if (!tile || tile.dataset.item) return;
       tile.style.setProperty('--mega-delay', `${Math.min(index * 18, 126)}ms`);
+      this.setBlastVector(tile, c - origin.col, r - origin.row, index, 1.35);
       tile.classList.add('is-megabombed');
     });
     const source = this.tileAt(origin.row, origin.col)?.getBoundingClientRect();

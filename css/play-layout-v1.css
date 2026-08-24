@@ -5939,3 +5939,59 @@
     animation-duration: 1ms;
   }
 }
+
+/* ==========================================================================
+   폭발한 칸의 움직임 (실기기 피드백: 지워지는 게 너무 단조롭다)
+   기존 연출은 제자리에서 작아지기만 해서, 다섯 칸이 한꺼번에 사라져도
+   "지워졌다"는 사실만 남고 터졌다는 느낌이 없었다. 이제 ui.js가 칸마다
+   폭심 바깥 방향(--blast-x/y)과 회전(--blast-rot)을 심어주고, 여기서 그
+   방향으로 밀려나며 돌면서 사라진다. 파편이 흩어지는 쪽에 가깝다.
+   변수가 없으면 0이라 기존 제자리 축소로 안전하게 떨어진다.
+   ========================================================================== */
+.play-ui-v4 .tile.is-bombed {
+  animation: tile-blast-scatter 470ms var(--blast-delay, 0ms) cubic-bezier(.16,.74,.3,1) both !important;
+}
+
+.play-ui-v4 .tile.is-megabombed {
+  animation: tile-blast-scatter 540ms var(--mega-delay, 0ms) cubic-bezier(.16,.74,.3,1) both !important;
+}
+
+@keyframes tile-blast-scatter {
+  0% { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); filter: brightness(1); }
+  22% {
+    opacity: 1;
+    transform: translate(calc(var(--blast-x, 0px) * -.16), calc(var(--blast-y, 0px) * -.16)) scale(.86);
+    filter: brightness(1.24) saturate(1.16);
+  }
+  55% {
+    opacity: .92;
+    transform: translate(calc(var(--blast-x, 0px) * .68), calc(var(--blast-y, 0px) * .68))
+      scale(1.04) rotate(calc(var(--blast-rot, 0deg) * .6));
+    filter: brightness(1.36) saturate(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--blast-x, 0px), calc(var(--blast-y, 0px) + 14px))
+      scale(.42) rotate(var(--blast-rot, 0deg));
+    filter: brightness(1.5) blur(1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .tile.is-bombed,
+  .play-ui-v4 .tile.is-megabombed { animation-duration: 1ms !important; }
+}
+
+/* 도움말 시트의 예시 칸도 홈 규칙 카드와 같은 민트로. 크림 시트 위의 크림
+   칸이라 숫자가 묻혀 보인다는 제보. 빈칸은 "여기는 0"을 보여주는 자리라
+   비워둔 채 테두리만 맞춘다. */
+.help-demo-cell {
+  border-color: rgba(99, 192, 171, .6);
+  background: linear-gradient(180deg, #eefffa, #d3f6ed);
+  color: #1f6f60;
+}
+
+.help-demo-cell.is-empty {
+  background: rgba(255, 255, 255, .72);
+  color: transparent;
+}
