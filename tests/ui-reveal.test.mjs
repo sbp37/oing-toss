@@ -143,6 +143,20 @@ test('WOW owns one foreground reward with its score instead of a duplicate fligh
   assert.match(scoreBurst, /if \(isWowClear\(cellCount\)\) return;/);
 });
 
+test('combo milestones use the crossed boundary and asset sparkles instead of emoji', async () => {
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const success = game.slice(game.indexOf('speakForSuccess('), game.indexOf('async clearRound('));
+  const combo = source.slice(source.indexOf('showComboMoment('), source.indexOf('showStageTimeBonus('));
+
+  assert.match(success, /speakForSuccess\(catCount, wow, successLevel, comboMilestone\)/);
+  assert.match(success, /comboMilestone >= 8/);
+  assert.match(success, /comboMilestone >= 5/);
+  assert.match(combo, /label\.textContent = `\$\{combo\} COMBO!`/);
+  assert.match(combo, /appendChild\(document\.createElement\('i'\)\)/);
+  assert.doesNotMatch(combo, /\\uD83D\\uDD25|🔥/);
+});
+
 test('result content shares one continuous sheet surface', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/claude-polish.css', import.meta.url), 'utf8');

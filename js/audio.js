@@ -97,6 +97,41 @@ function scheduleTone(ctx, frequency, start, duration, volume = 0.1, type = 'sin
   oscillator.stop(start + duration + 0.02);
 }
 
+function scheduleGlideTone(ctx, startFrequency, endFrequency, start, duration, volume, type = 'sine') {
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(startFrequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration * 0.72);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.linearRampToValueAtTime(volume, start + Math.min(0.018, duration * 0.18));
+  gain.gain.exponentialRampToValueAtTime(0.0008, start + duration);
+  oscillator.connect(gain);
+  gain.connect(getMixBus(ctx));
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.03);
+}
+
+function scheduleNoisePuff(ctx, start, duration, volume, cutoff) {
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * duration * 0.16));
+  }
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  source.buffer = buffer;
+  filter.type = 'lowpass';
+  filter.frequency.value = cutoff;
+  gain.gain.setValueAtTime(volume, start);
+  gain.gain.exponentialRampToValueAtTime(0.0008, start + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(getMixBus(ctx));
+  source.start(start);
+}
+
 function tone(frequency, startOffset, duration, volume = 0.1, type = 'sine') {
   const ctx = getContext();
   if (!ctx) return;
@@ -320,81 +355,43 @@ export function playFailSound() {
 }
 
 export function playHintSound() {
-  [600, 800, 1000, 1400].forEach((frequency, index) => tone(frequency, index * 0.06, 0.14, 0.15, 'triangle'));
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [392, 523, 659].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.055, 0.24, 0.09 - index * 0.012, 'sine', 0.012);
+  });
 }
 
 export function playShuffleSound() {
   const ctx = getContext();
   if (!ctx) return;
-  for (let pass = 0; pass < 2; pass += 1) {
-    const duration = 0.11;
-    const start = ctx.currentTime + pass * 0.12;
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
-    const samples = buffer.getChannelData(0);
-    for (let index = 0; index < samples.length; index += 1) {
-      samples[index] = (Math.random() * 2 - 1) * (1 - index / samples.length);
-    }
-    const source = ctx.createBufferSource();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-    source.buffer = buffer;
-    filter.type = 'bandpass';
-    filter.frequency.value = 2500 + pass * 700;
-    filter.Q.value = 0.9;
-    gain.gain.setValueAtTime(0.09, start);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-    source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
-    source.start(start);
-  }
+  const now = ctx.currentTime;
+  scheduleNoisePuff(ctx, now, 0.2, 0.156, 760);
+  scheduleNoisePuff(ctx, now + 0.13, 0.18, 0.117, 980);
+  scheduleGlideTone(ctx, 440, 587, now + 0.24, 0.18, 0.078, 'triangle');
 }
 
-// Original OING playBomb(): low filtered impact noise plus three bright shards.
 export function playBombSound() {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.3), ctx.sampleRate);
-  const samples = buffer.getChannelData(0);
-  for (let index = 0; index < samples.length; index += 1) {
-    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.05));
-  }
-  const source = ctx.createBufferSource();
-  const gain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-  source.buffer = buffer;
-  filter.type = 'lowpass';
-  filter.frequency.value = 400;
-  gain.gain.setValueAtTime(0.42, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-  source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
-  source.start(now);
-  [800, 1200, 600].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.04, 0.12, 0.1, 'sine', 0.005);
+  scheduleNoisePuff(ctx, now, 0.3, 0.296, 340);
+  scheduleGlideTone(ctx, 170, 86, now, 0.26, 0.172, 'sine');
+  [330, 440, 554].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + 0.05 + index * 0.065, 0.18, 0.07 - index * 0.006, 'triangle', 0.01);
   });
 }
 
-// Original OING playMegaBomb(): a longer impact with five layered shards.
 export function playMegaBombSound() {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.4), ctx.sampleRate);
-  const samples = buffer.getChannelData(0);
-  for (let index = 0; index < samples.length; index += 1) {
-    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.07));
-  }
-  const source = ctx.createBufferSource();
-  const gain = ctx.createGain();
-  const filter = ctx.createBiquadFilter();
-  source.buffer = buffer;
-  filter.type = 'lowpass';
-  filter.frequency.value = 420;
-  gain.gain.setValueAtTime(0.62, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-  source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
-  source.start(now);
-  [800, 1200, 600, 400, 1600].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.035, 0.16, 0.12, 'sine', 0.005);
+  scheduleNoisePuff(ctx, now, 0.42, 0.56, 520);
+  scheduleNoisePuff(ctx, now + 0.16, 0.24, 0.24, 440);
+  scheduleGlideTone(ctx, 120, 52, now, 0.38, 0.28, 'sine');
+  [392, 523, 698, 932].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + 0.05 + index * 0.045, 0.25, 0.09 - index * 0.008, 'triangle', 0.01);
   });
 }
 
@@ -424,10 +421,9 @@ export function playCloverSound() {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  [659.25, 880, 1046.5, 1318.5].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.065, 0.25, index === 3 ? 0.1 : 0.075, 'sine', 0.008);
+  [392, 523, 659, 784].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.075, 0.3, 0.07 - index * 0.006, index === 3 ? 'triangle' : 'sine', 0.012);
   });
-  scheduleTone(ctx, 2637, now + 0.22, 0.28, 0.045, 'triangle', 0.006);
 }
 
 export function playRoundClearSound() {

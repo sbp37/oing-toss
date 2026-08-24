@@ -1128,7 +1128,7 @@ class OingGame {
       this.ui.setPlayCharacter('success', 900);
       this.ui.showMessage('오잉! 사각형 안의 합이 10!', 1900, 'firstSuccess');
     } else {
-      this.speakForSuccess(catCount, wow, successLevel);
+      this.speakForSuccess(catCount, wow, successLevel, comboMilestone);
     }
     if (cloverBonusPoints > 0) {
       this.showCatMessage('cloverSuccess');
@@ -1433,7 +1433,7 @@ class OingGame {
     this.state.inputLocked = false;
   }
 
-  speakForSuccess(catCount = 0, wow = false, successLevel = 1) {
+  speakForSuccess(catCount = 0, wow = false, successLevel = 1, comboMilestone = 0) {
     // The cat used to have a line for literally every clear, which measured
     // at 3.67 message changes per success — it talked over the game instead
     // of reacting to it. It now speaks for moments with feeling behind them:
@@ -1453,18 +1453,22 @@ class OingGame {
     } else if (this.state.successCount === 1) {
       this.ui.setPlayCharacter('success', 800);
       this.showCatMessage('firstSuccess');
-    } else if (this.state.combo === 3) {
+    } else if (comboMilestone >= 8) {
+      // Wide clears can jump straight over a boundary (7 -> 9, for example).
+      // React to the crossed milestone rather than only exact landing values.
+      this.ui.setPlayCharacter('success', 1150);
+      this.showCatMessage('combo8');
+    } else if (comboMilestone >= 5) {
+      this.ui.setPlayCharacter('success', 1000);
+      this.showCatMessage('combo5');
+    } else if (comboMilestone >= 3) {
       this.ui.setPlayCharacter('cheer', 900);
-      this.showCatMessage('combo3');
     } else if (rewardStatus.remaining === 1) {
       this.ui.setPlayCharacter('wave', 900);
       this.ui.previewItemReward();
       // The item gauge already fills in front of the player, so the bubble
       // does not narrate it a second time.
       // this.ui.showMessage('한 번만 더면 아이템 나온다냥!', 1700, 'rewardNear');
-    } else if (this.state.combo === 5 || this.state.combo === 8) {
-      this.ui.setPlayCharacter('success', 900);
-      this.showCatMessage(this.state.combo >= 8 ? 'combo8' : 'combo5');
     } else if (successLevel >= 3) {
       // A milestone or a reward landed; a short line is earned.
       this.showCatMessage('success');
@@ -2483,14 +2487,15 @@ class OingGame {
   // uses (hints, rescues, being stuck), things they must react to (a drop
   // landed, time is short), and the rare peaks worth marking (a big clear, a
   // new scene, the run's own milestones). Everything else - ordinary
-  // successes, combo tiers, cat bonuses, misses - is already told by the
-  // score, the combo counter and the tile animation, so the cat lets those
-  // speak for themselves.
+  // successes, low combo tiers, cat bonuses and misses are already told by
+  // the score, the combo counter and the tile animation, so the cat lets
+  // those speak for themselves. Five and eight-plus are rare enough to earn
+  // one short line without bringing the old chatter back.
   static CAT_MESSAGE_ALWAYS = Object.freeze(new Set([
     'start', 'tapEnd', 'firstSuccess',
     'hint', 'autoHint', 'struggleHint', 'shuffle', 'rescue',
     'itemDrop', 'bomb', 'megabomb', 'clock', 'freeze', 'clover', 'cloverSuccess',
-    'lowTime', 'clutch', 'wow', 'perfect',
+    'lowTime', 'clutch', 'wow', 'perfect', 'combo5', 'combo8',
     'classicClear', 'classicChapter', 'classicBoard', 'result',
   ]));
 

@@ -2291,24 +2291,59 @@
    one line of glowing Jua text with no card behind it. Every boxed banner
    below adopts that: background chrome gone, text and glow kept. */
 
-/* Combo milestone: the original's "N combo 🔥" line, ported verbatim. */
+/* Combo milestone: one compact foreground reward, with the game's existing
+   sparkle art instead of a platform-dependent emoji glyph. */
 .combo-text-pop {
   position: absolute;
   z-index: 30;
   left: 50%;
   top: 26%;
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: clamp(24px, 7.5vw, 32px);
-  font-weight: 400;
-  letter-spacing: .01em;
-  /* White on a hard coral outline: gold at 15px vanished against the sky. */
-  -webkit-text-stroke: 3px #f2557c;
-  paint-order: stroke fill;
-  text-shadow: 0 0 14px rgba(242, 85, 124, .75), 0 3px 0 rgba(190, 52, 88, .35);
-  white-space: nowrap;
+  width: max-content;
+  min-width: 132px;
+  height: 64px;
   pointer-events: none;
   animation: combo-text-float 1.2s ease forwards;
+}
+
+.combo-text-pop strong {
+  position: relative;
+  z-index: 1;
+  display: block;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(25px, 7.7vw, 33px);
+  font-weight: 400;
+  letter-spacing: .015em;
+  line-height: 1;
+  -webkit-text-stroke: 3px #f2557c;
+  paint-order: stroke fill;
+  text-shadow: 0 0 14px rgba(242, 85, 124, .64), 0 3px 0 rgba(190, 52, 88, .28);
+  white-space: nowrap;
+}
+
+.combo-text-pop[data-level="high"] strong {
+  color: #fffdf4;
+  -webkit-text-stroke-color: #ef9b2d;
+  text-shadow: 0 0 16px rgba(255, 188, 65, .78), 0 3px 0 rgba(207, 106, 28, .3);
+}
+
+.combo-text-pop i {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: url("../assets/decor/sparkle.webp") center / contain no-repeat;
+  filter: drop-shadow(0 2px 2px rgba(213, 119, 32, .16));
+  animation: combo-spark-pop .74s cubic-bezier(.18, .8, .22, 1) both;
+}
+
+.combo-text-pop i:nth-of-type(1) { left: -22px; top: -11px; transform: rotate(-14deg) scale(.72); }
+.combo-text-pop i:nth-of-type(2) { right: -25px; top: -4px; transform: rotate(12deg) scale(.9); animation-delay: 55ms; }
+.combo-text-pop i:nth-of-type(3) { right: 4px; top: 31px; transform: rotate(22deg) scale(.58); animation-delay: 105ms; }
+
+@keyframes combo-spark-pop {
+  0% { opacity: 0; scale: .35; }
+  42% { opacity: 1; scale: 1.08; }
+  100% { opacity: 0; scale: .72; }
 }
 
 @keyframes combo-text-float {
@@ -2316,6 +2351,17 @@
   18% { opacity: 1; transform: translate(-50%, 0); }
   70% { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, -38px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combo-text-pop { animation: combo-text-fade .72s ease forwards; }
+  .combo-text-pop i { animation: none; opacity: .8; }
+}
+
+@keyframes combo-text-fade {
+  0% { opacity: 0; transform: translate(-50%, 0); }
+  20%, 72% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, 0); }
 }
 
 .play-ui-v4 .round-clear,
@@ -5701,4 +5747,184 @@
   .help-demo-finger,
   .help-demo-sparkle,
   .help-demo-sum { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Item FX selection pass -------------------------------------------------
+   Soft cues use thick syrup shapes; the mega bomb keeps the stronger beat.
+   Clock and freeze audio remain unchanged. */
+#play-screen.play-ui-v4 .hint-region {
+  background: radial-gradient(circle at 50% 45%, rgba(221, 255, 243, .18), rgba(94, 211, 179, .08));
+  animation: hint-soft-arrival 440ms cubic-bezier(.18, .8, .22, 1) both;
+}
+
+@keyframes hint-soft-arrival {
+  0% { opacity: 0; transform: scale(.975); }
+  55% { opacity: 1; transform: scale(1.012); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+#play-screen.play-ui-v4 .shuffle-fx::before {
+  left: 50%;
+  top: 50%;
+  width: clamp(104px, 34%, 132px);
+  height: clamp(72px, 24%, 90px);
+  border: 0;
+  border-radius: 48% 52% 45% 55%;
+  background:
+    radial-gradient(circle at 34% 25%, rgba(255, 255, 255, .9) 0 8%, transparent 18%),
+    linear-gradient(145deg, rgba(255, 247, 195, .94), rgba(91, 210, 186, .9));
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 255, 255, .5),
+    0 8px 20px rgba(45, 137, 123, .2);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.28) rotate(-28deg);
+  animation: shuffle-soft-syrup 780ms cubic-bezier(.16, .78, .22, 1) both;
+}
+
+@keyframes shuffle-soft-syrup {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.28) rotate(-28deg); }
+  28% { opacity: .96; transform: translate(-50%, -50%) scale(1.02) rotate(15deg); }
+  70% { opacity: .86; transform: translate(-50%, -50%) scale(.88) rotate(118deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.58) rotate(180deg); }
+}
+
+#play-screen.play-ui-v4 .bomb-fx::after {
+  width: 78px;
+  height: 78px;
+  border: 8px solid rgba(255, 167, 125, .38);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .38);
+  animation: bomb-soft-ring 560ms cubic-bezier(.15, .68, .25, 1) both;
+}
+
+@keyframes bomb-soft-ring {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.22); }
+  26% { opacity: .94; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.74); }
+}
+
+#play-screen.play-ui-v4 .megabomb-fx::before,
+#play-screen.play-ui-v4 .megabomb-fx::after {
+  border-width: 7px;
+  box-shadow: 0 0 22px rgba(255, 102, 112, .3);
+}
+
+#play-screen.play-ui-v4 .megabomb-fx i {
+  width: 18px;
+  filter: drop-shadow(0 0 8px rgba(255, 195, 52, .88));
+}
+
+#play-screen.play-ui-v4 .item-impact-clover::before,
+#play-screen.play-ui-v4 .item-impact-clover::after {
+  border-width: 8px;
+  border-color: rgba(105, 207, 128, .34);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .36);
+  animation: clover-soft-focus 760ms 300ms cubic-bezier(.15, .68, .25, 1) both;
+}
+
+#play-screen.play-ui-v4 .item-impact-clover::after { animation-delay: 370ms; }
+
+@keyframes clover-soft-focus {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.28); }
+  28% { opacity: .9; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.28); }
+}
+
+/* Freeze keeps its original cue; the board now visibly locks under ice. */
+#play-screen.play-ui-v4 .item-impact-freeze {
+  z-index: 25;
+  border: 2px solid rgba(181, 239, 255, .72);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(245, 255, 255, .24), rgba(158, 222, 245, .3)),
+    linear-gradient(145deg, rgba(255, 255, 255, .12), rgba(119, 198, 232, .14));
+  box-shadow: inset 0 0 30px rgba(196, 244, 255, .58);
+  animation: freeze-premium-impact 920ms cubic-bezier(.18, .72, .22, 1) both;
+  pointer-events: none;
+}
+
+#play-screen.play-ui-v4 .item-impact-freeze b {
+  --crack-angle: -68deg;
+  --crack-x: 18%;
+  --crack-y: 19%;
+  position: absolute;
+  left: var(--crack-x);
+  top: var(--crack-y);
+  width: clamp(42px, 15%, 64px);
+  height: 3px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .96), rgba(129, 211, 241, .82), transparent);
+  box-shadow: 0 0 5px rgba(211, 249, 255, .72);
+  opacity: 0;
+  transform: rotate(var(--crack-angle)) scaleX(.15);
+  transform-origin: 0 50%;
+  animation: freeze-crack-spread 680ms var(--crack-delay, 70ms) cubic-bezier(.14, .72, .2, 1) both;
+}
+
+#play-screen.play-ui-v4 .item-impact-freeze b::after {
+  content: "";
+  position: absolute;
+  left: 56%;
+  top: 1px;
+  width: 46%;
+  height: 2px;
+  border-radius: inherit;
+  background: inherit;
+  transform: rotate(34deg);
+  transform-origin: 0 50%;
+}
+
+#play-screen.play-ui-v4 .item-impact-freeze b:nth-of-type(2) { --crack-angle: 22deg; --crack-x: 57%; --crack-y: 16%; --crack-delay: 110ms; }
+#play-screen.play-ui-v4 .item-impact-freeze b:nth-of-type(3) { --crack-angle: 148deg; --crack-x: 82%; --crack-y: 45%; --crack-delay: 150ms; }
+#play-screen.play-ui-v4 .item-impact-freeze b:nth-of-type(4) { --crack-angle: -24deg; --crack-x: 17%; --crack-y: 72%; --crack-delay: 190ms; }
+#play-screen.play-ui-v4 .item-impact-freeze b:nth-of-type(5) { --crack-angle: 78deg; --crack-x: 48%; --crack-y: 56%; --crack-delay: 230ms; }
+#play-screen.play-ui-v4 .item-impact-freeze b:nth-of-type(6) { --crack-angle: 202deg; --crack-x: 88%; --crack-y: 81%; --crack-delay: 270ms; }
+
+#play-screen.play-ui-v4 .freeze-impact-title {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 50%;
+  min-width: 118px;
+  padding: 8px 16px 7px;
+  border: 2px solid rgba(255, 255, 255, .96);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(250, 255, 255, .98), rgba(209, 242, 255, .96));
+  box-shadow: 0 5px 14px rgba(43, 119, 158, .2);
+  color: #347da4;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 5.4vw, 23px);
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.7);
+  animation: freeze-title-pop 900ms cubic-bezier(.16, .8, .24, 1) both;
+}
+
+@keyframes freeze-premium-impact {
+  0%, 100% { opacity: 0; transform: scale(.985); }
+  18%, 76% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes freeze-crack-spread {
+  0% { opacity: 0; transform: rotate(var(--crack-angle)) scaleX(.15); }
+  26%, 72% { opacity: .9; transform: rotate(var(--crack-angle)) scaleX(1); }
+  100% { opacity: 0; transform: rotate(var(--crack-angle)) scaleX(1.08); }
+}
+
+@keyframes freeze-title-pop {
+  0%, 10% { opacity: 0; transform: translate(-50%, -50%) scale(.7); }
+  28%, 70% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -62%) scale(.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #play-screen.play-ui-v4 .hint-region,
+  #play-screen.play-ui-v4 .shuffle-fx::before,
+  #play-screen.play-ui-v4 .bomb-fx::after,
+  #play-screen.play-ui-v4 .item-impact-clover::before,
+  #play-screen.play-ui-v4 .item-impact-clover::after,
+  #play-screen.play-ui-v4 .item-impact-freeze,
+  #play-screen.play-ui-v4 .item-impact-freeze b,
+  #play-screen.play-ui-v4 .freeze-impact-title { animation-duration: 1ms !important; }
 }

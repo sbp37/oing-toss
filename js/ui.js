@@ -1325,11 +1325,16 @@ export class GameUI {
     const impact = document.createElement('div');
     impact.className = 'item-impact-fx item-impact-freeze';
     for (let index = 0; index < 7; index += 1) impact.appendChild(document.createElement('i'));
+    for (let index = 0; index < 6; index += 1) impact.appendChild(document.createElement('b'));
+    const impactTitle = document.createElement('strong');
+    impactTitle.className = 'freeze-impact-title';
+    impactTitle.textContent = '시간 정지!';
+    impact.appendChild(impactTitle);
     await delay(315);
     this.boardFrame.appendChild(impact);
     await delay(255);
     flight.remove();
-    window.setTimeout(() => impact.remove(), 560);
+    window.setTimeout(() => impact.remove(), 920);
   }
 
   setFreezeActive(active) {
@@ -1527,7 +1532,11 @@ export class GameUI {
     this.elements.playScreen.querySelector('.combo-text-pop')?.remove();
     const pop = document.createElement('div');
     pop.className = 'combo-text-pop';
-    pop.textContent = `${combo} combo \uD83D\uDD25`;
+    pop.dataset.level = milestone >= 8 ? 'high' : milestone >= 5 ? 'mid' : 'start';
+    const label = document.createElement('strong');
+    label.textContent = `${combo} COMBO!`;
+    pop.appendChild(label);
+    for (let index = 0; index < 3; index += 1) pop.appendChild(document.createElement('i'));
     this.elements.playScreen.appendChild(pop);
     setTimeout(() => pop.remove(), 1200);
   }
