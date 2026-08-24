@@ -336,13 +336,15 @@ export const CLASSIC_BOARD_LADDER = Object.freeze([
 // ceiling drops from 19.5min/141k to 6.5min/38k. The floor keeps the
 // 판갈이 beat itself alive - a board change that pays nothing reads as a
 // punishment, not an event.
-// 2026-08 페이싱 패스: 6판/-0.5초 → 5판/-1초. 완만한 기울기로는 숙련의
-// 시간 경제가 20판 가까이 흑자를 유지해 런이 6분대까지 늘어졌다. 5판부터
-// 판마다 1초씩 줄이면 숙련이 15~16판, 4.5분 안쪽으로 수렴하고, 초보(3~4판)
-// 와 보통(7~8판)은 선을 거의 넘지 않아 체감 변화가 없다.
+// 2026-08 페이싱 패스: 6판/-0.5초 → 5판/-1초 → 5판/-1.5초. 완만한 기울기로는
+// 숙련의 시간 경제가 20판 가까이 흑자를 유지해 런이 6분대까지 늘어졌다.
+// 1차(-1초)로 숙련 4.5분까지 내렸고, 실기기 확인에서 "길이는 좋은데 고수는
+// 아직 늘어질 수 있겠다"는 피드백에 따라 -1.5초로 한 번 더 조였다.
+// 시뮬(30판): 숙련 4.5→4.1분(p90 4.3), 초보 2.5분·보통 3.4분은 그대로 —
+// 6판 이후에만 작용하는 기울기라 꼬리만 깎인다.
 export const CLASSIC_REFUND_FATIGUE = Object.freeze({
   fromBoard: 5,   // boards 1..5 always pay in full
-  perBoard: 1,    // seconds shaved per board past the line
+  perBoard: 1.5,  // seconds shaved per board past the line
   floor: 2,       // the least any 판갈이 pays
 });
 
