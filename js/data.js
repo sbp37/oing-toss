@@ -896,16 +896,30 @@ export function shouldShowClassicAutoHint({
 // digits are visually isolated by large picture windows. This is not a
 // beginner rule: after a short, genuine stall, every player may receive one
 // quiet pointer per board. It never shuffles or solves the board for them.
+//
+// 2026-08 실측 보강: 꼬리 구간(잔여 40% 이하)에서 인접 두 칸 답이 남아 있는
+// 수는 26%뿐이다(초반 100%). 남은 절반이 빈칸 건너 답이나 2D 박스라, 판당
+// 1회로는 그 수색 노동의 절반도 못 덮었다. 그래서 같은 판에서도 다시 켤 수
+// 있게 하되, 그 재발화는 읽기 쉬운 답(adjacent-pair/near-triple/small-2d,
+// board.js answerReadabilityClass 기준)이 하나도 없고 쿨다운이 지난 때로
+// 한정한다. bestReadability 기본값이 easy인 이유: 호출자가 가독성을 재지
+// 않으면 재발화는 절대 일어나지 않아야 안전하다.
+export const CLASSIC_SPARSE_HINT_REPEAT_MS = 9000;
+
 export function shouldShowClassicSparseHint({
   running = false, inputLocked = false, tutorialActive = false,
   boardIndex = 0, lastShownBoard = -1, timeLeft = 0, idleMs = 0,
   remaining = 0, initialPlayable = 0,
+  bestReadability = 'adjacent-pair', sinceLastShownMs = Infinity,
 } = {}) {
   const initial = Math.max(1, Math.round(Number(initialPlayable) || 0));
   const left = Math.max(0, Math.round(Number(remaining) || 0));
   const sparseLimit = Math.min(12, Math.ceil(initial * 0.38));
+  const firstOnThisBoard = Math.round(Number(boardIndex) || 0) !== Math.round(Number(lastShownBoard) || 0);
+  const hardTail = ['spaced-pair', 'large'].includes(String(bestReadability));
+  const repeatDue = hardTail && sinceLastShownMs >= CLASSIC_SPARSE_HINT_REPEAT_MS;
   return Boolean(running) && !inputLocked && !tutorialActive
-    && Math.round(Number(boardIndex) || 0) !== Math.round(Number(lastShownBoard) || 0)
+    && (firstOnThisBoard || repeatDue)
     && timeLeft > 6
     && idleMs >= CLASSIC_SPARSE_HINT_IDLE_MS
     && left >= 2

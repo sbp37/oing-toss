@@ -347,8 +347,10 @@ test('classic beginners get repeated auto-hints when they stall', async () => {
   assert.equal(shouldShowClassicAutoHint({ ...base, timeLeft: 5 }), false);
 });
 
-test('a sparse classic tail offers one quiet hint per board', async () => {
-  const { shouldShowClassicSparseHint, CLASSIC_SPARSE_HINT_IDLE_MS } = await import('../js/data.js');
+test('a sparse classic tail offers a quiet hint, repeating only in hard states', async () => {
+  const {
+    shouldShowClassicSparseHint, CLASSIC_SPARSE_HINT_IDLE_MS, CLASSIC_SPARSE_HINT_REPEAT_MS,
+  } = await import('../js/data.js');
   const base = {
     running: true, inputLocked: false, tutorialActive: false,
     boardIndex: 4, lastShownBoard: -1, timeLeft: 30,
@@ -357,9 +359,19 @@ test('a sparse classic tail offers one quiet hint per board', async () => {
   assert.equal(shouldShowClassicSparseHint(base), true);
   assert.equal(shouldShowClassicSparseHint({ ...base, remaining: 16 }), false);
   assert.equal(shouldShowClassicSparseHint({ ...base, idleMs: 1200 }), false);
+  // 가독성을 재지 않은 호출(기본값 easy)은 같은 판에서 절대 재발화하지 않는다.
   assert.equal(shouldShowClassicSparseHint({ ...base, lastShownBoard: 4 }), false);
   assert.equal(shouldShowClassicSparseHint({ ...base, boardIndex: 5, lastShownBoard: 4 }), true);
   assert.equal(shouldShowClassicSparseHint({ ...base, timeLeft: 5 }), false);
+  // 같은 판 재발화: 읽기 쉬운 답이 없고(spaced-pair/large) 쿨다운이 지난 때만.
+  const repeat = { ...base, lastShownBoard: 4, sinceLastShownMs: CLASSIC_SPARSE_HINT_REPEAT_MS };
+  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'spaced-pair' }), true);
+  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'large' }), true);
+  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'adjacent-pair' }), false);
+  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'small-2d' }), false);
+  assert.equal(shouldShowClassicSparseHint({
+    ...repeat, bestReadability: 'large', sinceLastShownMs: CLASSIC_SPARSE_HINT_REPEAT_MS - 1,
+  }), false);
 });
 
 test('past the fatigue line the board stops dropping time-givers', async () => {

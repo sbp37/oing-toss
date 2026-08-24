@@ -16,6 +16,8 @@ import {
   pickMessage,
   resultRetryLabel,
   resultToneForScore,
+  ITEM_REWARD_INTERVAL,
+  RESULT_SCORE_THRESHOLDS,
 } from './data.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -2076,7 +2078,11 @@ export class GameUI {
     // item drops actually unlock and the number means something.
     if (this.elements.comboItemTrack) {
       this.elements.comboItemFill.style.width = `${Math.round(normalizedRewardProgress * 100)}%`;
-      const rewardVisible = rewardUnlocked && combo > 0;
+      // 보상 경계는 콤보 최고점 기준이라, 콤보가 크게 깨진 직후에는 남은
+      // 수가 7을 훌쩍 넘는다(실기기에서 '아이템까지 31'까지 관찰). 그 큰
+      // 숫자는 정보가 아니라 절망이므로, 한 게이지 안(7 이하)으로 돌아온
+      // 뒤에만 숫자를 붙이고 그 전에는 게이지만 조용히 다시 차오르게 둔다.
+      const rewardVisible = rewardUnlocked && combo > 0 && rewardRemaining <= ITEM_REWARD_INTERVAL;
       this.elements.comboItemTrack.hidden = false;
       this.elements.comboItemLabel.hidden = !rewardVisible;
       if (rewardVisible) {
@@ -2107,10 +2113,17 @@ export class GameUI {
     // carrying there is the record being chased, and once the run passes it
     // the slot flips into a live "you are ahead" readout.
     const best = Math.max(0, Math.round(Number(bestScore) || 0));
-    const ahead = best > 0 && score > best;
-    const goalText = best > 0 ? (ahead ? score : best).toLocaleString('ko-KR') : '-';
+    // 기록이 없을 때의 '최고 -'는 아무 행동도 만들지 않는 칸이었다(검수 4곳
+    // 공통 지적). 클래식의 첫 기록 전에는 결과 등급의 첫 눈금을 목표로 걸어,
+    // 신규 유저에게도 이 칸이 쫓을 숫자가 되게 한다. 기록이 생기면 원래대로.
+    // 눈금이 클래식 점수 규모라, 스테이지 모드는 기존 '-' 표기를 지킨다.
+    const chase = best > 0 ? best : classicMode ? RESULT_SCORE_THRESHOLDS.normal : 0;
+    const ahead = chase > 0 && score > chase;
+    const goalText = chase > 0 ? (ahead ? score : chase).toLocaleString('ko-KR') : '-';
     this.elements.goal.textContent = goalText;
-    if (this.elements.goalLabel) this.elements.goalLabel.textContent = ahead ? '신기록' : '최고';
+    if (this.elements.goalLabel) {
+      this.elements.goalLabel.textContent = best > 0 ? (ahead ? '신기록' : '최고') : (ahead ? '달성!' : '목표');
+    }
     this.elements.goal.closest('.goal-status')?.classList.toggle('is-ahead', ahead);
     // Same length-band pattern as the score figure: the counter box is narrow
     // and the text is nowrap-centred, so long values shrink one step.

@@ -10085,3 +10085,24 @@ img {
     height: 13px;
   }
 }
+
+/* 홈 데모 단순화 (2026-08 검수 합의) --------------------------------------
+   3숫자+빈칸 2×2 예제는 첫 3초 안에 "세 숫자? 빈칸도? 네모?"를 한꺼번에
+   읽어야 했다. 인접 두 칸도 결국 1×2 직사각형이므로, 가장 단순한 예(4+6)로
+   같은 드래그 규칙을 가르친다. 큰 묶음은 첫 판의 드래그 튜토리얼이 맡는다. */
+.home-mini-board-pair {
+  grid-template-columns: repeat(2, 26px);
+  grid-template-rows: 26px;
+}
+
+.home-mini-board-pair > span { font-size: 15px; }
+
+.home-mini-board-pair > span:nth-child(2) { background: rgba(255,244,207,.94); }
+
+.home-mini-board-pair .home-mini-drag { animation-name: home-drag-dot-pair; }
+
+@keyframes home-drag-dot-pair {
+  0%, 13% { opacity: 1; transform: translate(0, 5px) scale(.9); }
+  34%, 70% { opacity: 1; transform: translate(48px, 11px) scale(1); }
+  82%, 100% { opacity: 0; transform: translate(48px, 11px) scale(.65); }
+}

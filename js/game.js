@@ -72,7 +72,9 @@ import {
   isWowClear,
   isNiceClear,
 } from './data.js';
-import { BoardModel, boardAssistForPerformance } from './board.js';
+import {
+  BoardModel, answerReadabilityClass, boardAssistForPerformance, closestReadableAnswer,
+} from './board.js';
 import { BoardItemField } from './board-items.js';
 import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
@@ -2057,7 +2059,7 @@ class OingGame {
 
   maybeShowClassicSparseHint(now = performance.now()) {
     const boardIndex = this.classic?.boardIndex ?? -1;
-    if (!shouldShowClassicSparseHint({
+    const base = {
       running: this.state.running && !this.state.paused,
       inputLocked: this.state.inputLocked,
       tutorialActive: this.tutorialActive || this.waitingForFirstDrag,
@@ -2067,15 +2069,32 @@ class OingGame {
       idleMs: now - this.lastInteractionAt,
       remaining: this.model.remainingPlayableCells(),
       initialPlayable: this.state.initialPlayableCells,
-    })) return false;
-    const answer = this.model.findHintAnswer();
+      sinceLastShownMs: now - (this.classicSparseHintAt || -Infinity),
+    };
+    const firstOnThisBoard = boardIndex !== this.classicSparseHintBoard;
+    let candidate = null;
+    if (firstOnThisBoard) {
+      if (!shouldShowClassicSparseHint(base)) return false;
+    } else {
+      // 같은 판 재발화는 정말 어려운 상태 - 읽기 쉬운 답이 하나도 없을 때 -
+      // 로 한정한다(2026-08 실측: 꼬리 구간 수의 74%가 인접쌍 없음). 답
+      // 전수 스캔은 공짜가 아니므로 싼 조건들을 먼저 통과시킨 뒤에만 잰다.
+      if (!shouldShowClassicSparseHint({ ...base, bestReadability: 'large' })) return false;
+      const answers = this.model.findAnswers();
+      if (!answers.length) return false;
+      candidate = closestReadableAnswer(answers);
+      if (!shouldShowClassicSparseHint({ ...base, bestReadability: answerReadabilityClass(candidate) })) return false;
+    }
+    const answer = candidate || this.model.findHintAnswer();
     if (!answer) return false;
     this.classicSparseHintBoard = boardIndex;
+    this.classicSparseHintAt = now;
     this.telemetry?.hint('sparse-tail');
     this.lastInteractionAt = now;
     this.ui.showHint(answer);
     this.ui.setPlayCharacter('wave', 900);
-    this.showCatMessage('autoHint', { force: true });
+    // 첫 발화만 말을 얹는다 - 같은 판에서 같은 말이 반복되면 잔소리가 된다.
+    if (firstOnThisBoard) this.showCatMessage('autoHint', { force: true });
     return true;
   }
 

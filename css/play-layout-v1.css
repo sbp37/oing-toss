@@ -5844,3 +5844,35 @@
 .screen-play.play-ui-v4.is-speech-collapsed[data-board-rows] .cat-speech {
   visibility: hidden;
 }
+
+/* ==========================================================================
+   첫 판 정보 다이어트 + 결과 이중 표기 (2026-08 검수 4종 합의)
+   ========================================================================== */
+
+/* 잠긴 폭탄·시계는 "왜 못 누르지?"라는 질문을 만들지 않게 장식 슬롯
+   수준으로 더 가라앉힌다. 소진(depleted)은 다시 살아날 물건이라 기존
+   밝기를 유지하고, 아직 열린 적 없는 잠금만 더 흐리게 간다. */
+.play-ui-v4 .item-button[data-state="locked"] {
+  opacity: .42;
+  filter: saturate(.22) brightness(1.02);
+}
+
+/* 결과 시트가 점수를 세는 동안 뒤 HUD의 최종 점수가 같이 보이면 한
+   화면에 서로 다른 두 점수가 공존한다(실기기 캡처로 확인된 지적).
+   시트 뒤로 물러난 플레이 화면에서는 상태 줄을 조용히 내린다. */
+.screen-play.play-ui-v4.is-behind-sheet .play-status-bar {
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+/* 공유 칩의 그림 크기는 그대로 두고 보이지 않는 터치 영역만 44px급으로
+   넓힌다 (실측 64x40 - 모바일 최소 권장에 4px 미달). */
+.result-share-chip { position: relative; }
+.result-share-chip::after {
+  content: '';
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  top: -4px;
+  bottom: -4px;
+}
