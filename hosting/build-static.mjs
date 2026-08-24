@@ -16,6 +16,11 @@ for (const entry of ["index.html", "privacy.html", "css", "js", "assets", "manif
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
 
+// Keep the isolated item FX/sound comparison lab available on branch previews.
+// It reuses the shipped runtime assets and audio module without touching the game.
+await mkdir(resolve(client, "design"), { recursive: true });
+await cp(resolve(root, "design/item-fx-lab"), resolve(client, "design/item-fx-lab"), { recursive: true });
+
 // Keep editable source sheets and font candidates in the repository, but do not
 // ship them to players. Runtime assets remain untouched and at their source quality.
 for (const entry of [
