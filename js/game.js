@@ -2344,9 +2344,10 @@ class OingGame {
   async shareChapter() {
     const chapter = this.ui.openedChapter;
     if (!chapter) return;
-    const result = await shareAdapter.shareChapter(chapter);
-    if (result.ok && result.method === 'clipboard') this.ui.toast('링크를 복사했다냥!');
-    else if (result.ok) this.ui.toast('공유창을 열었다냥!');
+    const result = await shareAdapter.shareChapter(chapter, { imageUrl: this.ui.openedChapterArt });
+    if (result.ok && result.method === 'clipboard') {
+      this.ui.toast(result.withUrl ? '글과 링크를 복사했다냥!' : '자랑 글귀를 복사했다냥!');
+    } else if (result.ok) this.ui.toast('공유창을 열었다냥!');
     else if (result.reason !== 'cancelled') this.ui.toast('이 브라우저에선 공유가 어렵다냥');
   }
 
@@ -2357,8 +2358,9 @@ class OingGame {
     if (button) button.disabled = true;
     const result = await shareAdapter.shareResult(this.lastResultSummary);
     if (button) button.disabled = false;
-    if (result.ok && result.method === 'clipboard') this.ui.toast('점수와 링크를 복사했다냥!');
-    else if (result.ok) this.ui.toast('공유창을 열었다냥!');
+    if (result.ok && result.method === 'clipboard') {
+      this.ui.toast(result.withUrl ? '점수와 링크를 복사했다냥!' : '자랑 글귀를 복사했다냥!');
+    } else if (result.ok) this.ui.toast('공유창을 열었다냥!');
     else if (result.reason !== 'cancelled') this.ui.toast('이 브라우저에선 공유가 어렵다냥');
   }
 

@@ -222,6 +222,9 @@ export class GameUI {
       screen.setAttribute('aria-hidden', String(!active));
     });
     document.querySelector('#result-screen')?.classList.toggle('is-sheet', name === 'result' && Boolean(behind));
+    // 판이 화면에 나타나는 순간에도 침범 검사를 한다 — renderBoard가 화면
+    // 전환보다 먼저 돌면 is-active 가드에 걸려 측정을 못 했을 수 있다.
+    if (name === 'play') this.scheduleLayoutFit();
   }
 
   primeStartCountdown(step = 3, { compact = false } = {}) {
@@ -397,14 +400,75 @@ export class GameUI {
     this.board.replaceChildren(fragment);
     this.clearSelection();
     requestAnimationFrame(() => this.syncChapterWindows());
+    // renderBoard는 성공할 때마다 돌지만, 강제 재배치를 부르는 침범 검사는
+    // 판의 모양이 실제로 바뀐 때만 다시 한다 (#24의 드래그 예산을 지킨다).
+    const dimsKey = `${cols}x${rows}`;
+    if (this.lastFitDims !== dimsKey) {
+      this.lastFitDims = dimsKey;
+      this.scheduleLayoutFit();
+    }
     if (!this.chapterWindowResizeBound) {
       this.chapterWindowResizeBound = true;
       window.addEventListener('resize', () => {
         // 화면이 바뀌면 재놓은 격자는 더 이상 맞지 않는다.
         this.cachedGrid = null;
         this.syncChapterWindows();
+        this.scheduleLayoutFit();
       });
+      // iOS는 주소창·웹뷰 상단바가 접히고 펴질 때 window resize 없이
+      // visualViewport만 바뀌는 경우가 있다.
+      window.visualViewport?.addEventListener('resize', () => this.scheduleLayoutFit());
     }
+  }
+
+  // 실기기마다 웹뷰 상단바와 안전영역이 달라, 보드가 하단 독과 말풍선을
+  // 침범하는지는 상수(미디어쿼리)로 예측하지 않고 실제 기하로 잰다.
+  // 판갈이 직후에는 셔플 연출이 돌고 있으므로 한 번은 바로, 한 번은
+  // 연출이 끝난 뒤에 다시 재서 transform이 섞인 측정을 걸러낸다.
+  scheduleLayoutFit() {
+    clearTimeout(this.layoutFitTimer);
+    requestAnimationFrame(() => this.fitPlayLayout());
+    this.layoutFitTimer = window.setTimeout(() => this.fitPlayLayout(), 640);
+  }
+
+  // 1) 보드가 아이템 독(버튼 줄)을 덮으면, 덮지 않을 때까지 보드를 줄인다.
+  //    버튼은 눌러야 하는 물건이라 보드보다 우선이다.
+  // 2) 그러고도 말풍선 자리가 안 나오면 말풍선을 접는다. 접힌 동안의
+  //    대사는 playNextFeedback이 토스트로 돌린다.
+  fitPlayLayout() {
+    const play = this.elements.playScreen;
+    const frame = this.boardFrame;
+    const footer = play?.querySelector('.play-footer');
+    const speech = play?.querySelector('.cat-speech');
+    if (!play || !frame || !footer || !play.classList.contains('is-active')) return;
+    frame.style.width = '';
+    const clearance = 6;
+    // 1fr/2fr 스페이서가 줄어든 높이를 다시 나눠 갖므로, 보드를 h만큼
+    // 줄여도 바닥은 h의 2/3만 올라온다. 여유 배율로 두세 번 안에 수렴.
+    for (let pass = 0; pass < 3; pass += 1) {
+      const board = frame.getBoundingClientRect();
+      const dock = footer.getBoundingClientRect();
+      if (!board.height || !dock.height) break;
+      const deficit = board.bottom - (dock.top - clearance);
+      if (deficit <= 0) break;
+      const nextHeight = board.height - deficit * 1.6 - 2;
+      if (nextHeight < 120) break;
+      const cols = Number(frame.dataset.cols) || 6;
+      const rows = Number(frame.dataset.rows) || 6;
+      frame.style.width = `${Math.floor((nextHeight * cols) / rows)}px`;
+    }
+    let collapsed = false;
+    if (speech) {
+      const style = getComputedStyle(speech);
+      if (style.display === 'none') collapsed = true;
+      else {
+        const board = frame.getBoundingClientRect();
+        const bubble = speech.getBoundingClientRect();
+        collapsed = bubble.top < board.bottom + 2;
+      }
+    }
+    play.classList.toggle('is-speech-collapsed', collapsed);
+    this.speechCollapsed = collapsed;
   }
 
   // Cleared cells paint the chapter art themselves: each tile gets the
@@ -1869,8 +1933,14 @@ export class GameUI {
     while (this.feedbackQueue.length) {
       const next = this.feedbackQueue.shift();
       if (next.priority === 1 && now - next.queuedAt > 2200) continue;
+      // 말풍선이 접힌 판에서는 대사가 조용히 사라지고 있었다. 놓치면 안
+      // 되는 줄(판갈이·규칙·아이템, priority 2 이상)만 토스트로 옮기고,
+      // 잡담(priority 1)은 버린다 — 토스트 소나기를 만들지 않기 위해서다.
+      if (next.kind === 'message' && this.speechCollapsed && next.priority < 2) continue;
       this.activeFeedback = next;
-      if (next.kind === 'toast') this.renderToast(next);
+      const asToast = next.kind === 'toast' || this.speechCollapsed;
+      next.renderedAs = asToast ? 'toast' : 'message';
+      if (asToast) this.renderToast(next);
       else this.renderMessage(next);
       clearTimeout(this.feedbackTimer);
       this.feedbackTimer = window.setTimeout(() => this.finishFeedback(), next.duration);
@@ -1881,7 +1951,7 @@ export class GameUI {
   finishFeedback() {
     const active = this.activeFeedback;
     if (!active) return;
-    if (active.kind === 'toast') this.elements.toast.classList.remove('is-visible');
+    if ((active.renderedAs || active.kind) === 'toast') this.elements.toast.classList.remove('is-visible');
     else this.elements.catMessage.classList.remove('is-changing');
     this.activeFeedback = null;
     clearTimeout(this.feedbackTimer);
@@ -2272,8 +2342,10 @@ export class GameUI {
       const label = document.createElement('strong');
       label.textContent = card.unlocked ? card.label : '???';
       const requirement = document.createElement('span');
+      // 실기기 피드백: 열린 카드가 '수집 완료'만 남기면 무엇으로 열었는지
+      // 알 수 없다. 조건 문구는 해금 후에도 그대로 남긴다.
       requirement.textContent = card.unlocked
-        ? '수집 완료'
+        ? card.requirement
         : `${card.requirement} (${card.current.toLocaleString('ko-KR')}/${card.goal.toLocaleString('ko-KR')})`;
       item.append(label, requirement);
 
@@ -2284,7 +2356,7 @@ export class GameUI {
         item.append(meter);
       }
       item.setAttribute('aria-label', card.unlocked
-        ? `${card.label} 수집 완료`
+        ? `${card.label} 수집 완료, ${card.requirement}`
         : `잠긴 카드, ${card.requirement}, ${card.current} / ${card.goal}`);
       // 얻은 카드는 눌러서 크게 본다. 장면과 같은 창을 쓰므로 공유도 그대로
       // 따라온다 - 수집은 자랑까지 가야 끝난다.
@@ -2292,7 +2364,7 @@ export class GameUI {
         item.setAttribute('role', 'button');
         item.tabIndex = 0;
         const open = () => this.openChapterViewer(
-          { label: card.label, requirement: '수집 완료' },
+          { label: card.label, requirement: card.requirement },
           oingCardArtUrl(card),
         );
         item.addEventListener('click', open);
@@ -2320,7 +2392,9 @@ export class GameUI {
     const art = artUrl || classicChapterArtUrl(chapter);
     if (!art) return;
     // 공유 버튼이 어느 장면을 말하는지 알아야 하므로 지금 연 장면을 들고 있는다.
+    // 그림 주소도 함께 - 공유에 그림을 실어 보내는 데 쓴다.
     this.openedChapter = chapter;
+    this.openedChapterArt = art;
     if (this.elements.chapterViewerTitle) this.elements.chapterViewerTitle.textContent = chapter.label;
     if (this.elements.chapterViewerArt) this.elements.chapterViewerArt.src = art;
     if (this.elements.chapterViewerNote) {

@@ -1,3 +1,5 @@
+import { isAppsInTossWebView } from './leaderboard.js';
+
 const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
 const LAST_SCORE_KEY = 'oing_toss_v3_last_score';
 const RECENT_SCORES_KEY = 'oing_toss_v3_recent_scores';
@@ -324,18 +326,58 @@ export function buildShareText({ score, maxCombo, round, classic = null }) {
 
 // 공유는 한 군데로 모아둔다 - 결과 화면이든 장면이든 같은 경로를 타야
 // 브라우저마다 다르게 실패하는 일이 없다.
-async function shareTextAndUrl(text) {
-  const url = typeof location === 'undefined' ? '' : location.href.split('?')[0];
+//
+// 실기기 제보: 토스 안에서 만들어진 링크(location.href)는 앱인토스 내부
+// 주소라 받은 사람이 열면 오류가 난다. 토스 안에서는 링크를 아예 싣지 않고
+// "토스에서 검색" 안내를 글귀에 넣는다. 공개 웹에서는 지금 주소를 그대로.
+function shareableUrl() {
+  if (typeof location === 'undefined') return '';
+  if (isAppsInTossWebView()) return '';
+  if (!/^https?:$/.test(location.protocol)) return '';
+  return location.href.split('?')[0];
+}
+
+// 카드/장면 그림을 파일로 함께 공유한다. 못 가져오거나 이 브라우저가 파일
+// 공유를 모르면 조용히 글만 나간다 - 그림은 더해주는 것이지 조건이 아니다.
+async function fetchShareImage(imageUrl) {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const name = imageUrl.split('/').pop() || 'oing-card.webp';
+    return new File([blob], name, { type: blob.type || 'image/webp' });
+  } catch {
+    return null;
+  }
+}
+
+async function shareTextAndUrl(text, { imageUrl = null } = {}) {
+  const url = shareableUrl();
+  const fullText = url ? text : `${text} 토스에서 '오잉게임'을 검색하면 바로 할 수 있다냥!`;
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      await navigator.share({ title: '오잉게임', text, url });
-      return { ok: true, method: 'native-share' };
+      const payload = { title: '오잉게임', text: fullText };
+      if (url) payload.url = url;
+      if (imageUrl && typeof navigator.canShare === 'function') {
+        const file = await fetchShareImage(imageUrl);
+        if (file && navigator.canShare({ files: [file] })) payload.files = [file];
+      }
+      try {
+        await navigator.share(payload);
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error;
+        // 파일이 낀 공유를 거부하는 웹뷰가 있다 - 글만으로 한 번 더.
+        if (!payload.files) throw error;
+        delete payload.files;
+        await navigator.share(payload);
+      }
+      return { ok: true, method: 'native-share', withUrl: Boolean(url) };
     }
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(`${text}\n${url}`.trim());
-      return { ok: true, method: 'clipboard' };
+      await navigator.clipboard.writeText(`${fullText}\n${url}`.trim());
+      return { ok: true, method: 'clipboard', withUrl: Boolean(url) };
     }
-    return { ok: false, reason: 'share-unavailable', text, url };
+    return { ok: false, reason: 'share-unavailable', text: fullText, url };
   } catch (error) {
     if (error?.name === 'AbortError') return { ok: false, reason: 'cancelled' };
     return { ok: false, reason: 'share-failed', error };
@@ -343,9 +385,9 @@ async function shareTextAndUrl(text) {
 }
 
 export const shareAdapter = {
-  async shareChapter(chapter) {
+  async shareChapter(chapter, { imageUrl = null } = {}) {
     const label = chapter?.label || '장면';
-    return shareTextAndUrl(`오잉게임에서 '${label}' 장면을 모았다냥!`);
+    return shareTextAndUrl(`오잉게임에서 '${label}' 장면을 모았다냥!`, { imageUrl });
   },
   async shareResult(result) {
     return shareTextAndUrl(buildShareText(result));
