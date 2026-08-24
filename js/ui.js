@@ -23,6 +23,11 @@ import {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+// 칭찬 잡담(priority 1) 사이의 최소 간격. 빠른 연속 성공에서 말풍선이 쉬지
+// 않고 바뀌던 것이 "정신없다"의 정체였다. 규칙·판갈이·아이템 안내는 우선순위가
+// 높아 이 간격을 지키지 않는다 - 꼭 필요한 말은 여전히 즉시 나간다.
+const CHATTER_MIN_GAP_MS = 4200;
+
 // Every tile is the same tile. There is no colour to assign, so nothing here
 // assigns one — css/styles.css names the single art file.
 //
@@ -1939,6 +1944,13 @@ export class GameUI {
       // 되는 줄(판갈이·규칙·아이템, priority 2 이상)만 토스트로 옮기고,
       // 잡담(priority 1)은 버린다 — 토스트 소나기를 만들지 않기 위해서다.
       if (next.kind === 'message' && this.speechCollapsed && next.priority < 2) continue;
+      // 실기기 피드백: 말풍선이 귀엽지만 정신없다. 가림은 fitPlayLayout이
+      // 구조적으로 막았고 남은 문제는 빈도였다. 칭찬 잡담(priority 1)은
+      // 연달아 나오지 않게 사이를 띄운다 - 규칙·판갈이·아이템 안내는
+      // 이 문에 걸리지 않으므로 필요한 말은 그대로 다 나간다.
+      if (next.kind === 'message' && next.priority === 1
+        && now - (this.lastChatterAt || 0) < CHATTER_MIN_GAP_MS) continue;
+      if (next.kind === 'message' && next.priority === 1) this.lastChatterAt = now;
       this.activeFeedback = next;
       const asToast = next.kind === 'toast' || this.speechCollapsed;
       next.renderedAs = asToast ? 'toast' : 'message';
@@ -1961,6 +1973,9 @@ export class GameUI {
   }
 
   clearFeedbackQueue() {
+    // 새 판은 잡담 간격도 새로 센다 - 판 시작 첫 칭찬이 지난 판 때문에
+    // 막히면 안 된다.
+    this.lastChatterAt = 0;
     clearTimeout(this.feedbackTimer);
     this.feedbackQueue.length = 0;
     this.activeFeedback = null;

@@ -543,3 +543,86 @@
   word-break: keep-all;
   overflow-wrap: normal;
 }
+
+/* ==========================================================================
+   홈 마무리 (실기기 피드백)
+   1) 규칙 카드의 4·6 타일이 실기기에서 너무 작고 흐려 "저게 뭐지"로 지나간다.
+      이 카드는 첫 3초에 규칙을 가르치는 유일한 자리라 가장 잘 보여야 한다.
+      타일을 26px에서 34px로 키우고, 옅은 민트 바탕 대신 실제 판과 같은 크림
+      타일에 진한 남색 숫자로 바꿔 대비를 올린다. 드래그 점과 선택 테두리도
+      같이 키워 "쓸어서 묶는다"는 동작이 읽히게 한다.
+   2) 고양이와 아래 두 박스가 너무 떨어져 있었다. margin-top:auto가 남는
+      세로 공간을 전부 고양이 아래에 몰아줬기 때문이다. 남는 공간을 위아래로
+      나눠 규칙 카드가 고양이를 따라 올라오게 한다.
+   ========================================================================== */
+.screen-home .home-howto {
+  margin-top: clamp(8px, 2vh, 18px);
+}
+
+.screen-home .home-actions {
+  margin-top: 6px;
+  margin-bottom: auto;
+}
+
+.home-rule-demo {
+  gap: 9px;
+  min-height: 62px;
+}
+
+.home-mini-board-pair {
+  grid-template-columns: repeat(2, 34px);
+  grid-template-rows: 34px;
+  gap: 3px;
+}
+
+.home-mini-board-pair > span,
+.home-mini-board-pair > span:nth-child(2) {
+  border: 1.5px solid rgba(120, 96, 72, .3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fffaf0, #ffeecd);
+  box-shadow: inset 0 2px 0 #fff, 0 2px 3px rgba(120, 96, 72, .16);
+  color: #2f4a63;
+  font-size: 22px;
+}
+
+.home-mini-board-pair .home-mini-selection {
+  border-width: 3px;
+  border-radius: 13px;
+}
+
+.home-mini-board-pair .home-mini-drag {
+  left: 3px;
+  top: 9px;
+  width: 11px;
+  height: 11px;
+}
+
+.home-mini-board-pair .home-mini-drag { animation-name: home-drag-dot-pair-lg; }
+
+@keyframes home-drag-dot-pair-lg {
+  0%, 13% { opacity: 1; transform: translate(0, 5px) scale(.9); }
+  34%, 70% { opacity: 1; transform: translate(60px, 6px) scale(1); }
+  82%, 100% { opacity: 0; transform: translate(60px, 6px) scale(.65); }
+}
+
+.home-rule-demo > em { font-size: 17px; }
+.home-rule-demo > b { font-size: 20px; }
+
+.home-rule-demo > strong {
+  min-width: 46px;
+  padding: 5px 10px 4px;
+  font-size: 25px;
+}
+
+.home-rule-demo > i { font-size: 15px; }
+
+@media (max-height: 720px) {
+  .home-mini-board-pair {
+    grid-template-columns: repeat(2, 30px);
+    grid-template-rows: 30px;
+  }
+  .home-mini-board-pair > span,
+  .home-mini-board-pair > span:nth-child(2) { font-size: 19px; }
+  .home-rule-demo { min-height: 54px; }
+  .home-rule-demo > strong { font-size: 22px; }
+}
