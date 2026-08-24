@@ -5902,3 +5902,40 @@
 @media (prefers-reduced-motion: reduce) {
   .play-ui-v4 .tile.is-board-item.is-item-pressed::after { animation-duration: 1ms; }
 }
+
+/* ==========================================================================
+   아이템 소환 (실기기 피드백: 회색 빈칸이 됐다가 그 위에 생겨서 거슬린다)
+   기존 등장 애니메이션은 칸 전체를 opacity 0 / scale .25에서 시작했다.
+   그 860ms 동안 아이템 칸의 얼굴이 없어서 아래의 지워진 회색 칸이 그대로
+   드러났고, "숫자판이 회색으로 변했다가 폭탄이 얹힌다"로 읽혔다.
+   이제 칸 얼굴(숫자 없는 판)은 처음부터 자리에 있고, 떨어지는 연출은
+   아이템 그림만 맡는다. 칸은 짧게 부풀었다 가라앉기만 한다.
+   ========================================================================== */
+.play-ui-v4 .tile.is-board-item.is-item-spawning {
+  animation: board-item-seat 300ms var(--item-drop-delay, 0ms) ease-out both;
+}
+
+.play-ui-v4 .tile.is-board-item.is-item-spawning .board-item-icon,
+.play-ui-v4 .tile.is-board-item.is-item-spawning .board-item-action {
+  animation: board-item-icon-drop 520ms var(--item-drop-delay, 0ms) cubic-bezier(.16,.82,.24,1.18) both;
+}
+
+@keyframes board-item-seat {
+  0% { opacity: 1; transform: scale(.94); }
+  55% { transform: scale(1.04); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes board-item-icon-drop {
+  0% { opacity: 0; transform: translateY(-20px) scale(.4) rotate(-12deg); }
+  70% { opacity: 1; transform: translateY(0) scale(1.1) rotate(3deg); }
+  100% { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .tile.is-board-item.is-item-spawning,
+  .play-ui-v4 .tile.is-board-item.is-item-spawning .board-item-icon,
+  .play-ui-v4 .tile.is-board-item.is-item-spawning .board-item-action {
+    animation-duration: 1ms;
+  }
+}

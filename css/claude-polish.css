@@ -626,3 +626,22 @@
   .home-rule-demo { min-height: 54px; }
   .home-rule-demo > strong { font-size: 22px; }
 }
+
+/* 규칙 카드 타일이 카드 바탕(크림)과 같은 색이라 오히려 덜 보였다. 아래
+   최고점수 카드에 쓰는 민트로 바꿔 카드 위에서 또렷하게 떠오르게 한다. */
+.home-mini-board-pair > span,
+.home-mini-board-pair > span:nth-child(2) {
+  border-color: rgba(99, 192, 171, .62);
+  background: linear-gradient(180deg, #eefffa, #d3f6ed);
+  box-shadow: inset 0 2px 0 #fff, 0 2px 3px rgba(54, 120, 107, .16);
+  color: #1f6f60;
+}
+
+/* i(도움말) 버튼은 자리와 크기를 그대로 둔다 - 처음 하는 사람이 규칙을 찾는
+   단추라 일시정지 메뉴 안으로 숨기면 정작 필요한 사람이 못 찾는다. 다만
+   상단으로 -15px 끌어올린 탓에 좁은 화면에서 화면 맨 위 4px까지 붙어,
+   노치나 토스 상단 컨트롤과 겹칠 위험이 있었다(검수 실측). 안전영역 안쪽으로
+   내려오는 하한만 둔다. 눌리는 면적은 이미 44x44라 그대로 둔다. */
+.play-ui-v4 .play-help-button {
+  top: max(-15px, calc(var(--safe-top, 0px) - 8px));
+}

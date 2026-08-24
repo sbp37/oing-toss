@@ -141,6 +141,13 @@ import {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
+
+// 시작 커튼은 오디오 언락을 가리려고 첫 숫자를 미리 띄워둔다. 그 기다림에
+// 상한이 없어서, 첫 접속처럼 언락이 느린 판에서는 "3"이 멈춰 있다가
+// 카운트다운이 처음부터 다시 도는 것처럼 보였다(실기기 제보). 상한을 두고,
+// 미리 띄운 숫자가 제 박자를 이미 채웠으면 그 다음 숫자부터 이어간다.
+const COUNTDOWN_AUDIO_WAIT_CAP_MS = 900;
+const COUNTDOWN_BEAT_MS = Object.freeze({ normal: 650, compact: 420 });
 // Drops worth taking the lead of a moment. Bomb and clock are the everyday
 // rewards; these three are the ones a player should stop and look at.
 // The garden only shows through from STAGE 3, so earlier boards cannot
@@ -599,19 +606,29 @@ class OingGame {
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
     preloadResultAssets();
     this.startCountdownInProgress = true;
-    const [ready] = await Promise.all([audioReady, musicReady]);
+    const primedAt = performance.now();
+    const settled = await Promise.race([
+      Promise.all([audioReady, musicReady]),
+      delay(COUNTDOWN_AUDIO_WAIT_CAP_MS).then(() => null),
+    ]);
     if (sequenceId !== this.startSequenceId || !this.state.running || this.state.paused) {
       if (sequenceId === this.startSequenceId) this.startCountdownInProgress = false;
       if (this.state.paused) this.resumeNeedsCountdown = true;
       return;
     }
-    if (this.settings.sound && !ready) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
-    await this.runStartCountdown(sequenceId, options.quickCountdown === true);
+    // 상한에 걸려 아직 결과를 모르는 경우에는 경고를 띄우지 않는다.
+    if (settled && this.settings.sound && !settled[0]) this.ui.toast('휴대폰의 미디어 소리를 확인해달라냥');
+    // 미리 띄운 숫자가 한 박자를 채웠으면 다음 숫자부터 이어간다. 빨리
+    // 준비된 판에서는 지금까지처럼 전체 3·2·1이 그대로 돈다.
+    const beat = options.quickCountdown ? COUNTDOWN_BEAT_MS.compact : COUNTDOWN_BEAT_MS.normal;
+    const skipPrimedStep = performance.now() - primedAt >= beat;
+    await this.runStartCountdown(sequenceId, options.quickCountdown === true, { skipPrimedStep });
   }
 
-  async runStartCountdown(sequenceId, quickCountdown = false) {
+  async runStartCountdown(sequenceId, quickCountdown = false, { skipPrimedStep = false } = {}) {
     this.startCountdownInProgress = true;
-    const steps = quickCountdown ? RETRY_COUNTDOWN_STEPS : START_COUNTDOWN_STEPS;
+    const all = quickCountdown ? RETRY_COUNTDOWN_STEPS : START_COUNTDOWN_STEPS;
+    const steps = skipPrimedStep && all.length > 1 ? all.slice(1) : all;
     const completed = await this.ui.animateStartCountdown(steps, (step) => {
       if (step === 'GO!') {
         playGoSound();
