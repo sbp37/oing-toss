@@ -95,8 +95,10 @@ test('classic ladder holds a stable 6x6 opener before growing to eight rows', ()
     [[6, 6], [6, 6], [7, 6], [8, 6]],
   );
   // 워밍업 판일수록 판갈이 보상이 작다 — 작은 판은 금방 마르니까.
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 6, 6]);
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [11, 14, 19, 19]);
+  // 2026-08 페이싱 패스: 보통 4.0분/숙련 6.6분까지 늘어지던 런을
+  // 3.5분/4.5분으로 줄인 값 (tools/classic-balance-sim.mjs로 측정).
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 5, 5]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [10, 12, 16, 16]);
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
   CLASSIC_BOARD_LADDER.forEach((step) => assert.equal(step.cols, 6));
   assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.rows), [6, 6, 7, 8]);
@@ -232,16 +234,18 @@ test('classic chapters cycle in order while album ownership stays key-based', as
     classicChapterForBoard, classicChapterGallery, classicDeepestChapterLabel,
   } = await import('../js/data.js');
 
-  // The six normal scenes loop forever in a stable, non-random order.
+  // The six normal scenes loop forever in a stable, non-random order —
+  // 2026-08부터는 세 판에 한 장면씩 (수집이 몇 판 만에 끝나지 않게).
   assert.equal(classicChapterForBoard(0).key, 'garden');
-  assert.equal(classicChapterForBoard(1).key, 'forest');
-  assert.equal(classicChapterForBoard(2).key, 'stream');
-  assert.equal(classicChapterForBoard(3).key, 'village');
-  assert.equal(classicChapterForBoard(4).key, 'sunset');
-  assert.equal(classicChapterForBoard(5).key, 'night');
-  assert.equal(classicChapterForBoard(6).key, 'garden');
-  assert.equal(classicChapterForBoard(7).key, 'forest');
-  assert.equal(classicChapterForBoard(40).key, 'sunset');
+  assert.equal(classicChapterForBoard(2).key, 'garden');
+  assert.equal(classicChapterForBoard(3).key, 'forest');
+  assert.equal(classicChapterForBoard(6).key, 'stream');
+  assert.equal(classicChapterForBoard(9).key, 'village');
+  assert.equal(classicChapterForBoard(12).key, 'sunset');
+  assert.equal(classicChapterForBoard(15).key, 'night');
+  assert.equal(classicChapterForBoard(18).key, 'garden');
+  assert.equal(classicChapterForBoard(21).key, 'forest');
+  assert.equal(classicChapterForBoard(40).key, 'forest');
   assert.equal(classicChapterForBoard(-3).key, 'garden');
   // Thresholds must stay ordered, or a deeper board could show an earlier scene.
   CLASSIC_CHAPTERS.forEach((chapter, index) => {
@@ -253,13 +257,13 @@ test('classic chapters cycle in order while album ownership stays key-based', as
   assert.ok(fresh.every((chapter) => !chapter.unlocked));
   assert.equal(fresh.at(-1).key, CLASSIC_SECRET_CHAPTER.key);
   assert.equal(fresh.at(-1).secret, true);
-  assert.equal(CLASSIC_SECRET_CHAPTER.minScore, 15000);
+  assert.equal(CLASSIC_SECRET_CHAPTER.minScore, 10000);
   assert.equal(
-    classicChapterGallery({ seenKeys: [], bestScore: 14999 }).at(-1).unlocked,
+    classicChapterGallery({ seenKeys: [], bestScore: 9999 }).at(-1).unlocked,
     false,
   );
   assert.equal(
-    classicChapterGallery({ seenKeys: [], bestScore: 15000 }).at(-1).unlocked,
+    classicChapterGallery({ seenKeys: [], bestScore: 10000 }).at(-1).unlocked,
     true,
   );
 

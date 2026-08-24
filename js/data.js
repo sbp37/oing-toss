@@ -26,10 +26,13 @@ export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 // numbers - under them virtually every classic run fell into the lowest
 // pool, which is why the result cat sounded flat no matter how well a run
 // went.
+// 2026-08 페이싱 패스 이후 재보정: 런이 짧아지며 보통 8천, 숙련 2만 중반이
+// 새 평균이 됐다. normal은 초보 분포가 그대로라 유지, high는 보통의 잘한
+// 판(p75~p90), legend는 숙련의 평균급 판에 맞춘다.
 export const RESULT_SCORE_THRESHOLDS = Object.freeze({
   normal: 2000,
-  high: 12000,
-  legend: 35000,
+  high: 9000,
+  legend: 22000,
 });
 
 export function recordEligibleForStartStage(stage = 1) {
@@ -306,11 +309,17 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // classicBoardChangeSeconds. A flat refund made "clear it properly" and
 // "break a few and move on" worth the same number of seconds, which is
 // the one thing a puzzle game cannot afford.
+// 2026-08 페이싱 패스: 환급 상한 11/14/19/19 → 10/12/16/16, 바닥 4/5/6/6 →
+// 4/5/5/5. 시뮬레이션(프로필별 30~40판)에서 보통 실력의 런이 평균 4.0분,
+// 숙련이 6.6분까지 늘어져 "2분 스코어 어택"이라는 약속과 멀어져 있었다.
+// 아래 피로 상수와 함께 줄이면 초보 2.5분(변화 없음), 보통 3.5분, 숙련
+// 4.5분으로 수렴한다. 판갈이 한 번의 보상이 원조(+15초)보다 약간 작아지는
+// 대신, 판갈이 빈도가 원조보다 훨씬 높다는 차이를 흡수한다.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 4, timeBonus: 11 }),
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
-  Object.freeze({ rows: 7, cols: 6, timeFloor: 6, timeBonus: 19 }),
-  Object.freeze({ rows: 8, cols: 6, timeFloor: 6, timeBonus: 19 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 4, timeBonus: 10 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 12 }),
+  Object.freeze({ rows: 7, cols: 6, timeFloor: 5, timeBonus: 16 }),
+  Object.freeze({ rows: 8, cols: 6, timeFloor: 5, timeBonus: 16 }),
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the
@@ -327,9 +336,13 @@ export const CLASSIC_BOARD_LADDER = Object.freeze([
 // ceiling drops from 19.5min/141k to 6.5min/38k. The floor keeps the
 // 판갈이 beat itself alive - a board change that pays nothing reads as a
 // punishment, not an event.
+// 2026-08 페이싱 패스: 6판/-0.5초 → 5판/-1초. 완만한 기울기로는 숙련의
+// 시간 경제가 20판 가까이 흑자를 유지해 런이 6분대까지 늘어졌다. 5판부터
+// 판마다 1초씩 줄이면 숙련이 15~16판, 4.5분 안쪽으로 수렴하고, 초보(3~4판)
+// 와 보통(7~8판)은 선을 거의 넘지 않아 체감 변화가 없다.
 export const CLASSIC_REFUND_FATIGUE = Object.freeze({
-  fromBoard: 6,   // boards 1..6 - the six scenes - always pay in full
-  perBoard: 0.5,  // seconds shaved per board past the line
+  fromBoard: 5,   // boards 1..5 always pay in full
+  perBoard: 1,    // seconds shaved per board past the line
   floor: 2,       // the least any 판갈이 pays
 });
 
@@ -428,22 +441,28 @@ export function classicRoundForBoard(boardIndex = 0) {
 
 // ── 고양이의 모험 (classic chapters) ──────────────────────────────────
 // The hidden picture behind the board is one leg of a journey, and the
-// journey is the run: every second 판갈이 moves the cat to the next scene,
+// journey is the run: every third 판갈이 moves the cat to the next scene,
 // so how far a player got is something they *saw*, not just a number. The
 // last scene is score-gated instead — a place only a high score reaches.
+// 2026-08 실기기 피드백: 판갈이마다 장면이 바뀌던 때는 몇 판만 해도 여섯
+// 장면이 다 열려 수집이 끝나 버렸다. 세 판에 한 장면이면 보통 실력의 첫
+// 런이 두세 장면, 여섯 장면 완주는 여러 세션에 걸친다 — 모으는 재미가
+// 남는다. fromBoard는 그 장면이 처음 걸리는 boardIndex다.
 // `art` is the asset stem; a scene whose file is not in place yet simply
 // falls back to the original garden painting (see the chapter background
 // rules in play-layout-v1.css), so chapters can ship art one at a time.
 // Display order and album ownership are deliberately separate. The board
 // walks this six-scene loop forever, while the album stores stable scene
 // keys and therefore never re-locks a picture when the display wraps.
+export const CLASSIC_CHAPTER_BOARDS_PER_SCENE = 3;
+
 export const CLASSIC_CHAPTERS = Object.freeze([
   Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: true }),
-  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 1, art: 'chapter-forest', hasArt: true }),
-  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 2, art: 'chapter-stream', hasArt: true }),
-  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 3, art: 'chapter-village', hasArt: true }),
-  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 4, art: 'chapter-sunset', hasArt: true }),
-  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 5, art: 'chapter-night', hasArt: true }),
+  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 3, art: 'chapter-forest', hasArt: true }),
+  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 6, art: 'chapter-stream', hasArt: true }),
+  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 9, art: 'chapter-village', hasArt: true }),
+  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 12, art: 'chapter-sunset', hasArt: true }),
+  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 15, art: 'chapter-night', hasArt: true }),
 ]);
 
 // Reaching a scene is not collecting it - the album asks for the board to
@@ -476,10 +495,12 @@ export function classicChapterThumbUrl(chapter) {
 
 // Reached by score alone, so it stays visible as a goal for players who
 // already know every scene the ladder can show them.
+// 2026-08 페이싱 패스 이후 재보정: 15,000은 옛 점수 경제에서 보통의 잘한 판
+// 수준이었다. 짧아진 런에서는 10,000이 같은 자리(보통 p90 부근)다.
 export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   key: 'aurora',
   label: '오로라 항구',
-  minScore: 15000,
+  minScore: 10000,
   art: 'chapter-aurora',
   hasArt: true,
 });
@@ -509,7 +530,8 @@ export function classicDropStage(boardIndex = 0) {
 
 export function classicChapterForBoard(boardIndex = 0) {
   const index = Math.max(0, Math.round(Number(boardIndex) || 0));
-  return CLASSIC_CHAPTERS[index % CLASSIC_CHAPTERS.length];
+  const scene = Math.floor(index / CLASSIC_CHAPTER_BOARDS_PER_SCENE);
+  return CLASSIC_CHAPTERS[scene % CLASSIC_CHAPTERS.length];
 }
 
 // One row per scene for the gallery: unlocked once its board has actually
@@ -557,16 +579,16 @@ export const OING_CARDS = Object.freeze([
     metric: 'cats', goal: 100, requirement: '고양이 100마리' }),
   Object.freeze({ key: 'big-300', label: '시원한 손', art: 'card-04-big-clears-v1', hasArt: true,
     metric: 'bigClears', goal: 300, requirement: '5칸 이상 한 번에 300번' }),
-  Object.freeze({ key: 'score-8000', label: '반짝이는 기록', art: 'card-05-score-20000-v1', hasArt: true,
-    metric: 'bestScore', goal: 8000, requirement: '한 판 8,000점' }),
+  Object.freeze({ key: 'score-6000', label: '반짝이는 기록', art: 'card-05-score-20000-v1', hasArt: true,
+    metric: 'bestScore', goal: 6000, requirement: '한 판 6,000점' }),
   Object.freeze({ key: 'days-7', label: '일주일 개근', art: 'card-06-seven-days-v1', hasArt: true,
     metric: 'playDays', goal: 7, requirement: '서로 다른 7일 플레이' }),
   Object.freeze({ key: 'cells-20000', label: '대청소', art: 'card-07-cells-20000-v1', hasArt: true,
     metric: 'cellsCleared', goal: 20000, requirement: '지운 칸 20,000개' }),
   Object.freeze({ key: 'days-30', label: '한 달의 친구', art: 'card-08-thirty-days-v1', hasArt: true,
     metric: 'playDays', goal: 30, requirement: '서로 다른 30일 플레이' }),
-  Object.freeze({ key: 'score-15000', label: '오잉 고수', art: 'card-09-score-30000-v1', hasArt: true,
-    metric: 'bestScore', goal: 15000, requirement: '한 판 15,000점' }),
+  Object.freeze({ key: 'score-10000', label: '오잉 고수', art: 'card-09-score-30000-v1', hasArt: true,
+    metric: 'bestScore', goal: 10000, requirement: '한 판 10,000점' }),
 ]);
 
 // 카드는 두 벌로 나눠 쓴다. 격자에는 썸네일만 깔고, 원본은 눌러서 크게 볼 때만
@@ -1153,13 +1175,16 @@ export function pickResultMessage(score, { newRecord = false, previous = '', ran
 // 그대로 지킨다 — 낮은 구간일수록 "못했다" 뉘앙스 금지, 그리고 도발
 // (drill)은 아쉬운 판(below)에는 절대 내보내지 않는다.
 // ══════════════════════════════════════════════════════════════════════════
+// 2026-08 페이싱 패스 이후 재보정: 위쪽 세 구간(30000/15000/6000)을
+// 20000/10000/5000으로 내렸다. 런이 짧아지며 점수 규모가 보통 8천,
+// 숙련 2만 중반으로 내려왔기 때문. 초보 분포(3200 이하)는 그대로 둔다.
 export const CLASSIC_RESULT_TIERS = Object.freeze([
-  Object.freeze({ min: 30000, lines: Object.freeze([
+  Object.freeze({ min: 20000, lines: Object.freeze([
     '이 점수는 오잉게임 역사에 박제된다냥 📜👑',
     '전설 위의 전설, 신화급 기록이다냥 🌌',
     '이 판은 두고두고 회자될 거다냥 🏛️',
     '오잉게임이 널 영원히 기억할 거다냥 ✨',
-    '3만 고지를 넘은 사람은 정말 몇 없다냥 🏔️',
+    '2만 고지를 넘은 사람은 정말 몇 없다냥 🏔️',
     '이건 실력이 아니라 경지다냥 🧘',
     '숫자판이 항복 선언했다냥 🏳️',
     '오늘의 기록이 내일의 전설이 된다냥 🌠',
@@ -1171,7 +1196,7 @@ export const CLASSIC_RESULT_TIERS = Object.freeze([
     '🎯 정상의 풍경을 즐겨보라냥 ⛰️',
     '🎯 이 자리를 지키는 게 다음 도전이다냥 😼',
   ]) }),
-  Object.freeze({ min: 15000, lines: Object.freeze([
+  Object.freeze({ min: 10000, lines: Object.freeze([
     '이건 인간의 반응속도가 아니다냥 🤖',
     '오잉게임 전설이 되는 중이다냥 📜👑',
     '이 정도면 아이템 운도 실력이다냥 🍀🏆',
@@ -1194,9 +1219,9 @@ export const CLASSIC_RESULT_TIERS = Object.freeze([
     '🎯 다음 전설을 써 내려가보자냥 📜',
     '🎯 한계를 또 한 번 넘어보자냥 🚀',
     '🎯 새로운 역사를 만들어보자냥 ✨',
-    '🎯 다음 목표는 3만 고지다냥 🏔️',
+    '🎯 다음 목표는 2만 고지다냥 🏔️',
   ]) }),
-  Object.freeze({ min: 6000, lines: Object.freeze([
+  Object.freeze({ min: 5000, lines: Object.freeze([
     '말도 안 되는 실력이다냥 🏆',
     '이 정도면 최상위권 실력이다냥 👑',
     '완전 고수의 향기다냥...! 🔥',

@@ -23,25 +23,27 @@ test('live cat messages keep the OING nyang voice across score tiers', () => {
 });
 
 test('result score tiers follow the classic score scale', () => {
-  // 실측 기반 눈금: 첫 세션 1~2천, 자리잡은 플레이어 1만대, 상위권 3만대.
+  // 2026-08 페이싱 패스 이후 눈금: 첫 세션 1~2천, 자리잡은 플레이어 8천대,
+  // 상위권 2만대 (tools/classic-balance-sim.mjs 실측).
   assert.equal(resultToneForScore(1999), 'low');
   assert.equal(resultToneForScore(2000), 'normal');
-  assert.equal(resultToneForScore(11999), 'normal');
-  assert.equal(resultToneForScore(12000), 'high');
-  assert.equal(resultToneForScore(34999), 'high');
-  assert.equal(resultToneForScore(35000), 'legend');
+  assert.equal(resultToneForScore(8999), 'normal');
+  assert.equal(resultToneForScore(9000), 'high');
+  assert.equal(resultToneForScore(21999), 'high');
+  assert.equal(resultToneForScore(22000), 'legend');
 });
 
 test('classic tiers match the reference players we calibrate against', async () => {
   const { classicResultTierFor, CLASSIC_RESULT_TIERS } = await import('../js/data.js');
-  // 실측 기준점: 원조에서 3~4천이 기본인 플레이어와 15,000점 플레이어.
+  // 실측 기준점: 3~4천이 기본인 플레이어와 새 경제의 1만점 플레이어.
   assert.equal(classicResultTierFor(3500).min, 3200);
-  assert.equal(classicResultTierFor(15000).min, 15000);
+  assert.equal(classicResultTierFor(10000).min, 10000);
   // 첫 세션 봇(1,117)과 실기기 첫날(2,130)은 서로 다른 구간을 받는다.
   assert.equal(classicResultTierFor(1117).min, 500);
   assert.equal(classicResultTierFor(2130).min, 1500);
   // 경계값이 구간 정의와 일치하고 내림차순으로 정렬돼 있다.
-  assert.deepEqual(CLASSIC_RESULT_TIERS.map((t) => t.min), [30000, 15000, 6000, 3200, 1500, 500, 0]);
+  // 2026-08 페이싱 패스: 위 세 구간을 짧아진 런의 점수 규모에 맞춰 내렸다.
+  assert.deepEqual(CLASSIC_RESULT_TIERS.map((t) => t.min), [20000, 10000, 5000, 3200, 1500, 500, 0]);
   // 모든 구간에 대사와 목표가 실제로 들어 있다.
   for (const tier of CLASSIC_RESULT_TIERS) {
     assert.ok(tier.lines.length >= 8, `tier ${tier.min} lines`);
