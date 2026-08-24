@@ -33,6 +33,34 @@ for (const entry of [
   // record, not something a player ever downloads.
   "assets/icons/app/icon-master.png",
   "assets/icons/app/icon-mask-master.png",
+  // Visual explorations and superseded runtime parts. They are kept in the
+  // repository for rollback/reference, but no current HTML, CSS or JS path
+  // names them. Carrying them in an AIT makes every first install slower.
+  "assets/backgrounds/candidates",
+  "assets/backgrounds/play-bg-clear-sky-v5.webp",
+  "assets/backgrounds/play-bg-rose-morning-v2.webp",
+  "assets/icons/hud/goal.webp",
+  "assets/ui/logo.webp",
+  "assets/ui/button-back.webp",
+  "assets/ui/button-pause.webp",
+  "assets/ui/item-dock-v2.webp",
+  "assets/ui/item-dock-v2.png",
+  "assets/ui/item-dock-v3.webp",
+  "assets/ui/item-dock-v3.png",
+  "assets/ui/play-footer-chrome-v1.webp",
+  "assets/ui/play-footer-chrome-v1.png",
+  "assets/ui/play-hud-chrome-v1.webp",
+  "assets/ui/play-hud-chrome-v1.png",
+  "assets/ui/play-stage-badge-v3.webp",
+  "assets/ui/play-stage-badge-v3.png",
+  "assets/ui/speech-bubble-v2.webp",
+  "assets/ui/speech-bubble-v2.png",
+  "assets/ui/tile-disabled.webp",
+  "assets/ui/tile-empty.webp",
+  "assets/ui/tile-hint.webp",
+  "assets/ui/tile-normal.webp",
+  "assets/ui/tile-selected.webp",
+  "assets/ui/tile-success.webp",
 ]) {
   await rm(resolve(client, entry), { recursive: true, force: true });
 }

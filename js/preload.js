@@ -75,10 +75,15 @@ export function schedulePlayAssetsPreload() {
   const afterFirstPaint = () => {
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        scheduleIdle(async () => {
-          await preloadImages(PLAY_CRITICAL_ASSETS);
-          scheduleIdle(() => preloadImages(PLAY_DEFERRED_ASSETS));
-        });
+        // Let the home screen finish its first decode/paint before competing
+        // for play-only art. Pointer/focus on Start still promotes this same
+        // list immediately, so an eager player does not wait for the timer.
+        window.setTimeout(() => {
+          scheduleIdle(async () => {
+            await preloadImages(PLAY_CRITICAL_ASSETS);
+            scheduleIdle(() => preloadImages(PLAY_DEFERRED_ASSETS));
+          });
+        }, 900);
       });
     });
   };

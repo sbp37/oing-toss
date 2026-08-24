@@ -198,11 +198,25 @@ export class GameUI {
     };
   }
 
+  hydrateDeferredImages(root) {
+    if (!root) return;
+    root.querySelectorAll('img[data-src]').forEach((image) => {
+      const src = image.dataset.src;
+      if (!src) return;
+      // A state-specific pose may have been chosen before the screen opens.
+      // In that case keep the newer source instead of restoring the markup's
+      // default pose during hydration.
+      if (!image.getAttribute('src')) image.src = src;
+      image.removeAttribute('data-src');
+    });
+  }
+
   showScreen(name, { behind = null } = {}) {
     this.clearFeedbackQueue();
     this.screens.forEach((screen) => {
       const active = screen.dataset.screen === name;
       const kept = behind && screen.dataset.screen === behind;
+      if (active || kept) this.hydrateDeferredImages(screen);
       screen.classList.toggle('is-active', active || Boolean(kept));
       screen.classList.toggle('is-behind-sheet', Boolean(kept));
       screen.setAttribute('aria-hidden', String(!active));
@@ -2601,6 +2615,7 @@ export class GameUI {
   setOverlay(id, visible) {
     const overlay = document.querySelector(`#${id}`);
     if (!overlay) return;
+    if (visible) this.hydrateDeferredImages(overlay);
     overlay.hidden = !visible;
   }
 

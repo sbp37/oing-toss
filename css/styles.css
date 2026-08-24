@@ -9521,7 +9521,11 @@ img {
    the weight sits left, which is the other half of the misalignment. */
 .home-character-stage {
   width: auto;
-  height: clamp(132px, calc(100dvh - 520px), 304px);
+  /* Keep the hero at one optical size across a browser viewport and the
+     taller Apps-in-Toss WebView. The old `100dvh - 520px` rule expanded the
+     same cat from about 180px to 304px solely because browser chrome was
+     absent, making the packaged app look like a different home screen. */
+  height: clamp(178px, 25dvh, 224px);
   aspect-ratio: 422 / 480;
   margin-top: clamp(4px, 2.6vh, 26px);
 }
