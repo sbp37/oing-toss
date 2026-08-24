@@ -78,6 +78,7 @@ import { createRunInventory } from './inventory.js';
 import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
+import { gameLeaderboardAdapter } from './leaderboard.js';
 import { RunTelemetry, clearTelemetryRuns, getLocalTelemetrySummary, readTelemetryRuns } from './telemetry.js';
 import { preloadPlayAssets, preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import { installBackNavigation } from './navigation.js';
@@ -181,6 +182,8 @@ class OingGame {
     this.lastCatMessage = '';
     this.lastResultSummary = null;
     this.startSequenceId = 0;
+    this.runId = 0;
+    this.activeRunId = 0;
     this.startCountdownInProgress = false;
     this.resumeNeedsCountdown = false;
     this.activePauseOverlay = 'pause-overlay';
@@ -248,6 +251,7 @@ class OingGame {
       },
     });
     this.bindEvents();
+    this.configureGameLeaderboard();
     this.applySettings();
     this.renderBoard();
     this.refreshClassicRecordSurfaces();
@@ -346,6 +350,7 @@ class OingGame {
     document.querySelector('#home-settings-button').addEventListener('click', () => this.ui.setOverlay('settings-overlay', true));
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
+    document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openGameLeaderboard());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
     document.querySelector('#ranking-close').addEventListener('click', () => {
@@ -429,6 +434,15 @@ class OingGame {
     this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
+  async configureGameLeaderboard() {
+    const button = document.querySelector('#home-leaderboard-button');
+    const actions = document.querySelector('.home-actions');
+    if (!button || !actions || !gameLeaderboardAdapter.isTossEnvironment()) return;
+    const available = await gameLeaderboardAdapter.isAvailable();
+    button.hidden = !available;
+    actions.classList.toggle('has-online-leaderboard', available);
+  }
+
   // Retry/restart keep whatever mode is on screen — a classic run retries
   // as classic (same board size), a stage run as stage mode.
   startCurrentMode(options = {}) {
@@ -496,6 +510,7 @@ class OingGame {
     this.stopTimer();
     stopMusic();
     const sequenceId = ++this.startSequenceId;
+    this.activeRunId = ++this.runId;
     this.ui.cancelStartCountdown();
     this.startCountdownInProgress = false;
     this.resumeNeedsCountdown = false;
@@ -2309,6 +2324,14 @@ class OingGame {
     this.ui.setOverlay('ranking-overlay', true);
   }
 
+  async openGameLeaderboard() {
+    const button = document.querySelector('#home-leaderboard-button');
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    await gameLeaderboardAdapter.open();
+    button.disabled = false;
+  }
+
   openGarden() {
     const total = storageAdapter.getCatsRescued();
     this.ui.updateCatsRescued(total);
@@ -2419,6 +2442,12 @@ class OingGame {
     };
     this.retryStage = 1;
     if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
+    if (!this.runtime.testMode) {
+      void gameLeaderboardAdapter.submitClassicScoreOnce({
+        runId: this.activeRunId,
+        score: this.state.score,
+      });
+    }
     this.refreshClassicRecordSurfaces();
     this.ui.showResult(this.lastResultSummary);
     this.finishing = false;
