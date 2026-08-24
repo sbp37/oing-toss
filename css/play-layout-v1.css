@@ -5828,3 +5828,116 @@
   #play-screen.play-ui-v4 .item-impact-clover::after,
   #play-screen.play-ui-v4 .item-impact-freeze { animation-duration: 1ms !important; }
 }
+
+/* ==========================================================================
+   힌트를 선이 아니라 빛으로 - 2026-08 정리
+   칸마다 안쪽 민트 테두리, 바깥 4px 사각형, 모서리 장식 4개, 칸별 링이
+   전부 동시에 그려져 선 계통이 네 겹이었다. 격자 자체가 선으로 된 판이라
+   선을 더하면 어디까지가 힌트인지 오히려 엉킨다.
+   선은 전부 걷어내고 하나의 규칙만 남긴다: 정답 영역 밖은 가라앉고,
+   영역은 밝게 뜬다. 묶음은 밝기 경계가 말해주고, 라벨 칩이 확인해준다.
+   ========================================================================== */
+
+/* 영역 밖: 더 확실히 가라앉힌다. 힌트가 떠 있는 2.2초 동안만 붙는
+   필터라 상시 비용은 없다. */
+#play-screen.play-ui-v4 .board.is-hinting .tile:not(.is-hint):not(.is-hint-area) {
+  filter: saturate(.4) brightness(.86);
+}
+
+/* 영역 안: 빈 칸까지 포함해 원래 밝기 그대로. 섬이 끊기면 묶음이 아니라
+   흩어진 점으로 읽힌다. */
+#play-screen.play-ui-v4 .board.is-hinting .tile.is-hint-area {
+  filter: none;
+}
+
+/* 칸별 안쪽 테두리 제거 - 엉킴의 주범 1. */
+#play-screen.play-ui-v4 .tile.is-hint-area:not(.is-hint) {
+  box-shadow: none;
+}
+
+/* 바깥 사각형은 테두리를 버리고 광륜 하나로. 흰 빛이 영역을 감싸되
+   격자 선과 겹치는 선분은 없다. 모서리 장식도 끈다. */
+#play-screen.play-ui-v4 .hint-region {
+  border: 0;
+  background: transparent;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .92),
+    0 0 16px 5px rgba(255, 244, 189, .55),
+    inset 0 0 12px rgba(255, 255, 255, .35);
+}
+
+#play-screen.play-ui-v4 .hint-region > i { display: none; }
+
+/* 칸별 펄스 링도 선이다 - 숫자 칸은 살짝 밝아지는 것으로 충분하다. */
+#play-screen.play-ui-v4 .board.is-hinting .tile.is-hint {
+  box-shadow: 0 2px 3px rgba(84, 90, 104, .26);
+  animation: none;
+  filter: brightness(1.06) saturate(1.1);
+}
+
+/* ==========================================================================
+   아이템 착지 파문 - 닿는 프레임에 물결 하나
+   ========================================================================== */
+.play-ui-v4 .item-land-ring {
+  position: absolute;
+  z-index: 3;
+  inset: -8%;
+  border: 2.5px solid rgba(var(--ring-rgb, 255, 202, 92), .9);
+  border-radius: inherit;
+  box-shadow:
+    0 0 12px rgba(var(--ring-rgb, 255, 202, 92), .55),
+    inset 0 0 8px rgba(var(--ring-rgb, 255, 202, 92), .3);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.55);
+  animation: item-land-ring 560ms cubic-bezier(.2, .7, .3, 1) forwards;
+}
+
+.play-ui-v4 .item-land-ring.is-rare {
+  border-width: 3px;
+  animation-duration: 700ms;
+}
+
+@keyframes item-land-ring {
+  0% { opacity: 0; transform: scale(.55); }
+  18% { opacity: .95; transform: scale(.8); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* ==========================================================================
+   +N초 플로트가 HUD 뒤로 사라지던 것
+   게이지가 overflow:hidden인데 position이 없어서, ::after 플로트가 다른
+   조상을 기준으로 자리를 잡고 HUD 패널 뒤로 떠올랐다. 게이지 자신을
+   기준으로 앉히고, 채움 막대는 자기 radius로 둥근 끝을 지킨다.
+   ========================================================================== */
+.play-ui-v4 .board-time-gauge {
+  position: relative;
+  overflow: visible;
+}
+
+.play-ui-v4 .board-time-gauge i {
+  border-radius: 999px;
+}
+
+/* 보너스가 떠 있는 1.1초 동안만 HUD 위로 올라온다. */
+.play-ui-v4 .board-time-gauge.is-bonus {
+  z-index: 30;
+}
+
+/* 숫자 칸의 민트 outline도 선이다. 넓은 답에서는 칸마다 민트 상자가 서서
+   다시 엮인다. 숫자 칸은 얇은 흰 키라인 + 밝기만으로 "이 숫자들"을 말하고,
+   경계는 바깥 광륜 하나가 맡는다. */
+#play-screen.play-ui-v4 .board.is-hinting .tile.is-hint {
+  outline: 0;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, .92),
+    0 2px 3px rgba(84, 90, 104, .26);
+}
+
+/* 판갈이 안내(N판 +M초)가 타일 뒤에 깔려 반쯤 가려졌다. 안내가 서 있는
+   0.76초 동안은 판에서 가장 위에 있어야 할 글자다. */
+.play-ui-v4 .board-entry {
+  z-index: 44;
+  isolation: isolate;
+}

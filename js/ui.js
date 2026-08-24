@@ -1,6 +1,7 @@
 import { cellsInRect } from './board.js';
 import {
   BOARD_DROP_ITEMS,
+  RARE_BOARD_DROP_IDS,
   GARDEN_MILESTONES,
   buildScoreComparisons,
   classicChapterArtUrl,
@@ -1176,6 +1177,18 @@ export class GameUI {
       const landingDelay = 300 + index * 80;
       tile.style.setProperty('--item-drop-delay', `${landingDelay}ms`);
       tile.classList.add('is-item-spawning');
+      // 착지 순간 한 번 퍼지는 파문. 아이콘이 커지는 것만으로는 "떨어졌다"가
+      // 약해서, 닿는 프레임에 물결 하나를 얹는다. transform/opacity 한 번으로
+      // 끝나고 지워지므로 상시 비용은 없다. 색은 아이템 계열을 따른다 -
+      // 폭탄류는 다홍, 시간류는 하늘, 클로버는 초록.
+      const ring = document.createElement('i');
+      ring.className = 'item-land-ring';
+      const ringColor = { bomb: '255, 118, 96', megabomb: '255, 96, 76',
+        clock: '96, 176, 244', freeze: '96, 176, 244', clover: '92, 200, 118' }[type];
+      if (ringColor) ring.style.setProperty('--ring-rgb', ringColor);
+      ring.style.animationDelay = `${landingDelay}ms`;
+      if (RARE_BOARD_DROP_IDS.includes(type)) ring.classList.add('is-rare');
+      tile.appendChild(ring);
       const tileRect = tile.getBoundingClientRect();
       const frameRect = this.boardFrame.getBoundingClientRect();
       const screenRect = this.elements.playScreen.getBoundingClientRect();
@@ -1199,6 +1212,7 @@ export class GameUI {
       this.elements.playScreen.appendChild(flight);
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
+        ring.remove();
         flight.remove();
       }, 1420 + index * 80);
     });
