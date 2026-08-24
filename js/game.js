@@ -150,6 +150,12 @@ const GARDEN_REVEAL_FIRST_STAGE = 3;
 // A thumb rolls while it presses; anything under this is still a tap.
 const ITEM_TAP_SLOP = 18;
 
+// 잠금·입력 가드 동안 눌린 아이템 탭을 들고 있는 창. 폭탄 한 번이 터지고
+// (연출 약 0.5초) 그 뒤 가드 180ms까지 지나야 다음 탭이 실행 가능해지므로,
+// 그보다 넉넉해야 연타가 살아난다. 이 창을 넘기면 사용자가 이미 다른 것을
+// 보고 있다고 보고 조용히 버린다. 판이 바뀌면 창과 무관하게 버린다.
+const BOARD_ITEM_TAP_GRACE_MS = 1500;
+
 class OingGame {
   constructor() {
     this.ui = new GameUI();
@@ -170,6 +176,7 @@ class OingGame {
     this.inventory = createRunInventory();
     this.boardItems = new BoardItemField();
     this.itemTapCandidate = null;
+    this.pendingBoardItemTap = null;
     this.timer = null;
     this.endAt = 0;
     this.freezeEndsAt = 0;
@@ -551,6 +558,7 @@ class OingGame {
     this.telemetry = new RunTelemetry({ viewport: { width: window.innerWidth, height: window.innerHeight } });
     this.boardItems.reset();
     this.itemTapCandidate = null;
+    this.pendingBoardItemTap = null;
     this.inputGuardUntil = 0;
     this.freezeEndsAt = 0;
     this.frozenTimeLeft = 0;
@@ -661,6 +669,8 @@ class OingGame {
   buildRound() {
     this.boardItems.carry();
     this.itemTapCandidate = null;
+    // 새 판에서는 이전 판 좌표로 눌러둔 탭이 의미가 없다.
+    this.pendingBoardItemTap = null;
     const classicBoard = this.classic ? classicBoardForIndex(this.classic.boardIndex) : null;
     if (this.classic) this.applyClassicChapter();
     const config = classicBoard
@@ -730,7 +740,18 @@ class OingGame {
 
   beginBoardItemTap(event) {
     const tile = event.target.closest?.('.tile[data-item]');
-    if (this.itemTapCandidate || !tile || !this.canUseItem() || event.isPrimary === false || event.button !== 0) return;
+    if (this.itemTapCandidate || !tile || event.isPrimary === false || event.button !== 0) return;
+    // 정답 처리 중(inputLocked)이나 입력 가드 안에 들어온 탭은 지금까지
+    // 아무 흔적 없이 버려졌다 - 실기기에서 "폭탄이 잘 안 눌린다, 딜레이가
+    // 있는 것 같다"의 정체다. 이제는 누른 것을 눈에 보이게 받아두고,
+    // 잠금이 풀리는 순간 대신 실행한다. 성공 처리 경로에 await를 더하지
+    // 않으므로 #25의 드래그 잠금 규칙은 그대로다.
+    if (!this.canUseItem()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.queueBoardItemTap(tile);
+      return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
     const row = Number(tile.dataset.row);
@@ -745,7 +766,35 @@ class OingGame {
       moved: false,
     };
     this.ui.pressBoardItem(row, col, true);
+    // 누른 순간 손끝에 답이 온다. 터짐(bombHaptic)보다 약한 톡 하나라
+    // 실제 폭발과 겹쳐 들리지 않는다.
+    itemHaptic();
     try { this.ui.board.setPointerCapture(event.pointerId); } catch {}
+  }
+
+  // 잠금 중에 눌린 아이템을 짧은 창 동안만 들고 있는다. 창을 넘기면 버린다 -
+  // 한참 전에 누른 폭탄이 뒤늦게 터지는 편이 안 터지는 것보다 나쁘다.
+  queueBoardItemTap(tile) {
+    const row = Number(tile.dataset.row);
+    const col = Number(tile.dataset.col);
+    if (!Number.isFinite(row) || !Number.isFinite(col)) return;
+    const key = `${row}:${col}`;
+    if (!this.boardItems.get(key)) return;
+    this.pendingBoardItemTap = { key, row, col, at: performance.now() };
+    this.ui.pressBoardItem(row, col, true);
+    itemHaptic();
+    window.setTimeout(() => this.ui.pressBoardItem(row, col, false), 160);
+  }
+
+  // 잠금이 풀린 뒤 게임 루프가 부른다. 그 사이 판이 바뀌어 아이템이
+  // 사라졌으면 useBoardItem이 알아서 아무 일도 하지 않는다.
+  flushPendingBoardItemTap() {
+    const pending = this.pendingBoardItemTap;
+    if (!pending) return;
+    this.pendingBoardItemTap = null;
+    if (performance.now() - pending.at > BOARD_ITEM_TAP_GRACE_MS) return;
+    if (!this.boardItems.get(pending.key)) return;
+    this.useBoardItem(pending.key);
   }
 
   moveBoardItemTap(event) {
@@ -1687,7 +1736,10 @@ class OingGame {
   async resolveBomb({ rect, stats }, boardItemKey = null) {
     if (!this.ui.hasBombTargetPreview()) {
       this.ui.previewBombTarget(rect);
-      await delay(130);
+      // 보드 위 아이템을 직접 누른 경우엔 이미 눌림 연출이 손끝에서
+      // 답을 했으므로, 조준을 보여주는 뜸을 절반으로 줄인다. 버튼에서
+      // 쏘는 경로(조준이 처음 보이는 자리)는 기존 간격을 지킨다.
+      await delay(boardItemKey ? 60 : 130);
     }
     const catCount = Number(stats.catCount) || 0;
     const catBonusPoints = this.classic ? 0 : scoreForCatBonus(catCount, Math.max(1, this.state.combo));
@@ -1951,6 +2003,9 @@ class OingGame {
   tick() {
     if (!this.state.running || this.state.paused) return;
     const now = performance.now();
+    // 잠금이 풀렸으면 그 사이 눌린 아이템을 대신 실행한다. 해제 지점이
+    // 여러 곳(성공/블라스트/판갈이)이라 루프에서 한 번만 확인한다.
+    if (this.pendingBoardItemTap && this.canUseItem()) this.flushPendingBoardItemTap();
     if (this.classic) {
       if (!this.maybeShowClassicSparseHint(now)) this.maybeShowClassicAutoHint(now);
     }

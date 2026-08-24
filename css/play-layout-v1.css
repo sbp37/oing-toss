@@ -5868,3 +5868,37 @@
   top: -4px;
   bottom: -4px;
 }
+
+/* ==========================================================================
+   아이템 누르는 감각 (실기기 피드백: 폭탄이 잘 안 눌리는 느낌, 딜레이가 있다)
+   원인 절반은 잠금 중 탭이 조용히 버려지던 것(game.js에서 대기 후 실행으로
+   해결), 나머지 절반은 눌림 표시가 약했던 것이다. 기존 눌림은 2px 내려가고
+   0.93으로 줄어드는 정도라, 손가락에 가려지는 작은 칸에서는 보이지 않았다.
+   더 깊이 눌리고 밝아지고, 칸 밖으로 퍼지는 링을 한 겹 둬서 손가락이 덮어도
+   눌린 것이 보이게 한다. 링은 눌린 동안만 존재하므로 상시 합성 비용이 없다.
+   ========================================================================== */
+.play-ui-v4 .tile.is-board-item.is-item-pressed {
+  transform: translateY(3px) scale(.88);
+  filter: brightness(1.16) saturate(1.14);
+  transition: transform 60ms ease-out, filter 60ms ease-out;
+}
+
+.play-ui-v4 .tile.is-board-item.is-item-pressed::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: -22%;
+  border-radius: 30%;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .92), 0 0 14px 4px rgba(255, 190, 92, .72);
+  pointer-events: none;
+  animation: board-item-press-ring 220ms ease-out both;
+}
+
+@keyframes board-item-press-ring {
+  from { opacity: 0; transform: scale(.72); }
+  60%, 100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .tile.is-board-item.is-item-pressed::after { animation-duration: 1ms; }
+}
