@@ -89,20 +89,17 @@ test('a wrong answer always costs multiplier, above the cap as well as below', (
   }
 });
 
-test('classic ladder keeps six columns while rows grow from five to eight', () => {
+test('classic ladder holds a stable 6x6 opener before growing to eight rows', () => {
   assert.deepEqual(
     CLASSIC_BOARD_LADDER.map((step) => [step.rows, step.cols]),
-    [[5, 6], [6, 6], [7, 6], [8, 6]],
+    [[6, 6], [6, 6], [7, 6], [8, 6]],
   );
   // 워밍업 판일수록 판갈이 보상이 작다 — 작은 판은 금방 마르니까.
   assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 6, 6]);
   assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [11, 14, 19, 19]);
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
-  // 첫 판부터 가로 고정, 세로만 +1씩.
-  CLASSIC_BOARD_LADDER.forEach((step, index) => {
-    assert.equal(step.cols, 6);
-    assert.equal(step.rows, 5 + index);
-  });
+  CLASSIC_BOARD_LADDER.forEach((step) => assert.equal(step.cols, 6));
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.rows), [6, 6, 7, 8]);
   assert.equal(classicBoardForIndex(0), CLASSIC_BOARD_LADDER[0]);
   assert.equal(classicBoardForIndex(3), CLASSIC_BOARD_LADDER[3]);
   assert.equal(classicBoardForIndex(9), CLASSIC_BOARD_LADDER[3]);
@@ -210,13 +207,13 @@ test('classic openings keep adjacent pairs visible without becoming a train', ()
 
 test('the first two classic boards always offer several visible ways to make ten', () => {
   const model = new BoardModel(4);
-  for (const rows of [5, 6]) {
+  for (const round of [5, 6]) {
     for (let sample = 0; sample < 200; sample += 1) {
-      model.generateClassic(6, rows, rows);
+      model.generateClassic(6, 6, round);
       const answers = findAllSumTenRects(model.grid);
-      assert.ok(answers.length >= 8, `${rows}-row sample ${sample}: only ${answers.length} answers`);
+      assert.ok(answers.length >= 8, `round ${round} sample ${sample}: only ${answers.length} answers`);
       const multiCell = answers.filter((answer) => answer.count >= 3).length;
-      assert.ok(multiCell >= 3, `${rows}-row sample ${sample}: only ${multiCell} multi-cell answers`);
+      assert.ok(multiCell >= 3, `round ${round} sample ${sample}: only ${multiCell} multi-cell answers`);
     }
   }
 });

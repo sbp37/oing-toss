@@ -290,10 +290,11 @@ export const CLASSIC_COMBO_SOFT_RATE = 0.25;
 export const CLASSIC_WOW_BONUS_MULTIPLIER_CAP = 4;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
 // The board ladder folds the stage mode's onboarding ramp into the classic
-// loop itself: a wide 6×5 opener gives a first-timer enough answers without
-// dropping them onto a wall of numbers, then one extra row per 판갈이 up
-// to 6×8. Keeping six columns from the first board holds the tile width
-// steady while the scan field grows downward. With a combo
+// loop itself: two 6×6 learning boards give a first-timer enough visible
+// answers without changing the physical tile size after the first clear,
+// then one extra row per 판갈이 up to 6×8. Keeping six columns from the
+// first board holds the tile width steady while the scan field grows
+// downward. With a combo
 // that never times out, the small boards are where the multiplier spools
 // up and the tall boards are where it pays out — the scan field a player
 // earns grows with how deep they got. Each step carries its own 판갈이
@@ -306,7 +307,7 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // "break a few and move on" worth the same number of seconds, which is
 // the one thing a puzzle game cannot afford.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 6, timeFloor: 4, timeBonus: 11 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 4, timeBonus: 11 }),
   Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
   Object.freeze({ rows: 7, cols: 6, timeFloor: 6, timeBonus: 19 }),
   Object.freeze({ rows: 8, cols: 6, timeFloor: 6, timeBonus: 19 }),
@@ -483,8 +484,8 @@ export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   hasArt: true,
 });
 
-// The 6×5 opener is a ramp for a first-timer and a toll for everybody
-// else, so a personal best buys the right to start further in. This is the
+// The first 6×6 board is a learning ramp with a gentler number mix and
+// refund. A personal best buys the right to start further in; this is the
 // only progress in the game that survives a run ending.
 export const CLASSIC_START_UNLOCKS = Object.freeze([
   Object.freeze({ boardIndex: 1, minScore: 1500 }),
