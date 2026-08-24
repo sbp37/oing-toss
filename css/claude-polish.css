@@ -443,3 +443,103 @@
 @media (prefers-reduced-motion: reduce) {
   .play-ui-v4 .end-answer-region { animation-duration: 1ms; }
 }
+
+/* -- Reward and result finishing pass ----------------------------------- */
+
+/* A wide clear is one reward: title and points share a foreground badge. */
+#play-screen.play-ui-v4 .wow-moment {
+  z-index: 24;
+  top: 43%;
+  display: grid;
+  justify-items: center;
+  min-width: 138px;
+  padding: 9px 22px 8px;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 252, 225, .98), rgba(255, 224, 132, .96));
+  box-shadow:
+    0 7px 0 rgba(210, 132, 48, .17),
+    0 13px 28px rgba(104, 76, 43, .22),
+    inset 0 2px 0 #fff;
+  color: #f08058;
+  text-shadow: 0 2px 0 #fff, 0 4px 10px rgba(218, 111, 63, .22);
+}
+
+#play-screen.play-ui-v4 .wow-moment strong {
+  font-size: clamp(38px, 12vw, 54px);
+  line-height: .9;
+}
+
+#play-screen.play-ui-v4 .wow-moment span {
+  margin-top: 5px;
+  color: #df5a70;
+  font-family: var(--font-sans);
+  font-size: clamp(16px, 4.5vw, 20px);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 0 #fff;
+}
+
+/* A multi-step combo delta sits beside the value, never on top of it. */
+.play-ui-v4 .combo-readout .combo-gain-pop {
+  left: 78%;
+  top: 58%;
+}
+
+/* The result is one continuous sheet. Its sections no longer expose strips
+   of the board between separate cream backgrounds. */
+.screen-result.is-sheet > .result-sheet-surface {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  width: 100%;
+  max-width: 430px;
+  margin-top: auto;
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(180deg, rgba(255, 254, 250, .99), rgba(255, 250, 239, .99));
+  box-shadow: 0 -10px 28px rgba(28, 78, 120, .2);
+  animation: result-sheet-rise .46s cubic-bezier(.2, .84, .28, 1) both;
+}
+
+.screen-result.is-sheet .result-sheet-surface > .result-card,
+.screen-result.is-sheet .result-sheet-surface > .result-card-award,
+.screen-result.is-sheet .result-sheet-surface > .result-cat-row,
+.screen-result.is-sheet .result-sheet-surface > .result-actions {
+  flex-shrink: 0;
+}
+
+.screen-result.is-sheet .result-sheet-surface > .result-card {
+  width: 100%;
+  max-width: none;
+  margin-top: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.screen-result.is-sheet #retry-button {
+  min-height: 46px;
+  height: 46px;
+}
+
+.screen-result.is-sheet .result-sheet-surface > .result-cat-row,
+.screen-result.is-sheet .result-sheet-surface > .result-actions {
+  width: 100%;
+  max-width: none;
+  background: transparent;
+  animation: none;
+}
+
+/* Inline emphasis must not insert a visual gap inside Korean particles. */
+.screen-home .home-instruction { gap: 0; }
+.screen-home .home-instruction img:first-child { margin-right: 4px; }
+.screen-home .home-instruction img:last-child { margin-left: 4px; }
+
+/* Korean card requirements wrap at word boundaries instead of mid-word. */
+.chapter-gallery span,
+.oing-card span {
+  word-break: keep-all;
+  overflow-wrap: normal;
+}

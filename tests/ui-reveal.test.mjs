@@ -131,3 +131,23 @@ test('bomb and megabomb clear the model and reveal cells before delayed impact F
   assert.ok(mega.indexOf('this.model.removeCells(cells)') < mega.indexOf('this.ui.revealClearedCells('));
   assert.ok(mega.indexOf('this.ui.revealClearedCells(') < mega.indexOf('await this.ui.animateMegaBomb('));
 });
+
+test('WOW owns one foreground reward with its score instead of a duplicate flight', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const scoreBurst = source.slice(source.indexOf('showScoreBurst('), source.indexOf('showCatBonus(', source.indexOf('showScoreBurst(')));
+
+  assert.match(html, /class="wow-moment"[\s\S]*?id="wow-score"/);
+  assert.match(game, /showWowMoment\(points\)/);
+  assert.match(scoreBurst, /if \(isWowClear\(cellCount\)\) return;/);
+});
+
+test('result content shares one continuous sheet surface', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/claude-polish.css', import.meta.url), 'utf8');
+  const result = html.slice(html.indexOf('id="result-screen"'), html.indexOf('id="pause-overlay"'));
+
+  assert.match(result, /result-sheet-surface[\s\S]*?result-card[\s\S]*?result-card-award[\s\S]*?result-cat-row[\s\S]*?result-actions/);
+  assert.match(css, /result-sheet-surface[\s\S]*?overflow:\s*hidden/);
+});

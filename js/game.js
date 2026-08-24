@@ -1101,7 +1101,7 @@ class OingGame {
     // threshold the original used, alongside the centred WOW! card.
     if (wow) {
       playWideClearSound();
-      this.ui.showWowMoment();
+      this.ui.showWowMoment(points);
     } else if (this.state.combo >= 2) playComboSound(this.state.combo);
     else playSuccessSound();
     if (catCount > 0) {

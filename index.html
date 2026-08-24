@@ -140,7 +140,7 @@
         <div class="board-frame" id="board-frame">
           <div class="sum-bubble" id="sum-bubble" aria-live="off"><span>합</span><strong id="sum-value">0</strong></div>
           <div class="board" id="board" data-size="4" role="grid" aria-label="합이 10이 되는 직사각형을 드래그하세요"></div>
-          <div class="wow-moment" id="wow-moment" aria-hidden="true"><strong>WOW!</strong></div>
+          <div class="wow-moment" id="wow-moment" aria-hidden="true"><strong>WOW!</strong><span id="wow-score"></span></div>
           <div class="selection-marquee" id="selection-marquee" aria-hidden="true"></div>
           <div class="tutorial-guide" id="tutorial-guide" aria-hidden="true">
             <div class="tutorial-focus"><i></i><i></i></div>
@@ -183,6 +183,7 @@
         <img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt=""><img src="assets/decor/star.webp" width="266" height="256" loading="lazy" decoding="async" alt=""><img src="assets/decor/sparkle.webp" width="278" height="296" loading="lazy" decoding="async" alt="">
       </div>
       <p class="result-kicker" id="result-kicker">이번 판 기록</p>
+      <div class="result-sheet-surface">
       <article class="result-card">
         <div class="result-headline">
           <button class="result-share-chip" id="share-button" type="button">
@@ -234,6 +235,7 @@
         <button class="result-home-button" id="home-button" type="button">
           <img src="assets/icons/navigation/home.webp" width="310" height="290" loading="lazy" decoding="async" alt=""><span>홈으로</span>
         </button>
+      </div>
       </div>
     </section>
 
@@ -334,7 +336,6 @@
           <p class="chapter-collection-hint">판을 넘길수록 새 장면이 열린다냥</p>
         </section>
         <button class="btn btn-primary ranking-play-button" id="ranking-play-button" type="button">한 판 더 하기</button>
-        <small class="record-online-note">친구 랭킹은 계정 연동 후 열릴 예정이야</small>
       </div>
     </div>
 

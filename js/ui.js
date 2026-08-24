@@ -133,6 +133,7 @@ export class GameUI {
       tutorial: document.querySelector('#tutorial-guide'),
       tutorialCallout: document.querySelector('#tutorial-callout'),
       wowMoment: document.querySelector('#wow-moment'),
+      wowScore: document.querySelector('#wow-score'),
       catMessage: document.querySelector('#cat-message'),
       playCat: document.querySelector('#play-cat'),
       resultCat: document.querySelector('#result-cat'),
@@ -1401,6 +1402,9 @@ export class GameUI {
   }
 
   showScoreBurst(points, rect, dimensions, combo, cellCount, { nice = false } = {}) {
+    // Wide clears already present their points inside the centred WOW reward,
+    // so do not split the eye with a second number over the cleared cells.
+    if (isWowClear(cellCount)) return;
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
@@ -1490,9 +1494,13 @@ export class GameUI {
   // Five-plus cells in one clear. The original stops the screen for this and
   // nothing else, which is exactly what makes hunting a big rectangle worth
   // the extra seconds of looking.
-  showWowMoment() {
+  showWowMoment(points = 0) {
     const wow = this.elements.wowMoment;
     if (!wow) return;
+    if (this.elements.wowScore) {
+      const score = Math.max(0, Math.round(Number(points) || 0));
+      this.elements.wowScore.textContent = score ? `+${score}` : '';
+    }
     clearTimeout(this.wowMomentTimer);
     wow.classList.remove('is-visible');
     void wow.offsetWidth;
