@@ -403,7 +403,9 @@ class OingGame {
     };
     document.querySelector('#music-button').addEventListener('click', toggleMusic);
     document.querySelector('#music-toggle').addEventListener('click', toggleMusic);
-    document.querySelector('#hud-music-button').addEventListener('click', toggleMusic);
+    // 상단 HUD의 음악 토글은 랭킹 버튼에 자리를 내줬다 - 음악·효과음은
+    // 일시정지 안에 그대로 있다.
+    document.querySelector('#hud-leaderboard-button')?.addEventListener('click', () => this.openLeaderboardFromPlay());
     document.querySelector('#music-volume').addEventListener('input', (event) => {
       this.settings.musicVolume = Number(event.target.value) / 100;
       this.settings.music = this.settings.musicVolume > 0;
@@ -452,25 +454,29 @@ class OingGame {
     this.ui.updateMusicControls(this.settings.music, this.settings.musicVolume);
   }
 
-  // 랭킹은 토스 게임센터가 있을 때만 존재한다. 토스 밖(일반 브라우저,
-  // 원스토어 앱)에서는 세 자리 모두 숨긴 채로 둔다 - 눌러도 아무 일도
-  // 없는 버튼을 보여주는 것보다 없는 편이 낫다.
+  // 랭킹 버튼은 어디서나 보인다. 실제로 열리는 것은 토스 게임센터가 있을
+  // 때고(ait 빌드로 토스 안에서 실행), 그 밖(웹·원스토어)에서는 준비 중
+  // 안내를 띄운다 - 버튼이 안 보이면 기능이 있는지조차 검수할 수 없다는
+  // 실사용 피드백을 따랐다.
   //
-  // 자리가 셋인 이유: 홈은 판을 시작하기 전, 결과 화면은 방금 낸 점수를
-  // 바로 견주는 자리, 일시정지는 판 도중에 열 수 있는 유일하게 안전한
-  // 자리다(시계가 멈춰 있다). 플레이 화면에 그냥 두면 드래그 중 오터치가
-  // 나고, 시계가 도는 채로 네이티브 창이 열린다.
+  // 자리가 넷인 이유: 홈(판 시작 전), 결과(방금 낸 점수를 견주는 자리),
+  // 일시정지, 그리고 플레이 상단. 플레이 상단 버튼은 누르면 먼저 게임을
+  // 일시정지시키고 연다 - 시계가 도는 채로 네이티브 창이 열리면 안 된다.
   async configureGameLeaderboard() {
-    const home = document.querySelector('#home-leaderboard-button');
     const actions = document.querySelector('.home-actions');
-    if (!home || !actions || !gameLeaderboardAdapter.isTossEnvironment()) return;
-    const available = await gameLeaderboardAdapter.isAvailable();
-    home.hidden = !available;
-    actions.classList.toggle('has-online-leaderboard', available);
-    const pause = document.querySelector('#pause-leaderboard-button');
-    const result = document.querySelector('#result-leaderboard-button');
-    if (pause) pause.hidden = !available;
-    if (result) result.hidden = !available;
+    const home = document.querySelector('#home-leaderboard-button');
+    if (home) home.hidden = false;
+    actions?.classList.add('has-online-leaderboard');
+    this.leaderboardAvailable = gameLeaderboardAdapter.isTossEnvironment()
+      ? await gameLeaderboardAdapter.isAvailable()
+      : false;
+  }
+
+  // 플레이 상단의 랭킹: 시계부터 멈춘다. 일시정지 오버레이가 함께 열리므로
+  // 네이티브 창에서 돌아와도 '계속하기'가 기다리고 있다.
+  openLeaderboardFromPlay() {
+    if (this.state.running && !this.state.paused) this.pause('leaderboard');
+    this.openGameLeaderboard();
   }
 
   // Retry/restart keep whatever mode is on screen — a classic run retries
@@ -1902,6 +1908,9 @@ class OingGame {
       this.lastCountdownSecond = null;
     }
     this.updateHUD();
+    // 실기기 제보: 시계가 몇 초를 줬는지 안내가 없다. 판갈이 +초와 같은
+    // 자리(시간 게이지)에 같은 연출로 띄운다.
+    if (gainedTime > 0) this.ui.showStageTimeBonus(Math.round(gainedTime));
     this.showCatMessage('clock');
     this.ui.setPlayCharacter('cheer', 900);
     duckMusic(650, 0.58);
@@ -1945,6 +1954,7 @@ class OingGame {
     this.lastCountdownSecond = null;
     this.ui.setFreezeActive(true);
     this.updateHUD();
+    this.ui.showTimeNotice(`${Math.round(freezeSeconds)}초 멈춤!`);
     this.showCatMessage('freeze');
     this.ui.setPlayCharacter('cheer', 1050);
     duckMusic(680, 0.52);
@@ -2430,8 +2440,12 @@ class OingGame {
   }
 
   async openGameLeaderboard() {
-    // 세 자리 어디서 눌렀든 중복 실행만 막으면 된다.
-    const buttons = ['#home-leaderboard-button', '#pause-leaderboard-button', '#result-leaderboard-button']
+    if (!this.leaderboardAvailable) {
+      this.ui.toast('랭킹은 토스 앱에서 열린다냥! 조금만 기다려냥');
+      return;
+    }
+    // 네 자리 어디서 눌렀든 중복 실행만 막으면 된다.
+    const buttons = ['#home-leaderboard-button', '#pause-leaderboard-button', '#result-leaderboard-button', '#hud-leaderboard-button']
       .map((selector) => document.querySelector(selector))
       .filter(Boolean);
     if (this.leaderboardOpening) return;

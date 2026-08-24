@@ -132,11 +132,19 @@ test('the first classic board change reaches the rare-item showcase gate', () =>
   assert.equal(stageShowcaseBoardDrop(classicDropStage(1), () => 0)?.id, 'megabomb');
 });
 
-test('판갈이 pays the finished board\'s bonus up to the classic cap', () => {
-  assert.equal(classicTimeAfterBoardChange(100, 8), 108);
-  assert.equal(classicTimeAfterBoardChange(100, 15), 115);
-  assert.equal(classicTimeAfterBoardChange(292, 15), CLASSIC_TIME_CAP_SECONDS);
+test('판갈이 환급은 carry cap 위로는 시계를 올리지 못한다', async () => {
+  const { CLASSIC_TIME_CARRY_CAP_SECONDS } = await import('../js/data.js');
+  const cap = CLASSIC_TIME_CARRY_CAP_SECONDS;
+  // 선 아래에서는 그대로 벌고, 선을 넘겨 벌 수는 없다.
+  assert.equal(classicTimeAfterBoardChange(30, 8), 38);
+  assert.equal(classicTimeAfterBoardChange(cap - 5, 15), cap);
+  // 이미 선 위(오프닝 2분 구간)면 깎지 않되, 더 벌지도 못한다.
+  assert.equal(classicTimeAfterBoardChange(100, 15), 100);
+  assert.equal(classicTimeAfterBoardChange(cap, 15), cap);
   assert.equal(classicTimeAfterBoardChange(0, 8), 8);
+  // 아이템 경로(cappedSessionTime, 120초)는 이 선의 영향을 받지 않는다 -
+  // 시계·프리즈가 "선을 뚫는" 프리미엄으로 남는 것이 의도다.
+  assert.ok(CLASSIC_TIME_CAP_SECONDS > cap);
 });
 
 test('generateClassic fills every ladder step with a playable natural bag', () => {
@@ -256,13 +264,13 @@ test('classic chapters cycle in order while album ownership stays key-based', as
   assert.ok(fresh.every((chapter) => !chapter.unlocked));
   assert.equal(fresh.at(-1).key, CLASSIC_SECRET_CHAPTER.key);
   assert.equal(fresh.at(-1).secret, true);
-  assert.equal(CLASSIC_SECRET_CHAPTER.minScore, 10000);
+  assert.equal(CLASSIC_SECRET_CHAPTER.minScore, 8000);
   assert.equal(
-    classicChapterGallery({ seenKeys: [], bestScore: 9999 }).at(-1).unlocked,
+    classicChapterGallery({ seenKeys: [], bestScore: 7999 }).at(-1).unlocked,
     false,
   );
   assert.equal(
-    classicChapterGallery({ seenKeys: [], bestScore: 10000 }).at(-1).unlocked,
+    classicChapterGallery({ seenKeys: [], bestScore: 8000 }).at(-1).unlocked,
     true,
   );
 

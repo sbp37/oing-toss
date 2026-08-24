@@ -14,10 +14,10 @@ import { buildLocalRecordSummary, buildShareText } from '../js/adapters.js';
 test('live cat messages keep the OING nyang voice across score tiers', () => {
   assert.equal(resultMessageType(800, false), 'resultLow');
   assert.equal(resultMessageType(5000, false), 'resultNormal');
-  assert.equal(resultMessageType(20000, false), 'resultHigh');
-  assert.equal(resultMessageType(50000, false), 'resultLegend');
+  assert.equal(resultMessageType(10000, false), 'resultHigh');
+  assert.equal(resultMessageType(20000, false), 'resultLegend');
   assert.equal(resultMessageType(200, true), 'record');
-  for (const score of [800, 5000, 20000, 50000]) {
+  for (const score of [800, 5000, 10000, 20000]) {
     assert.match(pickResultMessage(score, { random: () => 0 }), /냥/);
   }
 });
@@ -27,23 +27,23 @@ test('result score tiers follow the classic score scale', () => {
   // 상위권 2만대 (tools/classic-balance-sim.mjs 실측).
   assert.equal(resultToneForScore(1999), 'low');
   assert.equal(resultToneForScore(2000), 'normal');
-  assert.equal(resultToneForScore(8999), 'normal');
-  assert.equal(resultToneForScore(9000), 'high');
-  assert.equal(resultToneForScore(21999), 'high');
-  assert.equal(resultToneForScore(22000), 'legend');
+  assert.equal(resultToneForScore(6999), 'normal');
+  assert.equal(resultToneForScore(7000), 'high');
+  assert.equal(resultToneForScore(14999), 'high');
+  assert.equal(resultToneForScore(15000), 'legend');
 });
 
 test('classic tiers match the reference players we calibrate against', async () => {
   const { classicResultTierFor, CLASSIC_RESULT_TIERS } = await import('../js/data.js');
   // 실측 기준점: 3~4천이 기본인 플레이어와 새 경제의 1만점 플레이어.
-  assert.equal(classicResultTierFor(3500).min, 3200);
-  assert.equal(classicResultTierFor(10000).min, 10000);
+  assert.equal(classicResultTierFor(3500).min, 2600);
+  assert.equal(classicResultTierFor(10000).min, 7000);
   // 첫 세션 봇(1,117)과 실기기 첫날(2,130)은 서로 다른 구간을 받는다.
   assert.equal(classicResultTierFor(1117).min, 500);
   assert.equal(classicResultTierFor(2130).min, 1500);
   // 경계값이 구간 정의와 일치하고 내림차순으로 정렬돼 있다.
   // 2026-08 페이싱 패스: 위 세 구간을 짧아진 런의 점수 규모에 맞춰 내렸다.
-  assert.deepEqual(CLASSIC_RESULT_TIERS.map((t) => t.min), [20000, 10000, 5000, 3200, 1500, 500, 0]);
+  assert.deepEqual(CLASSIC_RESULT_TIERS.map((t) => t.min), [15000, 7000, 4000, 2600, 1500, 500, 0]);
   // 모든 구간에 대사와 목표가 실제로 들어 있다.
   for (const tier of CLASSIC_RESULT_TIERS) {
     assert.ok(tier.lines.length >= 8, `tier ${tier.min} lines`);

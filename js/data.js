@@ -26,13 +26,13 @@ export const START_COUNTDOWN_STEPS = Object.freeze([3, 2, 1, 'GO!']);
 // numbers - under them virtually every classic run fell into the lowest
 // pool, which is why the result cat sounded flat no matter how well a run
 // went.
-// 2026-08 페이싱 패스 이후 재보정: 런이 짧아지며 보통 8천, 숙련 2만 중반이
+// 2026-08 쫄깃함 패스 이후 재보정: carry cap으로 보통 6천, 숙련 1만 중반이
 // 새 평균이 됐다. normal은 초보 분포가 그대로라 유지, high는 보통의 잘한
-// 판(p75~p90), legend는 숙련의 평균급 판에 맞춘다.
+// 판(p85~p90), legend는 숙련의 평균급 판에 맞춘다.
 export const RESULT_SCORE_THRESHOLDS = Object.freeze({
   normal: 2000,
-  high: 9000,
-  legend: 22000,
+  high: 7000,
+  legend: 15000,
 });
 
 export function recordEligibleForStartStage(stage = 1) {
@@ -292,6 +292,16 @@ export const CLASSIC_COMBO_CAP = 25;
 export const CLASSIC_COMBO_SOFT_RATE = 0.25;
 export const CLASSIC_WOW_BONUS_MULTIPLIER_CAP = 4;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
+// 2026-08 쫄깃함 패스: 판갈이 환급은 시계를 이 선 위로 올리지 못한다.
+// 원조의 긴장("시간 쫌만 더!")은 시간을 은행처럼 쌓을 수 없다는 데서
+// 왔다. 시작 2분은 그대로라 배우는 구간은 여유롭고, 한 번 이 선 아래로
+// 내려오면 런이 끝날 때까지 60초 안쪽에서 논다. 시뮬(프로필별 30판):
+// 초보 2.3분 / 보통 2.8분 / 숙련 3.1분, 검수 4종이 권한 "2분대 중심,
+// 숙련 3분대"의 정중앙이다. 이미 선 위에 있는 시계를 깎지는 않는다 -
+// 환급 직후 시계가 뚝 떨어지는 혼란을 만들지 않기 위해서다.
+// 시계·프리즈 아이템은 이 선을 넘겨 벌 수 있다(cappedSessionTime, 120초
+// 상한) - 아이템이 "선을 뚫는 프리미엄"이 된다.
+export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
 // The board ladder folds the stage mode's onboarding ramp into the classic
 // loop itself: two 6×6 learning boards give a first-timer enough visible
 // answers without changing the physical tile size after the first clear,
@@ -500,12 +510,12 @@ export function classicChapterThumbUrl(chapter) {
 
 // Reached by score alone, so it stays visible as a goal for players who
 // already know every scene the ladder can show them.
-// 2026-08 페이싱 패스 이후 재보정: 15,000은 옛 점수 경제에서 보통의 잘한 판
-// 수준이었다. 짧아진 런에서는 10,000이 같은 자리(보통 p90 부근)다.
+// 보통의 잘한 판(p90 부근)에 맞춘다. 점수 경제가 바뀔 때마다 같은 자리로
+// 따라간다: 15,000 → 10,000 → (쫄깃함 패스) 8,000.
 export const CLASSIC_SECRET_CHAPTER = Object.freeze({
   key: 'aurora',
   label: '오로라 항구',
-  minScore: 10000,
+  minScore: 8000,
   art: 'chapter-aurora',
   hasArt: true,
 });
@@ -584,16 +594,16 @@ export const OING_CARDS = Object.freeze([
     metric: 'cats', goal: 300, requirement: '고양이 300마리' }),
   Object.freeze({ key: 'big-300', label: '시원한 손', art: 'card-04-big-clears-v1', hasArt: true,
     metric: 'bigClears', goal: 300, requirement: '5칸 이상 한 번에 300번' }),
-  Object.freeze({ key: 'score-6000', label: '반짝이는 기록', art: 'card-05-score-20000-v1', hasArt: true,
-    metric: 'bestScore', goal: 6000, requirement: '한 판 6,000점' }),
+  Object.freeze({ key: 'score-4000', label: '반짝이는 기록', art: 'card-05-score-20000-v1', hasArt: true,
+    metric: 'bestScore', goal: 4000, requirement: '한 판 4,000점' }),
   Object.freeze({ key: 'days-7', label: '일주일 개근', art: 'card-06-seven-days-v1', hasArt: true,
     metric: 'playDays', goal: 7, requirement: '서로 다른 7일 플레이' }),
   Object.freeze({ key: 'cells-20000', label: '대청소', art: 'card-07-cells-20000-v1', hasArt: true,
     metric: 'cellsCleared', goal: 20000, requirement: '지운 칸 20,000개' }),
   Object.freeze({ key: 'days-30', label: '한 달의 친구', art: 'card-08-thirty-days-v1', hasArt: true,
     metric: 'playDays', goal: 30, requirement: '서로 다른 30일 플레이' }),
-  Object.freeze({ key: 'score-13000', label: '오잉 고수', art: 'card-09-score-30000-v1', hasArt: true,
-    metric: 'bestScore', goal: 13000, requirement: '한 판 13,000점' }),
+  Object.freeze({ key: 'score-10000', label: '오잉 고수', art: 'card-09-score-30000-v1', hasArt: true,
+    metric: 'bestScore', goal: 10000, requirement: '한 판 10,000점' }),
 ]);
 
 // 카드는 두 벌로 나눠 쓴다. 격자에는 썸네일만 깔고, 원본은 눌러서 크게 볼 때만
@@ -657,10 +667,10 @@ export function classicDeepestChapterLabel({ seenKeys = [], bestScore = 0 } = {}
 }
 
 export function classicTimeAfterBoardChange(timeLeft = 0, bonusSeconds = 15) {
-  return Math.min(
-    Math.max(0, Number(timeLeft) || 0) + Math.max(0, Number(bonusSeconds) || 0),
-    CLASSIC_TIME_CAP_SECONDS,
-  );
+  const current = Math.max(0, Number(timeLeft) || 0);
+  const bonus = Math.max(0, Number(bonusSeconds) || 0);
+  // 환급은 carry cap 위로는 못 올린다. 이미 위라면 그대로 둔다(위 주석).
+  return Math.max(current, Math.min(current + bonus, CLASSIC_TIME_CARRY_CAP_SECONDS));
 }
 
 export function itemUnlockGrantForStage(stage = 1) {
@@ -1194,16 +1204,16 @@ export function pickResultMessage(score, { newRecord = false, previous = '', ran
 // 그대로 지킨다 — 낮은 구간일수록 "못했다" 뉘앙스 금지, 그리고 도발
 // (drill)은 아쉬운 판(below)에는 절대 내보내지 않는다.
 // ══════════════════════════════════════════════════════════════════════════
-// 2026-08 페이싱 패스 이후 재보정: 위쪽 세 구간(30000/15000/6000)을
-// 20000/10000/5000으로 내렸다. 런이 짧아지며 점수 규모가 보통 8천,
-// 숙련 2만 중반으로 내려왔기 때문. 초보 분포(3200 이하)는 그대로 둔다.
+// 2026-08 쫄깃함 패스 이후 재보정: 위 구간을 15000/7000/4000으로 내렸다.
+// carry cap으로 점수 규모가 보통 6천, 숙련 1만 중반이 됐기 때문.
+// 아래 구간(2600 이하)은 초보 분포가 거의 그대로라 소폭만 내렸다.
 export const CLASSIC_RESULT_TIERS = Object.freeze([
-  Object.freeze({ min: 20000, lines: Object.freeze([
+  Object.freeze({ min: 15000, lines: Object.freeze([
     '이 점수는 오잉게임 역사에 박제된다냥 📜👑',
     '전설 위의 전설, 신화급 기록이다냥 🌌',
     '이 판은 두고두고 회자될 거다냥 🏛️',
     '오잉게임이 널 영원히 기억할 거다냥 ✨',
-    '2만 고지를 넘은 사람은 정말 몇 없다냥 🏔️',
+    '만오천 고지를 넘은 사람은 정말 몇 없다냥 🏔️',
     '이건 실력이 아니라 경지다냥 🧘',
     '숫자판이 항복 선언했다냥 🏳️',
     '오늘의 기록이 내일의 전설이 된다냥 🌠',
@@ -1215,7 +1225,7 @@ export const CLASSIC_RESULT_TIERS = Object.freeze([
     '🎯 정상의 풍경을 즐겨보라냥 ⛰️',
     '🎯 이 자리를 지키는 게 다음 도전이다냥 😼',
   ]) }),
-  Object.freeze({ min: 10000, lines: Object.freeze([
+  Object.freeze({ min: 7000, lines: Object.freeze([
     '이건 인간의 반응속도가 아니다냥 🤖',
     '오잉게임 전설이 되는 중이다냥 📜👑',
     '이 정도면 아이템 운도 실력이다냥 🍀🏆',
@@ -1238,9 +1248,9 @@ export const CLASSIC_RESULT_TIERS = Object.freeze([
     '🎯 다음 전설을 써 내려가보자냥 📜',
     '🎯 한계를 또 한 번 넘어보자냥 🚀',
     '🎯 새로운 역사를 만들어보자냥 ✨',
-    '🎯 다음 목표는 2만 고지다냥 🏔️',
+    '🎯 다음 목표는 만오천 고지다냥 🏔️',
   ]) }),
-  Object.freeze({ min: 5000, lines: Object.freeze([
+  Object.freeze({ min: 4000, lines: Object.freeze([
     '말도 안 되는 실력이다냥 🏆',
     '이 정도면 최상위권 실력이다냥 👑',
     '완전 고수의 향기다냥...! 🔥',
@@ -1265,7 +1275,7 @@ export const CLASSIC_RESULT_TIERS = Object.freeze([
     '🎯 다음 목표는 만오천 고지다냥 🏔️',
     '🎯 콤보를 끝까지 안 끊기게 가보자냥 ⚡',
   ]) }),
-  Object.freeze({ min: 3200, lines: Object.freeze([
+  Object.freeze({ min: 2600, lines: Object.freeze([
     '속도가 장난 아니다냥 ⚡',
     '숫자가 다 보이나보다냥 😳',
     '머리 회전이 빠르다냥 🧠',

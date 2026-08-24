@@ -696,3 +696,45 @@
 .result-actions:has(> .result-leaderboard-button:not([hidden])) .result-home-button {
   grid-column: 1 / -1;
 }
+
+/* ==========================================================================
+   WOW 배너 다이어트 (실기기 피드백: 화면을 너무 가린다)
+   WOW는 판 한가운데 큰 카드로 서 있어서, 연속으로 지우는 중에 다음 답을
+   찾는 시선을 정확히 막았다. 축하는 남기되 자리를 양보한다:
+   - 판 중앙(43%)이 아니라 위쪽 1/4로 올린다. 다음 답을 훑는 시선은
+     대개 판의 가운데~아래쪽이다.
+   - 카드 크기와 글자를 한 단계 줄인다.
+   - 배경을 살짝 투명하게 둬서 뒤 칸이 완전히 사라지지는 않게 한다.
+   같은 이유로 아이템 안내(터치 라벨 위 리본 등)가 아니라 판을 덮는 다른
+   중앙 카드(TIME UP 제외)도 이 위치 규칙을 따른다.
+   ========================================================================== */
+#play-screen.play-ui-v4 .wow-moment {
+  top: 24%;
+  min-width: 112px;
+  padding: 6px 16px 6px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 252, 225, .93), rgba(255, 224, 132, .9));
+}
+
+#play-screen.play-ui-v4 .wow-moment strong {
+  font-size: clamp(30px, 9vw, 42px);
+}
+
+#play-screen.play-ui-v4 .wow-moment span {
+  margin-top: 3px;
+  font-size: clamp(14px, 3.8vw, 17px);
+}
+
+/* 콤보 마일스톤 텍스트도 같은 높이대로 - 배너 두 개가 서로 다른 높이에서
+   번갈아 뜨면 시선이 널뛴다. */
+#play-screen.play-ui-v4 .combo-text-pop {
+  top: 24%;
+}
+
+/* 상단 HUD 랭킹 버튼: 음악 토글 자리를 물려받는다. 트로피 그림이 곧
+   버튼이라 배경 원판만 은은하게 남긴다. */
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button img {
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+}

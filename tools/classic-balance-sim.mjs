@@ -98,10 +98,13 @@ export function simulateRun(profile, opts = {}) {
     totalRefund: 0,
     peakTime: GAME_DURATION_SECONDS,
     scoreFirst2Min: null,
+    tenseSeconds: 0,   // 남은 시간 20초 미만으로 보낸 시간
+    clutchSeconds: 0,  // 10초 미만
   };
   const overhead = opts.overhead ?? 0.55;      // 성공 처리 잠금+연출 평균(초)
   const boardChangeCost = opts.boardChangeCost ?? 1.7; // 판갈이 연출 동안 타이머 진행
   const cap = opts.timeCapSeconds;             // 실험용 오버라이드
+  const carryCap = opts.carryCap;              // 실험용: 환급이 넘지 못하는 선
   const refundScale = opts.refundScale ?? 1;   // 실험용: 판갈이 환급 배율
   const fatigueOverride = opts.fatigue;        // 실험용 {fromBoard, perBoard, floor}
   const ladderOverride = opts.ladder;          // 실험용 [{timeFloor,timeBonus}...]
@@ -138,7 +141,11 @@ export function simulateRun(profile, opts = {}) {
       S.boardsPlayed,
     );
     const before = S.time;
-    S.time = Math.min(S.time + refund, cap ?? 300);
+    if (carryCap != null) S.time = Math.max(S.time, Math.min(S.time + refund, carryCap));
+    else if (cap != null) S.time = Math.min(S.time + refund, cap);
+    // 기본 경로는 실제 코드의 규칙을 그대로 쓴다 - 상수가 바뀌면 시뮬도
+    // 자동으로 따라온다. (carry cap 도입 때 여기가 갈라져 있던 것을 고침)
+    else S.time = classicTimeAfterBoardChange(S.time, refund);
     S.totalRefund += S.time - before;
     S.peakTime = Math.max(S.peakTime, S.time);
     S.boardLog.push({
@@ -156,6 +163,8 @@ export function simulateRun(profile, opts = {}) {
   };
 
   const spend = (seconds) => {
+    if (S.time < 20) S.tenseSeconds += seconds;
+    if (S.time < 10) S.clutchSeconds += seconds;
     S.time -= seconds;
     S.elapsed += seconds;
     if (S.scoreFirst2Min === null && S.elapsed >= 120) S.scoreFirst2Min = S.score;
@@ -284,6 +293,8 @@ export function simulateRun(profile, opts = {}) {
     blastShare: S.score ? +(S.scoreFromBlast / S.score).toFixed(3) : 0,
     totalRefund: +S.totalRefund.toFixed(0),
     peakTime: +S.peakTime.toFixed(0),
+    tenseShare: +(S.tenseSeconds / Math.max(1, S.elapsed)).toFixed(2),
+    clutchShare: +(S.clutchSeconds / Math.max(1, S.elapsed)).toFixed(2),
     first2MinShare: S.scoreFirst2Min === null ? 1 : +(S.scoreFirst2Min / Math.max(1, S.score)).toFixed(2),
     // 콤보가 없었다면(항상 x1) 벌었을 기본 점수 → 콤보 기여도
     comboLeverage: S.scoreBaseCells ? +(S.score / S.scoreBaseCells).toFixed(1) : 0,
@@ -325,6 +336,8 @@ export function summarize(results) {
     blastShare: stat('blastShare'),
     totalRefund: stat('totalRefund'),
     peakTime: stat('peakTime'),
+    tenseShare: stat('tenseShare'),
+    clutchShare: stat('clutchShare'),
     first2MinShare: stat('first2MinShare'),
   };
 }
@@ -343,6 +356,7 @@ if (process.argv[1] && process.argv[1].endsWith('classic-balance-sim.mjs')) {
     console.log(`최고콤보 mean ${s.maxCombo.mean}  콤보 레버리지(점수/기본점수) mean ${s.comboLeverage.mean}`);
     console.log(`WOW mean ${s.wow.mean}  블라스트 점수비중 mean ${s.blastShare.mean}`);
     console.log(`판갈이 환급합 mean ${s.totalRefund.mean}s  시계 최고치 mean ${s.peakTime.mean}s  첫2분 점수비중 mean ${s.first2MinShare.mean}`);
+    console.log(`긴장 비중(20초 미만) mean ${s.tenseShare.mean}  클러치(10초 미만) mean ${s.clutchShare.mean}`);
     // 판별 점수/시간 곡선 (중앙값 근처 런 하나)
     const sortedByScore = [...results].sort((a, b) => a.score - b.score);
     const median = sortedByScore[Math.floor(sortedByScore.length / 2)];

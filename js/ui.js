@@ -1643,6 +1643,20 @@ export class GameUI {
     setTimeout(() => pop.remove(), 1200);
   }
 
+  // 시간 게이지 위의 +N초 자리를 글자 알림으로도 쓴다 - 프리즈처럼 숫자가
+  // 아닌 시간 사건("10초 멈춤!")을 같은 자리, 같은 결로 보여주기 위해서다.
+  showTimeNotice(label = '') {
+    const text = String(label || '').trim();
+    if (!text || !this.elements.boardTimeGauge) return;
+    const gauge = this.elements.boardTimeGauge;
+    clearTimeout(this.timeBonusTimer);
+    gauge.dataset.bonus = text;
+    gauge.classList.remove('is-bonus');
+    void gauge.offsetWidth;
+    gauge.classList.add('is-bonus');
+    this.timeBonusTimer = window.setTimeout(() => gauge.classList.remove('is-bonus'), 1500);
+  }
+
   showStageTimeBonus(seconds = 0) {
     const amount = Math.max(0, Math.round(Number(seconds) || 0));
     if (!amount || !this.elements.boardTimeGauge) return;
@@ -2766,9 +2780,10 @@ export class GameUI {
     const active = Boolean(enabled);
     const percent = Math.round(clamp(Number(volume) || 0, 0, 1) * 100);
     const settingsToggle = document.querySelector('#music-toggle');
+    // 상단 HUD의 음악 버튼은 랭킹에 자리를 내줬다(일시정지 안에 음악·효과음이
+    // 다 있다). 남은 토글은 일시정지의 것 하나다.
     const quickToggles = [
       document.querySelector('#music-button'),
-      document.querySelector('#hud-music-button'),
     ];
     const slider = document.querySelector('#music-volume');
     const label = document.querySelector('#music-volume-label');
