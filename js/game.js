@@ -250,6 +250,9 @@ class OingGame {
       },
       onPointerStart: () => {
         this.activeGesture = true;
+        // 손을 댄 순간이 "마지막 조작"이다. 이 갱신이 없어서 idleMs가 사실은
+        // "마지막 힌트 이후 시간"이었고, 열심히 지우는 중에도 힌트가 떴다.
+        this.lastInteractionAt = performance.now();
         // A hint has finished its job as soon as the player acts. Leaving it
         // under the live sum marquee showed two competing answers at once.
         this.ui.clearHint();
@@ -1034,6 +1037,7 @@ class OingGame {
 
   async resolveCommit(rect) {
     if (!this.state.running || this.state.paused || this.state.inputLocked) return;
+    this.lastInteractionAt = performance.now();
     this.selectionWasPerfect = false;
     const stats = this.model.stats(rect);
     if (stats.count < 2) {

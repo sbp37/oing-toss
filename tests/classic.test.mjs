@@ -411,6 +411,25 @@ test('past the fatigue line the board stops dropping time-givers', async () => {
   assert.notEqual(pityForced?.id, 'freeze');
 });
 
+// 실기기 피드백("힌트가 너무 잦다")의 진짜 원인을 붙잡는 가드다. idleMs는
+// "마지막 조작 이후"여야 하는데, 드래그·정답 처리가 시계를 되돌리지 않아
+// 사실상 "마지막 힌트 이후"로 돌고 있었다. 두 자리 모두 갱신하는지 본다.
+test('the idle clock is reset by real play, not only by hints', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  // 드래그를 시작하는 순간
+  const pointerStart = game.slice(game.indexOf('onPointerStart: ()'), game.indexOf('onTapAnchor:'));
+  assert.match(pointerStart, /lastInteractionAt = performance\.now\(\)/);
+  // 답을 낸 순간(탭 경로 포함)
+  const resolve = game.slice(game.indexOf('async resolveCommit('), game.indexOf('commitLifetimeTotals()'));
+  assert.match(resolve, /lastInteractionAt = performance\.now\(\)/);
+
+  // 문턱 자체도 "진짜 막힘"으로 읽히는 길이여야 한다.
+  const { CLASSIC_SPARSE_HINT_IDLE_MS, CLASSIC_SPARSE_HINT_REPEAT_MS } = await import('../js/data.js');
+  assert.ok(CLASSIC_SPARSE_HINT_IDLE_MS >= 6000, `힌트 대기가 너무 짧다: ${CLASSIC_SPARSE_HINT_IDLE_MS}ms`);
+  assert.ok(CLASSIC_SPARSE_HINT_REPEAT_MS > CLASSIC_SPARSE_HINT_IDLE_MS);
+});
+
 test('refund fatigue starts past the ladder and never drops below the floor', async () => {
   const { CLASSIC_REFUND_FATIGUE, classicRefundWithFatigue } = await import('../js/data.js');
   const { fromBoard, perBoard, floor } = CLASSIC_REFUND_FATIGUE;

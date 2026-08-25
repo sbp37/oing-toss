@@ -731,14 +731,6 @@
   top: 24%;
 }
 
-/* 상단 HUD 랭킹 버튼: 음악 토글 자리를 물려받는다. 트로피 그림이 곧
-   버튼이라 배경 원판만 은은하게 남긴다. */
-.play-ui-v4 .hud-mini-button.hud-leaderboard-button img {
-  width: 76%;
-  height: 76%;
-  object-fit: contain;
-}
-
 /* ==========================================================================
    결과 화면 버튼 배치 (실기기 피드백)
    랭킹은 내 기록 바로 옆, 한 판 더와 아래 줄 사이는 숨 쉴 간격을 둔다.
@@ -765,17 +757,43 @@
 }
 
 /* ==========================================================================
-   상단 HUD 랭킹 버튼: 트로피가 허공에 떠 보인다는 피드백. 일시정지 원판과
-   같은 크림 디스크를 깔아 한 세트로 읽히게 한다.
+   상단 HUD 랭킹 버튼 — 일시정지와 같은 크기, 트로피는 원 정중앙
+   트로피만 있으면 허공에 떠 보여 크림 디스크를 깔았는데, 이번엔 일시정지
+   보다 커 보이고 트로피가 중앙에서 벗어나 보인다는 피드백이 왔다. 눈대중
+   대신 아트를 재서 맞춘다: 일시정지 그림은 제 상자의 91.6% x 92.0%만
+   채우고 나머지는 투명 여백이다. 그래서 CSS로 그리는 원판도 상자의 92%로
+   그리고(inset 4%), 버튼 자신에는 배경·테두리를 두지 않는다 - 버튼에 직접
+   그리면 100% + 테두리가 되어 다시 커진다. 트로피는 그 원판 한가운데에
+   절대 배치한다.
    ========================================================================== */
 .play-ui-v4 .hud-mini-button.hud-leaderboard-button {
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button::before {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, .92);
   border-radius: 50%;
   background: radial-gradient(circle at 32% 26%, #fffdf4, #ffedc4 62%, #f7d795);
-  border: 2px solid rgba(255, 255, 255, .92);
   box-shadow:
     0 3px 0 rgba(190, 145, 78, .28),
     0 6px 12px rgba(120, 96, 52, .18),
     inset 0 2px 0 rgba(255, 255, 255, .9);
+}
+
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56%;
+  height: 56%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
 }
 
 .play-ui-v4 .hud-mini-button.hud-leaderboard-button:active {

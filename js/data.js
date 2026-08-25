@@ -891,7 +891,14 @@ export function shouldShowBeginnerAutoHint({
 // the game: whenever they stall, the cat points at an answer.
 export const CLASSIC_AUTO_HINT_LIMIT = 3;
 export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 20000;
-export const CLASSIC_SPARSE_HINT_IDLE_MS = 3200;
+// 2026-08 실기기 피드백: "내가 찾을 수 있는데 알려줘서 김샌다."
+// 3.2초는 꼬리 판을 훑는 시간도 안 된다 - 아직 읽는 중인 사람에게 답을
+// 들이미는 길이였다. 진짜 막힌 순간(7초)으로 올린다. 같은 판 재발화도
+// 9초에서 14초로 늘려, 한 판에 두 번 이상 나오는 일이 드물어진다.
+// 짝을 이루는 수정이 game.js에 있다: 드래그를 시작하거나 답을 낼 때마다
+// lastInteractionAt을 갱신한다. 그 전에는 idleMs가 "마지막 힌트 이후
+// 시간"이라, 열심히 지우는 중에도 시계가 계속 흘러 힌트가 떴다.
+export const CLASSIC_SPARSE_HINT_IDLE_MS = 7000;
 
 export function shouldShowClassicAutoHint({
   running = false, inputLocked = false, tutorialActive = false,
@@ -919,7 +926,7 @@ export function shouldShowClassicAutoHint({
 // board.js answerReadabilityClass 기준)이 하나도 없고 쿨다운이 지난 때로
 // 한정한다. bestReadability 기본값이 easy인 이유: 호출자가 가독성을 재지
 // 않으면 재발화는 절대 일어나지 않아야 안전하다.
-export const CLASSIC_SPARSE_HINT_REPEAT_MS = 9000;
+export const CLASSIC_SPARSE_HINT_REPEAT_MS = 14000;
 
 export function shouldShowClassicSparseHint({
   running = false, inputLocked = false, tutorialActive = false,
