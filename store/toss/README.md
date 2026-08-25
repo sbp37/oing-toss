@@ -74,5 +74,12 @@ npx ait build      # oing-game.ait
 
 ## 그 외 제출에 필요한 것
 
-- 개인정보 처리방침 URL: 배포한 주소의 `/privacy.html`
+- 개인정보 처리방침 URL: <https://sbp37.github.io/oing-toss/privacy.html>
 - 앱 설명 문구: 위 초안 사용
+
+주소는 GitHub Pages다. Vercel도 같은 커밋을 배포하지만 그쪽 주소는 배포할
+때마다 바뀌는 임시 주소라, 심사에 적을 고정 주소로는 Pages를 쓴다.
+
+Pages는 `.github/workflows/pages.yml`이 `npm run build`로 만든 `dist/client`를
+올린다. 저장소 설정에서 Source를 GitHub Actions로 바꿔야 이 워크플로가
+실제로 배포한다(자세한 건 그 파일 주석에).

@@ -1,0 +1,74 @@
+# GitHub Pages 배포.
+#
+# 지금까지 Pages는 저장소 루트를 그대로 서빙했다. 그런데 루트의 index.html은
+# 빌드 전 원본이라 캐시 무효화 자리표시자(__OING_BUILD_ID__)가 글자 그대로
+# 남아 있었다. 그러면 주소가 영원히 같아서, 한 번 방문한 사람은 css와 js를
+# 계속 옛 것으로 쓰게 된다. 새 판을 올려도 안 바뀌는 것이다.
+#
+# 그래서 여기서 npm run build를 돌려 dist/client를 만들고 그걸 올린다.
+# hosting/build-static.mjs가 파일 내용으로 빌드 id를 계산해 박아주므로,
+# 내용이 바뀔 때만 주소가 바뀐다.
+#
+# 이 주소는 앱인토스 제출의 개인정보 처리방침 URL로도 쓴다.
+#   https://sbp37.github.io/oing-toss/privacy.html
+#
+# 저장소 설정을 한 번 바꿔야 이 워크플로가 실제로 배포한다.
+# Settings > Pages > Build and deployment > Source를 GitHub Actions로.
+# 지금은 "Deploy from a branch"라 루트가 그대로 나가고 있다. 안 바꾸면
+# 마지막 deploy 단계가 그 얘기를 하며 실패한다.
+#
+# 페이지는 /oing-toss/ 아래에 놓인다. index.html의 주소가 전부 상대 경로이고
+# manifest의 scope도 "./"라서 하위 경로에서도 그대로 돈다.
+name: Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# 배포 권한. Pages는 이 두 가지를 요구한다.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 한 번에 하나만. 연달아 밀어넣어도 마지막 것이 올라간다.
+# 다만 진행 중인 배포를 죽이지는 않는다 - 반쯤 올라간 사이트가 남는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # 깨진 것을 올리지 않는다. 폰트 서브셋 검사도 여기 들어 있어서,
+      # 새 한글 글자가 빠진 채 배포되는 일도 같이 막힌다.
+      - run: npm test
+
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/client
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
