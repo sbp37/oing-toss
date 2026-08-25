@@ -12,10 +12,9 @@
 # 이 주소는 앱인토스 제출의 개인정보 처리방침 URL로도 쓴다.
 #   https://sbp37.github.io/oing-toss/privacy.html
 #
-# 저장소 설정을 한 번 바꿔야 이 워크플로가 실제로 배포한다.
-# Settings > Pages > Build and deployment > Source를 GitHub Actions로.
-# 지금은 "Deploy from a branch"라 루트가 그대로 나가고 있다. 안 바꾸면
-# 마지막 deploy 단계가 그 얘기를 하며 실패한다.
+# configure-pages 단계가 Pages 소스를 GitHub Actions로 바꿔 준다. 예전의
+# "Deploy from a branch"(저장소 루트를 그대로 내보내던 방식)는 이걸로
+# 대체됐고, 손으로 설정을 만질 필요는 없었다. 첫 배포에서 확인했다.
 #
 # 페이지는 /oing-toss/ 아래에 놓인다. index.html의 주소가 전부 상대 경로이고
 # manifest의 scope도 "./"라서 하위 경로에서도 그대로 돈다.

@@ -81,5 +81,4 @@ npx ait build      # oing-game.ait
 때마다 바뀌는 임시 주소라, 심사에 적을 고정 주소로는 Pages를 쓴다.
 
 Pages는 `.github/workflows/pages.yml`이 `npm run build`로 만든 `dist/client`를
-올린다. 저장소 설정에서 Source를 GitHub Actions로 바꿔야 이 워크플로가
-실제로 배포한다(자세한 건 그 파일 주석에).
+올린다. main에 밀면 알아서 도니까 따로 할 일은 없다.
