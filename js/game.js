@@ -74,8 +74,10 @@ import {
   AD_CONTINUE_OFFER_MS,
   AD_CONTINUE_SECONDS,
   AD_HELP_PACK,
+  candyForRun,
 } from './data.js';
 import { adReady, adsAvailable, preloadAd, showAd } from './ads.js';
+import { installCandyFeeding } from './candy.js';
 import { SHARE_REWARD_MODULE_ID } from './data.js';
 import {
   BoardModel, answerReadabilityClass, boardAssistForPerformance, closestReadableAnswer,
@@ -2688,6 +2690,7 @@ class OingGame {
     this.ui.setOverlay('help-overlay', false);
     this.activePauseOverlay = 'pause-overlay';
     this.refreshClassicRecordSurfaces();
+    this.candy?.refresh();
     this.ui.showScreen('home');
   }
 
@@ -2855,6 +2858,12 @@ class OingGame {
     };
     this.retryStage = 1;
     if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
+    // 별사탕 적립. 못한 판도 최소치는 받는다 - 2분을 쓰고 아무것도 못 받는
+    // 판이 초보를 제일 빨리 지치게 한다.
+    if (!this.runtime.testMode) {
+      this.lastCandyEarned = candyForRun(this.state.score);
+      storageAdapter.addCandy(this.lastCandyEarned);
+    }
     if (!this.runtime.testMode) {
       void gameLeaderboardAdapter.submitClassicScoreOnce({
         runId: this.activeRunId,
@@ -2968,6 +2977,10 @@ class OingGame {
 
 const game = new OingGame();
 installBackNavigation(game);
+// 홈의 별사탕 접시. 고양이에게 끌어다 주면 좋아하는 모습으로 바뀐다.
+game.candy = installCandyFeeding({
+  onFed: () => game.ui.toast('냠냠! 맛있다냥'),
+});
 
 if (game.runtime.testMode) {
   window.__OING_TEST__ = {

@@ -307,6 +307,22 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // 보상형 광고. 그룹 ID는 토스 콘솔의 인앱 광고 > 광고 그룹에서 만든 값이고,
 // 그룹 하나가 보상 하나를 뜻한다(이어하기 20초 / 힌트 1 / 셔플 1).
 // 비어 있으면 그 광고 자리는 게임에 아예 나타나지 않는다.
+// 별사탕. 판이 끝나면 점수에 비례해 쌓이고, 홈에서 고양이에게 끌어다
+// 먹인다. 못한 판도 반드시 몇 개는 남게 최소치를 둔다 - 2분을 쓰고 아무것도
+// 못 받는 판이 초보를 제일 빨리 지치게 한다.
+export const CANDY_PER_SCORE = 120;
+export const CANDY_MIN_PER_RUN = 3;
+export const CANDY_MAX_PER_RUN = 60;
+
+export function candyForRun(score = 0) {
+  const points = Math.max(0, Math.round(Number(score) || 0));
+  const earned = Math.floor(points / CANDY_PER_SCORE);
+  return Math.min(CANDY_MAX_PER_RUN, Math.max(CANDY_MIN_PER_RUN, earned));
+}
+
+// 고양이에게 한 번 먹일 때 드는 사탕. 먹이면 좋아하는 모습으로 바뀐다.
+export const CANDY_PER_FEED = 5;
+
 export const AD_GROUP_IDS = Object.freeze({
   continue: 'ait.v2.live.ca1448c32e4a47f3',
   // 도움팩은 예전 '힌트' 그룹 자리를 그대로 쓴다. 광고 하나에 힌트와 셔플을

@@ -4,6 +4,8 @@ import { isAppsInTossWebView } from './leaderboard.js';
 const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
 const LAST_SCORE_KEY = 'oing_toss_v3_last_score';
 const RECENT_SCORES_KEY = 'oing_toss_v3_recent_scores';
+const CANDY_KEY = 'oing_toss_v3_candy';
+const FED_COUNT_KEY = 'oing_toss_v3_fed_count';
 const SETTINGS_KEY = 'oing_toss_v3_settings';
 const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
 const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
@@ -46,6 +48,32 @@ export const storageAdapter = {
   },
   saveBestScore(score) {
     try { localStorage.setItem(BEST_SCORE_KEY, String(Math.max(0, Math.round(score)))); } catch {}
+  },
+  // 별사탕 잔고와 먹인 횟수. 기기 안에만 남는다.
+  getCandy() {
+    const value = Number(safeRead(CANDY_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  addCandy(amount) {
+    const next = this.getCandy() + Math.max(0, Math.round(Number(amount) || 0));
+    try { localStorage.setItem(CANDY_KEY, String(next)); } catch {}
+    return next;
+  },
+  spendCandy(amount) {
+    const cost = Math.max(0, Math.round(Number(amount) || 0));
+    const balance = this.getCandy();
+    if (balance < cost) return false;
+    try { localStorage.setItem(CANDY_KEY, String(balance - cost)); } catch {}
+    return true;
+  },
+  getFedCount() {
+    const value = Number(safeRead(FED_COUNT_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  },
+  markFed() {
+    const next = this.getFedCount() + 1;
+    try { localStorage.setItem(FED_COUNT_KEY, String(next)); } catch {}
+    return next;
   },
   getClassicBestScore() {
     const value = Number(safeRead(CLASSIC_BEST_SCORE_KEY, '0'));

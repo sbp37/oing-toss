@@ -1172,3 +1172,111 @@
   font-family: var(--font-display);
   font-size: 15px;
 }
+
+/* ==========================================================================
+   별사탕 먹이기
+   판이 끝나면 쌓이는 사탕을 홈에서 고양이에게 끌어다 준다. 성장 단계도,
+   배고픔도, 시간 계산도 없다 - 주면 좋아하고 안 주면 그대로다.
+   움직임은 전부 합성 전용(투명도·변형)이라 발열이 없다.
+   ========================================================================== */
+.home-character-stage { position: relative; }
+
+.candy-tray {
+  position: absolute;
+  right: 4%;
+  bottom: 8%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  touch-action: none;
+}
+
+.candy-piece {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #fff6d8, #ffd96b 62%, #f7a53f);
+  box-shadow: 0 3px 8px rgba(150, 106, 22, .28), inset 0 1px 0 rgba(255, 255, 255, .9);
+  cursor: grab;
+  transform: translate(var(--drag-x, 0), var(--drag-y, 0));
+  animation: candy-bob 2.4s ease-in-out infinite;
+}
+
+.candy-piece img {
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.candy-piece.is-dragging {
+  z-index: 6;
+  cursor: grabbing;
+  animation: none;
+  transform: translate(var(--drag-x, 0), var(--drag-y, 0)) scale(1.18);
+  box-shadow: 0 8px 18px rgba(150, 106, 22, .36);
+}
+
+@keyframes candy-bob {
+  0%, 100% { transform: translate(var(--drag-x, 0), var(--drag-y, 0)); }
+  50% { transform: translate(var(--drag-x, 0), calc(var(--drag-y, 0px) - 4px)); }
+}
+
+.candy-count {
+  min-width: 26px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 250, 238, .95);
+  box-shadow: 0 1px 3px rgba(120, 90, 40, .2);
+  color: #7c5a10;
+  font-family: var(--font-display);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 끌기 시작하면 고양이가 "여기 놓아도 돼"라고 알려 준다. */
+.home-character-stage.is-feed-target .home-cat { transform: scale(1.02); }
+
+.home-character-stage.is-feed-hover .home-cat {
+  filter: drop-shadow(0 0 12px rgba(255, 214, 107, .85));
+  transform: scale(1.06);
+}
+
+/* 먹은 순간. 통통 튀고 하트가 하나 올라간다. */
+.home-character-stage.is-happy .home-cat { animation: candy-happy 620ms ease-out; }
+
+.home-character-stage.is-happy::after {
+  content: "💛";
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  font-size: 26px;
+  pointer-events: none;
+  animation: candy-heart 1200ms ease-out both;
+}
+
+@keyframes candy-happy {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.09) rotate(-2deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes candy-heart {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.7); }
+  30% { opacity: 1; transform: translate(-50%, -6px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1); }
+}
+
+.home-cat { transition: transform 160ms ease, filter 160ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .candy-piece,
+  .home-character-stage.is-happy .home-cat,
+  .home-character-stage.is-happy::after { animation: none; }
+}
+
+/* 접시 감추기: hidden 속성만으로는 display:grid를 못 이긴다. */
+.candy-tray.is-hidden { display: none; }
