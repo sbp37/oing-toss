@@ -304,6 +304,30 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // 환급 직후 시계가 뚝 떨어지는 혼란을 만들지 않기 위해서다.
 // 시계·프리즈 아이템은 이 선을 넘겨 벌 수 있다(cappedSessionTime, 120초
 // 상한) - 아이템이 "선을 뚫는 프리미엄"이 된다.
+// 보상형 광고. 그룹 ID는 토스 콘솔의 인앱 광고 > 광고 그룹에서 만든 값이고,
+// 그룹 하나가 보상 하나를 뜻한다(이어하기 20초 / 힌트 1 / 셔플 1).
+// 비어 있으면 그 광고 자리는 게임에 아예 나타나지 않는다.
+export const AD_GROUP_IDS = Object.freeze({
+  continue: 'ait.v2.live.ca1448c32e4a47f3',
+  hint: '',
+  shuffle: '',
+});
+
+// 친구 공유 리워드(토스 콘솔 '공유 리워드'의 UUID). 친구에게 초대장을
+// 보낸 만큼 힌트를 받는다. 받은 힌트는 다음 판 시작에 지급된다 - 판 재고는
+// 판마다 새로 만들어지므로, 쌓아두는 잔고를 만들지 않기 위해서다.
+export const SHARE_REWARD_MODULE_ID = '89c3bed0-84a2-4542-91d3-ca383982d4e1';
+
+// TIME UP 이어하기가 주는 시간. 30초는 고수 기준 후반 판 하나를 통째로 더
+// 도는 양이라 점수를 20% 넘게 부풀리고, 15초는 6x7 판을 훑는 시간을 빼면
+// 답 한둘로 끝나 광고 본 값이 안 나온다. 20초가 그 사이의 균형점이다.
+// 판당 1회. 모두에게 무료로 열린 같은 기회라 랭킹 규칙의 일부로 취급한다.
+export const AD_CONTINUE_SECONDS = 20;
+
+// 이어하기 제안을 보여주는 시간. 지나면 결과로 넘어간다 - 광고를 볼 생각이
+// 없는 사람을 오래 붙잡는 것이 더 나쁘다.
+export const AD_CONTINUE_OFFER_MS = 7000;
+
 export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
 // The board ladder folds the stage mode's onboarding ramp into the classic
 // loop itself: two 6×6 learning boards give a first-timer enough visible
@@ -1092,6 +1116,7 @@ export const MESSAGES = Object.freeze({
   struggleHint: Object.freeze(['이건 내가 살짝 보여줄게냥!', '잠깐, 여기부터 다시 봐봐!', '이 조합은 서비스다냥.']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['막혔냥? 여기 봐보라냥!', '반짝이는 칸을 보라냥!']),
+  adContinue: Object.freeze(['20초 더 간다냥!', '한 번 더 달려보자냥!']),
   // 판이 열릴 때의 출발 안내. 정답을 알려주는 말이 아니라 조작을 가르치는
   // 말이어야 한다 - 초기 오잉의 '슥 밀거나, 양끝을 톡톡!' 자리다.
   openingGift: Object.freeze([

@@ -1,4 +1,4 @@
-import { Device, Game, Share, getSchemeUri } from '@apps-in-toss/web-framework';
+import { Device, Game, GoogleAdMob, Promotion, Share, getSchemeUri } from '@apps-in-toss/web-framework';
 
 // Browser bundle source for js/vendor/toss-game-center-v1.js. Rebuild with:
 // pnpm dlx esbuild@0.25.10 tools/toss-game-center-entry.mjs --bundle
@@ -64,4 +64,124 @@ export async function createTossShareLink() {
   } catch {
     return '';
   }
+}
+
+// 보상형 광고. 토스가 광고를 대신 틀어 주고, 유저가 끝까지 보면
+// userEarnedReward 이벤트가 온다. 지급은 그 이벤트가 왔을 때만 한다 -
+// dismissed(중간에 닫음)만으로 지급하면 정책 위반이다.
+
+export function isRewardedAdSupported() {
+  try {
+    return GoogleAdMob.loadAppsInTossAdMob.isSupported()
+      && GoogleAdMob.showAppsInTossAdMob.isSupported();
+  } catch {
+    return false;
+  }
+}
+
+// 광고는 미리 불러 둬야 누른 순간 바로 뜬다(공식 권장). 로드 완료/실패를
+// Promise로 돌려주고, 반환된 cleanup은 결과가 나온 뒤 스스로 정리한다.
+export function loadRewardedAd(adGroupId) {
+  return new Promise((resolve) => {
+    let cleanup = null;
+    let settled = false;
+    const settle = (ok) => {
+      if (settled) return;
+      settled = true;
+      try { cleanup?.(); } catch {}
+      resolve(ok);
+    };
+    try {
+      cleanup = GoogleAdMob.loadAppsInTossAdMob({
+        options: { adGroupId },
+        onEvent: (event) => { if (event.type === 'loaded') settle(true); },
+        onError: () => settle(false),
+      });
+    } catch {
+      settle(false);
+    }
+  });
+}
+
+export function isRewardedAdLoaded(adGroupId) {
+  try {
+    return GoogleAdMob.isAppsInTossAdMobLoaded({ adGroupId });
+  } catch {
+    return Promise.resolve(false);
+  }
+}
+
+// 광고를 띄우고 결과를 기다린다. userEarnedReward를 봤으면 rewarded=true.
+// 실제 지급은 광고 창이 닫힌(dismissed) 뒤에 하는 것이 안전하다 - 게임이
+// 다시 화면에 있을 때 보상 연출이 보여야 하기 때문이다.
+export function showRewardedAd(adGroupId) {
+  return new Promise((resolve) => {
+    let cleanup = null;
+    let settled = false;
+    let rewarded = false;
+    let amount = 0;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      try { cleanup?.(); } catch {}
+      resolve({ rewarded, amount });
+    };
+    try {
+      cleanup = GoogleAdMob.showAppsInTossAdMob({
+        options: { adGroupId },
+        onEvent: (event) => {
+          if (event.type === 'userEarnedReward') {
+            rewarded = true;
+            amount = Number(event.data?.unitAmount) || 0;
+          } else if (event.type === 'dismissed' || event.type === 'failedToShow') {
+            settle();
+          }
+        },
+        onError: () => settle(),
+      });
+    } catch {
+      settle();
+    }
+  });
+}
+
+// 친구 초대 리워드(콘솔 '공유 리워드'). 친구 목록·발송은 전부 토스 화면이
+// 처리하고, 우리는 "몇 명에게 보냈다"는 sendViral 이벤트만 받아 힌트를
+// 지급한다. 연락처 권한이 필요 없다.
+export function isContactsInviteSupported() {
+  try {
+    return Promotion.openContactsInvite.isSupported();
+  } catch {
+    return false;
+  }
+}
+
+export function openContactsInvite(moduleId, { onReward } = {}) {
+  return new Promise((resolve) => {
+    let cleanup = null;
+    let settled = false;
+    let earned = 0;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      try { cleanup?.(); } catch {}
+      resolve({ earned });
+    };
+    try {
+      cleanup = Promotion.openContactsInvite({
+        options: { moduleId },
+        onEvent: (event) => {
+          if (event.type === 'sendViral') {
+            earned += Number(event.data?.rewardAmount) || 0;
+            onReward?.(event.data);
+          } else if (event.type === 'close') {
+            settle();
+          }
+        },
+        onError: () => settle(),
+      });
+    } catch {
+      settle();
+    }
+  });
 }

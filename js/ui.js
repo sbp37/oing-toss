@@ -987,7 +987,7 @@ export class GameUI {
       icon.src = 'assets/icons/items/hint.webp';
       icon.alt = '';
       const labelText = document.createElement('strong');
-      labelText.textContent = coaching ? '슥 이어봐!' : '합10 여기!';
+      labelText.textContent = coaching ? '이어서 10 만들기!' : '합10 여기!';
       label.append(icon, labelText);
       region.append(label);
       for (let index = 0; index < 4; index += 1) region.appendChild(document.createElement('i'));
@@ -1160,6 +1160,35 @@ export class GameUI {
     this.boardFrame.classList.toggle('is-garden-perfect', perfect);
     await delay(perfect ? 780 : 620);
     this.boardFrame.classList.remove('is-garden-complete', 'is-garden-perfect');
+  }
+
+  // TIME UP 이어하기 제안. 'watch' | 'decline'을 돌려준다. 제한 시간이
+  // 지나면 자동으로 결과로 넘어간다 - 광고를 볼 생각이 없는 사람을 오래
+  // 붙잡는 쪽이 더 나쁘다.
+  showContinueOffer(seconds = 20, timeoutMs = 7000) {
+    const overlay = document.querySelector('#continue-overlay');
+    if (!overlay) return Promise.resolve('decline');
+    this.hydrateDeferredImages(overlay);
+    const strong = overlay.querySelector('#continue-watch-button strong');
+    if (strong) strong.textContent = `${Math.round(seconds)}초`;
+    this.setOverlay('continue-overlay', true);
+    return new Promise((resolve) => {
+      const watch = overlay.querySelector('#continue-watch-button');
+      const decline = overlay.querySelector('#continue-decline-button');
+      let timer = 0;
+      const settle = (choice) => {
+        clearTimeout(timer);
+        watch?.removeEventListener('click', onWatch);
+        decline?.removeEventListener('click', onDecline);
+        this.setOverlay('continue-overlay', false);
+        resolve(choice);
+      };
+      const onWatch = () => settle('watch');
+      const onDecline = () => settle('decline');
+      watch?.addEventListener('click', onWatch);
+      decline?.addEventListener('click', onDecline);
+      timer = window.setTimeout(() => settle('decline'), timeoutMs);
+    });
   }
 
   // 손가락이 닿는 즉시 도구 버튼이 눌린 티를 낸다. 합성 전용(투명도·변형)
@@ -2211,13 +2240,19 @@ export class GameUI {
     this.elements.goal.dataset.digits = goalText.length > 3 ? 'l' : 'm';
   }
 
-  updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true }) {
-    this.elements.hintCount.textContent = String(hint);
-    this.elements.shuffleCount.textContent = String(shuffle);
+  updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true, adRefill = {} }) {
+    // 0개인데 광고 리필이 남아 있으면 버튼을 죽이지 않는다. 숫자 배지가
+    // 광고 배지로 바뀌고, 누르면 광고를 거쳐 +1을 받는다.
+    const hintAd = hint <= 0 && Boolean(adRefill.hint);
+    const shuffleAd = shuffle <= 0 && Boolean(adRefill.shuffle);
+    this.elements.hintCount.textContent = hintAd ? 'AD' : String(hint);
+    this.elements.shuffleCount.textContent = shuffleAd ? 'AD' : String(shuffle);
     this.elements.bombCount.textContent = String(bomb);
     this.elements.clockCount.textContent = String(clock);
-    this.elements.hintButton.disabled = hint <= 0;
-    this.elements.shuffleButton.disabled = shuffle <= 0;
+    this.elements.hintButton.disabled = hint <= 0 && !hintAd;
+    this.elements.shuffleButton.disabled = shuffle <= 0 && !shuffleAd;
+    this.elements.hintButton.classList.toggle('is-ad-refill', hintAd);
+    this.elements.shuffleButton.classList.toggle('is-ad-refill', shuffleAd);
     this.elements.bombButton.disabled = bomb <= 0;
     this.elements.clockButton.disabled = clock <= 0 || !clockAvailable;
     // 0개일 때 무조건 "소진"을 붙이면, 아직 한 번도 얻은 적 없는 아이템까지
@@ -2235,8 +2270,8 @@ export class GameUI {
       button.dataset.state = stageLocked ? 'locked' : depleted ? 'depleted' : 'available';
       button.dataset.lockCopy = lockCopy;
     };
-    markItem(this.elements.hintButton, hint, false, '잠금', true);
-    markItem(this.elements.shuffleButton, shuffle, false, '잠금', true);
+    markItem(this.elements.hintButton, hintAd ? 1 : hint, false, '잠금', true);
+    markItem(this.elements.shuffleButton, shuffleAd ? 1 : shuffle, false, '잠금', true);
     const bombUnlocked = isItemUnlockedAtStage('bomb', stage);
     const clockUnlocked = isItemUnlockedAtStage('clock', stage) && clockAvailable;
     markItem(this.elements.bombButton, bomb, !bombUnlocked, '', bombUnlocked);

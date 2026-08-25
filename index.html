@@ -48,13 +48,13 @@
         </div>
       </div>
       <div class="home-howto" aria-label="사각형 안의 모든 숫자를 더해 합이 10이 되면 지우는 게임">
-        <p class="home-instruction"><img src="assets/decor/sparkle.webp" width="278" height="296" alt=""><em>사각형</em>으로 묶어서 합이 <em>10</em>이면, 뿅!<img src="assets/decor/heart.webp" width="283" height="254" alt=""></p>
+        <p class="home-instruction"><img src="assets/decor/sparkle.webp" width="278" height="296" alt=""><em>사각형</em>으로 묶어서 합이 <em>10</em>이면, 오잉!<img src="assets/decor/heart.webp" width="283" height="254" alt=""></p>
         <div class="home-rule-demo" aria-hidden="true">
           <div class="home-mini-board home-mini-board-pair">
             <span>4</span><span>6</span>
             <i class="home-mini-selection"></i><b class="home-mini-drag"></b>
           </div>
-          <em>4 + 6</em><b>=</b><strong>10</strong><i>뿅!</i>
+          <em>4 + 6</em><b>=</b><strong>10</strong><i>오잉!</i>
         </div>
       </div>
       <div class="home-actions">
@@ -154,6 +154,15 @@
       </section>
 
       <div class="final-rush-veil" aria-hidden="true"></div>
+      <div class="overlay continue-overlay" id="continue-overlay" hidden>
+        <div class="mini-panel continue-panel" role="dialog" aria-modal="true" aria-labelledby="continue-title">
+          <div class="continue-character" aria-hidden="true"><img data-src="assets/characters/cat-peek.webp" width="359" height="306" decoding="async" alt=""></div>
+          <h2 id="continue-title">시간이 다 됐다냥!</h2>
+          <p class="continue-copy">점수랑 콤보 그대로 이어서 간다냥</p>
+          <button class="btn btn-primary continue-watch-button" id="continue-watch-button" type="button">광고 보고 <strong>20초</strong> 더!</button>
+          <button class="text-button continue-decline-button" id="continue-decline-button" type="button">결과 보기</button>
+        </div>
+      </div>
       <footer class="play-footer item-dock">
         <section class="cat-coach" aria-live="polite">
           <div class="cat-speech">
@@ -242,6 +251,7 @@
           <img data-src="assets/icons/navigation/home.webp" width="310" height="290" decoding="async" alt=""><span>홈으로</span>
         </button>
       </div>
+      <button class="text-button result-invite-button" id="result-invite-button" type="button" hidden>🎁 친구 초대하고 힌트 받기</button>
       </div>
     </section>
 

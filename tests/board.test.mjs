@@ -81,10 +81,12 @@ assert.equal(adjacentSeedCountForRound(1), 4);
 assert.equal(adjacentSeedCountForRound(3), 2);
 assert.equal(adjacentSeedCountForRound(5), 0);
 assert.equal(adjacentSeedCountForRound(6), 0);
+// 2026-08: 초보가 1스테이지도 어려워한다는 제보로 첫 판의 인접쌍 하한을
+// 3 -> 4로 올렸다(두칸답 실측 7.0 -> 7.7개/판). 5는 답 방향 다양성을 깎았다.
 assert.deepEqual(boardPacingForRound(1), {
   targetAnswers: 6, maximumAnswers: 9, minimumAnswers: 4,
-  maximumSimpleAnswers: 7,
-  minimumAdjacentPairs: 3, maximumAdjacentPairs: 6, minimumRichAnswers: 1,
+  maximumSimpleAnswers: 8,
+  minimumAdjacentPairs: 4, maximumAdjacentPairs: 7, minimumRichAnswers: 1,
   minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2,
   maximumTrainLines: 2, minimumBoxAnswers: 0,
   minimumAnswerZones: 3, maximumDominantCellShare: 0.52,
@@ -100,6 +102,11 @@ assert.deepEqual(boardPacingForRound(5), {
 assert.equal(boardPacingForRound(7, 'starter').minimumAdjacentPairs, 1);
 
 for (const stage of [1, 3, 5, 8, 10]) {
+  // 스테이지마다 씨드를 다시 놓는다. 하나의 난수 흐름을 이어 쓰면 앞
+  // 스테이지의 생성 방식이 바뀔 때마다(소비하는 난수 개수가 달라져) 뒤
+  // 스테이지 표본이 전부 흔들린다 - 1스테이지 인접쌍 조정이 10스테이지
+  // 단언을 깨뜨리는 식이다. 표본을 독립시켜야 고친 곳만 다시 잰다.
+  randomState = 20260809 + stage * 9973;
   const config = getRoundConfig(stage);
   const pacing = boardPacingForRound(stage);
   const samples = [];

@@ -331,8 +331,13 @@ export function boardPacingForRound(round = 1, assist = 'standard') {
   // composition. Train lines stay hard-capped — line sweeping must never
   // come back — and late difficulty rides on the value mix (triples) and
   // density, not on starving obvious pairs below what randomness allows.
+  // 2026-08 실기기 제보: 초보는 1스테이지도 어려워한다. 첫 판만 인접
+  // 두 칸 답(4+6처럼 옆에 붙은 짝)의 하한을 3에서 4로 올린다 - 실측으로
+  // 두칸답이 판당 7.0개에서 7.7개로 늘고, 그중 절반 이상이 바로 옆에 붙은
+  // 짝이 된다. 홈 규칙 카드가 가르치는 바로 그 모양이 판에 더 많이 보인다.
+  // 5까지 올려 봤더니 답 방향(가로/세로) 다양성이 좁아져 4에서 멈췄다.
   const base = stage === 1
-    ? { targetAnswers: 6, maximumAnswers: 9, minimumAnswers: 4, maximumSimpleAnswers: 7, minimumAdjacentPairs: 3, maximumAdjacentPairs: 6, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2, maximumTrainLines: 2, minimumBoxAnswers: 0 }
+    ? { targetAnswers: 6, maximumAnswers: 9, minimumAnswers: 4, maximumSimpleAnswers: 8, minimumAdjacentPairs: 4, maximumAdjacentPairs: 7, minimumRichAnswers: 1, minimumShapePatterns: 3, minimumValuePatterns: 4, minimumOrientations: 2, maximumTrainLines: 2, minimumBoxAnswers: 0 }
     : stage === 2
       ? { targetAnswers: 8, maximumAnswers: 12, minimumAnswers: 6, maximumSimpleAnswers: 7, minimumAdjacentPairs: 2, maximumAdjacentPairs: 6, minimumRichAnswers: 2, minimumShapePatterns: 4, minimumValuePatterns: 5, minimumOrientations: 2, maximumTrainLines: 1, minimumBoxAnswers: 0 }
       : stage === 3

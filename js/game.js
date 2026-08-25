@@ -71,7 +71,11 @@ import {
   normalClearThresholdForStage,
   isWowClear,
   isNiceClear,
+  AD_CONTINUE_OFFER_MS,
+  AD_CONTINUE_SECONDS,
 } from './data.js';
+import { adReady, adsAvailable, preloadAd, showAd } from './ads.js';
+import { SHARE_REWARD_MODULE_ID } from './data.js';
 import {
   BoardModel, answerReadabilityClass, boardAssistForPerformance, closestReadableAnswer,
 } from './board.js';
@@ -213,6 +217,19 @@ class OingGame {
     this.openingGiftShown = false;
     this.classicSparseHintBoard = -1;
     this.classicAutoHintBoard = -1;
+    this.adContinueUsed = false;
+    this.adContinueOffering = false;
+    this.adRefillUsed = { hint: false, shuffle: false };
+    this.adShowing = false;
+    this.adFlowActive = false;
+    this.adRefillShowing = false;
+    this.pendingShareHints = 0;
+    this.inviteOpening = false;
+    // 친구 초대 버튼은 토스 안 + 모듈 ID가 있을 때만 존재한다.
+    const inviteButton = document.querySelector('#result-invite-button');
+    if (inviteButton) {
+      inviteButton.hidden = !(SHARE_REWARD_MODULE_ID && gameLeaderboardAdapter.isTossEnvironment());
+    }
     this.activeResolution = false;
     this.activeGesture = false;
     this.finishGraceTimer = null;
@@ -374,6 +391,7 @@ class OingGame {
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openGameLeaderboard());
     document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openGameLeaderboard());
+    document.querySelector('#result-invite-button')?.addEventListener('click', () => this.openContactsInviteReward());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
     document.querySelector('#ranking-close').addEventListener('click', () => {
@@ -431,14 +449,15 @@ class OingGame {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         if (privacyCover) privacyCover.hidden = false;
-        this.pause('background');
+        // 광고 창이 덮으면 hidden이 오지만 그건 자리 비움이 아니다.
+        if (!this.adShowing) this.pause('background');
       } else if (privacyCover) {
         privacyCover.hidden = true;
       }
     });
     window.addEventListener('pagehide', (event) => {
       if (privacyCover) privacyCover.hidden = false;
-      this.pause('background');
+      if (!this.adShowing) this.pause('background');
       if (!event.persisted && this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'pagehide');
     });
   }
@@ -553,6 +572,11 @@ class OingGame {
       ...this.state.items,
       stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
       clockAvailable: this.stageDuration > 0,
+      // 0개여도 광고 리필이 남아 있으면 버튼이 죽지 않고 광고 배지를 단다.
+      adRefill: {
+        hint: adsAvailable('hint') && !this.adRefillUsed?.hint,
+        shuffle: adsAvailable('shuffle') && !this.adRefillUsed?.shuffle,
+      },
     };
   }
 
@@ -573,6 +597,17 @@ class OingGame {
     this.snapshotUnlockedCards();
     this.inventory = createRunInventory();
     this.ui.resetItemAvailabilityHistory();
+    // 광고는 판 단위 기회다. 판이 시작될 때 미리 불러 둬야 누른 순간 뜬다.
+    this.adContinueUsed = false;
+    this.adContinueOffering = false;
+    this.adRefillUsed = { hint: false, shuffle: false };
+    ['continue', 'hint', 'shuffle'].forEach((kind) => preloadAd(kind));
+    if (this.pendingShareHints > 0) {
+      const bonus = this.pendingShareHints;
+      this.pendingShareHints = 0;
+      this.grantItems({ hint: bonus }, { source: 'earned' });
+      this.ui.toast(`친구 초대 보너스! 힌트 +${bonus}다냥`);
+    }
     // Classic mode: state.round is the generation depth ramp, not a stage —
     // the ladder machinery is bypassed at every branch below.
     // A personal best buys a later starting board, permanently — the only
@@ -1734,7 +1769,11 @@ class OingGame {
   }
 
   async useHint() {
-    if (!this.canUseItem() || !this.inventory.canConsume('hint')) return;
+    if (!this.canUseItem()) return;
+    if (!this.inventory.canConsume('hint')) {
+      this.watchItemRefillAd('hint');
+      return;
+    }
     this.input.cancel();
     this.beginFirstInteraction();
     const answer = this.model.findHintAnswer();
@@ -1770,7 +1809,11 @@ class OingGame {
   }
 
   async useShuffle() {
-    if (!this.canUseItem() || !this.inventory.canConsume('shuffle')) return;
+    if (!this.canUseItem()) return;
+    if (!this.inventory.canConsume('shuffle')) {
+      this.watchItemRefillAd('shuffle');
+      return;
+    }
     this.input.cancel();
     this.beginFirstInteraction();
     this.state.inputLocked = true;
@@ -2110,7 +2153,7 @@ class OingGame {
     // 서 있다 - 실기기에서 "숫자판만 안 눌린다"로 제보된 모습이다.
     // 어느 경로로 그렇게 됐든 여기서 스스로 풀어준다. 오버레이가 떠 있는
     // 정상적인 일시정지는 건드리지 않는다.
-    if (this.state.running && this.state.paused && !pauseFamilyOpen()) {
+    if (this.state.running && this.state.paused && !pauseFamilyOpen() && !this.adFlowActive) {
       this.resume();
       return;
     }
@@ -2314,6 +2357,9 @@ class OingGame {
 
   pause(reason = 'manual', overlayId = 'pause-overlay') {
     this.ui.setFinalRush(false);
+    // 광고 제안·재생 중에는 일시정지가 끼어들 자리가 없다. 시계는 이미
+    // 멈춰 있고, 오버레이가 겹치면 상태가 꼬인다.
+    if (this.adContinueOffering || this.adShowing || this.adRefillShowing) return;
     if (!this.state.running || this.state.paused) return;
     this.state.paused = true;
     this.activePauseOverlay = overlayId;
@@ -2378,8 +2424,136 @@ class OingGame {
     this.ui.setRestartConfirm(false);
   }
 
+  // TIME UP 순간의 광고 이어하기. 판당 1회, 토스 안에서 광고가 준비돼
+  // 있을 때만 제안한다. true를 돌려주면 판이 되살아난 것이다.
+  async maybeOfferAdContinue() {
+    if (this.adContinueUsed || this.adContinueOffering) return false;
+    if (!adsAvailable('continue') || !adReady('continue')) return false;
+    if (!this.state.running || this.state.paused) return false;
+    this.adContinueOffering = true;
+    this.finishing = true;
+    this.stopTimer();
+    this.state.timeLeft = 0;
+    this.state.inputLocked = true;
+    this.input.cancel();
+    this.ui.setFinalRush(false);
+    this.updateHUD();
+
+    const choice = await this.ui.showContinueOffer(AD_CONTINUE_SECONDS, AD_CONTINUE_OFFER_MS);
+    if (choice !== 'watch') {
+      this.adContinueOffering = false;
+      this.finishing = false;
+      return false;
+    }
+
+    this.adContinueUsed = true;
+    const { rewarded } = await this.runRewardedAd('continue');
+    this.adContinueOffering = false;
+    this.finishing = false;
+    if (!rewarded) return false;
+
+    // 되살리기: 시계만 새로 감고 점수·콤보·판은 그대로 둔다.
+    this.state.timeLeft = AD_CONTINUE_SECONDS;
+    this.lowTimeSpoken = false;
+    this.state.inputLocked = false;
+    this.inputGuardUntil = performance.now() + 150;
+    this.telemetry?.itemUsed('ad-continue');
+    this.ui.showTimeNotice(`+${AD_CONTINUE_SECONDS}초!`);
+    this.ui.setPlayCharacter('cheer', 1200);
+    this.showCatMessage('adContinue', { force: true });
+    roundHaptic();
+    this.beginCountdown();
+    return true;
+  }
+
+  // 친구 초대 리워드. 초대장을 보낸 만큼 힌트를 받고, 다음 판 시작에
+  // 지급한다 - 판 재고는 판마다 새로 만들어져 잔고를 쌓아두지 않기 위해서다.
+  async openContactsInviteReward() {
+    if (this.inviteOpening) return;
+    if (!SHARE_REWARD_MODULE_ID || !gameLeaderboardAdapter.isTossEnvironment()) return;
+    this.inviteOpening = true;
+    const button = document.querySelector('#result-invite-button');
+    if (button) button.disabled = true;
+    try {
+      const module = await import('./vendor/toss-game-center-v1.js');
+      if (!module.isContactsInviteSupported?.()) {
+        this.ui.toast('토스 앱을 업데이트하면 쓸 수 있다냥!');
+        return;
+      }
+      const { earned } = await module.openContactsInvite(SHARE_REWARD_MODULE_ID);
+      if (earned > 0) {
+        this.pendingShareHints = (this.pendingShareHints || 0) + earned;
+        this.ui.toast(`다음 판에 힌트 +${earned} 들어간다냥!`);
+      }
+    } catch {
+      // 실패는 조용히 - 초대는 덤이지 조건이 아니다.
+    } finally {
+      this.inviteOpening = false;
+      if (button) button.disabled = false;
+    }
+  }
+
+  // 광고를 트는 동안의 집안일: 음악을 멈추고, 배경 전환 감지가 판을
+  // 일시정지시키지 않게 막는다(광고 창이 뜨면 visibilitychange가 온다).
+  async runRewardedAd(kind) {
+    this.adShowing = true;
+    pauseMusic();
+    try {
+      return await showAd(kind);
+    } finally {
+      this.adShowing = false;
+      if (this.settings.music && this.state.running && !this.state.paused) playMusic();
+    }
+  }
+
+  // 힌트·셔플이 0개일 때의 광고 리필. 판당 아이템별 1회. 성공하면 +1을
+  // 지급하고, 버튼을 다시 눌러 쓰게 한다(자동 사용은 오발동 여지가 있다).
+  async watchItemRefillAd(kind) {
+    if (this.adRefillUsed[kind] || this.adRefillShowing) return false;
+    if (!adsAvailable(kind) || !adReady(kind)) return false;
+    if (!this.state.running || this.state.paused || this.state.inputLocked) return false;
+    this.adRefillShowing = true;
+    // 광고 동안 시계를 멈춘다. 오버레이 없는 일시정지라, tick의 자가 회복이
+    // 되살리지 않도록 adFlowActive로 표시해 둔다.
+    this.adFlowActive = true;
+    this.state.paused = true;
+    this.pauseStartedAt = performance.now();
+    this.input.cancel();
+    try {
+      const { rewarded } = await this.runRewardedAd(kind);
+      if (rewarded) {
+        this.adRefillUsed[kind] = true;
+        this.grantItems({ [kind]: 1 }, { source: 'ad' });
+        this.ui.toast(kind === 'hint' ? '힌트 +1이다냥!' : '섞기 +1이다냥!');
+        itemHaptic();
+      }
+      return rewarded;
+    } finally {
+      const timeline = rebasePausedTimeline({
+        endAt: this.endAt,
+        freezeEndsAt: this.freezeEndsAt,
+        comboExpiresAt: this.state.comboExpiresAt,
+        pauseStartedAt: this.pauseStartedAt,
+        resumedAt: performance.now(),
+      });
+      this.endAt = timeline.endAt;
+      this.freezeEndsAt = timeline.freezeEndsAt;
+      this.state.comboExpiresAt = timeline.comboExpiresAt;
+      this.state.paused = false;
+      this.adFlowActive = false;
+      this.adRefillShowing = false;
+      this.updateHUD();
+    }
+  }
+
   async finish() {
-    if (this.classic) return this.finishClassic();
+    if (this.classic) {
+      // 시간이 다 됐지만 아직 판을 끝내지 않는다. 광고 이어하기를 한 번
+      // 제안하고, 거절하거나 광고가 실패하면 그때 finishClassic으로 간다.
+      // 점수 제출은 여전히 finishClassic 안에서 한 판에 한 번이다.
+      if (await this.maybeOfferAdContinue()) return;
+      return this.finishClassic();
+    }
 
     if (!this.state.running || this.finishing) return;
     this.finishing = true;
