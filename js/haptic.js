@@ -136,6 +136,13 @@ export function readyCountHaptic(step) {
   else feel('basicWeak', 10);
 }
 
+// 마지막 5초의 심장박동. 초가 줄수록 두 박 사이가 좁아져 몸이 먼저
+// 카운트다운을 느낀다. 소리(10초 경고음)와 겹치지 않는 촉각 전용 층이다.
+export function finalRushHaptic(second = 5) {
+  const gap = 40 + Math.max(0, Math.round(second)) * 14;
+  feel('tickMedium', [18, gap, 26]);
+}
+
 export function gameOverHaptic(newRecord = false) {
   if (newRecord) impact('confetti', [16, 18, 20, 18, 32]);
   else impact('basicMedium', [18, 30, 26]);

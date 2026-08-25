@@ -1645,6 +1645,15 @@ export class GameUI {
 
   // 시간 게이지 위의 +N초 자리를 글자 알림으로도 쓴다 - 프리즈처럼 숫자가
   // 아닌 시간 사건("10초 멈춤!")을 같은 자리, 같은 결로 보여주기 위해서다.
+  // 마지막 5초의 가장자리 맥박. 클래스 토글뿐이라 tick(100ms)에서 불러도
+  // 같은 상태면 아무 일도 하지 않는다.
+  setFinalRush(active) {
+    const on = Boolean(active);
+    if (this.finalRushActive === on) return;
+    this.finalRushActive = on;
+    this.elements.playScreen?.classList.toggle('is-final-rush', on);
+  }
+
   showTimeNotice(label = '') {
     const text = String(label || '').trim();
     if (!text || !this.elements.boardTimeGauge) return;
@@ -2675,6 +2684,26 @@ export class GameUI {
     const panel = this.elements.cardAward;
     const hero = award?.fresh?.at(-1);
     if (!panel || !hero) return false;
+    // 실기기 피드백: 방금 얻은 카드를 눌러 크게 보고 싶다. 갤러리와 같은
+    // 크게 보기 창을 연다 - 공유 버튼도 그대로 따라온다.
+    this.cardAwardHero = hero;
+    panel.setAttribute('role', 'button');
+    panel.tabIndex = 0;
+    if (!this.cardAwardClickBound) {
+      this.cardAwardClickBound = true;
+      const open = () => {
+        const card = this.cardAwardHero;
+        if (!card || panel.hidden) return;
+        this.openChapterViewer({ label: card.label, requirement: card.requirement }, oingCardArtUrl(card));
+      };
+      panel.addEventListener('click', open);
+      panel.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          open();
+        }
+      });
+    }
     const others = award.fresh.length - 1;
     const thumb = oingCardThumbUrl(hero);
     if (this.elements.cardAwardFace && thumb) {

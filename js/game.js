@@ -126,6 +126,7 @@ import {
   clockHaptic,
   cloverHaptic,
   freezeHaptic,
+  finalRushHaptic,
   gameOverHaptic,
   countdownHaptic,
   isHapticEnabled,
@@ -367,7 +368,6 @@ class OingGame {
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openGameLeaderboard());
-    document.querySelector('#pause-leaderboard-button')?.addEventListener('click', () => this.openGameLeaderboard());
     document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openGameLeaderboard());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
@@ -459,9 +459,10 @@ class OingGame {
   // 안내를 띄운다 - 버튼이 안 보이면 기능이 있는지조차 검수할 수 없다는
   // 실사용 피드백을 따랐다.
   //
-  // 자리가 넷인 이유: 홈(판 시작 전), 결과(방금 낸 점수를 견주는 자리),
-  // 일시정지, 그리고 플레이 상단. 플레이 상단 버튼은 누르면 먼저 게임을
-  // 일시정지시키고 연다 - 시계가 도는 채로 네이티브 창이 열리면 안 된다.
+  // 자리는 셋: 홈(판 시작 전), 결과(방금 낸 점수를 견주는 자리), 플레이
+  // 상단. 상단 버튼은 누르면 먼저 게임을 일시정지시키고 연다 - 시계가
+  // 도는 채로 네이티브 창이 열리면 안 된다. 일시정지 안에도 뒀었지만
+  // "너무 여기저기 다 있다"는 피드백으로 뺐다.
   async configureGameLeaderboard() {
     const actions = document.querySelector('.home-actions');
     const home = document.querySelector('#home-leaderboard-button');
@@ -2095,7 +2096,13 @@ class OingGame {
     const countdownSecond = Math.ceil(this.state.timeLeft);
     if (!isFrozen && countdownSecond > 0 && countdownSecond <= 10 && countdownSecond !== this.lastCountdownSecond) {
       this.lastCountdownSecond = countdownSecond;
+      // 마지막 다섯을 세는 심장박동. carry cap 이후 모든 런이 0초 근처에서
+      // 끝나므로, 이 다섯 초가 매 판의 클라이맥스다.
+      if (countdownSecond <= 5) finalRushHaptic(countdownSecond);
     }
+    // 가장자리 붉은 맥박은 클래스 하나로 켠다 - 켜져 있는 5초 동안만
+    // 합성 전용(opacity) 애니메이션이 돌고, 꺼지면 비용이 0이다.
+    this.ui.setFinalRush(!isFrozen && this.state.running && this.state.timeLeft > 0 && this.state.timeLeft <= 5);
     this.updateHUD();
     if (this.state.timeLeft <= 0) this.requestFinish();
   }
@@ -2221,6 +2228,7 @@ class OingGame {
   }
 
   pause(reason = 'manual', overlayId = 'pause-overlay') {
+    this.ui.setFinalRush(false);
     if (!this.state.running || this.state.paused) return;
     this.state.paused = true;
     this.activePauseOverlay = overlayId;
@@ -2287,8 +2295,10 @@ class OingGame {
 
   async finish() {
     if (this.classic) return this.finishClassic();
+
     if (!this.state.running || this.finishing) return;
     this.finishing = true;
+    this.ui.setFinalRush(false);
     clearTimeout(this.finishGraceTimer);
     this.finishGraceTimer = null;
     this.activeGesture = false;
@@ -2444,8 +2454,8 @@ class OingGame {
       this.ui.toast('랭킹은 토스 앱에서 열린다냥! 조금만 기다려냥');
       return;
     }
-    // 네 자리 어디서 눌렀든 중복 실행만 막으면 된다.
-    const buttons = ['#home-leaderboard-button', '#pause-leaderboard-button', '#result-leaderboard-button', '#hud-leaderboard-button']
+    // 세 자리(홈·결과·플레이 상단) 어디서 눌렀든 중복 실행만 막으면 된다.
+    const buttons = ['#home-leaderboard-button', '#result-leaderboard-button', '#hud-leaderboard-button']
       .map((selector) => document.querySelector(selector))
       .filter(Boolean);
     if (this.leaderboardOpening) return;
@@ -2497,6 +2507,7 @@ class OingGame {
   async finishClassic() {
     if (!this.state.running || this.finishing) return;
     this.finishing = true;
+    this.ui.setFinalRush(false);
     clearTimeout(this.finishGraceTimer);
     this.finishGraceTimer = null;
     this.activeGesture = false;

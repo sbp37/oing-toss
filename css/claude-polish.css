@@ -738,3 +738,90 @@
   height: 76%;
   object-fit: contain;
 }
+
+/* ==========================================================================
+   결과 화면 버튼 배치 (실기기 피드백)
+   랭킹은 내 기록 바로 옆, 한 판 더와 아래 줄 사이는 숨 쉴 간격을 둔다.
+   ========================================================================== */
+.result-actions #retry-button { margin-bottom: 7px; }
+/* is-sheet 쪽의 옛 grid-column 지정(내 기록을 2열에 고정)이 이기지 않게
+   같은 특이도로 자리를 준다. */
+.result-actions .result-ranking-button,
+.screen-result.is-sheet .result-ranking-button { grid-column: 1; grid-row: 2; }
+.result-actions .result-leaderboard-button,
+.screen-result.is-sheet .result-leaderboard-button { grid-column: 2; grid-row: 2; font-size: 13px; }
+.result-actions .result-home-button,
+.screen-result.is-sheet .result-home-button { grid-row: 3; margin-top: 3px; }
+
+/* ==========================================================================
+   오버레이 닫기 버튼을 왼쪽 위로 (토스 웹앱 대응)
+   앱인토스는 오른쪽 위에 자체 컨트롤(X·더보기)을 띄운다. 우리 닫기 X가
+   같은 구석에 있으면 눌리지 않는다. 모든 오버레이의 닫기를 왼쪽 위로
+   옮긴다 - 안드로이드 뒤로가기(installBackNavigation)는 원래대로 닫는다.
+   ========================================================================== */
+.overlay-close {
+  left: 12px;
+  right: auto;
+}
+
+/* ==========================================================================
+   상단 HUD 랭킹 버튼: 트로피가 허공에 떠 보인다는 피드백. 일시정지 원판과
+   같은 크림 디스크를 깔아 한 세트로 읽히게 한다.
+   ========================================================================== */
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button {
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #fffdf4, #ffedc4 62%, #f7d795);
+  border: 2px solid rgba(255, 255, 255, .92);
+  box-shadow:
+    0 3px 0 rgba(190, 145, 78, .28),
+    0 6px 12px rgba(120, 96, 52, .18),
+    inset 0 2px 0 rgba(255, 255, 255, .9);
+}
+
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button:active {
+  transform: translateY(1px) scale(.96);
+}
+
+/* i 버튼: 안전영역 하한은 유지하되 기본 위치를 3px 되올린다 - 일시정지와
+   붙어 보인다는 피드백. */
+.play-ui-v4 .play-help-button {
+  top: max(-15px, calc(var(--safe-top, 0px) - 12px));
+}
+
+/* ==========================================================================
+   마지막 5초 (이번 판의 클라이맥스)
+   carry cap 이후 모든 런이 0초 근처에서 끝난다. 가장자리가 심장박동처럼
+   붉게 맥동한다. 베일은 상시 DOM에 있지만 opacity 0으로 잠들어 있고,
+   is-final-rush가 붙은 5초 동안만 opacity 애니메이션(합성 전용)이 돈다 -
+   레이아웃·페인트 비용이 없어 발열 걱정이 없는 구조다.
+   ========================================================================== */
+.play-ui-v4 .final-rush-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 92, 92, .55),
+    inset 0 0 42px 14px rgba(232, 56, 66, .34),
+    inset 0 0 110px 34px rgba(214, 40, 60, .18);
+}
+
+.play-ui-v4.is-final-rush .final-rush-veil {
+  animation: final-rush-beat 1s ease-in-out infinite;
+}
+
+@keyframes final-rush-beat {
+  0%, 100% { opacity: .25; }
+  16% { opacity: .95; }
+  32% { opacity: .4; }
+  46% { opacity: .8; }
+  70% { opacity: .3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4.is-final-rush .final-rush-veil {
+    animation: none;
+    opacity: .45;
+  }
+}
