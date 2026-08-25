@@ -15,6 +15,10 @@ let lastImpactAt = 0;
 // 다시 굽는 명령은 tools/toss-game-center-entry.mjs 주석에 있다.
 const loadTossBridge = () => import('./vendor/toss-game-center-v1.js');
 let tossHapticPromise = null;
+// 다리를 한 번 열어보고 나면 결과를 여기 남긴다. 'pending'인 동안만
+// 네이티브를 믿고 기다리고, null로 판명되면 그때부터 웹 진동으로 돌아간다.
+// 이게 없으면 다리가 끊겼을 때 안드로이드까지 진동이 통째로 죽는다.
+let tossHapticTrigger = 'pending';
 
 function tossHaptic() {
   if (!isAppsInTossWebView()) return null;
@@ -22,13 +26,18 @@ function tossHaptic() {
     .then((module) => (typeof module.triggerHaptic === 'function' && module.isHapticSupported?.()
       ? module.triggerHaptic
       : null))
-    .catch(() => null);
+    .catch(() => null)
+    .then((trigger) => {
+      tossHapticTrigger = trigger;
+      return trigger;
+    });
   return tossHapticPromise;
 }
 
 // 네이티브 햅틱은 "얼마나 오래"가 아니라 "어떤 느낌"으로 부른다. 웹 패턴과
 // 일대일로 맞출 수 없으므로, 각 순간이 무엇인지로 골라 짝지어 둔다.
 function native(type) {
+  if (tossHapticTrigger === null) return false;
   const pending = tossHaptic();
   if (!pending) return false;
   pending.then((trigger) => trigger?.({ type })).catch(() => {});

@@ -15,7 +15,16 @@ export default defineConfig({
     // 게임의 하늘색. 홈 화면과 매니페스트 테마색과 같은 값이다.
     primaryColor: '#8edcf1',
   },
-  // 이 게임은 기기 기능을 쓰지 않는다. 진동은 웹 표준 API라 권한이 필요 없다.
+  // 이 게임은 권한이 필요한 기기 기능을 쓰지 않는다. 진동은 토스의
+  // Device.triggerHaptic으로 울리는데, 이건 권한 목록에 없는 기능이다.
   permissions: [],
+  // 손가락으로 타일을 끄는 게임이라, 웹뷰가 당김을 새로고침이나 튕김으로
+  // 가로채면 드래그가 끊긴다. CSS overscroll-behavior만으로는 네이티브
+  // 웹뷰의 몸짓을 못 막아서 여기서도 꺼 둔다.
+  webView: {
+    bounces: false,
+    pullToRefreshEnabled: false,
+    overScrollMode: 'never',
+  },
   webBundleDir: 'dist/client',
 });
