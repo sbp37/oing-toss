@@ -316,6 +316,10 @@ export const AD_GROUP_IDS = Object.freeze({
 // 친구 공유 리워드(토스 콘솔 '공유 리워드'의 UUID). 친구에게 초대장을
 // 보낸 만큼 힌트를 받는다. 받은 힌트는 다음 판 시작에 지급된다 - 판 재고는
 // 판마다 새로 만들어지므로, 쌓아두는 잔고를 만들지 않기 위해서다.
+// 공개 웹 주소. 토스 안에서 만든 공유 링크의 미리보기 그림(og:image)은
+// 공개 주소여야 해서, 번들 안의 상대 경로를 이 주소로 바꿔 넘긴다.
+export const PUBLIC_SITE_URL = 'https://sbp37.github.io/oing-toss/';
+
 export const SHARE_REWARD_MODULE_ID = '89c3bed0-84a2-4542-91d3-ca383982d4e1';
 
 // TIME UP 이어하기가 주는 시간. 30초는 고수 기준 후반 판 하나를 통째로 더

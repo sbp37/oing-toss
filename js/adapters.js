@@ -1,3 +1,4 @@
+import { PUBLIC_SITE_URL } from './data.js';
 import { isAppsInTossWebView } from './leaderboard.js';
 
 const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
@@ -340,20 +341,68 @@ function shareableUrl() {
 // 토스 안에서 쓸 링크. 다리가 만들어 주는 "토스 앱에서 열리는" 주소이고,
 // 못 만들면 빈 문자열이라 예전처럼 글만 나간다 - 링크가 없다고 공유가
 // 실패하지는 않는다. 판마다 다시 부르지 않도록 한 번 만든 것을 재사용한다.
-let tossShareLinkPromise = null;
+const tossShareLinkCache = new Map();
 
-async function tossShareLink() {
+// 번들 안의 상대 경로를 공개 주소로 바꾼다. 링크 미리보기는 토스 밖에서
+// 열리므로 앱 안의 경로로는 그림을 못 가져온다.
+function publicImageUrl(imageUrl) {
+  if (!imageUrl || typeof imageUrl !== 'string') return '';
+  if (/^https?:\/\//.test(imageUrl)) return imageUrl;
+  return PUBLIC_SITE_URL.replace(/\/$/, '') + '/' + imageUrl.replace(/^\//, '');
+}
+
+async function tossShareLink(imageUrl = '') {
   if (!isAppsInTossWebView()) return '';
-  tossShareLinkPromise ||= import('./vendor/toss-game-center-v1.js')
-    .then((module) => (typeof module.createTossShareLink === 'function'
-      ? module.createTossShareLink()
-      : ''))
-    .catch(() => '');
+  const ogImageUrl = publicImageUrl(imageUrl);
+  if (!tossShareLinkCache.has(ogImageUrl)) {
+    tossShareLinkCache.set(ogImageUrl, import('./vendor/toss-game-center-v1.js')
+      .then((module) => (typeof module.createTossShareLink === 'function'
+        ? module.createTossShareLink(ogImageUrl)
+        : ''))
+      .catch(() => ''));
+  }
   try {
-    const link = await tossShareLinkPromise;
+    const link = await tossShareLinkCache.get(ogImageUrl);
     return typeof link === 'string' ? link : '';
   } catch {
     return '';
+  }
+}
+
+// 토스 웹뷰에는 navigator.share가 없어서, 예전에는 공유 버튼이 조용히
+// 클립보드에 글만 복사하고 끝났다. 네이티브 공유 시트를 연다.
+async function tossShareSheet(message) {
+  if (!isAppsInTossWebView()) return false;
+  try {
+    const module = await import('./vendor/toss-game-center-v1.js');
+    if (!module.isTossShareSupported?.()) return false;
+    return await module.sendTossShareMessage(message);
+  } catch {
+    return false;
+  }
+}
+
+// 클립보드에 그림까지 담아 본다. 브라우저가 webp 붙여넣기를 대부분 막아서
+// 캔버스로 png로 바꿔 넣는다. 안 되면 조용히 글만 복사된다.
+async function copyImageAndText(imageUrl, text) {
+  try {
+    if (typeof ClipboardItem !== 'function' || !navigator.clipboard?.write) return false;
+    const response = await fetch(imageUrl);
+    if (!response.ok) return false;
+    const bitmap = await createImageBitmap(await response.blob());
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!png) return false;
+    await navigator.clipboard.write([new ClipboardItem({
+      'image/png': png,
+      'text/plain': new Blob([text], { type: 'text/plain' }),
+    })]);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -374,9 +423,15 @@ async function fetchShareImage(imageUrl) {
 async function shareTextAndUrl(text, { imageUrl = null } = {}) {
   // 공개 웹은 지금 주소를, 토스 안에서는 토스가 만들어 준 링크를 싣는다.
   // 실기기 제보 "공유하기 눌러도 링크가 안 뜬다"가 이 두 번째 경우였다.
-  const url = shareableUrl() || await tossShareLink();
+  // 카드 그림이 있으면 링크 미리보기에 그 그림이 뜨도록 함께 넘긴다.
+  const url = shareableUrl() || await tossShareLink(imageUrl || '');
   const fullText = url ? text : `${text} 토스에서 '오잉게임'을 검색하면 바로 할 수 있다냥!`;
   try {
+    // 토스 안에서는 네이티브 공유 시트가 먼저다. navigator.share가 없어
+    // 조용히 클립보드로 떨어지던 자리다.
+    if (await tossShareSheet(url ? `${fullText}\n${url}` : fullText)) {
+      return { ok: true, method: 'toss-share', withUrl: Boolean(url) };
+    }
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       const payload = { title: '오잉게임', text: fullText };
       if (url) payload.url = url;
@@ -396,7 +451,12 @@ async function shareTextAndUrl(text, { imageUrl = null } = {}) {
       return { ok: true, method: 'native-share', withUrl: Boolean(url) };
     }
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(`${fullText}\n${url}`.trim());
+      const copyText = `${fullText}\n${url}`.trim();
+      // 그림까지 담기면 붙여넣을 때 카드가 같이 간다. 못 담으면 글만.
+      if (imageUrl && await copyImageAndText(imageUrl, copyText)) {
+        return { ok: true, method: 'clipboard-image', withUrl: Boolean(url) };
+      }
+      await navigator.clipboard.writeText(copyText);
       return { ok: true, method: 'clipboard', withUrl: Boolean(url) };
     }
     return { ok: false, reason: 'share-unavailable', text: fullText, url };

@@ -54,15 +54,35 @@ export function triggerHaptic(options) {
 //
 // path는 intoss:// 로 시작해야 한다. 이 미니앱 자신의 주소는 getSchemeUri가
 // 알려준다. 실패하면 빈 문자열을 돌려주고, 부르는 쪽은 예전처럼 글만 공유한다.
-export async function createTossShareLink() {
+export async function createTossShareLink(ogImageUrl = '') {
   try {
     if (typeof Share?.createLink !== 'function') return '';
     const path = getSchemeUri?.();
     if (typeof path !== 'string' || !path.startsWith('intoss://')) return '';
-    const link = await Share.createLink({ path });
+    // ogImageUrl은 링크 미리보기에 뜨는 그림이다. 공개 주소여야 하고
+    // 구버전 토스는 무시한다 - 없으면 그림 없는 링크가 될 뿐이다.
+    const params = ogImageUrl ? { path, ogImageUrl } : { path };
+    const link = await Share.createLink(params);
     return typeof link === 'string' ? link : '';
   } catch {
     return '';
+  }
+}
+
+// 토스 웹뷰에는 navigator.share가 없다. 그래서 지금까지 공유 버튼이 조용히
+// 클립보드에 글만 복사하고 끝났다("문자만 복사된다"는 제보). 이 함수는
+// 네이티브 공유 시트를 열어 카톡·메시지 등으로 바로 보내게 한다.
+export function isTossShareSupported() {
+  return typeof Share?.sendMessage === 'function';
+}
+
+export async function sendTossShareMessage(message) {
+  try {
+    if (typeof Share?.sendMessage !== 'function') return false;
+    await Share.sendMessage({ message });
+    return true;
+  } catch {
+    return false;
   }
 }
 
