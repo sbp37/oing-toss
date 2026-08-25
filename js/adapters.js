@@ -337,6 +337,26 @@ function shareableUrl() {
   return location.href.split('?')[0];
 }
 
+// 토스 안에서 쓸 링크. 다리가 만들어 주는 "토스 앱에서 열리는" 주소이고,
+// 못 만들면 빈 문자열이라 예전처럼 글만 나간다 - 링크가 없다고 공유가
+// 실패하지는 않는다. 판마다 다시 부르지 않도록 한 번 만든 것을 재사용한다.
+let tossShareLinkPromise = null;
+
+async function tossShareLink() {
+  if (!isAppsInTossWebView()) return '';
+  tossShareLinkPromise ||= import('./vendor/toss-game-center-v1.js')
+    .then((module) => (typeof module.createTossShareLink === 'function'
+      ? module.createTossShareLink()
+      : ''))
+    .catch(() => '');
+  try {
+    const link = await tossShareLinkPromise;
+    return typeof link === 'string' ? link : '';
+  } catch {
+    return '';
+  }
+}
+
 // 카드/장면 그림을 파일로 함께 공유한다. 못 가져오거나 이 브라우저가 파일
 // 공유를 모르면 조용히 글만 나간다 - 그림은 더해주는 것이지 조건이 아니다.
 async function fetchShareImage(imageUrl) {
@@ -352,7 +372,9 @@ async function fetchShareImage(imageUrl) {
 }
 
 async function shareTextAndUrl(text, { imageUrl = null } = {}) {
-  const url = shareableUrl();
+  // 공개 웹은 지금 주소를, 토스 안에서는 토스가 만들어 준 링크를 싣는다.
+  // 실기기 제보 "공유하기 눌러도 링크가 안 뜬다"가 이 두 번째 경우였다.
+  const url = shareableUrl() || await tossShareLink();
   const fullText = url ? text : `${text} 토스에서 '오잉게임'을 검색하면 바로 할 수 있다냥!`;
   try {
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {

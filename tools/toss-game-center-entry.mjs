@@ -1,4 +1,4 @@
-import { Device, Game } from '@apps-in-toss/web-framework';
+import { Device, Game, Share, getSchemeUri } from '@apps-in-toss/web-framework';
 
 // Browser bundle source for js/vendor/toss-game-center-v1.js. Rebuild with:
 // pnpm dlx esbuild@0.25.10 tools/toss-game-center-entry.mjs --bundle
@@ -43,4 +43,25 @@ export function isHapticSupported() {
 
 export function triggerHaptic(options) {
   return Device.triggerHaptic(options);
+}
+
+// 토스 안에서 공유할 때 실을 링크.
+//
+// 실기기 제보: 공유하기를 누르면 링크가 아예 안 뜬다. location.href가 앱인토스
+// 내부 주소라 받는 사람이 열면 오류가 나므로, 지금까지는 토스 안에서 링크를
+// 통째로 뺐기 때문이다. Share.createLink는 그 딥링크를 "토스 앱에서 열리는"
+// 진짜 주소로 바꿔 준다.
+//
+// path는 intoss:// 로 시작해야 한다. 이 미니앱 자신의 주소는 getSchemeUri가
+// 알려준다. 실패하면 빈 문자열을 돌려주고, 부르는 쪽은 예전처럼 글만 공유한다.
+export async function createTossShareLink() {
+  try {
+    if (typeof Share?.createLink !== 'function') return '';
+    const path = getSchemeUri?.();
+    if (typeof path !== 'string' || !path.startsWith('intoss://')) return '';
+    const link = await Share.createLink({ path });
+    return typeof link === 'string' ? link : '';
+  } catch {
+    return '';
+  }
 }

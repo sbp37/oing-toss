@@ -979,3 +979,80 @@
   top: auto;
   bottom: -19px;
 }
+
+/* ==========================================================================
+   홈: 설정 버튼이 랭킹 버튼을 덮던 문제
+   설정은 왼쪽 아래에 절대 위치로 떠 있고, 랭킹·최고기록이 담긴 액션 줄은
+   화면이 짧을수록 아래로 내려온다. 360x640에서 둘이 46x14px 겹쳐서,
+   랭킹 버튼의 왼쪽 아래 모서리가 설정에 가려 안 눌렸다(실측).
+   "나는 안 그런데 다른 폰에서" 라는 제보가 이것이다.
+
+   짧은 화면에서는 설정을 한 단계 작게 만들고 더 왼쪽 아래로 붙여, 액션
+   줄이 내려와도 서로 닿지 않게 한다. 눌리는 면적은 44px을 지킨다.
+   ========================================================================== */
+@media (max-height: 700px) {
+  .screen-home .home-settings {
+    left: 8px;
+    bottom: calc(6px + var(--safe-bottom));
+    width: 46px;
+    min-height: 56px;
+    grid-template-rows: 34px 14px;
+    font-size: 11px;
+  }
+
+  .screen-home .home-settings img { width: 34px; height: 34px; }
+
+  /* 액션 줄도 설정 폭만큼 안쪽으로 들여 겹칠 여지를 없앤다. */
+  .screen-home .home-actions { padding-left: 46px; }
+}
+
+/* ==========================================================================
+   도구 버튼: 눌린 티와 셔플 속도
+   "힌트나 셔플 누르고 반응이 더 빨라야 할 듯. 누르는 느낌도 잘 안 남."
+   손이 닿는 순간 버튼이 먼저 대답하고, 실제 동작은 그 뒤를 따른다.
+   합성 전용(투명도·변형)이라 발열이 없다.
+   ========================================================================== */
+.play-ui-v4 .item-button.is-item-tapped,
+.play-ui-v4 .dock-button.is-item-tapped,
+.play-ui-v4 button.is-item-tapped {
+  animation: item-tap-press 220ms cubic-bezier(.22, .9, .32, 1.2) both;
+}
+
+@keyframes item-tap-press {
+  0% { transform: scale(1); }
+  38% { transform: scale(.9); }
+  100% { transform: scale(1); }
+}
+
+.play-ui-v4 button.is-item-tapped::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 255, 255, .9);
+  opacity: 0;
+  pointer-events: none;
+  animation: item-tap-ring 240ms ease-out both;
+}
+
+@keyframes item-tap-ring {
+  0% { opacity: .95; transform: scale(.86); }
+  100% { opacity: 0; transform: scale(1.16); }
+}
+
+/* 셔플 타일 애니메이션을 JS 대기 시간(240/300ms)에 맞춘다. 길이만 줄이고
+   가감속 곡선은 그대로 둬 리듬이 흐트러지지 않게 했다. */
+.play-ui-v4 .board.is-shuffling-out .tile { animation-duration: 240ms; }
+.play-ui-v4 .board.is-shuffling-in .tile { animation-duration: 300ms; }
+.play-ui-v4 .shuffle-fx { animation-duration: 520ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 button.is-item-tapped,
+  .play-ui-v4 button.is-item-tapped::after { animation-duration: 1ms; }
+}
+
+/* 폭탄: 아이콘이 길게 남아 느리게 느껴진다는 제보. 흩어지는 모습은 남기되
+   길이만 줄여 다음 수로 빨리 넘어가게 한다(JS 대기 330ms와 맞춤). */
+.play-ui-v4 .tile.is-bombed { animation-duration: 330ms !important; }
+.play-ui-v4 .bomb-fx i,
+.play-ui-v4 .bomb-fx b { animation-duration: 420ms; }

@@ -27,9 +27,17 @@ function activeScreenName() {
   return front?.dataset.screen || 'home';
 }
 
-function pauseOverlayOpen() {
-  const overlay = document.querySelector('#pause-overlay');
-  return Boolean(overlay) && !overlay.hasAttribute('hidden');
+// 판을 멈춰 세우는 오버레이는 하나가 아니다. 일시정지에서 '방법'을 열면
+// pause-overlay는 닫히고 help-overlay가 대신 뜨는데, 예전에는 여기서
+// pause-overlay만 봐서 그 상태의 뒤로가기가 아무 일도 하지 않았다.
+// 그러면 paused가 true로 굳어 보드가 영영 안 눌린다.
+const PAUSE_FAMILY = ['#pause-overlay', '#help-overlay'];
+
+export function pauseFamilyOpen() {
+  return PAUSE_FAMILY.some((selector) => {
+    const overlay = document.querySelector(selector);
+    return Boolean(overlay) && !overlay.hasAttribute('hidden');
+  });
 }
 
 export function installBackNavigation(game) {
@@ -61,12 +69,12 @@ export function installBackNavigation(game) {
   window.addEventListener('popstate', () => {
     if (suppress) return;
 
-    if (pauseOverlayOpen()) {
+    if (pauseFamilyOpen()) {
       mark(activeScreenName());
       // Resume refuses unless a run is actually paused; the overlay also shows
       // for other reasons, and closing it then is the honest response.
       if (game.state?.running && game.state?.paused) game.resume();
-      else game.ui.setOverlay('pause-overlay', false);
+      else PAUSE_FAMILY.forEach((selector) => game.ui.setOverlay(selector.slice(1), false));
       return;
     }
 

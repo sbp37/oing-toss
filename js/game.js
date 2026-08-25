@@ -83,7 +83,7 @@ import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureI
 import { gameLeaderboardAdapter } from './leaderboard.js';
 import { RunTelemetry, clearTelemetryRuns, getLocalTelemetrySummary, readTelemetryRuns } from './telemetry.js';
 import { preloadPlayAssets, preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
-import { installBackNavigation } from './navigation.js';
+import { installBackNavigation, pauseFamilyOpen } from './navigation.js';
 import {
   configureMusic,
   duckMusic,
@@ -1512,6 +1512,13 @@ class OingGame {
     } else if (boardGrew) {
       this.ui.showMessage('판이 커졌다냥!', 1600, 'classicBoard');
       this.ui.setPlayCharacter('cheer', 900);
+    } else if (!emptied) {
+      // 다 비우지 않았는데 판이 바뀌는 경우다. 규칙상 남은 칸으로 더는 10을
+      // 만들 수 없으면 새 판을 준다 - 못 푸는 판을 붙들고 있게 두지 않기
+      // 위해서다. 그런데 여태 이 경우에만 아무 말이 없어서, 실기기에서
+      // "답을 못 맞췄는데 넘어간다"는 버그 제보로 돌아왔다. 이유를 말해준다.
+      this.ui.showMessage('더 만들 10이 없다냥! 새 판이다냥', 1800, 'classicBoard');
+      this.ui.setPlayCharacter('wave', 900);
     } else {
       this.ui.showMessage('판갈이다냥!', 1600, 'classicBoard');
       this.ui.setPlayCharacter('wave', 900);
@@ -1737,6 +1744,12 @@ class OingGame {
       return;
     }
     if (!this.inventory.consume('hint').ok) return;
+    // 2026-08 실기기 제보: "누르는 느낌이 안 나고 반응이 느리다."
+    // 소리와 진동이 135ms 뒤에야 울렸다 - 그 사이 손가락은 아무 대답도
+    // 못 받는다. 손이 닿는 즉시 울리고, 답은 60ms 뒤에 뜬다.
+    this.ui.flashItemPress('hint');
+    itemHaptic();
+    playHintSound();
     this.telemetry?.itemUsed('hint');
     this.telemetry?.hint('manual');
     this.syncInventory();
@@ -1746,15 +1759,13 @@ class OingGame {
       Math.floor((answer.c1 + answer.c2) / 2),
     );
     const cast = this.ui.animateItemCast('hint', center || this.ui.boardFrame);
-    await delay(135);
+    await delay(60);
     this.ui.showHint(answer);
     this.showCatMessage('hint');
     this.ui.setPlayCharacter('wave', 900);
     duckMusic(360, 0.7);
-    playHintSound();
-    itemHaptic();
     await cast;
-    this.inputGuardUntil = performance.now() + 120;
+    this.inputGuardUntil = performance.now() + 80;
     this.state.inputLocked = false;
   }
 
@@ -1771,20 +1782,23 @@ class OingGame {
       this.state.inputLocked = false;
       return;
     }
+    // 셔플은 전체가 1.3초였다(대기 170 + 나감 400 + 들어옴 480 + 잠금 280).
+    // 리듬은 그대로 두고 각 구간을 줄여 절반 가까이 당긴다.
+    this.ui.flashItemPress('shuffle');
+    itemHaptic();
+    playShuffleSound();
     this.telemetry?.itemUsed('shuffle');
     this.syncInventory();
     this.showCatMessage('shuffle');
     duckMusic(420, 0.66);
-    playShuffleSound();
-    itemHaptic();
     const cast = this.ui.animateItemCast('shuffle');
-    await delay(170);
+    await delay(60);
     await this.ui.animateShuffleOut();
     this.renderBoard();
     await this.ui.animateShuffleIn();
     itemHaptic();
     await cast;
-    this.inputGuardUntil = performance.now() + 280;
+    this.inputGuardUntil = performance.now() + 140;
     this.state.inputLocked = false;
   }
 
@@ -1812,7 +1826,9 @@ class OingGame {
     );
     this.ui.previewBombTarget(target.rect);
     const cast = this.ui.animateItemCast('bomb', center || this.ui.boardFrame);
-    await delay(175);
+    // 2026-08 실기기 제보: "폭탄 아이콘이 좀 길게 남아 느린 느낌."
+    // 날아가는 시간을 줄여 터지는 순간을 앞당긴다.
+    await delay(110);
     await this.resolveBomb({ ...target, stats: this.model.stats(target.rect) });
     await cast;
   }
@@ -2089,6 +2105,15 @@ class OingGame {
   }
 
   tick() {
+    // 멈춰 있는데 화면에는 멈춤을 알리는 것이 하나도 없다면, 그건 있을 수
+    // 없는 상태다. 유저 눈에는 판이 그대로인데 보드만 안 눌리고 시계도
+    // 서 있다 - 실기기에서 "숫자판만 안 눌린다"로 제보된 모습이다.
+    // 어느 경로로 그렇게 됐든 여기서 스스로 풀어준다. 오버레이가 떠 있는
+    // 정상적인 일시정지는 건드리지 않는다.
+    if (this.state.running && this.state.paused && !pauseFamilyOpen()) {
+      this.resume();
+      return;
+    }
     if (!this.state.running || this.state.paused) return;
     const now = performance.now();
     // 잠금이 풀렸으면 그 사이 눌린 아이템을 대신 실행한다. 해제 지점이

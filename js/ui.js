@@ -272,10 +272,11 @@ export class GameUI {
       void this.elements.startCountdownValue.offsetWidth;
       this.elements.startCountdownValue.classList.add('is-popping');
       onStep(step);
-      // The original OING holds each digit for 650ms and GO! for 500ms —
-      // long enough for the bloom to overshoot and settle before the next
-      // beat lands. Ours ran at 420/500 and read as a stutter.
-      await delay(compact ? (isGo ? 380 : 420) : (isGo ? 500 : 650));
+      // 원조 오잉은 숫자를 650ms, GO!를 500ms 잡아 준다. 그 리듬을 그대로
+      // 옮겼는데 실기기에서 "살짝 느리다"는 제보가 왔다. 박은 그대로 두고
+      // 한 박씩만 당긴다 - 더 줄이면 숫자가 튀는 연출이 다 피기 전에 넘어가
+      // 뚝뚝 끊겨 보인다.
+      await delay(compact ? (isGo ? 340 : 370) : (isGo ? 430 : 545));
     }
 
     if (token !== this.startCountdownToken) return false;
@@ -1161,6 +1162,17 @@ export class GameUI {
     this.boardFrame.classList.remove('is-garden-complete', 'is-garden-perfect');
   }
 
+  // 손가락이 닿는 즉시 도구 버튼이 눌린 티를 낸다. 합성 전용(투명도·변형)
+  // 이라 발열이 없고, 실제 동작이 끝나기를 기다리지 않는다.
+  flashItemPress(type) {
+    const button = this.itemButton(type);
+    if (!button) return;
+    button.classList.remove('is-item-tapped');
+    void button.offsetWidth;
+    button.classList.add('is-item-tapped');
+    window.setTimeout(() => button.classList.remove('is-item-tapped'), 260);
+  }
+
   async animateShuffleOut() {
     this.setShuffleVectors();
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
@@ -1168,14 +1180,14 @@ export class GameUI {
     effect.className = 'shuffle-fx';
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(400);
+    await delay(240);
     this.board.classList.remove('is-shuffling-out');
   }
 
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(480);
+    await delay(300);
     this.board.classList.remove('is-shuffling-in');
     this.boardFrame.classList.remove('is-shuffle-settled');
     void this.boardFrame.offsetWidth;
@@ -1233,9 +1245,10 @@ export class GameUI {
         effect.appendChild(drop);
       }
       this.boardFrame.appendChild(effect);
-      setTimeout(() => effect.remove(), 720);
+      setTimeout(() => effect.remove(), 520);
     }
-    await delay(470);
+    // 파편이 흩어지는 걸 끝까지 보여주되, 다음 수를 막는 시간은 줄인다.
+    await delay(330);
   }
 
   async animateMegaBomb(cells, origin) {
