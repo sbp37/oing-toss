@@ -910,6 +910,13 @@
    쌓아도 ID 하나를 못 이기므로, 같은 ID를 달아야 색이 넘어온다. */
 #play-screen.play-ui-v4 .board-frame:has(.board.is-hint-coach) .hint-region > span {
   background: linear-gradient(180deg, #ffe89a, #f7c53f);
+}
+
+/* 글자색은 span이 아니라 안쪽 strong에 직접 박혀 있다(styles.css의
+   .hint-region span strong { color: white }). span에만 칠하고 strong을
+   빼먹으면 흰 글씨가 노란 배경 위에 그대로 남아 거의 안 보인다 - 처음
+   버전이 그 실수였다. strong까지 같은 특정도로 짚어야 이긴다. */
+#play-screen.play-ui-v4 .board-frame:has(.board.is-hint-coach) .hint-region > span strong {
   color: #6b4c04;
 }
 
