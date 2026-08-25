@@ -371,6 +371,34 @@ console.log('board.test.mjs: 240 regular and 300 early-assist boards plus scorin
     BoardModel: Model, bonusCatTargetForDimensions, boardPacingForRound: pacingFor,
     countTrainLines, rolloutClearOnce, solveFullClear,
   } = await import('../js/board.js');
+
+  // 이 블록은 무작위 보드를 표본으로 재서 성질을 잰다. 난수를 그대로
+  // 두면 표본이 운에 따라 흔들려 생성기가 멀쩡해도 빨개진다. 실제로
+  // 5번 중 3번 깨졌고, 배포 게이트가 된 뒤로는 운으로 배포가 막혔다.
+  //
+  // 씨드가 무엇을 덮는지 밝혀 둔다. 씨드 40개로 재어 보니 8판 표본에서
+  // 인증서가 하나도 안 나오는 비율은 6단계(6x7, round 6)만 25%이고
+  // 4·5·9단계는 0%였다. 즉 흔들리는 곳은 6단계 한 곳이며, 아래
+  // certified >= 1 은 그 단계에 대해서만 표본에 비해 빡빡한 기준이었다.
+  // 6단계에서 완전 클리어 경로가 드문 것은 결함이 아니라 측정된 성질이고
+  // (그래서 그 구간은 rescue 그물에 기댄다), 판이 매끄럽게 끝나는지는
+  // 아래 smoothFinishes 단언이 따로 지킨다.
+  //
+  // board.js는 전역 Math.random을 쓰고, "반복 횟수로 경계를 둔 것은 씨드를
+  // 고정하면 재현되게 하려고"라고 주석에 적혀 있다. 그 의도대로 이 블록 동안만
+  // 씨드를 고정한다. 이제 이 시험은 항상 같은 보드를 보므로, 빨개지면
+  // 운이 아니라 생성기가 정말 변한 것이다(그때는 기준을 다시 재야 한다).
+  const previousRandom = Math.random;
+  let seedState = 0x2f6e2b1;
+  Math.random = () => {
+    // mulberry32. 짧고 분포가 고르며 상태가 32비트라 재현이 확실하다.
+    seedState = (seedState + 0x6d2b79f5) | 0;
+    let t = seedState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  try {
   for (const [cols, rows, round] of [[4, 4, 1], [5, 5, 2], [5, 5, 3], [6, 6, 4], [6, 6, 5], [6, 7, 6], [6, 7, 9]]) {
     let trains = 0;
     let fullClears = 0;
@@ -455,6 +483,9 @@ console.log('board.test.mjs: 240 regular and 300 early-assist boards plus scorin
       assert.ok(smoothFinishes + certified > 0,
         `stage ${round}: smooth-finish evidence exists across the sample`);
     }
+    }
+  } finally {
+    Math.random = previousRandom;
   }
 }
 
