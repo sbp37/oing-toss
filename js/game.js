@@ -73,6 +73,7 @@ import {
   isNiceClear,
   AD_CONTINUE_OFFER_MS,
   AD_CONTINUE_SECONDS,
+  AD_HELP_PACK,
 } from './data.js';
 import { adReady, adsAvailable, preloadAd, showAd } from './ads.js';
 import { SHARE_REWARD_MODULE_ID } from './data.js';
@@ -219,7 +220,7 @@ class OingGame {
     this.classicAutoHintBoard = -1;
     this.adContinueUsed = false;
     this.adContinueOffering = false;
-    this.adRefillUsed = { hint: false, shuffle: false };
+    this.adHelpPackUsed = false;
     this.adShowing = false;
     this.adFlowActive = false;
     this.adRefillShowing = false;
@@ -573,10 +574,7 @@ class OingGame {
       stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
       clockAvailable: this.stageDuration > 0,
       // 0개여도 광고 리필이 남아 있으면 버튼이 죽지 않고 광고 배지를 단다.
-      adRefill: {
-        hint: adsAvailable('hint') && !this.adRefillUsed?.hint,
-        shuffle: adsAvailable('shuffle') && !this.adRefillUsed?.shuffle,
-      },
+      adRefill: { pack: adsAvailable('helpPack') && !this.adHelpPackUsed },
     };
   }
 
@@ -600,8 +598,8 @@ class OingGame {
     // 광고는 판 단위 기회다. 판이 시작될 때 미리 불러 둬야 누른 순간 뜬다.
     this.adContinueUsed = false;
     this.adContinueOffering = false;
-    this.adRefillUsed = { hint: false, shuffle: false };
-    ['continue', 'hint', 'shuffle'].forEach((kind) => preloadAd(kind));
+    this.adHelpPackUsed = false;
+    ['continue', 'helpPack'].forEach((kind) => preloadAd(kind));
     if (this.pendingShareHints > 0) {
       const bonus = this.pendingShareHints;
       this.pendingShareHints = 0;
@@ -1771,7 +1769,7 @@ class OingGame {
   async useHint() {
     if (!this.canUseItem()) return;
     if (!this.inventory.canConsume('hint')) {
-      this.watchItemRefillAd('hint');
+      this.watchItemRefillAd();
       return;
     }
     this.input.cancel();
@@ -1811,7 +1809,7 @@ class OingGame {
   async useShuffle() {
     if (!this.canUseItem()) return;
     if (!this.inventory.canConsume('shuffle')) {
-      this.watchItemRefillAd('shuffle');
+      this.watchItemRefillAd();
       return;
     }
     this.input.cancel();
@@ -2508,46 +2506,58 @@ class OingGame {
     }
   }
 
-  // 힌트·셔플이 0개일 때의 광고 리필. 판당 아이템별 1회. 성공하면 +1을
-  // 지급하고, 버튼을 다시 눌러 쓰게 한다(자동 사용은 오발동 여지가 있다).
-  async watchItemRefillAd(kind) {
-    if (this.adRefillUsed[kind] || this.adRefillShowing) return false;
-    if (!adsAvailable(kind) || !adReady(kind)) return false;
+  // 힌트·셔플이 떨어졌을 때의 도움팩. 광고 하나에 둘을 함께 실어 준다 -
+  // 긴 광고를 보고 +1만 받는 것이 수지가 안 맞는다는 실기기 제보 때문이다.
+  // 판당 1회. 받은 뒤에는 버튼을 다시 눌러 쓴다(자동 사용은 오발동 여지가 있다).
+  async watchItemRefillAd() {
+    if (this.adHelpPackUsed || this.adRefillShowing) return false;
+    if (!adsAvailable('helpPack') || !adReady('helpPack')) return false;
     if (!this.state.running || this.state.paused || this.state.inputLocked) return false;
+
+    // 무엇을 받는지 광고 전에 보여준다(정책이자 예의).
+    const contents = `힌트 +${AD_HELP_PACK.hint} · 셔플 +${AD_HELP_PACK.shuffle}`;
     this.adRefillShowing = true;
-    // 광고 동안 시계를 멈춘다. 오버레이 없는 일시정지라, tick의 자가 회복이
-    // 되살리지 않도록 adFlowActive로 표시해 둔다.
     this.adFlowActive = true;
     this.state.paused = true;
     this.pauseStartedAt = performance.now();
     this.input.cancel();
+    const choice = await this.ui.showHelpPackOffer(contents);
+    if (choice !== 'watch') {
+      this.restoreAfterAdPause();
+      return false;
+    }
     try {
-      const { rewarded, amount } = await this.runRewardedAd(kind);
+      const { rewarded } = await this.runRewardedAd('helpPack');
       if (rewarded) {
-        this.adRefillUsed[kind] = true;
-        // 지급량은 광고가 알려준 콘솔 등록값을 우선한다.
-        const count = amount > 0 ? amount : 1;
-        this.grantItems({ [kind]: count }, { source: 'ad' });
-        this.ui.toast(kind === 'hint' ? `힌트 +${count}이다냥!` : `섞기 +${count}이다냥!`);
+        this.adHelpPackUsed = true;
+        // 팩 내용은 코드가 정한다 - 콘솔 수량은 '팩 1개'라는 뜻일 뿐이다.
+        this.grantItems({ ...AD_HELP_PACK }, { source: 'ad' });
+        this.ui.toast(`도움팩 도착이다냥! ${contents}`);
         itemHaptic();
       }
       return rewarded;
     } finally {
-      const timeline = rebasePausedTimeline({
-        endAt: this.endAt,
-        freezeEndsAt: this.freezeEndsAt,
-        comboExpiresAt: this.state.comboExpiresAt,
-        pauseStartedAt: this.pauseStartedAt,
-        resumedAt: performance.now(),
-      });
-      this.endAt = timeline.endAt;
-      this.freezeEndsAt = timeline.freezeEndsAt;
-      this.state.comboExpiresAt = timeline.comboExpiresAt;
-      this.state.paused = false;
-      this.adFlowActive = false;
-      this.adRefillShowing = false;
-      this.updateHUD();
+      this.restoreAfterAdPause();
     }
+  }
+
+  // 광고 때문에 세워 둔 시계를 다시 감는다. 멈춘 만큼 마감 시각을 미뤄
+  // 광고 길이가 판 시간을 잡아먹지 않게 한다.
+  restoreAfterAdPause() {
+    const timeline = rebasePausedTimeline({
+      endAt: this.endAt,
+      freezeEndsAt: this.freezeEndsAt,
+      comboExpiresAt: this.state.comboExpiresAt,
+      pauseStartedAt: this.pauseStartedAt,
+      resumedAt: performance.now(),
+    });
+    this.endAt = timeline.endAt;
+    this.freezeEndsAt = timeline.freezeEndsAt;
+    this.state.comboExpiresAt = timeline.comboExpiresAt;
+    this.state.paused = false;
+    this.adFlowActive = false;
+    this.adRefillShowing = false;
+    this.updateHUD();
   }
 
   async finish() {

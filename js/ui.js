@@ -1165,12 +1165,12 @@ export class GameUI {
   // TIME UP 이어하기 제안. 'watch' | 'decline'을 돌려준다. 제한 시간이
   // 지나면 자동으로 결과로 넘어간다 - 광고를 볼 생각이 없는 사람을 오래
   // 붙잡는 쪽이 더 나쁘다.
-  showContinueOffer(seconds = 20, timeoutMs = 7000) {
+  showContinueOffer(seconds = 30, timeoutMs = 5000) {
     const overlay = document.querySelector('#continue-overlay');
     if (!overlay) return Promise.resolve('decline');
     this.hydrateDeferredImages(overlay);
     const strong = overlay.querySelector('#continue-watch-button strong');
-    if (strong) strong.textContent = `${Math.round(seconds)}초`;
+    if (strong) strong.textContent = `+${Math.round(seconds)}초`;
     this.setOverlay('continue-overlay', true);
     return new Promise((resolve) => {
       const watch = overlay.querySelector('#continue-watch-button');
@@ -1200,6 +1200,32 @@ export class GameUI {
       renderCountdown();
       ticker = window.setInterval(renderCountdown, 250);
       timer = window.setTimeout(() => settle('decline'), timeoutMs);
+    });
+  }
+
+  // 도움팩 제안. 이어하기와 달리 자동으로 닫지 않는다 - TIME UP은 흐름이
+  // 끝나는 지점이라 재촉이 필요하지만, 여기서는 유저가 스스로 부른 창이고
+  // 시계도 멈춰 있어 서두를 이유가 없다.
+  showHelpPackOffer(contents = '') {
+    const overlay = document.querySelector('#help-pack-overlay');
+    if (!overlay) return Promise.resolve('decline');
+    this.hydrateDeferredImages(overlay);
+    const line = overlay.querySelector('.help-pack-contents');
+    if (line && contents) line.textContent = contents;
+    this.setOverlay('help-pack-overlay', true);
+    return new Promise((resolve) => {
+      const watch = overlay.querySelector('#help-pack-watch-button');
+      const decline = overlay.querySelector('#help-pack-decline-button');
+      const settle = (choice) => {
+        watch?.removeEventListener('click', onWatch);
+        decline?.removeEventListener('click', onDecline);
+        this.setOverlay('help-pack-overlay', false);
+        resolve(choice);
+      };
+      const onWatch = () => settle('watch');
+      const onDecline = () => settle('decline');
+      watch?.addEventListener('click', onWatch);
+      decline?.addEventListener('click', onDecline);
     });
   }
 
@@ -2255,8 +2281,8 @@ export class GameUI {
   updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true, adRefill = {} }) {
     // 0개인데 광고 리필이 남아 있으면 버튼을 죽이지 않는다. 숫자 배지가
     // 광고 배지로 바뀌고, 누르면 광고를 거쳐 +1을 받는다.
-    const hintAd = hint <= 0 && Boolean(adRefill.hint);
-    const shuffleAd = shuffle <= 0 && Boolean(adRefill.shuffle);
+    const hintAd = hint <= 0 && Boolean(adRefill.pack);
+    const shuffleAd = shuffle <= 0 && Boolean(adRefill.pack);
     this.elements.hintCount.textContent = hintAd ? 'AD' : String(hint);
     this.elements.shuffleCount.textContent = shuffleAd ? 'AD' : String(shuffle);
     this.elements.bombCount.textContent = String(bomb);

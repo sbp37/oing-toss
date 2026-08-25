@@ -309,8 +309,10 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // 비어 있으면 그 광고 자리는 게임에 아예 나타나지 않는다.
 export const AD_GROUP_IDS = Object.freeze({
   continue: 'ait.v2.live.ca1448c32e4a47f3',
-  hint: 'ait.v2.live.25b08bdac78f4af5',
-  shuffle: 'ait.v2.live.1c459ebb3c2440e9',
+  // 도움팩은 예전 '힌트' 그룹 자리를 그대로 쓴다. 광고 하나에 힌트와 셔플을
+  // 함께 실기로 하면서 그룹을 나눌 이유가 없어졌다. 콘솔에서 이 그룹의
+  // 보상 단위를 '도움팩 / 1'로 바꿔 두면 기록이 실제와 맞는다.
+  helpPack: 'ait.v2.live.25b08bdac78f4af5',
 });
 
 // 친구 공유 리워드(토스 콘솔 '공유 리워드'의 UUID). 친구에게 초대장을
@@ -333,8 +335,16 @@ export const SHARE_REWARD_MODULE_ID = '89c3bed0-84a2-4542-91d3-ca383982d4e1';
 export const AD_CONTINUE_SECONDS = 30;
 
 // 이어하기 제안을 보여주는 시간. 지나면 결과로 넘어간다 - 광고를 볼 생각이
-// 없는 사람을 오래 붙잡는 것이 더 나쁘다.
-export const AD_CONTINUE_OFFER_MS = 7000;
+// 없는 사람을 오래 붙잡는 것이 더 나쁘다. 버튼에 남은 초를 세어 준다.
+export const AD_CONTINUE_OFFER_MS = 5000;
+
+// 광고 한 번에 주는 도움팩. 실기기 제보: "힌트 하나 받으려고 이 길이 광고를
+// 보는 건 에바." 광고 길이는 구글이 정해서 우리가 못 줄이므로, 한 번의
+// 광고에 힌트와 셔플을 함께 실어 수지를 맞춘다. 판당 1회.
+//
+// 이어하기와 달리 콘솔 수량을 곱하지 않는다 - 이건 '팩 1개'이고 그 내용은
+// 여기서 정한다. 콘솔의 수량은 1(팩 하나)로 두면 된다.
+export const AD_HELP_PACK = Object.freeze({ hint: 2, shuffle: 1 });
 
 export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
 // The board ladder folds the stage mode's onboarding ramp into the classic

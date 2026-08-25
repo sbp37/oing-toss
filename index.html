@@ -154,13 +154,25 @@
       </section>
 
       <div class="final-rush-veil" aria-hidden="true"></div>
+      <div class="overlay continue-overlay" id="help-pack-overlay" hidden>
+        <div class="mini-panel continue-panel" role="dialog" aria-modal="true" aria-labelledby="help-pack-title">
+          <div class="continue-character" aria-hidden="true"><img data-src="assets/characters/cat-peek.webp" width="359" height="306" decoding="async" alt=""></div>
+          <h2 id="help-pack-title">도움이 필요해?</h2>
+          <p class="continue-copy">광고 한 번에 둘 다 챙겨준다냥</p>
+          <button class="btn btn-primary continue-watch-button" id="help-pack-watch-button" type="button">광고 보고 <strong>도움팩</strong> 받기</button>
+          <p class="help-pack-contents">힌트 +2 · 셔플 +1</p>
+          <button class="text-button continue-decline-button" id="help-pack-decline-button" type="button">괜찮아</button>
+          <p class="offer-note">한 판당 1회만</p>
+        </div>
+      </div>
       <div class="overlay continue-overlay" id="continue-overlay" hidden>
         <div class="mini-panel continue-panel" role="dialog" aria-modal="true" aria-labelledby="continue-title">
           <div class="continue-character" aria-hidden="true"><img data-src="assets/characters/cat-peek.webp" width="359" height="306" decoding="async" alt=""></div>
-          <h2 id="continue-title">시간이 다 됐다냥!</h2>
-          <p class="continue-copy">점수랑 콤보 그대로 이어서 갈까냥?</p>
-          <button class="btn btn-primary continue-watch-button" id="continue-watch-button" type="button">광고 보고 <strong>30초</strong> 더!</button>
+          <h2 id="continue-title">TIME UP!</h2>
+          <p class="continue-copy">아깝다냥! 조금만 더?</p>
+          <button class="btn btn-primary continue-watch-button" id="continue-watch-button" type="button">광고 보고 <strong>+30초</strong></button>
           <button class="text-button continue-decline-button" id="continue-decline-button" type="button">결과 보기</button>
+          <p class="offer-note">한 판당 1회만</p>
         </div>
       </div>
       <footer class="play-footer item-dock">

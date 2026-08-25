@@ -1157,3 +1157,18 @@
   color: #7c6a54;
   font-size: 14px;
 }
+
+/* 제안 패널의 작은 단서들. "한 판당 1회만"은 약속을 미리 밝혀 두는 줄이라
+   작고 조용해야 하고, 도움팩 내용은 광고 전에 반드시 보여야 한다. */
+.continue-panel .offer-note {
+  margin: 8px 0 0;
+  color: #a3937d;
+  font-size: 12px;
+}
+
+.continue-panel .help-pack-contents {
+  margin: 8px 0 2px;
+  color: #6b4c04;
+  font-family: var(--font-display);
+  font-size: 15px;
+}
