@@ -843,3 +843,37 @@
     opacity: .45;
   }
 }
+
+/* ==========================================================================
+   End-of-run answers: paint the whole cell, not just the digits
+   Player feedback: after TIME UP only the numbers turned green, so the
+   remaining answers were unreadable - "면적으로 보여줘야 알지".
+   The tile art is painted by a stage-band rule whose specificity (0,6,0)
+   outranked the earlier attempt, and the syrup image sat on top of any
+   background-color anyway. This sheet loads last, and the second selector
+   matches that specificity, so the mint face finally wins. The plain-tile
+   rule in play-layout-v1.css also learned to skip is-end-answer, the same
+   way it already skips is-hint and is-success.
+   ========================================================================== */
+.screen-play.play-ui-v4 .tile.is-end-answer,
+.screen-play.play-ui-v4[data-stage-band] .tile.is-end-answer[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band] .tile.is-end-answer.is-bonus-cat {
+  z-index: 6;
+  border: 0;
+  outline: 2px solid rgba(28, 148, 120, .95);
+  outline-offset: 0;
+  background-color: #63dcb6;
+  background-image: linear-gradient(180deg, #8bedcc, #45cba3);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, .8),
+    0 3px 0 rgba(20, 112, 90, .32),
+    0 6px 14px rgba(26, 126, 102, .3);
+  filter: none;
+}
+
+.screen-play.play-ui-v4 .tile.is-end-answer span,
+.screen-play.play-ui-v4[data-stage-band] .tile.is-end-answer[class*="value-"] span {
+  color: #0d4f41;
+  -webkit-text-stroke: 0.4px #0d4f41;
+  text-shadow: 0 1.5px 0 rgba(255, 255, 255, .9);
+}

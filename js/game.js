@@ -210,6 +210,7 @@ class OingGame {
     this.beginnerAutoHintShown = false;
     this.classicAutoHints = 0;
     this.classicAutoHintAt = -Infinity;
+    this.openingGiftShown = false;
     this.classicSparseHintBoard = -1;
     this.activeResolution = false;
     this.activeGesture = false;
@@ -479,6 +480,16 @@ class OingGame {
   // 플레이 상단의 랭킹: 시계부터 멈춘다. 일시정지 오버레이가 함께 열리므로
   // 네이티브 창에서 돌아와도 '계속하기'가 기다리고 있다.
   openLeaderboardFromPlay() {
+    // 랭킹이 없는 환경(웹·원스토어)에서는 안내만 띄운다. 예전에는 무조건
+    // 먼저 일시정지시켜서, 웹에서 랭킹을 누르면 일시정지 화면이 뜨고
+    // 토스트가 그 뒤에 깔렸다 - "랭킹이 일시정지 화면으로 연결된다"는
+    // 제보의 정체다. 게임은 그대로 굴러간다.
+    if (!this.leaderboardAvailable) {
+      this.openGameLeaderboard();
+      return;
+    }
+    // 토스에서는 네이티브 창이 뜨는 동안 시계가 돌면 안 되므로 먼저 멈춘다.
+    // 일시정지 화면이 함께 열려 돌아왔을 때 '계속하기'가 기다린다.
     if (this.state.running && !this.state.paused) this.pause('leaderboard');
     this.openGameLeaderboard();
   }
@@ -572,6 +583,7 @@ class OingGame {
         /* TODO: to bring back score-gated start boards, restore
            classicStartBoardIndex(storageAdapter.getClassicBestScore()) here. */
         boardIndex: 0,
+        startBoardIndex: 0,
         boardsPlayed: 1,
         chapterKey: null,
         chapterLabel: '',
@@ -602,6 +614,7 @@ class OingGame {
     this.beginnerAutoHintShown = false;
     this.classicAutoHints = 0;
     this.classicAutoHintAt = -Infinity;
+    this.openingGiftShown = false;
     this.classicSparseHintBoard = -1;
     this.lastInteractionAt = performance.now();
     this.activeResolution = false;
@@ -677,8 +690,26 @@ class OingGame {
     this.telemetry?.playReady();
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 100;
+    this.showOpeningGiftHint();
     if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
     else this.beginCountdown();
+    return true;
+  }
+
+  // 판이 열리는 순간 첫 답 하나를 모두에게 보여준다. 초보 보조 힌트와는
+  // 다른 물건이다 - 실력과 무관한 "출발 선물"이고, 첫 판은 원래 쉬운
+  // 구간이라 난도를 건드리지 않는다. 실기기 피드백: 잘하는 사람에게도
+  // 시작 표시가 있으면 기분 좋게 출발한다.
+  showOpeningGiftHint() {
+    if (!this.classic || this.runtime.testMode) return false;
+    if (this.classic.boardIndex !== this.classic.startBoardIndex) return false;
+    if (this.openingGiftShown) return false;
+    const answer = this.model.findHintAnswer();
+    if (!answer) return false;
+    this.openingGiftShown = true;
+    this.telemetry?.hint('opening-gift');
+    this.ui.showHint(answer);
+    this.ui.setPlayCharacter('wave', 900);
     return true;
   }
 

@@ -5249,8 +5249,8 @@
   box-shadow: none;
 }
 
-.play-ui-v4 .tile[class*="value-"]:not(.is-selected):not(.is-success):not(.is-fail):not(.is-hint):not(.is-tutorial):not(.is-clover-hint),
-.play-ui-v4 .tile.is-bonus-cat:not(.is-selected):not(.is-success):not(.is-fail):not(.is-hint):not(.is-tutorial):not(.is-clover-hint) {
+.play-ui-v4 .tile[class*="value-"]:not(.is-selected):not(.is-success):not(.is-fail):not(.is-hint):not(.is-tutorial):not(.is-clover-hint):not(.is-end-answer),
+.play-ui-v4 .tile.is-bonus-cat:not(.is-selected):not(.is-success):not(.is-fail):not(.is-hint):not(.is-tutorial):not(.is-clover-hint):not(.is-end-answer) {
   border: 0;
   outline: 0;
   background-color: transparent;
@@ -5995,3 +5995,4 @@
   background: rgba(255, 255, 255, .72);
   color: transparent;
 }
+
