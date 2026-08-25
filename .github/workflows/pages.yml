@@ -12,16 +12,17 @@
 # 이 주소는 앱인토스 제출의 개인정보 처리방침 URL로도 쓴다.
 #   https://sbp37.github.io/oing-toss/privacy.html
 #
-# ⚠ 아직 배포 경로가 둘이다. 저장소 설정에서 Pages Source를 GitHub Actions로
-# 바꿔야 하나로 정리된다(Settings > Pages > Build and deployment > Source).
+# 배포 경로는 이것 하나다. 저장소 설정의 Pages Source가 GitHub Actions로
+# 되어 있어야 그렇다(Settings > Pages > Build and deployment > Source).
+# 그 설정을 되돌리면 깃허브 기본 "pages build and deployment"가 되살아나
+# 경로가 둘이 되니 건드리지 말 것.
 #
-# 지금은 push 한 번에 이 워크플로와 깃허브 기본 "pages build and deployment"가
-# 둘 다 돌고, 늦게 끝난 쪽이 사이트가 된다. 기본 쪽은 빌드를 하지 않고 저장소
-# 루트를 그대로 올리기 때문에, 이 워크플로가 실패하면 캐시 무효화가 죽은
-# 옛 방식이 그대로 라이브가 된다. 실제로 커밋 4e07066에서 그 일이 일어났다
-# (여기서 npm test가 시드 의존 실패로 깨졌고, 기본 배포가 대신 올라갔다).
-#
-# 그 시험은 씨드를 고정해 고쳤지만, 경쟁 자체는 설정을 바꿔야 사라진다.
+# 왜 중요한가. 기본 쪽은 빌드를 하지 않고 저장소 루트를 그대로 올린다.
+# 루트의 index.html에는 __OING_BUILD_ID__가 글자 그대로 남아 있어 캐시
+# 무효화가 죽는다. 둘이 같이 돌던 시절에는 늦게 끝난 쪽이 사이트가 됐고,
+# 커밋 4e07066에서 이 워크플로의 npm test가 시드 의존 실패로 깨지자
+# 기본 배포가 대신 올라가 빌드 안 된 루트가 라이브가 됐다.
+# (그 시험은 씨드를 고정해 고쳤고, 경로는 설정 변경으로 하나가 됐다.)
 #
 # 페이지는 /oing-toss/ 아래에 놓인다. index.html의 주소가 전부 상대 경로이고
 # manifest의 scope도 "./"라서 하위 경로에서도 그대로 돈다.
