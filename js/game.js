@@ -2447,18 +2447,20 @@ class OingGame {
     }
 
     this.adContinueUsed = true;
-    const { rewarded } = await this.runRewardedAd('continue');
+    const { rewarded, amount } = await this.runRewardedAd('continue');
     this.adContinueOffering = false;
     this.finishing = false;
     if (!rewarded) return false;
 
-    // 되살리기: 시계만 새로 감고 점수·콤보·판은 그대로 둔다.
-    this.state.timeLeft = AD_CONTINUE_SECONDS;
+    // 되살리기: 시계만 새로 감고 점수·콤보·판은 그대로 둔다. 지급량은
+    // 광고가 알려준 콘솔 등록값을 우선한다 - 콘솔에서 바꾸면 그대로 반영.
+    const seconds = amount > 0 ? amount : AD_CONTINUE_SECONDS;
+    this.state.timeLeft = seconds;
     this.lowTimeSpoken = false;
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 150;
     this.telemetry?.itemUsed('ad-continue');
-    this.ui.showTimeNotice(`+${AD_CONTINUE_SECONDS}초!`);
+    this.ui.showTimeNotice(`+${seconds}초!`);
     this.ui.setPlayCharacter('cheer', 1200);
     this.showCatMessage('adContinue', { force: true });
     roundHaptic();
@@ -2520,11 +2522,13 @@ class OingGame {
     this.pauseStartedAt = performance.now();
     this.input.cancel();
     try {
-      const { rewarded } = await this.runRewardedAd(kind);
+      const { rewarded, amount } = await this.runRewardedAd(kind);
       if (rewarded) {
         this.adRefillUsed[kind] = true;
-        this.grantItems({ [kind]: 1 }, { source: 'ad' });
-        this.ui.toast(kind === 'hint' ? '힌트 +1이다냥!' : '섞기 +1이다냥!');
+        // 지급량은 광고가 알려준 콘솔 등록값을 우선한다.
+        const count = amount > 0 ? amount : 1;
+        this.grantItems({ [kind]: count }, { source: 'ad' });
+        this.ui.toast(kind === 'hint' ? `힌트 +${count}이다냥!` : `섞기 +${count}이다냥!`);
         itemHaptic();
       }
       return rewarded;

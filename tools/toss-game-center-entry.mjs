@@ -55,18 +55,34 @@ export function triggerHaptic(options) {
 // path는 intoss:// 로 시작해야 한다. 이 미니앱 자신의 주소는 getSchemeUri가
 // 알려준다. 실패하면 빈 문자열을 돌려주고, 부르는 쪽은 예전처럼 글만 공유한다.
 export async function createTossShareLink(ogImageUrl = '') {
+  if (typeof Share?.createLink !== 'function') return '';
+
+  // createLink의 path는 intoss:// 딥링크여야 한다. 그런데 getSchemeUri가
+  // 주는 값은 환경에 따라 다른 스킴(supertoss:// 등)이거나 referrer 같은
+  // 질의를 달고 있다 - 처음 버전은 intoss://가 아니면 바로 포기해서
+  // 실기기에서 링크가 아예 안 실렸다. 후보를 차례로 시도한다.
+  const candidates = [];
+  let raw = '';
+  try { raw = String(getSchemeUri?.() || ''); } catch {}
+  if (raw.startsWith('intoss://')) candidates.push(raw.split('?')[0]);
   try {
-    if (typeof Share?.createLink !== 'function') return '';
-    const path = getSchemeUri?.();
-    if (typeof path !== 'string' || !path.startsWith('intoss://')) return '';
-    // ogImageUrl은 링크 미리보기에 뜨는 그림이다. 공개 주소여야 하고
-    // 구버전 토스는 무시한다 - 없으면 그림 없는 링크가 될 뿐이다.
-    const params = ogImageUrl ? { path, ogImageUrl } : { path };
-    const link = await Share.createLink(params);
-    return typeof link === 'string' ? link : '';
-  } catch {
-    return '';
+    const appName = globalThis.window?.__appsInTossConstants?.appName;
+    if (typeof appName === 'string' && appName) candidates.push(`intoss://${appName}`);
+  } catch {}
+  if (raw && !raw.startsWith('intoss://')) candidates.push(raw.split('?')[0]);
+
+  for (const path of candidates) {
+    try {
+      // ogImageUrl은 링크 미리보기에 뜨는 그림. 공개 주소여야 하고
+      // 구버전 토스는 무시한다 - 없으면 그림 없는 링크가 될 뿐이다.
+      const params = ogImageUrl ? { path, ogImageUrl } : { path };
+      const link = await Share.createLink(params);
+      if (typeof link === 'string' && link) return link;
+    } catch {
+      // 다음 후보로.
+    }
   }
+  return '';
 }
 
 // 토스 웹뷰에는 navigator.share가 없다. 그래서 지금까지 공유 버튼이 조용히

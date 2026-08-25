@@ -1176,10 +1176,20 @@ export class GameUI {
       const watch = overlay.querySelector('#continue-watch-button');
       const decline = overlay.querySelector('#continue-decline-button');
       let timer = 0;
+      let ticker = 0;
+      // 갑자기 결과로 넘어가면 툭 끊긴 느낌이 든다(실기기 제보). 남은 초를
+      // '결과 보기' 버튼에 세어 줘서, 곧 넘어간다는 것을 미리 알린다.
+      const deadline = performance.now() + timeoutMs;
+      const renderCountdown = () => {
+        const left = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+        if (decline) decline.textContent = `결과 보기 (${left})`;
+      };
       const settle = (choice) => {
         clearTimeout(timer);
+        clearInterval(ticker);
         watch?.removeEventListener('click', onWatch);
         decline?.removeEventListener('click', onDecline);
+        if (decline) decline.textContent = '결과 보기';
         this.setOverlay('continue-overlay', false);
         resolve(choice);
       };
@@ -1187,6 +1197,8 @@ export class GameUI {
       const onDecline = () => settle('decline');
       watch?.addEventListener('click', onWatch);
       decline?.addEventListener('click', onDecline);
+      renderCountdown();
+      ticker = window.setInterval(renderCountdown, 250);
       timer = window.setTimeout(() => settle('decline'), timeoutMs);
     });
   }
@@ -2276,8 +2288,11 @@ export class GameUI {
     const clockUnlocked = isItemUnlockedAtStage('clock', stage) && clockAvailable;
     markItem(this.elements.bombButton, bomb, !bombUnlocked, '', bombUnlocked);
     markItem(this.elements.clockButton, clock, !clockUnlocked, '', clockUnlocked);
-    this.elements.hintButton.dataset.count = String(hint);
-    this.elements.shuffleButton.dataset.count = String(shuffle);
+    // 광고 리필 상태에서는 data-count를 "ad"로 둔다. "0"이면 기존 규칙이
+    // 배지를 숨기고 버튼을 흐리게 만들어, 실기기에서 AD 표시가 통째로
+    // 사라졌다("빨간 숫자만 없어진다"는 제보).
+    this.elements.hintButton.dataset.count = hintAd ? 'ad' : String(hint);
+    this.elements.shuffleButton.dataset.count = shuffleAd ? 'ad' : String(shuffle);
     this.elements.bombButton.dataset.count = String(bomb);
     this.elements.clockButton.dataset.count = String(clock);
     this.elements.hintButton.setAttribute('aria-label', `힌트, ${hint}회 남음`);

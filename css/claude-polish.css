@@ -1103,14 +1103,32 @@
   color: #9b8a77;
 }
 
-/* 아이템 광고 배지: 숫자 자리가 AD로 바뀌고 살짝 숨쉬듯 반짝인다.
-   합성 전용(투명도)이라 발열이 없다. */
+/* 아이템 광고 배지: 숫자 자리가 AD 알약으로 바뀌고, 버튼에 금색 링이
+   둘러져 "광고 보면 충전"으로 읽힌다. 합성 전용(투명도)이라 발열이 없다.
+   data-count가 "ad"라 기존 [data-count="0"] 숨김·흐림 규칙을 타지 않는다. */
+.play-ui-v4 .item-button.is-ad-refill {
+  opacity: 1;
+  filter: none;
+  box-shadow:
+    0 0 0 2.5px rgba(247, 165, 63, .85),
+    0 0 14px rgba(247, 197, 63, .38),
+    0 4px 10px rgba(120, 86, 20, .22);
+}
+
 .play-ui-v4 .item-button.is-ad-refill b {
+  display: grid;
+  place-items: center;
   background: linear-gradient(180deg, #ffd96b, #f7a53f);
   color: #6b4c04;
   font-size: 10px;
   letter-spacing: .4px;
   animation: ad-badge-breathe 1.6s ease-in-out infinite;
+}
+
+/* 아이콘도 산 상태 그대로: 소진 회색 처리를 되돌린다. */
+.play-ui-v4 .item-button.is-ad-refill .item-icon {
+  filter: none !important;
+  opacity: 1 !important;
 }
 
 @keyframes ad-badge-breathe {
