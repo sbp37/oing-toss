@@ -1131,7 +1131,11 @@
    버튼 무리 아래에 조용히 한 줄 - 주 동작(한 판 더)과 경쟁하지 않는다. */
 .result-invite-button {
   display: block;
-  margin: 10px auto 0;
+  /* 화면 맨 아래 가장자리에 딱 붙어 홈 인디케이터와 겹치던 것을 띄운다.
+     결과 시트 안의 마지막 줄이라 아래 여백을 스스로 챙겨야 한다(실측). */
+  margin: 12px auto calc(14px + var(--safe-bottom));
+  padding: 10px 16px;
+  min-height: 44px;
   color: #7c6a54;
   font-size: 14px;
 }
