@@ -877,3 +877,98 @@
   -webkit-text-stroke: 0.4px #0d4f41;
   text-shadow: 0 1.5px 0 rgba(255, 255, 255, .9);
 }
+
+/* ==========================================================================
+   출발 안내 힌트 (노란색)
+   판이 열릴 때 한 번 뜨는 코치 표시다. 평소 힌트는 민트인데, 그 색으로
+   시작하자마자 뜨면 "정답은 여기"로 읽혀 김샌다는 실기기 제보가 있었다.
+   노란색은 정답이 아니라 안내의 색으로 읽히고, 민트 타일 위에서 확실히
+   구분된다.
+
+   특정도를 아래 스테이지 밴드 규칙과 같은 (0,6,0)으로 맞춰 뒀다. 이 파일이
+   마지막에 로드되므로 같은 값이면 이쪽이 이긴다.
+   ========================================================================== */
+.screen-play.play-ui-v4 .board.is-hint-coach .tile.is-hint,
+.screen-play.play-ui-v4[data-stage-band] .board.is-hint-coach .tile[class*="value-"].is-hint {
+  outline: 2px solid rgba(214, 152, 18, .95);
+  outline-offset: -1px;
+  background-color: #ffd96b;
+  background-image: linear-gradient(180deg, #ffe89a, #f7c53f);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .9),
+    0 0 0 3px rgba(247, 197, 63, .3),
+    0 6px 18px rgba(198, 146, 20, .28);
+}
+
+.screen-play.play-ui-v4 .board.is-hint-coach .tile.is-hint-area {
+  background-color: rgba(255, 232, 154, .5);
+}
+
+/* 라벨 알약과 테두리도 같은 색으로. 초록 테두리에 노란 타일이면 따로 논다.
+   #play-screen을 붙이는 이유: 이 영역의 기존 규칙이
+   `#play-screen.play-ui-v4 .hint-region` 이라 ID를 쓴다. 클래스를 아무리
+   쌓아도 ID 하나를 못 이기므로, 같은 ID를 달아야 색이 넘어온다. */
+#play-screen.play-ui-v4 .board-frame:has(.board.is-hint-coach) .hint-region > span {
+  background: linear-gradient(180deg, #ffe89a, #f7c53f);
+  color: #6b4c04;
+}
+
+#play-screen.play-ui-v4 .board-frame:has(.board.is-hint-coach) .hint-region {
+  border-color: rgba(214, 152, 18, .92);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .78),
+    0 0 0 4px rgba(198, 146, 20, .16),
+    inset 0 0 10px rgba(255, 255, 255, .4);
+}
+
+/* ==========================================================================
+   게임 방법(i)을 일시정지 안으로
+   플레이 화면에서 i는 일시정지 버튼 바로 위 같은 세로줄에 4px 간격으로
+   놓여 있어, 실기기에서 두 개가 한 덩어리로 보인다는 제보를 받았다.
+   판 도중에 규칙을 확인하는 일은 급하지 않고, 일시정지는 한 번만 누르면
+   되므로 도구 줄의 네 번째 자리로 옮겼다. 플레이 화면도 그만큼 비었다.
+   ========================================================================== */
+.pause-quick-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pause-tool-button.help-tool-button i {
+  left: 50%;
+  top: 9px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+/* 동그라미 안의 i. 점과 획을 따로 그린다. */
+.pause-tool-button.help-tool-button i::before,
+.pause-tool-button.help-tool-button i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.pause-tool-button.help-tool-button i::before {
+  top: 2.5px;
+  height: 2px;
+  border-radius: 50%;
+}
+
+.pause-tool-button.help-tool-button i::after {
+  top: 6.5px;
+  height: 7px;
+  border-radius: 1px;
+}
+
+/* 힌트 라벨 뒤집기: 답이 맨 윗줄이라 머리 위 공간이 없을 때. 위에 그대로
+   두면 보드 밖으로 나가 점수판에 가려진다. */
+.hint-region.is-label-below > span {
+  top: auto;
+  bottom: -19px;
+}

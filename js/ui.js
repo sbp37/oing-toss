@@ -946,9 +946,16 @@ export class GameUI {
     this.clearSelection();
   }
 
-  showHint(rect) {
+  // tone 'coach'는 판이 열릴 때의 출발 안내다. 같은 표시를 노란색으로 칠하고
+  // "합10 여기!" 대신 "슥 이어봐!"라고 말한다 - 답을 찍어주는 것이 아니라
+  // 조작을 가르치는 것이라, 잘하는 사람도 김새지 않는다. 초기 오잉의
+  // "슥 밀거나, 양끝을 톡톡!" 안내를 되살린 것이다.
+  showHint(rect, { tone = 'answer' } = {}) {
+    const coaching = tone === 'coach';
+    // 가르치는 표시는 조금 더 오래 둔다 - 읽고 따라 해봐야 하는 안내라서.
+    const hold = coaching ? 3000 : 2200;
     clearTimeout(this.hintTimer);
-    this.board.classList.remove('is-hinting');
+    this.board.classList.remove('is-hinting', 'is-hint-coach');
     const areaTiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
@@ -959,6 +966,7 @@ export class GameUI {
       tile.classList.add('is-hint');
     });
     this.board.classList.add('is-hinting');
+    if (coaching) this.board.classList.add('is-hint-coach');
     const bounds = this.selectionBounds(rect);
     if (bounds) {
       this.boardFrame.querySelector('.hint-region')?.remove();
@@ -969,19 +977,23 @@ export class GameUI {
       region.style.top = `${bounds.top - pad}px`;
       region.style.width = `${bounds.right - bounds.left + pad * 2}px`;
       region.style.height = `${bounds.bottom - bounds.top + pad * 2}px`;
+      // 라벨은 기본적으로 영역 위에 뜬다(top: -19px). 답이 맨 윗줄이면 그
+      // 자리가 보드 밖이라 위쪽 점수판과 겹쳐 잘려 보인다. 머리 위 공간이
+      // 모자라면 아래로 뒤집는다.
+      if (bounds.top < 26) region.classList.add('is-label-below');
       const label = document.createElement('span');
       const icon = document.createElement('img');
       icon.src = 'assets/icons/items/hint.webp';
       icon.alt = '';
       const labelText = document.createElement('strong');
-      labelText.textContent = '합10 여기!';
+      labelText.textContent = coaching ? '슥 이어봐!' : '합10 여기!';
       label.append(icon, labelText);
       region.append(label);
       for (let index = 0; index < 4; index += 1) region.appendChild(document.createElement('i'));
       this.boardFrame.appendChild(region);
-      window.setTimeout(() => region.remove(), 2200);
+      window.setTimeout(() => region.remove(), hold);
     }
-    this.hintTimer = setTimeout(() => this.clearHint(), 2200);
+    this.hintTimer = setTimeout(() => this.clearHint(), hold);
   }
 
   // Once the hinted answer is actually played the hint has done its job, so
@@ -995,7 +1007,7 @@ export class GameUI {
       tile.style.removeProperty('--hint-index');
     });
     this.board.querySelectorAll('.tile.is-hint-area').forEach((tile) => tile.classList.remove('is-hint-area'));
-    this.board.classList.remove('is-hinting');
+    this.board.classList.remove('is-hinting', 'is-hint-coach');
     this.boardFrame.querySelector('.hint-region')?.remove();
   }
 
@@ -1945,7 +1957,7 @@ export class GameUI {
 
   feedbackPriority(kind, tone = '') {
     if (kind === 'toast') return 4;
-    if (['firstSuccess', 'itemDrop', 'lowTime', 'freeze', 'clover', 'classicRule', 'classicChapter', 'classicBoard'].includes(tone)) return 3;
+    if (['firstSuccess', 'openingGift', 'itemDrop', 'lowTime', 'freeze', 'clover', 'classicRule', 'classicChapter', 'classicBoard'].includes(tone)) return 3;
     if (['hint', 'shuffle', 'rescue', 'wow', 'perfect', 'classicClear'].includes(tone)) return 2;
     return 1;
   }

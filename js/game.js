@@ -212,6 +212,7 @@ class OingGame {
     this.classicAutoHintAt = -Infinity;
     this.openingGiftShown = false;
     this.classicSparseHintBoard = -1;
+    this.classicAutoHintBoard = -1;
     this.activeResolution = false;
     this.activeGesture = false;
     this.finishGraceTimer = null;
@@ -616,6 +617,7 @@ class OingGame {
     this.classicAutoHintAt = -Infinity;
     this.openingGiftShown = false;
     this.classicSparseHintBoard = -1;
+    this.classicAutoHintBoard = -1;
     this.lastInteractionAt = performance.now();
     this.activeResolution = false;
     this.activeGesture = false;
@@ -690,9 +692,14 @@ class OingGame {
     this.telemetry?.playReady();
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 100;
-    this.showOpeningGiftHint();
+    // 첫 판 튜토리얼이 뜰 차례면 출발 안내는 건너뛴다. 둘 다 "슥 이어봐"를
+    // 가르치는 물건이라 겹치면 라벨이 두 개 쌓여 어지럽다. 튜토리얼이 손을
+    // 잡아주는 쪽이 더 친절하므로 그쪽에 자리를 넘긴다.
     if (this.waitingForFirstDrag) window.setTimeout(() => this.maybeShowTutorial(), 120);
-    else this.beginCountdown();
+    else {
+      this.showOpeningGiftHint();
+      this.beginCountdown();
+    }
     return true;
   }
 
@@ -708,8 +715,12 @@ class OingGame {
     if (!answer) return false;
     this.openingGiftShown = true;
     this.telemetry?.hint('opening-gift');
-    this.ui.showHint(answer);
+    // 노란색으로, 그리고 "정답 여기"가 아니라 "이렇게 하는 거야"로 말한다.
+    // 2026-08 실기기 제보: 시작하자마자 정답을 알려주니 김샌다는 것. 같은
+    // 표시라도 가르치는 말투면 출발 안내로 읽힌다.
+    this.ui.showHint(answer, { tone: 'coach' });
     this.ui.setPlayCharacter('wave', 900);
+    this.showCatMessage('openingGift', { force: true });
     return true;
   }
 
@@ -2179,6 +2190,8 @@ class OingGame {
       sinceLastMs: now - (this.classicAutoHintAt || -Infinity),
       timeLeft: this.state.timeLeft,
       idleMs: now - this.lastInteractionAt,
+      boardIndex: this.classic?.boardIndex ?? -1,
+      lastShownBoard: this.classicAutoHintBoard,
       // Classic keeps its own record, so the beginner test has to read it.
       bestScore: storageAdapter.getClassicBestScore(),
       completedRuns: storageAdapter.getClassicRecentScores().length,
@@ -2187,6 +2200,7 @@ class OingGame {
     if (!answer) return false;
     this.classicAutoHints = (this.classicAutoHints || 0) + 1;
     this.classicAutoHintAt = now;
+    this.classicAutoHintBoard = this.classic?.boardIndex ?? -1;
     this.telemetry?.hint('auto');
     this.lastInteractionAt = now;
     this.ui.showHint(answer);
@@ -2258,7 +2272,18 @@ class OingGame {
     return true;
   }
 
+  // 방법 버튼은 이제 일시정지 안에 있다. 그 상태에서는 이미 paused라
+  // pause()가 조기 반환하므로, 오버레이만 바꿔 끼운다. 방법을 닫으면
+  // resume()이 불려 바로 판으로 돌아간다 - 일시정지로 되돌아가는 것보다
+  // 단계가 하나 적다.
   openHelp() {
+    if (this.state.running && this.state.paused) {
+      this.ui.setOverlay(this.activePauseOverlay, false);
+      this.activePauseOverlay = 'help-overlay';
+      this.ui.setPauseReason('help');
+      this.ui.setOverlay('help-overlay', true);
+      return;
+    }
     this.pause('help', 'help-overlay');
   }
 

@@ -354,7 +354,7 @@ test('classic beginners get repeated auto-hints when they stall', async () => {
   assert.equal(shouldShowClassicAutoHint({ ...base, timeLeft: 5 }), false);
 });
 
-test('a sparse classic tail offers a quiet hint, repeating only in hard states', async () => {
+test('a sparse classic tail offers one quiet hint per board and never repeats', async () => {
   const {
     shouldShowClassicSparseHint, CLASSIC_SPARSE_HINT_IDLE_MS, CLASSIC_SPARSE_HINT_REPEAT_MS,
   } = await import('../js/data.js');
@@ -370,15 +370,16 @@ test('a sparse classic tail offers a quiet hint, repeating only in hard states',
   assert.equal(shouldShowClassicSparseHint({ ...base, lastShownBoard: 4 }), false);
   assert.equal(shouldShowClassicSparseHint({ ...base, boardIndex: 5, lastShownBoard: 4 }), true);
   assert.equal(shouldShowClassicSparseHint({ ...base, timeLeft: 5 }), false);
-  // 같은 판 재발화: 읽기 쉬운 답이 없고(spaced-pair/large) 쿨다운이 지난 때만.
-  const repeat = { ...base, lastShownBoard: 4, sinceLastShownMs: CLASSIC_SPARSE_HINT_REPEAT_MS };
-  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'spaced-pair' }), true);
-  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'large' }), true);
-  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'adjacent-pair' }), false);
-  assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: 'small-2d' }), false);
-  assert.equal(shouldShowClassicSparseHint({
-    ...repeat, bestReadability: 'large', sinceLastShownMs: CLASSIC_SPARSE_HINT_REPEAT_MS - 1,
-  }), false);
+
+  // 2026-08 토스 실기기 제보로 같은 판 재발화를 껐다(REPEAT_MS = Infinity).
+  // 꼬리의 수색 노동을 덜어주려던 장치였는데 "한 판에 두 번씩 나온다"로
+  // 체감됐다. 한 판에 한 번이라는 약속이 더 중요하다.
+  assert.equal(CLASSIC_SPARSE_HINT_REPEAT_MS, Infinity, '재발화는 꺼져 있어야 한다');
+  const repeat = { ...base, lastShownBoard: 4, sinceLastShownMs: 10 * 60 * 1000 };
+  for (const readability of ['spaced-pair', 'large', 'adjacent-pair', 'small-2d']) {
+    assert.equal(shouldShowClassicSparseHint({ ...repeat, bestReadability: readability }), false,
+      `${readability}: 아무리 어려워도 같은 판에서 다시 나서지 않는다`);
+  }
 });
 
 test('past the fatigue line the board stops dropping time-givers', async () => {

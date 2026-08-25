@@ -28,7 +28,7 @@ test('haptic support does not depend on an isSupported() the SDK never defines',
   assert.equal(bundle.isHapticSupported(), true);
 });
 
-test('inside Toss the game takes the native route instead of web vibration', async () => {
+test('Android keeps web vibration even inside Toss - it is faster and stronger', async () => {
   const scope = globalThis;
   const hadWindow = 'window' in scope;
   // SDK는 window.__appsInTossConstants를 직접 읽는다.
@@ -36,9 +36,9 @@ test('inside Toss the game takes the native route instead of web vibration', asy
   scope.ReactNativeWebView = { postMessage() {} };
   scope.__appsInTossConstants = { tossAppVersion: '5.999.0', platformOS: 'ios' };
 
-  // 아이폰에는 이게 아예 없지만, 안드로이드에서 두 번 떨리는 걸 막으려면
-  // 네이티브가 잡혔을 때 웹 진동이 조용해야 한다. 이 값이 늘어나면
-  // 네이티브 경로가 끊겨 웹으로 몰래 떨어졌다는 뜻이다.
+  // navigator.vibrate가 있는 기기(안드로이드)는 토스 안에서도 이 길을 쓴다.
+  // 네이티브 다리는 비동기 왕복이라 한 박자 늦고 세기도 토스가 정한 고정
+  // 타입이라, 실기기에서 "웹앱 때보다 약하고 늦다"는 제보가 나왔다.
   const vibrated = [];
   const hadNavigator = 'navigator' in scope;
   if (!hadNavigator) scope.navigator = {};
@@ -56,10 +56,41 @@ test('inside Toss the game takes the native route instead of web vibration', asy
     successHaptic(8);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    assert.deepEqual(vibrated, [], '네이티브가 있으면 웹 진동은 울리지 않아야 한다');
+    assert.ok(vibrated.length > 0, '웹 진동을 쓸 수 있으면 토스 안에서도 그 길로 간다');
   } finally {
     if (previousVibrate === undefined) delete scope.navigator.vibrate;
     else scope.navigator.vibrate = previousVibrate;
+    if (!hadNavigator) delete scope.navigator;
+    delete scope.ReactNativeWebView;
+    delete scope.__appsInTossConstants;
+    if (!hadWindow) delete scope.window;
+  }
+});
+
+test('an iPhone inside Toss falls to the native bridge - its only route', async () => {
+  const scope = globalThis;
+  const hadWindow = 'window' in scope;
+  if (!hadWindow) scope.window = scope;
+  scope.ReactNativeWebView = { postMessage() {} };
+  scope.__appsInTossConstants = { tossAppVersion: '5.999.0', platformOS: 'ios' };
+
+  // 아이폰에는 navigator.vibrate가 아예 없다. 이 상황을 흉내내어, 웹 진동이
+  // 없을 때 네이티브 다리를 잡는지 확인한다. 여기가 끊기면 아이폰은 진동이
+  // 통째로 0이 되고, 화면상으로는 아무 표시가 없어 알아채기 어렵다.
+  const hadNavigator = 'navigator' in scope;
+  if (!hadNavigator) scope.navigator = {};
+  const previousVibrate = scope.navigator.vibrate;
+  delete scope.navigator.vibrate;
+
+  try {
+    const { successHaptic, isHapticSupported } = await import('../js/haptic.js?scope=ios');
+    assert.equal(isHapticSupported(), true, '토스 안에서는 아이폰도 지원으로 친다');
+    // 던지지 않고 네이티브 경로로 흘러야 한다. 다리 왕복은 노드에서 끝까지
+    // 가지 않으므로(핸드셰이크 없음) 호출이 조용히 끝나는 것까지만 본다.
+    assert.doesNotThrow(() => successHaptic(8));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  } finally {
+    if (previousVibrate !== undefined) scope.navigator.vibrate = previousVibrate;
     if (!hadNavigator) delete scope.navigator;
     delete scope.ReactNativeWebView;
     delete scope.__appsInTossConstants;

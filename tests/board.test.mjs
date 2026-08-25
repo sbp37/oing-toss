@@ -22,7 +22,7 @@ import {
   adjacentSeedCountForRound,
   rectStats,
 } from '../js/board.js';
-import { comboGainForClear, comboMultiplier, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForCloverBonus, scoreForClutch, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint } from '../js/data.js';
+import { BEGINNER_AUTO_HINT_IDLE_MS, comboGainForClear, comboMultiplier, getRoundConfig, scoreForBomb, scoreForCatBonus, scoreForClear, scoreForCloverBonus, scoreForClutch, scoreForMegaBomb, scoreForWideClear, shouldShowBeginnerAutoHint } from '../js/data.js';
 
 const originalRandom = Math.random;
 let randomState = 20260809;
@@ -313,9 +313,15 @@ assert.equal(scoreForCloverBonus(82), 41, 'clover adds a clear half-score bonus 
 assert.equal(scoreForClutch(11, 8), 0, 'ordinary play does not receive the final countdown bonus');
 assert.equal(scoreForClutch(8, 8), 17, 'the last ten seconds add a modest skill bonus');
 assert.equal(scoreForClutch(2, 8), 26, 'the last three seconds carry the strongest clutch reward');
-assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: 6000, bestScore: 2000, completedRuns: 2 }), true);
-assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 41, idleMs: 9000, bestScore: 2000, completedRuns: 2 }), false);
-assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: 9000, bestScore: 9000, completedRuns: 4 }), false);
+// 문턱은 상수를 그대로 참조한다. 예전에 여기 6000을 박아 뒀다가, 실기기
+// 피드백으로 문턱을 올릴 때 이 줄이 같이 깨졌다.
+const idleAtThreshold = BEGINNER_AUTO_HINT_IDLE_MS;
+const idleJustUnder = BEGINNER_AUTO_HINT_IDLE_MS - 1;
+assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: idleAtThreshold, bestScore: 2000, completedRuns: 2 }), true);
+assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: idleJustUnder, bestScore: 2000, completedRuns: 2 }), false,
+  '문턱 바로 아래에서는 아직 나서지 않는다');
+assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 41, idleMs: idleAtThreshold, bestScore: 2000, completedRuns: 2 }), false);
+assert.equal(shouldShowBeginnerAutoHint({ running: true, timeLeft: 35, idleMs: idleAtThreshold, bestScore: 9000, completedRuns: 4 }), false);
 
 Math.random = originalRandom;
 console.log('board.test.mjs: 240 regular and 300 early-assist boards plus scoring assertions passed');

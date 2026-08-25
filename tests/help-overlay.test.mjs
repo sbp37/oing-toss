@@ -20,8 +20,18 @@ test('in-game help presents the rectangle rule with readable motion cues', () =>
   assert.match(css, /@keyframes help-finger-demo/);
 });
 
-test('opening help pauses play and closing it resumes the same run', () => {
+test('help lives inside pause, and opening it works from either state', () => {
   assert.match(game, /#play-help-button'\)\.addEventListener\('click', \(\) => this\.openHelp\(\)\)/);
-  assert.match(game, /openHelp\(\)\s*\{\s*this\.pause\('help', 'help-overlay'\);\s*\}/);
+
+  // 방법 버튼은 플레이 화면이 아니라 일시정지 도구 줄에 있다. 플레이 화면에
+  // 두었을 때 일시정지 버튼 바로 위 같은 세로줄에 붙어 한 덩어리로 보인다는
+  // 실기기 제보를 받았다.
+  assert.match(html, /pause-quick-actions[\s\S]*?id="play-help-button"[\s\S]*?<\/div>/);
+  assert.doesNotMatch(html, /play-help-button[^>]*class="play-help-button"/);
+
+  // 이미 멈춘 상태에서는 pause()가 조기 반환하므로 오버레이만 갈아 끼워야
+  // 한다. 이 분기가 없으면 방법 버튼이 아무 반응도 하지 않는다.
+  assert.match(game, /if \(this\.state\.running && this\.state\.paused\) \{[\s\S]*?setOverlay\('help-overlay', true\);/);
+  assert.match(game, /this\.pause\('help', 'help-overlay'\);/);
   assert.match(game, /this\.ui\.setOverlay\(this\.activePauseOverlay, false\);/);
 });

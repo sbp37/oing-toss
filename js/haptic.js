@@ -4,15 +4,14 @@ let enabled = true;
 let lastSelectionTick = 0;
 let lastImpactAt = 0;
 
-// 토스 안에서는 네이티브 햅틱을 쓴다. 두 가지가 한 번에 해결된다:
-// - 아이폰: 웹 Vibration API를 지원하지 않아 지금까지 진동이 전혀 없었다.
-//   토스의 Device.triggerHaptic은 iOS에서도 동작한다.
-// - 안드로이드: navigator.vibrate의 짧은 패턴은 기기에 따라 거의 안 느껴진다.
-//   네이티브 햅틱은 기기가 정한 세기로 또렷하게 울린다.
+// 진동은 기기마다 다른 길로 간다.
+// - 안드로이드: navigator.vibrate. 동기 호출이라 즉시 울리고, 박자와 길이를
+//   우리가 짠 대로 실을 수 있다. 토스 안에서도 이 길을 쓴다.
+// - 아이폰: 웹 Vibration API가 아예 없다. 토스의 Device.triggerHaptic이
+//   유일한 길이고, 토스 밖에서는 진동이 없다.
 //
-// 번들(js/vendor/toss-game-center-v1.js)에 haptic 내보내기가 아직 없으면
-// 조용히 navigator.vibrate로 떨어진다 - 번들을 다시 굽기 전에도 안전하다.
-// 다시 굽는 명령은 tools/toss-game-center-entry.mjs 주석에 있다.
+// 번들(js/vendor/toss-game-center-v1.js)에 haptic 내보내기가 없으면 조용히
+// 넘어간다. 다시 굽는 명령은 tools/toss-game-center-entry.mjs 주석에 있다.
 const loadTossBridge = () => import('./vendor/toss-game-center-v1.js');
 let tossHapticPromise = null;
 // 다리를 한 번 열어보고 나면 결과를 여기 남긴다. 'pending'인 동안만
@@ -44,25 +43,43 @@ function native(type) {
   return true;
 }
 
+// 웹 진동을 쓸 수 있는지. 안드로이드는 있고 아이폰(사파리/WKWebView)은 없다.
+// 이 한 줄이 두 기기의 갈림길이다 - 아래 feel/impact 주석 참고.
+function canVibrate() {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+
 function vibrate(pattern) {
   if (!enabled) return;
   try { navigator.vibrate?.(pattern); } catch {}
 }
 
-// 네이티브가 잡히면 그쪽만 울린다. 둘 다 울리면 토스 안드로이드에서 두 번
-// 떨리는 것처럼 느껴진다.
+// 어느 길로 울릴지 고르는 곳.
+//
+// 2026-08 실기기 제보(토스 안드로이드): "웹앱 때보다 약하고, 답 맞췄을 때
+// 진동이 살짝 늦다." 원인은 이 함수가 토스 안에서 무조건 네이티브를 고른
+// 것이었다. 네이티브 다리는 비동기 왕복이라 한 박자 늦고, 세기도 토스가
+// 정한 고정 타입이라 우리가 짠 패턴보다 밋밋하다.
+//
+// 그래서 웹 진동이 있으면 그쪽을 먼저 쓴다. navigator.vibrate는 동기 호출이라
+// 즉시 울리고, 박자와 길이를 우리가 정한 그대로 실을 수 있다.
+// 네이티브는 웹 진동이 없는 기기(아이폰)에서만 쓴다 - 거기서는 그것이
+// 유일한 길이고, 없으면 진동이 아예 0이다.
 function feel(type, pattern) {
   if (!enabled) return;
-  if (native(type)) return;
-  vibrate(pattern);
+  if (canVibrate()) { vibrate(pattern); return; }
+  native(type);
 }
 
 function impact(type, pattern) {
   lastImpactAt = performance.now();
   if (!enabled) return;
-  if (native(type)) return;
-  vibrate(0);
-  vibrate(pattern);
+  if (canVibrate()) {
+    vibrate(0);
+    vibrate(pattern);
+    return;
+  }
+  native(type);
 }
 
 export function setHapticEnabled(value) {
@@ -93,11 +110,14 @@ export function selectionTick(isPerfect = false) {
   feel('tickWeak', isPerfect ? [9, 8, 12] : 8);
 }
 
+// 2026-08 실기기 제보: "답 맞췄을 때 쾌감이 적다." 기본 성공이 22ms 단발이라
+// 얇았다. 한 번 툭 치고 곧바로 여운을 남기는 두 박으로 바꾼다 - 길게 늘리면
+// 웅웅거려 싸구려로 느껴지므로, 총 길이가 아니라 박의 개수로 두께를 만든다.
 export function successHaptic(combo = 1) {
-  if (combo >= 8) impact('success', [20, 22, 26, 22, 36]);
-  else if (combo >= 5) impact('basicMedium', [18, 20, 28]);
-  else if (combo >= 3) impact('tickMedium', [16, 18, 22]);
-  else impact('tap', 22);
+  if (combo >= 8) impact('success', [26, 20, 32, 20, 44]);
+  else if (combo >= 5) impact('basicMedium', [22, 18, 34]);
+  else if (combo >= 3) impact('tickMedium', [20, 16, 28]);
+  else impact('tap', [16, 14, 26]);
 }
 
 export function failHaptic() {

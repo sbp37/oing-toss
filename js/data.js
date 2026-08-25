@@ -8,7 +8,10 @@ export const MAX_ITEM_TIME_BONUS_SECONDS = 15;
 export const TIME_ITEM_CAP_SCORE = 300;
 export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 7, clover: 3, freeze: 3 });
 export const EARLY_MEGABOMB_PITY_LIMIT = 4;
-export const BEGINNER_AUTO_HINT_IDLE_MS = 6000;
+// 2026-08 토스 실기기 제보: "자꾸 자기가 먼저 알려주니까 김샌다."
+// 6초는 판을 한 번 훑는 시간이라, 아직 찾는 중인 사람에게 답을 들이밀었다.
+// 진짜 막혀서 손이 멈춘 순간(10초)으로 올린다.
+export const BEGINNER_AUTO_HINT_IDLE_MS = 10000;
 export const BEGINNER_AUTO_HINT_SCORE_CEILING = 6000;
 export const STRUGGLE_HINT_FAILURES = 3;
 export const STAGE_TRANSITION_INPUT_GUARD_MS = 420;
@@ -889,8 +892,8 @@ export function shouldShowBeginnerAutoHint({
 // stage-mode window above never opens. A beginner here gets the same help
 // on the same idle trigger, capped per run so it teaches without solving
 // the game: whenever they stall, the cat points at an answer.
-export const CLASSIC_AUTO_HINT_LIMIT = 3;
-export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 20000;
+export const CLASSIC_AUTO_HINT_LIMIT = 2;
+export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 30000;
 // 2026-08 실기기 피드백: "내가 찾을 수 있는데 알려줘서 김샌다."
 // 3.2초는 꼬리 판을 훑는 시간도 안 된다 - 아직 읽는 중인 사람에게 답을
 // 들이미는 길이였다. 진짜 막힌 순간(7초)으로 올린다. 같은 판 재발화도
@@ -898,16 +901,22 @@ export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 20000;
 // 짝을 이루는 수정이 game.js에 있다: 드래그를 시작하거나 답을 낼 때마다
 // lastInteractionAt을 갱신한다. 그 전에는 idleMs가 "마지막 힌트 이후
 // 시간"이라, 열심히 지우는 중에도 시계가 계속 흘러 힌트가 떴다.
-export const CLASSIC_SPARSE_HINT_IDLE_MS = 7000;
+export const CLASSIC_SPARSE_HINT_IDLE_MS = 11000;
 
 export function shouldShowClassicAutoHint({
   running = false, inputLocked = false, tutorialActive = false,
   shownCount = 0, sinceLastMs = Infinity, timeLeft = 0, idleMs = 0,
   bestScore = 0, completedRuns = 0,
+  boardIndex = 0, lastShownBoard = -1,
 } = {}) {
   const isBeginner = Math.max(0, completedRuns) < 3
     || Math.max(0, Number(bestScore) || 0) < BEGINNER_AUTO_HINT_SCORE_CEILING;
+  // 한 판에 한 번. 이게 유저와의 약속이다 - 이 판에서 이미 도왔으면
+  // 아무리 오래 멈춰 있어도 다시 나서지 않는다.
+  const firstOnThisBoard = Math.round(Number(boardIndex) || 0)
+    !== Math.round(Number(lastShownBoard) || 0);
   return Boolean(running) && !inputLocked && !tutorialActive && isBeginner
+    && firstOnThisBoard
     && Math.max(0, shownCount) < CLASSIC_AUTO_HINT_LIMIT
     && sinceLastMs >= CLASSIC_AUTO_HINT_COOLDOWN_MS
     && timeLeft > 8
@@ -926,7 +935,11 @@ export function shouldShowClassicAutoHint({
 // board.js answerReadabilityClass 기준)이 하나도 없고 쿨다운이 지난 때로
 // 한정한다. bestReadability 기본값이 easy인 이유: 호출자가 가독성을 재지
 // 않으면 재발화는 절대 일어나지 않아야 안전하다.
-export const CLASSIC_SPARSE_HINT_REPEAT_MS = 14000;
+// 같은 판 재발화를 껐다(Infinity). 꼬리 구간의 수색 노동을 덜어주려던
+// 장치였는데, 실기기에서는 "한 판에 두 번씩 나온다"로 체감됐다. 한 판에
+// 한 번이라는 약속이 훨씬 중요하다. 꼬리가 정말 안 풀리면 힌트 아이템이
+// 있고, 그건 유저가 스스로 고르는 것이다.
+export const CLASSIC_SPARSE_HINT_REPEAT_MS = Infinity;
 
 export function shouldShowClassicSparseHint({
   running = false, inputLocked = false, tutorialActive = false,
@@ -1079,6 +1092,13 @@ export const MESSAGES = Object.freeze({
   struggleHint: Object.freeze(['이건 내가 살짝 보여줄게냥!', '잠깐, 여기부터 다시 봐봐!', '이 조합은 서비스다냥.']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['막혔냥? 여기 봐보라냥!', '반짝이는 칸을 보라냥!']),
+  // 판이 열릴 때의 출발 안내. 정답을 알려주는 말이 아니라 조작을 가르치는
+  // 말이어야 한다 - 초기 오잉의 '슥 밀거나, 양끝을 톡톡!' 자리다.
+  openingGift: Object.freeze([
+    '노란 두 칸을 슥 이어봐라냥!',
+    '이렇게 슥 밀면 된다냥!',
+    '노란 칸끼리 이어보라냥. 이게 기본이다냥!',
+  ]),
   perfect: Object.freeze(['퍼펙트! 안 막혔다냥!', '싹 비웠다냥, 최고다냥!']),
   rescue: Object.freeze(['막혔네, 섞어줄게냥!', '잠깐, 판 좀 다듬는다냥!', '요렇게 섞으면 된다냥!']),
   shuffle: Object.freeze(['판 좀 뒤집어볼까냥?', '숫자들 자리 바꾼다!', '내가 한번 섞어주지냥.']),
