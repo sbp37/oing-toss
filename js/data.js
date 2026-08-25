@@ -309,8 +309,8 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // 비어 있으면 그 광고 자리는 게임에 아예 나타나지 않는다.
 export const AD_GROUP_IDS = Object.freeze({
   continue: 'ait.v2.live.ca1448c32e4a47f3',
-  hint: '',
-  shuffle: '',
+  hint: 'ait.v2.live.25b08bdac78f4af5',
+  shuffle: 'ait.v2.live.1c459ebb3c2440e9',
 });
 
 // 친구 공유 리워드(토스 콘솔 '공유 리워드'의 UUID). 친구에게 초대장을
