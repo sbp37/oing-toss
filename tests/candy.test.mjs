@@ -1,0 +1,113 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import {
+  CANDY_PER_FEED,
+  CANDY_MIN_PER_RUN,
+  CANDY_MAX_PER_RUN,
+  CANDY_FEED_MILESTONES,
+  CANDY_HAPPY_POSES,
+  MESSAGES,
+  candyForRun,
+  pickMessage,
+} from '../js/data.js';
+
+// 별사탕은 "한 판 = 간식 한 번"의 리듬이 전부다. 그 리듬은 두 숫자에만
+// 걸려 있어서(한 판 수급량, 먹이기 값) 한쪽이 흔들리면 조용히 망가진다 -
+// 첫 판(점수/120, 상한 60)이 그렇게 실기기에서 사탕 30개를 쌓았다.
+
+test('a run pays about one feeding, never a stockpile', () => {
+  for (const score of [0, 500, 3600, 6000, 12000, 99999]) {
+    const earned = candyForRun(score);
+    assert.ok(earned >= CANDY_MIN_PER_RUN, `${score}점이 최소치보다 적다`);
+    assert.ok(earned <= CANDY_MAX_PER_RUN, `${score}점이 상한을 넘었다`);
+  }
+
+  // 못한 판은 한 번 먹이기에 모자라 다음 판까지 모으고, 잘한 판도 두 번은
+  // 못 준다. 이 두 줄이 무너지면 사탕이 쌓이기만 하고 줄 이유가 사라진다.
+  assert.ok(candyForRun(0) < CANDY_PER_FEED, '바닥 판이 곧바로 한 번치를 준다');
+  assert.ok(candyForRun(999999) < CANDY_PER_FEED * 2, '한 판에 두 번치가 나온다');
+
+  // 보통 판(6,000점 언저리)은 딱 한 번.
+  assert.equal(candyForRun(6000), CANDY_PER_FEED);
+});
+
+test('the feeding lines are many enough not to repeat within a session', () => {
+  const pool = MESSAGES.candyFeed;
+  assert.ok(Array.isArray(pool));
+  // 사람이 "또 같은 말이네"를 느끼는 건 서너 번째 반복부터다. 한 판에 한 번
+  // 먹인다고 보면 하루 대여섯 번이니, 열다섯 개 아래로 내려가면 티가 난다.
+  assert.ok(pool.length >= 15, `대사가 ${pool.length}개뿐이다`);
+  assert.equal(new Set(pool).size, pool.length, '같은 대사가 두 번 들어 있다');
+
+  // 직전 대사는 반드시 빠진다 - 연속 중복이 제일 눈에 띈다.
+  for (const previous of pool) {
+    for (let i = 0; i < 12; i += 1) {
+      assert.notEqual(pickMessage('candyFeed', previous), previous);
+    }
+  }
+});
+
+test('the first feeding and the milestones get their own lines', () => {
+  assert.ok(MESSAGES.candyFeedFirst.length >= 1);
+  assert.ok(MESSAGES.candyFeedMilestone.length >= CANDY_FEED_MILESTONES.length - 1);
+  assert.ok(MESSAGES.candyHowTo.length >= 1);
+  // 특별한 자리의 말이 평소 말과 섞여 있으면 특별하지 않다.
+  const ordinary = new Set(MESSAGES.candyFeed);
+  for (const line of [...MESSAGES.candyFeedFirst, ...MESSAGES.candyFeedMilestone]) {
+    assert.ok(!ordinary.has(line), `${line}이 평소 대사에도 있다`);
+  }
+});
+
+test('feeding poses rotate through art that actually exists', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(CANDY_HAPPY_POSES.length >= 3, '포즈가 셋보다 적다');
+  // 고양이 그림은 여섯 장뿐이고 fail은 이 자리에 못 쓴다. 없는 파일을
+  // 가리키면 먹인 순간 고양이가 통째로 사라진다.
+  for (const pose of CANDY_HAPPY_POSES) {
+    assert.match(pose, /^assets\/characters\/cat-[a-z]+\.webp$/);
+    assert.ok(!pose.includes('cat-fail'), '먹였는데 시무룩한 그림이 뜬다');
+  }
+  assert.match(html, /id="candy-heart"/);
+});
+
+test('the heart does not squat on the pseudo-element that draws the cat shadow', async () => {
+  const polish = await readFile(new URL('../css/claude-polish.css', import.meta.url), 'utf8');
+  const styles = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+
+  // styles.css의 .home-character-stage::after는 고양이 바닥 그림자이고
+  // z-index:-1로 깔려 있다. 하트를 거기에 그리면 고양이 뒤로 숨어 한 번도
+  // 보이지 않고, 대신 그 1.2초 동안 그림자가 사라진다. 실측으로 잡은 버그다.
+  assert.match(styles, /\.home-character-stage::after[\s\S]{0,200}z-index:\s*-1/);
+  assert.doesNotMatch(polish, /\.home-character-stage\.is-happy::after/);
+  assert.match(polish, /\.candy-heart\s*\{[\s\S]*?z-index:\s*[1-9]/);
+
+  // 이모지는 기기 폰트에 기대는데 우리 폰트는 서브셋이라 그 글자가 없다.
+  assert.match(polish, /\.candy-heart[\s\S]*?background:\s*url\("\.\.\/assets\/decor\/heart\.webp"/);
+});
+
+test('the result sheet says where the candy came from', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const ui = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+
+  // 실기기 제보: "왜 사탕이 생긴 건지 모르겠다." 홈에서 숫자만 늘어나면
+  // 그것이 판의 대가라는 걸 알 길이 없다. 결과창이 유일한 설명 자리다.
+  assert.match(html, /id="result-candy-earned"/);
+  assert.match(ui, /resultCandyEarned/);
+  // 받은 개수와 총 개수를 함께. 총량이 보여야 "홈 가서 줘야지"가 생긴다.
+  assert.match(ui, /별사탕 \+\$\{earned\} · 모은 사탕 \$\{total\}개/);
+  assert.match(game, /this\.lastResultSummary\.candy = \{/);
+  assert.match(game, /total: storageAdapter\.getCandy\(\)/);
+});
+
+test('the drag hint shows only to someone who has never fed the cat', async () => {
+  const candy = await readFile(new URL('../js/candy.js', import.meta.url), 'utf8');
+  // 안내는 한 번 먹이면 영영 닫힌다. 홈에 상시 안내를 얹으면 첫 화면이
+  // 시끄러워지고, 하단은 이미 버튼과 고양이로 빡빡하다.
+  assert.match(candy, /getFedCount\(\) <= 0/);
+  assert.match(candy, /is-nudge/);
+  assert.match(candy, /candyHowTo/);
+  // 손이 닿는 순간 안내 동작은 멈춘다.
+  assert.match(candy, /piece\.classList\.remove\('is-nudge'\)/);
+});

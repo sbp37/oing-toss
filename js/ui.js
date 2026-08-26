@@ -180,6 +180,7 @@ export class GameUI {
       chapterViewerArt: document.querySelector('#chapter-viewer-art'),
       chapterViewerNote: document.querySelector('#chapter-viewer-note'),
       resultChapterEarned: document.querySelector('#result-chapter-earned'),
+      resultCandyEarned: document.querySelector('#result-candy-earned'),
       gardenRevealBest: document.querySelector('#garden-reveal-best'),
       gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
       finalScore: document.querySelector('#final-score'),
@@ -2641,7 +2642,7 @@ export class GameUI {
     score, maxCombo, round, successCount = 0, catsCollected = 0,
     catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
-    classic = null, cardAward = null,
+    classic = null, cardAward = null, candy = null,
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
     // 지난 판의 연출이 남아 있으면 새 판의 첫 프레임에 그것이 먼저 보인다.
@@ -2674,6 +2675,17 @@ export class GameUI {
       this.elements.resultChapterEarned.hidden = !classic || collected.length === 0 || cardAwardActive;
       this.elements.resultChapterEarned.textContent = collected.length
         ? `새 그림 획득! ${collectionCount}/${collectionTotal}`
+        : '';
+    }
+    // 이 판에서 번 별사탕. 사탕이 어디서 났는지 알려주는 유일한 자리라
+    // 카드 패널이 서는 판에도 숨기지 않는다 - 숨기면 하필 제일 잘한 판에서
+    // 사탕의 출처가 사라진다.
+    if (this.elements.resultCandyEarned) {
+      const earned = Math.max(0, Math.round(Number(candy?.earned) || 0));
+      const total = Math.max(0, Math.round(Number(candy?.total) || 0));
+      this.elements.resultCandyEarned.hidden = earned <= 0;
+      this.elements.resultCandyEarned.textContent = earned > 0
+        ? `별사탕 +${earned} · 모은 사탕 ${total}개`
         : '';
     }
     this.elements.retryButton.textContent = classic ? '한 판 더!' : resultRetryLabel({

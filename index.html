@@ -45,6 +45,8 @@
         </header>
         <div class="character-stage home-character-stage">
           <img class="home-cat" src="assets/characters/cat-idle.webp" width="422" height="480" loading="eager" decoding="async" fetchpriority="high" alt="앉아 있는 블루 고양이">
+          <p class="home-bubble" id="home-bubble" hidden aria-live="polite"></p>
+          <i class="candy-heart" id="candy-heart" aria-hidden="true"></i>
           <div class="candy-tray" id="candy-tray" hidden>
             <button class="candy-piece" id="candy-piece" type="button" aria-label="별사탕을 고양이에게 끌어다 주기">
               <img src="assets/decor/star.webp" width="266" height="256" decoding="async" alt="">
@@ -231,6 +233,7 @@
         <div class="new-record" id="new-record" hidden>NEW RECORD</div>
         <p class="result-stage-progress" id="result-stage-progress">STAGE 1 도달 · 성공 0회</p>
         <p class="result-chapter-earned" id="result-chapter-earned" hidden></p>
+        <p class="result-candy-earned" id="result-candy-earned" hidden aria-live="polite"></p>
         <p class="score-compare-secondary" id="result-previous-compare" hidden></p>
         <div class="result-record-meter" id="result-record-meter" aria-label="최고기록 도전 진행도">
           <span id="result-record-meter-label">최고기록 도전 0%</span>

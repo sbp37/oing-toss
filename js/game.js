@@ -2860,9 +2860,18 @@ class OingGame {
     if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
     // 별사탕 적립. 못한 판도 최소치는 받는다 - 2분을 쓰고 아무것도 못 받는
     // 판이 초보를 제일 빨리 지치게 한다.
+    //
+    // 적립을 결과창에 알리는 것이 이 기능의 안내 전부다. 실기기 제보로
+    // "왜 사탕이 생긴 건지 모르겠다"는 말이 나왔는데, 홈에서 숫자만 늘어나면
+    // 그 사탕이 판의 대가라는 걸 알 길이 없기 때문이었다. 받은 개수와 함께
+    // 총 개수도 보여준다 - 총량이 보여야 "홈 가서 줘야지"가 생긴다.
     if (!this.runtime.testMode) {
       this.lastCandyEarned = candyForRun(this.state.score);
       storageAdapter.addCandy(this.lastCandyEarned);
+      this.lastResultSummary.candy = {
+        earned: this.lastCandyEarned,
+        total: storageAdapter.getCandy(),
+      };
     }
     if (!this.runtime.testMode) {
       void gameLeaderboardAdapter.submitClassicScoreOnce({
@@ -2977,10 +2986,9 @@ class OingGame {
 
 const game = new OingGame();
 installBackNavigation(game);
-// 홈의 별사탕 접시. 고양이에게 끌어다 주면 좋아하는 모습으로 바뀐다.
-game.candy = installCandyFeeding({
-  onFed: () => game.ui.toast('냠냠! 맛있다냥'),
-});
+// 홈의 별사탕 접시. 고양이에게 끌어다 주면 포즈가 바뀌고 말풍선이 뜬다.
+// 반응은 candy.js가 직접 낸다 - 토스트까지 겹치면 같은 말이 두 군데서 난다.
+game.candy = installCandyFeeding();
 
 if (game.runtime.testMode) {
   window.__OING_TEST__ = {

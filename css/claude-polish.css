@@ -1245,22 +1245,37 @@
   transform: scale(1.06);
 }
 
-/* 먹은 순간. 통통 튀고 하트가 하나 올라간다. */
-.home-character-stage.is-happy .home-cat { animation: candy-happy 620ms ease-out; }
+/* 먹은 순간. 두 박으로 통통 튀고 하트가 하나 올라간다. 한 박이면 그냥
+   흔들린 것처럼 보이고, 세 박이면 방정맞다. */
+.home-character-stage.is-munching .home-cat { animation: candy-munch 880ms ease-out; }
 
-.home-character-stage.is-happy::after {
-  content: "💛";
+/* 먹은 직후 떠오르는 하트.
+   두 번 고쳤다. 처음엔 무대의 ::after를 빌려 그렸는데, 그 자리는 이미
+   고양이의 바닥 그림자다(styles.css, z-index:-1). 그래서
+   하트가 고양이 뒤로 깔려 한 번도 보인 적이 없고, 대신 1.2초 동안 그림자가
+   사라졌다. 그리고 내용이 이모지였다 - 우리 폰트는 서브셋이라 그 글자가
+   없어서, 설령 앞에 왔더라도 빈자리로 떴을 것이다.
+   지금은 제 요소에 게임이 쓰는 하트 그림으로 그린다. */
+.candy-heart {
   position: absolute;
-  left: 50%;
-  top: 12%;
-  font-size: 26px;
+  /* 고양이 오른쪽 볼 옆. 위로 34px 떠오르는 동안에도 말풍선에 안 닿는다. */
+  left: 72%;
+  top: 46%;
+  z-index: 5;
+  width: 30px;
+  height: 27px;
+  background: url("../assets/decor/heart.webp") center / contain no-repeat;
+  opacity: 0;
   pointer-events: none;
-  animation: candy-heart 1200ms ease-out both;
 }
 
-@keyframes candy-happy {
+.candy-heart.is-flying { animation: candy-heart 1200ms ease-out both; }
+
+@keyframes candy-munch {
   0% { transform: scale(1); }
-  35% { transform: scale(1.09) rotate(-2deg); }
+  18% { transform: scale(1.09) rotate(-2deg); }
+  40% { transform: scale(1); }
+  58% { transform: scale(1.05) rotate(1.5deg); }
   100% { transform: scale(1); }
 }
 
@@ -1272,11 +1287,72 @@
 
 .home-cat { transition: transform 160ms ease, filter 160ms ease; }
 
+/* 아직 한 번도 안 줘 본 사람에게만. 사탕이 고양이 쪽으로 스윽 갔다 돌아오며
+   "끌어서 주는 것"임을 손에 알려 준다. 한 번 먹이면 이 동작은 사라진다.
+   말풍선 안내와 짝이다 - 글만으로는 조작이 안 읽히고, 동작만으로는 왜
+   해야 하는지가 안 읽힌다. */
+.candy-piece.is-nudge {
+  animation: candy-nudge 2.6s ease-in-out infinite;
+}
+
+@keyframes candy-nudge {
+  0%, 62%, 100% { transform: translate(0, 0) scale(1); }
+  70% { transform: translate(-16px, -12px) scale(1.12); }
+  78% { transform: translate(-24px, -18px) scale(1.12); }
+  88% { transform: translate(0, 0) scale(1); }
+}
+
+/* 홈 말풍선.
+   평소엔 없다. 사탕을 먹였을 때와 첫 안내 때만 잠깐 떴다 사라지므로
+   "말풍선이 떴다 = 방금 뭔가 있었다"는 신호가 된다. 상시로 띄우면 첫
+   화면이 시끄럽고, 홈 하단은 이미 버튼과 고양이로 빡빡하다. */
+.home-bubble {
+  position: absolute;
+  left: 2%;
+  top: 0;
+  z-index: 4;
+  max-width: 84%;
+  margin: 0;
+  padding: 8px 13px;
+  border-radius: 15px 15px 15px 4px;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  background: rgba(255, 253, 246, .97);
+  box-shadow: 0 4px 14px rgba(120, 90, 40, .22);
+  color: #4a3a1c;
+  font-family: var(--font-display);
+  font-size: 13px;
+  line-height: 1.42;
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px) scale(.94);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.home-bubble.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .candy-piece,
-  .home-character-stage.is-happy .home-cat,
-  .home-character-stage.is-happy::after { animation: none; }
+  .candy-piece.is-nudge,
+  .home-character-stage.is-munching .home-cat,
+  .candy-heart.is-flying { animation: none; }
+  .home-bubble { transition: none; }
 }
 
 /* 접시 감추기: hidden 속성만으로는 display:grid를 못 이긴다. */
 .candy-tray.is-hidden { display: none; }
+
+/* 결과창의 별사탕 줄. 사탕이 어디서 났는지 알려주는 유일한 자리다.
+   실기기 제보: "왜 사탕이 생긴 건지 모르겠다." 홈에서 숫자만 늘어나면
+   그것이 판의 대가라는 걸 알 길이 없었다. */
+.result-candy-earned {
+  margin: 4px 0 0;
+  color: #8a6a1c;
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-align: center;
+}

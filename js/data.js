@@ -310,9 +310,21 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // 별사탕. 판이 끝나면 점수에 비례해 쌓이고, 홈에서 고양이에게 끌어다
 // 먹인다. 못한 판도 반드시 몇 개는 남게 최소치를 둔다 - 2분을 쓰고 아무것도
 // 못 받는 판이 초보를 제일 빨리 지치게 한다.
-export const CANDY_PER_SCORE = 120;
+//
+// 첫 판(점수/120, 상한 60)은 너무 후했다. 6,000점 한 판에 50개, 곧 먹이기
+// 열 번치가 한꺼번에 쏟아져 실기기에서 30개가 쌓인 채 방치됐다. 사탕이
+// 쌓이기만 하면 "언제든 줄 수 있는 것"이 되어 줄 이유가 사라진다.
+//
+// 그래서 한 판에 3~8개로 좁혔다. 먹이기 한 번이 5개니까 못한 판은 모자라
+// 다음 판까지 모으고, 보통 판은 딱 한 번, 잘한 판은 한 번 주고 조금 남는다.
+// "한 판 = 간식 한 번"이 기본 리듬이 되고 잔고가 0~10 사이에서 논다.
+//
+// 상한을 8로 낮게 막은 것은 의도다. 고득점을 사탕으로 크게 보상하면 사탕이
+// 세 번째 수집 축이 되는데, 실력 보상은 이미 오잉 카드가 맡고 있다. 사탕은
+// 실력이 아니라 꾸준함의 자리다.
+export const CANDY_PER_SCORE = 1200;
 export const CANDY_MIN_PER_RUN = 3;
-export const CANDY_MAX_PER_RUN = 60;
+export const CANDY_MAX_PER_RUN = 8;
 
 export function candyForRun(score = 0) {
   const points = Math.max(0, Math.round(Number(score) || 0));
@@ -322,6 +334,19 @@ export function candyForRun(score = 0) {
 
 // 고양이에게 한 번 먹일 때 드는 사탕. 먹이면 좋아하는 모습으로 바뀐다.
 export const CANDY_PER_FEED = 5;
+
+// 먹인 횟수가 여기 닿으면 특별한 말을 한다(MESSAGES.candyFeedMilestone).
+// 보상은 없다 - 세어 주고 있다는 것만 알리는 자리다.
+export const CANDY_FEED_MILESTONES = Object.freeze([10, 30, 50]);
+
+// 먹였을 때 취할 포즈. 고양이 그림은 여섯 장뿐이고 fail은 이 자리에 못 쓴다.
+// 남는 셋을 돌린다 - 매번 같은 그림이 뜨는 것보다는 낫고, 새 그림을 그리는
+// 것보다는 훨씬 싸다.
+export const CANDY_HAPPY_POSES = Object.freeze([
+  'assets/characters/cat-success.webp',
+  'assets/characters/cat-cheer.webp',
+  'assets/characters/cat-wave.webp',
+]);
 
 export const AD_GROUP_IDS = Object.freeze({
   continue: 'ait.v2.live.ca1448c32e4a47f3',
@@ -1151,6 +1176,47 @@ export const MESSAGES = Object.freeze({
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['막혔냥? 여기 봐보라냥!', '반짝이는 칸을 보라냥!']),
   adContinue: Object.freeze(['20초 더 간다냥!', '한 번 더 달려보자냥!']),
+  // 홈에서 별사탕을 먹였을 때. 이 대사가 사실상 '반응'의 전부다 - 고양이
+  // 그림은 여섯 장뿐이라 포즈로는 세 가지밖에 못 돌린다. 같은 그림이어도
+  // 말이 다르면 다르게 느껴지므로, 다양성은 여기에 싣는다.
+  //
+  // 스무 개인 이유. 사람이 "또 같은 말이네"를 느끼는 건 대체로 서너 번째
+  // 반복부터다. 한 판에 한 번 먹인다고 보면 하루 대여섯 번이니, 스무 개면
+  // 며칠을 해도 한 바퀴를 안 돈다. 직전 대사는 pickMessage가 알아서 뺀다.
+  // 더 늘리는 건 자유지만 새 한글 글자마다 폰트 서브셋이 커진다.
+  candyFeed: Object.freeze([
+    '오, 이건 좀 맛있다냥.',
+    '또 달라냥~',
+    '오잉!',
+    '이 맛에 게임 구경한다냥.',
+    '달다냥... 머리가 맑아진다냥.',
+    '냠냠. 별맛이 난다냥.',
+    '한 개만 더... 딱 한 개만 더 달라냥.',
+    '숨겨둔 거 없냥? 다 내놔라냥.',
+    '이거 모으느라 고생했겠다냥.',
+    '이거 먹고 더 열심히 응원한다냥!',
+    '고맙다냥. 다음 판도 옆에 있을게냥.',
+    '역시 너다냥!',
+    '우물우물... 이건 아껴 먹어야겠다냥.',
+    '별을 먹으면 나도 반짝일까냥?',
+    '오늘 판이 잘 풀렸나 보다냥.',
+    '어디서 났냥? ...안 물어보겠다냥. 냠.',
+    '크, 이 맛에 산다냥.',
+    '하나 더 있으면 좋겠다냥... 아니다, 욕심이다냥.',
+    '잘 먹었다냥. 다음 판도 잘 봐줄게냥.',
+    '배부르다냥. 이제 뭐 하고 놀까냥?',
+  ]),
+  // 처음 먹였을 때만. 첫 반응이 평범하면 "이걸 왜 하지"가 남는다.
+  candyFeedFirst: Object.freeze(['헉, 나 주는 거냥? ...냠. 고맙다냥!']),
+  // 열 번, 서른 번, 쉰 번째. 세어 준다는 티를 내는 자리다.
+  candyFeedMilestone: Object.freeze([
+    '이제 우리 사이 좀 됐다냥.',
+    '이쯤 되면 나는 네 단골이다냥.',
+    '너 없으면 심심하겠다냥.',
+  ]),
+  // 사탕이 처음 생겼는데 아직 한 번도 안 줘 봤을 때의 안내. 한 번 먹이면
+  // 다시 뜨지 않는다 - 홈에 상시 안내를 얹으면 첫 화면이 시끄러워진다.
+  candyHowTo: Object.freeze(['별사탕을 끌어서 나한테 줘보라냥!']),
   // 판이 열릴 때의 출발 안내. 정답을 알려주는 말이 아니라 조작을 가르치는
   // 말이어야 한다 - 초기 오잉의 '슥 밀거나, 양끝을 톡톡!' 자리다.
   openingGift: Object.freeze([
