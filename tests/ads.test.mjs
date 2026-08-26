@@ -500,3 +500,26 @@ test('번들에도 늦은-보상 유예가 들어가 있다 - 소스만 고치�
   assert.match(source, /1500/, '유예 시간이 번들에 없다 - 다시 구워야 한다');
   assert.match(source, /15e3|15000/, '오래 본 것으로 쳐주는 문턱이 번들에 없다');
 });
+
+// 실기기 제보: "힌트 광고 눌러서 보고 돌아오니 결과창이 뜨네요."
+// 판이 끝나기 직전에 도움팩을 권했고, 광고를 다 본 뒤 힌트를 받자마자 판이
+// 끝났다. 판 재고는 판마다 새로 만들어지므로 받은 것은 그대로 사라진다 -
+// 광고만 보고 아무것도 못 받은 셈이다. 광고 동안 시계는 멈추므로(실측:
+// 9.8초 동안 판 시간 1.8초 소모) 광고가 시간을 먹은 것이 아니라, 애초에
+// 쓸 시간이 없을 때 권한 것이 문제였다.
+test('쓸 시간이 없으면 도움팩을 권하지 않는다', async () => {
+  const { AD_HELP_PACK, AD_HELP_PACK_MIN_SECONDS } = await import('../js/data.js');
+
+  // 게임 객체 없이 문턱만 본다. 이 한 줄이 이 수정의 전부다.
+  const offers = (timeLeft) => timeLeft >= AD_HELP_PACK_MIN_SECONDS;
+
+  assert.equal(offers(60), true, '시간이 넉넉한데 안 권한다');
+  assert.equal(offers(AD_HELP_PACK_MIN_SECONDS), true, '문턱에서는 권해야 한다');
+  assert.equal(offers(6), false, '6초 남았는데 30초 광고를 권한다');
+  assert.equal(offers(0), false);
+
+  // 받는 것이 힌트 두 개다. 문턱은 그 둘을 실제로 써 볼 만한 길이여야 한다.
+  // 이 숫자가 팩 내용보다 작아지면 문턱이 무의미해진다.
+  assert.ok(AD_HELP_PACK.hint >= 1, '팩에 힌트가 없다');
+  assert.ok(AD_HELP_PACK_MIN_SECONDS >= 10, '문턱이 너무 짧아 광고만 보고 끝난다');
+});
