@@ -22,6 +22,7 @@ import {
   classicChapterCollected,
   classicChapterForBoard,
   classicChapterGallery,
+  nextGoalLine,
   oingCardRows,
   newlyUnlockedOingCards,
   unseenRareBoardItemTypes,
@@ -154,14 +155,18 @@ import {
 } from './haptic.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 
 // 시작 커튼은 오디오 언락을 가리려고 첫 숫자를 미리 띄워둔다. 그 기다림에
 // 상한이 없어서, 첫 접속처럼 언락이 느린 판에서는 "3"이 멈춰 있다가
 // 카운트다운이 처음부터 다시 도는 것처럼 보였다(실기기 제보). 상한을 두고,
 // 미리 띄운 숫자가 제 박자를 이미 채웠으면 그 다음 숫자부터 이어간다.
 const COUNTDOWN_AUDIO_WAIT_CAP_MS = 900;
+// 미리 띄운 첫 박이 한 박을 채웠는지 재는 기준.
 const COUNTDOWN_BEAT_MS = Object.freeze({ normal: 650, compact: 420 });
+// 재시작은 짧게 두 박이다. 판을 또 하려고 누른 사람에게 3·2·1을 매번
+// 다시 세게 하면 그것이 벌이 된다. 다만 글씨와 색은 첫 시작과 같다 -
+// 실기기 제보: "레디 고는 맘에 드는데 폰트랑 컬러를 첫 시작이랑 맞춰줘."
+const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 // Drops worth taking the lead of a moment. Bomb and clock are the everyday
 // rewards; these three are the ones a player should stop and look at.
 // The garden only shows through from STAGE 3, so earlier boards cannot
@@ -703,9 +708,7 @@ class OingGame {
     // Paint the dark curtain and its first beat in the same frame as the
     // play screen. Mobile audio/media unlock can take a noticeable moment;
     // it must happen behind the countdown instead of exposing a bright board.
-    this.ui.primeStartCountdown(options.quickCountdown ? 'READY' : START_COUNTDOWN_STEPS[0], {
-      compact: options.quickCountdown === true,
-    });
+    this.ui.primeStartCountdown(options.quickCountdown ? 'READY' : START_COUNTDOWN_STEPS[0]);
     this.ui.setPlayCharacter('wave');
     this.showCatMessage('start');
     if (!this.settings.sound) this.ui.toast('설정에서 효과음을 ON으로 켜달라냥');
@@ -741,7 +744,7 @@ class OingGame {
       }
       else playReadyCountSound(step);
       readyCountHaptic(step);
-    }, { compact: quickCountdown });
+    }, { quick: quickCountdown });
     const isCurrentSequence = sequenceId === this.startSequenceId;
     if (isCurrentSequence) this.startCountdownInProgress = false;
     if (!completed || !isCurrentSequence || !this.state.running) return false;
@@ -3011,6 +3014,15 @@ class OingGame {
       // beatScore를 실어, 공유 글귀가 "넘었다냥"으로 바뀌게 한다.
       challenge: challengeVerdict,
       beatScore: challengeVerdict?.won ? challengeVerdict.target : 0,
+      // 다음 목표 한 줄. 여기까지 오면 누적값도 최고기록도 이미 저장이 끝난
+      // 뒤라, 이 판을 포함한 "지금 남은 몫"이 나온다. 넘지 못한 도전장은 아직
+      // 남아 있으므로 후보에 들어간다.
+      nextGoal: nextGoalLine({
+        totals: this.currentCardTotals(),
+        score: this.state.score,
+        previousBest: oldBest,
+        challengeTarget: challengeVerdict?.won ? 0 : (challengeVerdict?.target || 0),
+      }),
       classic: {
         boards: this.classic.boardsPlayed,
         collectedLabels: this.classic.collectedLabels || [],
