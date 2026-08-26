@@ -1804,3 +1804,60 @@
   .card-reveal-card { transform: rotateY(180deg); }
   .card-reveal-rays { opacity: 0; }
 }
+
+/* ==========================================================================
+   내 오잉 - 기록 / 수집 탭
+   실기기 제보 두 줄이 같은 것을 가리켰다. "갤러리 있어요? 확인 안 해봤네"와
+   "내기록이 아냐 그건, 내 수집품이야!" - 게임을 한참 하고 카드까지 받은
+   사람이 갤러리가 있는 줄도 몰랐다. 기록과 수집을 한 상자에 세로로 쌓아
+   두니 수집이 스크롤 밑으로 묻힌 것이다.
+
+   메뉴를 늘리지 않고 창 안에서 가른다. 홈에 버튼이 하나 더 붙으면 첫 화면이
+   빡빡해지는데, 정작 문제는 개수가 아니라 "안 보인다"였다.
+   ========================================================================== */
+.record-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin: 10px 0 12px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(238, 228, 208, .55);
+}
+
+.record-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #a2937f;
+  font-family: var(--font-display);
+  font-size: 15px;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.record-tab.is-active {
+  background: #fffdf6;
+  box-shadow: 0 2px 5px rgba(120, 96, 60, .1);
+  color: #6d5a44;
+}
+
+/* 개수는 안 눌러도 읽혀야 한다. 이 배지가 "여기 뭔가 있다"를 말하는
+   유일한 자리라, 탭이 꺼져 있을 때도 색을 죽이지 않는다. */
+.record-tab b {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(99, 192, 171, .2);
+  color: #3d8578;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.record-tab.is-active b { background: rgba(99, 192, 171, .28); }
+
+.record-pane[hidden] { display: none; }
