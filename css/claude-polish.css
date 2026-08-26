@@ -1818,46 +1818,50 @@
 .record-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  margin: 10px 0 12px;
-  padding: 4px;
-  border-radius: 14px;
-  background: rgba(238, 228, 208, .55);
+  gap: 7px;
+  margin: 12px 0 13px;
+  padding: 0;
 }
 
+/* 실기기 제보: "수집 너무 안 보여. 상단이 버튼으로 되어 있고 더 잘 보여야
+   할 듯. 글씨도 키워주고."
+   맞는 말이었다. 꺼진 탭이 배경 없는 글씨라, 띠 위에 얹힌 회색 글자로 보여서
+   누를 수 있다는 것 자체가 안 읽혔다. 이제 두 탭 다 제 판을 갖는다 - 꺼진
+   쪽도 테두리와 바탕이 있어 버튼으로 보이고, 켜진 쪽은 하얗게 떠오른다. */
 .record-tab {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-height: 36px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  color: #a2937f;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1.5px solid rgba(222, 206, 176, .85);
+  border-radius: 14px;
+  background: rgba(252, 246, 233, .9);
+  color: #96866f;
   font-family: var(--font-display);
-  font-size: 15px;
-  transition: background 140ms ease, color 140ms ease;
+  font-size: 17px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 
 .record-tab.is-active {
-  background: #fffdf6;
-  box-shadow: 0 2px 5px rgba(120, 96, 60, .1);
+  border-color: rgba(224, 168, 92, .8);
+  background: linear-gradient(180deg, #fffdf6, #fff4dd);
+  box-shadow: 0 3px 0 rgba(197, 146, 72, .12), inset 0 1px 0 #fff;
   color: #6d5a44;
 }
 
 /* 개수는 안 눌러도 읽혀야 한다. 이 배지가 "여기 뭔가 있다"를 말하는
    유일한 자리라, 탭이 꺼져 있을 때도 색을 죽이지 않는다. */
 .record-tab b {
-  padding: 1px 7px;
+  padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(99, 192, 171, .2);
-  color: #3d8578;
-  font-size: 12px;
+  background: rgba(99, 192, 171, .26);
+  color: #2f7a6b;
+  font-size: 14px;
   font-weight: 400;
 }
 
-.record-tab.is-active b { background: rgba(99, 192, 171, .28); }
+.record-tab.is-active b { background: rgba(99, 192, 171, .36); }
 
 .record-pane[hidden] { display: none; }
