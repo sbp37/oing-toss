@@ -14,12 +14,16 @@ import {
   pickMessage,
 } from './data.js';
 import { storageAdapter } from './adapters.js';
+import { playCatBonusSound } from './audio.js';
 
 const IDLE_POSE = 'assets/characters/cat-idle.webp';
 const HAPPY_MS = 1800;
 const BUBBLE_MS = 2600;
 // 첫 안내는 조금 더 오래 둔다 - 읽고 나서 손을 움직일 시간이 필요하다.
 const HOWTO_MS = 5200;
+// 첫 한 입 뒤에 사탕이 어디서 나는지 알려주는 두 번째 말. 첫 대사가
+// 사라질 즈음 이어 붙는다.
+const FIRST_TIP_DELAY_MS = 2400;
 
 export function installCandyFeeding({ onFed } = {}) {
   const tray = document.querySelector('#candy-tray');
@@ -33,6 +37,7 @@ export function installCandyFeeding({ onFed } = {}) {
 
   let happyTimer = 0;
   let bubbleTimer = 0;
+  let tipTimer = 0;
   let dragging = false;
   let pointerId = null;
   let suppressClickUntil = 0;
@@ -59,6 +64,7 @@ export function installCandyFeeding({ onFed } = {}) {
   const hush = () => {
     if (!bubble) return;
     clearTimeout(bubbleTimer);
+    clearTimeout(tipTimer);
     bubble.classList.remove('is-visible');
     bubble.hidden = true;
   };
@@ -100,6 +106,10 @@ export function installCandyFeeding({ onFed } = {}) {
     const pool = poses.length ? poses : CANDY_HAPPY_POSES;
     cat.src = pool[Math.floor(Math.random() * pool.length)];
     stage.classList.add('is-happy');
+    // 게임 안에서 고양이를 터뜨릴 때 나는 소리. 같은 소리를 쓰는 이유는
+    // 그 소리가 이미 "고양이가 기뻐한다"는 뜻으로 학습돼 있기 때문이다.
+    // 기본 인자는 0.15초 늦게 울리므로 여기서는 0으로 당긴다.
+    try { playCatBonusSound(0); } catch {}
     // 통통 튀는 한 박자. transform/opacity만 쓰므로 합성만으로 끝난다 -
     // 이 게임이 오래 켜져 있어도 뜨거워지지 않는 이유다.
     stage.classList.remove('is-munching');
@@ -125,6 +135,12 @@ export function installCandyFeeding({ onFed } = {}) {
     refresh();
     showHappy();
     say(lineForFeed(fedCount));
+    // 처음 먹인 사람에게만, 첫 대사가 끝날 즈음 사탕의 출처를 한 번 더
+    // 짚어 준다. 결과창에도 적혀 있지만 그 화면을 그냥 넘긴 사람이 있다.
+    if (fedCount === 1) {
+      clearTimeout(tipTimer);
+      tipTimer = window.setTimeout(() => say(pickMessage('candyFeedFirstTip', '')), FIRST_TIP_DELAY_MS);
+    }
     onFed?.(fedCount);
     return true;
   };

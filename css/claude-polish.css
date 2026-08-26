@@ -1258,9 +1258,9 @@
    지금은 제 요소에 게임이 쓰는 하트 그림으로 그린다. */
 .candy-heart {
   position: absolute;
-  /* 고양이 오른쪽 볼 옆. 위로 34px 떠오르는 동안에도 말풍선에 안 닿는다. */
+  /* 고양이 오른쪽 볼 옆. 말풍선은 머리 위로 갔으므로 겹치지 않는다. */
   left: 72%;
-  top: 46%;
+  top: 42%;
   z-index: 5;
   width: 30px;
   height: 27px;
@@ -1308,31 +1308,43 @@
    화면이 시끄럽고, 홈 하단은 이미 버튼과 고양이로 빡빡하다. */
 .home-bubble {
   position: absolute;
-  left: 2%;
-  top: 0;
+  /* 고양이 머리 위, 로고 아래.
+     처음에는 무대 왼쪽 위 모서리에 붙여 두었는데, 그림의 귀가 프레임 위
+     8.3%에서 시작해서 두 줄짜리 대사만 돼도 귀 끝을 덮었다(390x844 실측:
+     귀와 겹치는 넓이 3,537px²).
+     지금은 세 가지로 푼다. 하나, 무대 폭(186px)이 아니라 화면 폭을 쓰므로
+     스무 자 넘는 대사도 한 줄에 들어간다 - 줄 수가 안 늘면 아래로 자라
+     귀를 덮을 일도 없다. 둘, 글자 길이에 맞춰 줄었다 늘었다 하며 화면
+     한가운데에 선다(무대 자체가 8px 오른쪽으로 밀려 있어 그만큼 되민다).
+     셋, 살짝 비쳐서 어쩌다 귀에 걸리더라도 뒤가 비쳐 답답하지 않다. */
+  left: 50%;
+  bottom: 90%;
   z-index: 4;
-  max-width: 84%;
+  width: max-content;
+  max-width: min(88vw, 340px);
   margin: 0;
-  padding: 8px 13px;
-  border-radius: 15px 15px 15px 4px;
-  word-break: keep-all;
-  overflow-wrap: break-word;
-  background: rgba(255, 253, 246, .97);
-  box-shadow: 0 4px 14px rgba(120, 90, 40, .22);
+  padding: 7px 14px;
+  border-radius: 16px;
+  background: rgba(255, 253, 246, .82);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: 0 4px 14px rgba(120, 90, 40, .18);
   color: #4a3a1c;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.42;
-  text-align: left;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: break-word;
   pointer-events: none;
   opacity: 0;
-  transform: translateY(6px) scale(.94);
+  transform: translateX(calc(-50% - 8px)) translateY(6px) scale(.94);
   transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .home-bubble.is-visible {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateX(calc(-50% - 8px)) translateY(0) scale(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1356,3 +1368,117 @@
   font-size: 13px;
   text-align: center;
 }
+
+/* ==========================================================================
+   보드 한가운데 알림 + 판 갈이 안내 색
+   ========================================================================== */
+
+/* 프리즈처럼 판의 흐름이 바뀌는 사건을 보드 위에 세운다. 지금까지 프리즈는
+   시계 아이콘이 얼음으로 바뀌고 얇은 시간 게이지에 글자가 1.5초 스치는 것이
+   전부라, 실기기에서 발동한 줄도 모른다는 제보를 받았다. 눈이 이미 가 있는
+   자리는 보드 한가운데다. */
+#play-screen .play-center-notice {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #4fd1ae, #16a085);
+  box-shadow: 0 6px 18px rgba(11, 110, 91, .3), inset 0 2px 0 rgba(255, 255, 255, .34);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.86);
+}
+
+#play-screen .play-center-notice strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(17px, 5vw, 22px);
+  font-weight: 400;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 rgba(9, 92, 76, .38);
+}
+
+#play-screen .play-center-notice.is-visible {
+  animation: center-notice-pop 1500ms cubic-bezier(.2, .9, .25, 1.15) both;
+}
+
+@keyframes center-notice-pop {
+  0% { opacity: 0; transform: translate(-50%, -42%) scale(.82); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  22%, 78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -58%) scale(.96); }
+}
+
+/* 판이 바뀔 때 보드 한가운데 서는 '2판' 알약.
+   크림색 알약이 크림색 보드 위에 뜨니 실기기에서 안 보인다는 제보를 받았다
+   ("판 넘어갈 때 중앙에 뜨는 거 노란색이라 안 보임"). 판 번호는 이 게임의
+   진행도 그 자체라 놓치면 안 되는 정보다. 프리즈 배너와 같은 민트로 맞춰,
+   보드 위에 서는 알림은 전부 한 가족으로 읽히게 한다. */
+#play-screen .board-entry {
+  border-color: rgba(255, 255, 255, .9);
+  background: linear-gradient(180deg, #4fd1ae, #16a085);
+  box-shadow: 0 4px 0 rgba(11, 110, 91, .42), 0 8px 16px rgba(53, 83, 102, .2);
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(9, 92, 76, .34);
+}
+
+#play-screen .board-entry small {
+  border-left-color: rgba(255, 255, 255, .48);
+  color: #eafff8;
+}
+
+/* 판이 바뀔 때의 안내는 잡담이 아니라 규칙 설명이다. 크림색 말풍선은
+   잔디 배경 위에서 거의 안 읽혔다는 제보를 받았다("노란색이라 안 보임").
+   같은 자리에 그대로 두되 색만 민트 단색으로 바꿔, 뜨는 순간 눈에 걸리게
+   한다. 다른 대사는 지금 색 그대로다 - 전부 진해지면 위계가 사라진다. */
+#play-screen .cat-message[data-tone="classicBoard"],
+#play-screen .cat-message[data-tone="classicRule"] {
+  border-color: #16a085;
+  background: linear-gradient(180deg, #4fd1ae, #16a085);
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(9, 92, 76, .34);
+}
+
+#play-screen .cat-message[data-tone="classicBoard"]::before,
+#play-screen .cat-message[data-tone="classicRule"]::before {
+  border-color: #16a085;
+  background: #22b394;
+}
+
+#play-screen .cat-message[data-tone="classicBoard"] strong,
+#play-screen .cat-message[data-tone="classicRule"] strong {
+  color: #fffbe6;
+  text-shadow: 0 1px 0 rgba(9, 92, 76, .4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #play-screen .play-center-notice.is-visible { animation: none; opacity: 1; }
+}
+
+/* TIME UP 도장에 이번 판 점수 한 줄.
+   광고 이어하기 제안 전에 이 도장을 먼저 세운다. 점수까지 같이 보여줘야
+   "판이 끝났다"가 완결되고, 그 다음에 오는 제안이 방해가 아니라 덤으로
+   읽힌다. 제안 없이 끝나는 판에서는 결과 시트가 점수를 크게 다시 세우므로
+   여기서는 한 박자 짚고 넘어가는 정도의 크기만 쓴다. */
+#play-screen .time-up {
+  flex-direction: column;
+  gap: 1px;
+}
+
+#play-screen .time-up-score {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 6.4vw, 27px);
+  font-weight: 400;
+  -webkit-text-stroke: 3px #e0345a;
+  paint-order: stroke fill;
+  text-shadow: 0 0 12px rgba(224, 52, 90, .6), 0 2px 0 rgba(160, 30, 60, .32);
+  white-space: nowrap;
+}
+
+#play-screen .time-up-score[hidden] { display: none; }

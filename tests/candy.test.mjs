@@ -111,3 +111,37 @@ test('the drag hint shows only to someone who has never fed the cat', async () =
   // 손이 닿는 순간 안내 동작은 멈춘다.
   assert.match(candy, /piece\.classList\.remove\('is-nudge'\)/);
 });
+
+test('feeding sounds like the cat pop, and the first feed explains itself', async () => {
+  const candy = await readFile(new URL('../js/candy.js', import.meta.url), 'utf8');
+
+  // 게임 안에서 고양이를 터뜨릴 때 나는 소리를 그대로 쓴다. 그 소리는 이미
+  // "고양이가 기뻐한다"는 뜻으로 학습돼 있어서 새로 가르칠 것이 없다.
+  // 기본 인자가 0.15초 지연이라 0으로 당겨야 손과 소리가 붙는다.
+  assert.match(candy, /import \{ playCatBonusSound \} from '\.\/audio\.js'/);
+  assert.match(candy, /playCatBonusSound\(0\)/);
+
+  // 처음 먹인 사람에게만 사탕이 어디서 나는지 한 번 더 짚는다.
+  assert.match(candy, /fedCount === 1/);
+  assert.match(candy, /candyFeedFirstTip/);
+  assert.ok(MESSAGES.candyFeedFirstTip.length >= 1);
+  assert.match(MESSAGES.candyFeedFirstTip[0], /게임/);
+});
+
+test('the home bubble clears the ears: centred, screen-wide, see-through', async () => {
+  const polish = await readFile(new URL('../css/claude-polish.css', import.meta.url), 'utf8');
+  const rule = polish.slice(polish.indexOf('.home-bubble {'), polish.indexOf('.home-bubble.is-visible'));
+
+  // 무대 폭(186px)에 갇히면 스무 자 넘는 대사가 두세 줄이 되고, 늘어난
+  // 줄이 아래로 자라 귀를 덮는다. 화면 폭을 써야 한 줄에 들어간다.
+  assert.match(rule, /max-width: min\(88vw/);
+  assert.match(rule, /width: max-content/);
+  // 글자 길이에 맞춰 줄었다 늘었다 하며 화면 한가운데에 선다.
+  assert.match(rule, /left: 50%/);
+  assert.match(rule, /text-align: center/);
+  assert.match(polish, /transform: translateX\(calc\(-50% - 8px\)\)/);
+  // 어쩌다 귀에 걸려도 뒤가 비치게.
+  assert.match(rule, /background: rgba\(255, 253, 246, \.82\)/);
+  // 머리 위. top:0(무대 왼쪽 위)으로 돌아가면 귀를 다시 덮는다.
+  assert.match(rule, /bottom: 90%/);
+});

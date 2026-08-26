@@ -222,6 +222,7 @@ class OingGame {
     this.classicAutoHintBoard = -1;
     this.adContinueUsed = false;
     this.adContinueOffering = false;
+    this.adStampedTimeUp = false;
     this.adHelpPackUsed = false;
     this.adShowing = false;
     this.adFlowActive = false;
@@ -600,6 +601,7 @@ class OingGame {
     // 광고는 판 단위 기회다. 판이 시작될 때 미리 불러 둬야 누른 순간 뜬다.
     this.adContinueUsed = false;
     this.adContinueOffering = false;
+    this.adStampedTimeUp = false;
     this.adHelpPackUsed = false;
     ['continue', 'helpPack'].forEach((kind) => preloadAd(kind));
     if (this.pendingShareHints > 0) {
@@ -2061,6 +2063,9 @@ class OingGame {
     this.ui.setFreezeActive(true);
     this.updateHUD();
     this.ui.showTimeNotice(`${Math.round(freezeSeconds)}초 멈춤!`);
+    // 시간 게이지의 글자는 얇아서 실기기에서 안 읽혔다. 보드 한가운데에도
+    // 세워 준다 - 시간이 멈추는 것은 그만한 사건이다.
+    this.ui.showCenterNotice(`시간 ${Math.round(freezeSeconds)}초 멈춤!`, 1500);
     this.showCatMessage('freeze');
     this.ui.setPlayCharacter('cheer', 1050);
     duckMusic(680, 0.52);
@@ -2439,6 +2444,24 @@ class OingGame {
     this.ui.setFinalRush(false);
     this.updateHUD();
 
+    // 끝을 먼저 보여주고 나서 제안한다.
+    //
+    // 예전에는 시간이 0이 되는 순간 제안 창부터 떴다. 게임이 끝났다는
+    // 신호가 하나도 없어서 실기기에서 "툭 끊긴다, 광고 본 것도 아닌데
+    // 광고 때문에 김샌다"는 말이 나왔다. TIME UP 도장과 이번 판 점수를
+    // 1.2초 세우고 소리까지 낸 다음에 제안이 오면, 제안은 게임을 끊은
+    // 것이 아니라 끝난 뒤에 온 덤이 된다.
+    //
+    // 결과 화면을 먼저 띄우고 제안하는 방법도 있지만 그건 더 나쁘다.
+    // '한 판 더'와 '홈으로'를 본 순간 판은 이미 끝난 것이고, 거기서 광고를
+    // 권하면 "이제 와서?"가 된다. 되살리려면 결과 화면을 도로 걷어내야
+    // 하는 문제도 있다.
+    playGameOverSound(false);
+    gameOverHaptic(false);
+    this.adStampedTimeUp = true;
+    await this.ui.stampTimeUp(this.state.score);
+    this.ui.clearTimeUpStamp();
+
     const choice = await this.ui.showContinueOffer(AD_CONTINUE_SECONDS, AD_CONTINUE_OFFER_MS);
     if (choice !== 'watch') {
       this.adContinueOffering = false;
@@ -2460,7 +2483,9 @@ class OingGame {
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 150;
     this.telemetry?.itemUsed('ad-continue');
+    this.adStampedTimeUp = false;
     this.ui.showTimeNotice(`+${seconds}초!`);
+    this.ui.showCenterNotice(`+${seconds}초 이어간다냥!`, 1400);
     this.ui.setPlayCharacter('cheer', 1200);
     this.showCatMessage('adContinue', { force: true });
     roundHaptic();
@@ -2615,9 +2640,15 @@ class OingGame {
     });
     this.telemetry?.finish(this.state, 'timer');
     fadeOutMusic();
-    playGameOverSound(newRecord);
-    gameOverHaptic(newRecord);
-    await this.ui.animateGameEnd({ answers: endAnswers });
+    // 이어하기 제안 전에 이미 종료 소리와 TIME UP을 냈다면 여기서 또 내지
+    // 않는다 - 다만 신기록이면 그 소리는 한 번 더 값어치가 있다.
+    const stamped = Boolean(this.adStampedTimeUp);
+    this.adStampedTimeUp = false;
+    if (!stamped || newRecord) {
+      playGameOverSound(newRecord);
+      gameOverHaptic(newRecord);
+    }
+    await this.ui.animateGameEnd({ answers: endAnswers, stamped });
     if (!this.runtime.testMode && newRecord) storageAdapter.saveBestScore(this.state.score);
     if (!this.runtime.testMode && recordEligible) storageAdapter.saveBestCombo(this.state.maxCombo);
     if (!this.runtime.testMode) storageAdapter.saveHighestStage(this.state.round);

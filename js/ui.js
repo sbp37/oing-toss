@@ -146,7 +146,9 @@ export class GameUI {
       resultCat: document.querySelector('#result-cat'),
       resultDecor: document.querySelector('#result-decor'),
       roundClear: document.querySelector('#round-clear'),
+      playCenterNotice: document.querySelector('#play-center-notice'),
       timeUp: document.querySelector('#time-up'),
+      timeUpScore: document.querySelector('#time-up-score'),
       scoreBurst: document.querySelector('#score-burst'),
       hintCount: document.querySelector('#hint-count'),
       shuffleCount: document.querySelector('#shuffle-count'),
@@ -1747,6 +1749,29 @@ export class GameUI {
     this.elements.playScreen?.classList.toggle('is-final-rush', on);
   }
 
+  // 보드 한가운데에 잠깐 서는 알림.
+  //
+  // 프리즈가 이것을 위해 생겼다. 시간이 멈추는 것은 판의 흐름을 통째로
+  // 바꾸는 사건인데, 지금까지는 시계 아이콘이 얼음으로 바뀌고 얇은 시간
+  // 게이지에 글자가 스치는 것이 전부라 실기기에서 아무도 못 알아봤다
+  // ("프리즈 발동될 때 안내가 안 뜬다"). 눈이 이미 가 있는 자리는 보드다.
+  showCenterNotice(label = '', duration = 1400) {
+    const el = this.elements.playCenterNotice;
+    const text = String(label || '').trim();
+    if (!el || !text) return;
+    const strong = el.querySelector('strong') || el;
+    strong.textContent = text;
+    el.setAttribute('aria-hidden', 'false');
+    clearTimeout(this.centerNoticeTimer);
+    el.classList.remove('is-visible');
+    void el.offsetWidth;
+    el.classList.add('is-visible');
+    this.centerNoticeTimer = window.setTimeout(() => {
+      el.classList.remove('is-visible');
+      el.setAttribute('aria-hidden', 'true');
+    }, Math.max(500, Number(duration) || 1400));
+  }
+
   showTimeNotice(label = '') {
     const text = String(label || '').trim();
     if (!text || !this.elements.boardTimeGauge) return;
@@ -1944,7 +1969,44 @@ export class GameUI {
     });
   }
 
-  async animateGameEnd({ answers = [] } = {}) {
+  // 판이 끝났다는 도장. 판을 얼리고 TIME UP과 이번 판 점수를 한 번 세운다.
+  //
+  // 왜 따로 떼어냈나. 클래식은 시간이 0이 되는 순간 곧바로 광고 이어하기
+  // 제안을 띄웠다. 게임이 끝났다는 신호가 하나도 없이 광고 창부터 뜨니까
+  // 실기기에서 "툭 끊기고 김샌다, 광고 본 것도 아닌데 아 광고 하는 느낌"
+  // 이라는 말이 나왔다. 끝을 먼저 보여주고 나서 제안해야 한다.
+  //
+  // 점수를 같이 세우는 것이 핵심이다. 그게 이 판의 결말이고, 결말을 본
+  // 뒤에 오는 제안은 방해가 아니라 덤으로 읽힌다.
+  async stampTimeUp(score = null) {
+    this.clearSelection();
+    clearTimeout(this.scoreBurstTimer);
+    this.scoreBurstTimer = null;
+    this.elements.scoreBurst.classList.remove('is-visible');
+    const timeUp = this.elements.timeUp;
+    const scoreLine = this.elements.timeUpScore;
+    this.boardFrame.classList.remove('is-game-ending');
+    timeUp.classList.remove('is-visible');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-game-ending');
+    if (scoreLine) {
+      const points = Math.max(0, Math.round(Number(score) || 0));
+      scoreLine.textContent = score === null ? '' : `${points.toLocaleString('ko-KR')}점`;
+      scoreLine.hidden = score === null;
+    }
+    await delay(160);
+    timeUp.classList.add('is-visible');
+    await delay(1000);
+  }
+
+  // 도장을 지우고 판을 원래대로. 제안 창이 뜨기 전에 부른다.
+  clearTimeUpStamp() {
+    this.elements.timeUp.classList.remove('is-visible');
+    this.boardFrame.classList.remove('is-game-ending');
+    if (this.elements.timeUpScore) this.elements.timeUpScore.hidden = true;
+  }
+
+  async animateGameEnd({ answers = [], stamped = false } = {}) {
     this.clearSelection();
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
@@ -1962,9 +2024,16 @@ export class GameUI {
     sweep.className = 'game-end-sweep';
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
-    timeUp.classList.add('is-visible');
-    await delay(900);
-    timeUp.classList.remove('is-visible');
+    // 이어하기 제안 전에 이미 도장을 찍었다면 여기서 또 찍지 않는다 -
+    // 같은 TIME UP을 두 번 보면 끝이 두 번 나는 것처럼 어색하다. 대신
+    // 놓친 답만 짧게 비춰 주고 결과로 넘어간다.
+    if (!stamped) {
+      timeUp.classList.add('is-visible');
+      await delay(900);
+      timeUp.classList.remove('is-visible');
+    } else {
+      await delay(420);
+    }
     sweep.remove();
     // The score is about to be the sheet's headline, so it is not announced
     // twice; the missed answers stay lit underneath it.

@@ -1,0 +1,66 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const read = (name) => readFile(new URL(`../${name}`, import.meta.url), 'utf8');
+
+// 보드 위에서 일어난 일을 사람이 알아채는가. 실기기 제보 세 건이 전부
+// 여기였다: 프리즈가 걸린 줄도 모르겠다, 판 넘어가는 안내가 안 보인다,
+// 게임이 끝나기도 전에 광고부터 뜬다.
+
+test('a freeze plants a banner in the middle of the board', async () => {
+  const [html, ui, game, css] = await Promise.all([
+    read('index.html'), read('js/ui.js'), read('js/game.js'), read('css/claude-polish.css'),
+  ]);
+
+  // 얼음 시계 아이콘과 얇은 시간 게이지만으로는 아무도 못 알아챘다.
+  assert.match(html, /id="play-center-notice"/);
+  assert.match(ui, /showCenterNotice\(/);
+  assert.match(game, /showCenterNotice\(`시간 \$\{Math\.round\(freezeSeconds\)\}초 멈춤!`/);
+  // 눈이 이미 가 있는 자리는 보드다 - 보드 한가운데여야 한다.
+  assert.match(css, /#play-screen \.play-center-notice \{[\s\S]*?left: 50%;[\s\S]*?top: 50%;/);
+});
+
+test('board-change notices are mint, not cream on a cream board', async () => {
+  const [polish, layout] = await Promise.all([
+    read('css/claude-polish.css'), read('css/play-layout-v1.css'),
+  ]);
+
+  // 바탕이 되는 규칙은 크림색이다. 그 위에 크림 알약이 뜨니 안 보였다.
+  assert.match(layout, /\.play-ui-v4 \.board-entry \{[\s\S]*?background: rgba\(255, 247, 226/);
+  // 마지막에 실리는 이 파일이 민트로 덮어써야 한다. ID를 써야 클래스
+  // 두 개짜리 규칙을 이긴다.
+  assert.match(polish, /#play-screen \.board-entry \{[\s\S]*?background: linear-gradient\(180deg, #4fd1ae, #16a085\)/);
+  assert.match(polish, /#play-screen \.cat-message\[data-tone="classicBoard"\][\s\S]*?background: linear-gradient\(180deg, #4fd1ae, #16a085\)/);
+});
+
+test('the run visibly ends before the ad offer arrives', async () => {
+  const [game, ui, html] = await Promise.all([read('js/game.js'), read('js/ui.js'), read('index.html')]);
+
+  const offer = game.slice(game.indexOf('async maybeOfferAdContinue'), game.indexOf('async openContactsInviteReward'));
+  const stampAt = offer.indexOf('stampTimeUp');
+  const askAt = offer.indexOf('showContinueOffer');
+  assert.ok(stampAt > 0, '제안 경로에 종료 도장이 없다');
+  assert.ok(askAt > 0);
+  // 순서가 뒤집히면 "게임이 끝나기도 전에 광고부터"가 그대로 돌아온다.
+  assert.ok(stampAt < askAt, '광고 제안이 종료 연출보다 먼저 온다');
+  // 소리도 제안 전에 나야 끝난 줄 안다.
+  assert.ok(offer.indexOf('playGameOverSound') < askAt, '종료 소리가 제안 뒤로 밀렸다');
+
+  // 도장에는 이번 판 점수가 실린다 - 그게 이 판의 결말이다.
+  assert.match(offer, /stampTimeUp\(this\.state\.score\)/);
+  assert.match(html, /id="time-up-score"/);
+  assert.match(ui, /async stampTimeUp\(/);
+});
+
+test('TIME UP is not stamped twice on the same run', async () => {
+  const [game, ui] = await Promise.all([read('js/game.js'), read('js/ui.js')]);
+
+  // 제안 전에 찍었으면 결과로 넘어갈 때는 건너뛴다. 같은 TIME UP을 두 번
+  // 보면 끝이 두 번 나는 것처럼 어색하다.
+  assert.match(ui, /async animateGameEnd\(\{ answers = \[\], stamped = false \} = \{\}\)/);
+  assert.match(ui, /if \(!stamped\) \{[\s\S]*?timeUp\.classList\.add\('is-visible'\)/);
+  assert.match(game, /animateGameEnd\(\{ answers: endAnswers, stamped \}\)/);
+  // 되살아나면 기억을 지운다 - 다음 종료는 처음부터 다시 보여줘야 한다.
+  assert.ok(game.split('this.adStampedTimeUp = false;').length - 1 >= 3);
+});
