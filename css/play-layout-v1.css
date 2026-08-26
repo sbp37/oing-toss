@@ -5121,7 +5121,15 @@
   transform: none;
 }
 
+/* 숫자도 타일과 같이 사라져야 한다.
+   실기기 제보: "칸은 없어졌는데 숫자가 한 박자 느리게 없어짐."
+   타일 자신은 아래에서 animation:none으로 즉시 그림 창이 되는데, 숫자 span은
+   .tile.is-success span의 success-number-pop(270ms + 최대 42ms 지연)이 계속
+   돌아서 혼자 떠오르며 날아간다. opacity:0을 이미 적어 뒀는데도 안 먹히는
+   이유는 애니메이션이 일반 선언을 이기기 때문이다 - 애니메이션을 꺼야 한다.
+   성공의 박자는 반짝임·점수 비행·파티클이 그대로 낸다. */
 #play-screen.play-ui-v4 .tile.is-cleared-reveal > * {
+  animation: none;
   opacity: 0;
 }
 
