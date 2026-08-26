@@ -27,6 +27,7 @@ import {
   unseenRareBoardItemTypes,
   RARE_BOARD_ITEM_INTROS,
   CLASSIC_CHAPTERS,
+  OING_CARDS,
   classicComboAfterFailure,
   classicComboGain,
   classicDropStage,
@@ -3001,6 +3002,18 @@ class OingGame {
       });
     }
     this.refreshClassicRecordSurfaces();
+    // 카드 개봉이 결과 시트보다 먼저다. 시트가 이미 떠 있는 채로 카드가
+    // 뜨면 "여러 정보 중 하나"가 되고, 그러면 뜯는 맛이 사라진다.
+    // 실기기 제보 "받았으? 싶은 느낌"이 정확히 그 상태였다.
+    const revealHero = cardAward?.fresh?.at(-1);
+    if (revealHero) {
+      playWideClearSound();
+      cloverHaptic();
+      await this.ui.playCardReveal(revealHero, {
+        unlockedCount: cardAward.unlockedCount,
+        total: cardAward.total,
+      });
+    }
     this.ui.showResult(this.lastResultSummary);
     this.finishing = false;
   }
@@ -3119,6 +3132,12 @@ void game.loadChallenge();
 
 if (game.runtime.testMode) {
   window.__OING_TEST__ = {
+    // 카드 개봉만 따로 돌려본다. 실제 판정은 testMode에서 꺼져 있어서
+    // (cardsUnlockedThisRun) 시험으로는 이 연출을 볼 길이 없다.
+    previewCardReveal: (index = 0) => game.ui.playCardReveal(OING_CARDS[index] || OING_CARDS[0], {
+      unlockedCount: Math.max(1, Math.round(Number(index) || 0) + 1),
+      total: OING_CARDS.length,
+    }),
     startImmediate: async (stage = 1) => {
       const countdown = game.ui.animateStartCountdown;
       game.ui.animateStartCountdown = async (_steps, onStep = () => {}) => {
