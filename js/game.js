@@ -77,6 +77,7 @@ import {
   AD_CONTINUE_OFFER_MS,
   AD_CONTINUE_SECONDS,
   AD_HELP_PACK,
+  AD_HELP_PACK_MIN_SECONDS,
   candyForRun,
   CANDY_STARTER_MINIMUM,
 } from './data.js';
@@ -2610,6 +2611,12 @@ class OingGame {
     if (this.adHelpPackUsed || this.adRefillShowing) return false;
     if (!adsAvailable('helpPack') || !adReady('helpPack')) return false;
     if (!this.state.running || this.state.paused || this.state.inputLocked) return false;
+    // 쓸 시간이 없으면 권하지 않는다. 광고를 다 보고 힌트를 받자마자 판이
+    // 끝나면 판 재고와 함께 그대로 사라져, 광고만 본 셈이 된다(실기기 제보).
+    if (this.state.timeLeft < AD_HELP_PACK_MIN_SECONDS) {
+      this.ui.toast('시간이 얼마 안 남았다냥! 다음 판에 받자냥', 2000);
+      return false;
+    }
 
     // 무엇을 받는지 광고 전에 보여준다(정책이자 예의).
     const contents = `힌트 +${AD_HELP_PACK.hint} · 셔플 +${AD_HELP_PACK.shuffle}`;
