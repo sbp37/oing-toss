@@ -385,6 +385,23 @@ export const PUBLIC_SITE_URL = 'https://sbp37.github.io/oing-toss/';
 // 보여주는 자리라 오히려 그편이 맞다.
 export const SHARE_OG_IMAGE = 'assets/share/og-oing-1200x600.png';
 
+// 카드를 공유할 때는 그 카드가 실린 그림을 쓴다.
+//
+// 처음에는 어떤 공유든 위 공통 배너 한 장만 나가게 했다. 규격과 형식은
+// 맞았지만, "오잉 카드 공유하기를 눌렀는데 카드가 안 간다"는 제보를 받았다.
+// 맞는 말이다 - 카드를 자랑하려고 누른 버튼이니 카드가 보여야 한다.
+//
+// 그렇다고 카드 원본(1086x1448 webp)을 그대로 넘길 수는 없다. 세로로 길어
+// 미리보기 상자에 안 맞고 webp는 못 읽는 곳이 있다. 그래서 카드마다
+// 1200x600 PNG를 미리 구워 둔다(tools/build-share-og.py).
+export function shareOgImageFor(imageUrl = '') {
+  const name = String(imageUrl || '').split('/').pop() || '';
+  const stem = name.replace(/\.(webp|png|jpe?g)$/i, '');
+  // 카드 그림일 때만 짝을 찾는다. 그 밖에는 공통 배너.
+  if (/^card-\d+-/.test(stem)) return `assets/share/cards/${stem}-og.png`;
+  return SHARE_OG_IMAGE;
+}
+
 export const SHARE_REWARD_MODULE_ID = '89c3bed0-84a2-4542-91d3-ca383982d4e1';
 
 // TIME UP 이어하기가 주는 시간. 처음엔 20초로 냈는데, 실기기에서 광고가
@@ -1433,7 +1450,7 @@ export const CLASSIC_RESULT_TIERS = Object.freeze([
     '오늘의 오잉왕 후보 확정이다냥 👑',
     '이런 점수는 캡처부터 해야 한다냥 📸',
     '기록판이 긴장하고 있다냥 😼',
-    '손가락에 날개 달린 거 아니냥? 🪽',
+    '손가락에 날개 달린 거 아니냥? ✨',
     '오늘은 오잉게임이 널 기억할 것 같다냥 🐱',
     '최고를 넘어 전설이 되고 있다냥 🌟',
     '이런 플레이는 매일 나오는 게 아니다냥 🎇',
@@ -1663,7 +1680,7 @@ export const CLASSIC_SMART_REACT = Object.freeze({
   ]),
   drill: Object.freeze([
     '😼 방금 5-5 두 쌍 지나친 거 다 봤다냥',
-    '🫡 나쁘지 않다냥. 근데 어제의 너는 더 빨랐다냥',
+    '😼 나쁘지 않다냥. 근데 어제의 너는 더 빨랐다냥',
     '🐱 고양이들이 "좀 더 하라냥"고 전해달란다냥',
     '😼 손은 풀린 것 같은데, 본실력은 언제 나오냥?',
   ]),
