@@ -242,16 +242,33 @@ test('the two ad slots are filled one after the other at run start', async () =>
   assert.match(game, /for \(const kind of \['continue', 'helpPack'\]\) \{[\s\S]{0,60}await preloadAd\(kind\)/);
 });
 
-test('the share link preview uses a real OG image, not a tall card', async () => {
-  const [data, adapters] = await Promise.all([
-    readFile(new URL('../js/data.js', import.meta.url), 'utf8'),
-    readFile(new URL('../js/adapters.js', import.meta.url), 'utf8'),
-  ]);
+test('every card has a link-preview image, and it is the right shape', async () => {
+  const { readdir, stat } = await import('node:fs/promises');
+  const { shareOgImageFor, SHARE_OG_IMAGE } = await import('../js/data.js');
+  const adapters = await readFile(new URL('../js/adapters.js', import.meta.url), 'utf8');
 
   // 토스 권장 규격은 1200x600 가로형이다. 카드 원본(1086x1448 webp)은
-  // 비율도 형식도 어긋나서 미리보기가 제대로 안 그려질 수 있다.
-  assert.match(data, /SHARE_OG_IMAGE = 'assets\/share\/og-oing-1200x600\.png'/);
-  assert.match(adapters, /publicImageUrl\(SHARE_OG_IMAGE\)/);
+  // 비율도 형식도 어긋나서 미리보기가 제대로 안 그려질 수 있다. 그래서
+  // 카드마다 짝이 되는 PNG를 미리 구워 둔다.
+  assert.match(adapters, /publicImageUrl\(shareOgImageFor\(imageUrl\)\)/);
+
+  const cardsDir = new URL('../assets/cards/', import.meta.url);
+  const cards = (await readdir(cardsDir))
+    .filter((name) => /^card-\d+-.*\.webp$/.test(name));
+  assert.ok(cards.length >= 9, `카드를 못 찾았다: ${cards.length}`);
+
+  for (const card of cards) {
+    const og = shareOgImageFor(`assets/cards/${card}`);
+    assert.notEqual(og, SHARE_OG_IMAGE, `${card}가 공통 배너로 떨어진다`);
+    // 그림이 실제로 있어야 한다 - 없으면 미리보기가 통째로 빈다.
+    const info = await stat(new URL(`../${og}`, import.meta.url));
+    assert.ok(info.size > 10000, `${og}가 비었다`);
+  }
+
+  // 카드가 아닌 것(장면 그림, 빈 값)은 공통 배너로 떨어진다.
+  assert.equal(shareOgImageFor('assets/chapters/chapter-garden.webp'), SHARE_OG_IMAGE);
+  assert.equal(shareOgImageFor(''), SHARE_OG_IMAGE);
+  assert.equal(shareOgImageFor(), SHARE_OG_IMAGE);
 });
 
 // ── 검수 2차: 동기 콜백에서도 정리는 정확히 한 번 ────────────────────────

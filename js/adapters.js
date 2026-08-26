@@ -1,4 +1,4 @@
-import { PUBLIC_SITE_URL, SHARE_OG_IMAGE } from './data.js';
+import { PUBLIC_SITE_URL, shareOgImageFor } from './data.js';
 import { isAppsInTossWebView } from './leaderboard.js';
 
 const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
@@ -435,10 +435,11 @@ function publicImageUrl(imageUrl) {
 
 async function tossShareLink(imageUrl = '') {
   if (!isAppsInTossWebView()) return '';
-  // 미리보기 그림은 카드가 아니라 공유 전용 한 장을 쓴다 - 규격(1200x600)과
-  // 형식(PNG)을 맞춰야 미리보기가 제대로 그려진다. 카드 원본은 세로로 길고
-  // webp라 둘 다 어긋났다. imageUrl은 클립보드 공유가 계속 쓴다.
-  const ogImageUrl = publicImageUrl(SHARE_OG_IMAGE);
+  // 미리보기 그림은 카드마다 미리 구워 둔 1200x600 PNG를 쓴다. 카드가
+  // 아니면 공통 배너로 떨어진다. 카드 원본을 그대로 넘기지 않는 이유는
+  // 세로로 길고 webp라 미리보기가 제대로 안 그려지기 때문이다.
+  // imageUrl 원본은 클립보드 공유가 계속 쓴다(거기서는 실제 그림이 간다).
+  const ogImageUrl = publicImageUrl(shareOgImageFor(imageUrl));
   if (!tossShareLinkCache.has(ogImageUrl)) {
     tossShareLinkCache.set(ogImageUrl, import('./vendor/toss-game-center-v1.js')
       .then((module) => (typeof module.createTossShareLink === 'function'

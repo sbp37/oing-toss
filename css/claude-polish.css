@@ -1206,7 +1206,7 @@
   position: absolute;
   right: 4%;
   bottom: 8%;
-  z-index: 3;
+  z-index: 6;
   display: grid;
   justify-items: center;
   gap: 2px;
@@ -1234,7 +1234,7 @@
 }
 
 .candy-piece.is-dragging {
-  z-index: 6;
+  z-index: 8;
   cursor: grabbing;
   animation: none;
   transform: translate(var(--drag-x, 0), var(--drag-y, 0)) scale(1.18);
@@ -1282,7 +1282,7 @@
   /* 고양이 오른쪽 볼 옆. 말풍선은 머리 위로 갔으므로 겹치지 않는다. */
   left: 72%;
   top: 42%;
-  z-index: 5;
+  z-index: 7;
   width: 30px;
   height: 27px;
   background: url("../assets/decor/heart.webp") center / contain no-repeat;
@@ -1306,7 +1306,17 @@
   100% { opacity: 0; transform: translate(-50%, -34px) scale(1); }
 }
 
-.home-cat { transition: transform 160ms ease, filter 160ms ease; }
+/* 실기기 제보: "고양이 귀가 가려짐. 맨 앞으로 오게."
+   말풍선(z-index 4)이 무대 위쪽에 뜨는데, 두 줄짜리 대사가 되면 아래로
+   자라 귀 끝에 걸쳤다. 비쳐 보이게 해 두긴 했지만 겹치는 건 그대로다.
+   말풍선을 더 올리면 로고와 겹치므로, 순서를 뒤집는다 - 고양이가 앞이고
+   말풍선이 뒤다. 귀가 말풍선을 뚫고 나오는 그림이 되어 오히려 자연스럽다.
+   위로 올라간 김에 사탕 접시(6)·하트(7)·끌리는 사탕(8)도 한 칸씩 올려
+   고양이에게 가려지지 않게 했다. */
+.home-cat {
+  z-index: 5;
+  transition: transform 160ms ease, filter 160ms ease;
+}
 
 /* 아직 한 번도 안 줘 본 사람에게만. 사탕이 고양이 쪽으로 스윽 갔다 돌아오며
    "끌어서 주는 것"임을 손에 알려 준다. 한 번 먹이면 이 동작은 사라진다.
