@@ -1,4 +1,4 @@
-import { Device, Game, GoogleAdMob, Promotion, Share, getSchemeUri } from '@apps-in-toss/web-framework';
+import { Device, Environment, Game, GoogleAdMob, Promotion, Share, getSchemeUri } from '@apps-in-toss/web-framework';
 
 // Browser bundle source for js/vendor/toss-game-center-v1.js. Rebuild with:
 // pnpm dlx esbuild@0.25.10 tools/toss-game-center-entry.mjs --bundle
@@ -54,7 +54,26 @@ export function triggerHaptic(options) {
 //
 // path는 intoss:// 로 시작해야 한다. 이 미니앱 자신의 주소는 getSchemeUri가
 // 알려준다. 실패하면 빈 문자열을 돌려주고, 부르는 쪽은 예전처럼 글만 공유한다.
-export async function createTossShareLink(ogImageUrl = '') {
+// 앱에 처음 들어올 때 쓴 스킴 주소. 도전장 점수가 여기에 실려 온다.
+// Environment.initialURL이 정본이고, getSchemeUri는 같은 값을 주는 옛 이름이다
+// (SDK가 deprecated로 표시했다). 둘 다 없으면 빈 문자열이고, 부르는 쪽은
+// 도전장이 없는 것으로 보고 평소대로 돈다.
+export function getInitialSchemeUrl() {
+  try {
+    const url = Environment?.initialURL;
+    if (typeof url === 'string' && url) return url;
+  } catch {
+    // 아래 옛 이름으로.
+  }
+  try {
+    const url = getSchemeUri?.();
+    return typeof url === 'string' ? url : '';
+  } catch {
+    return '';
+  }
+}
+
+export async function createTossShareLink(ogImageUrl = '', pathQuery = '') {
   if (typeof Share?.createLink !== 'function') return '';
 
   // createLink의 path는 intoss:// 딥링크여야 한다. 그런데 getSchemeUri가
@@ -71,8 +90,12 @@ export async function createTossShareLink(ogImageUrl = '') {
   } catch {}
   if (raw && !raw.startsWith('intoss://')) candidates.push(raw.split('?')[0]);
 
-  for (const path of candidates) {
+  for (const base of candidates) {
     try {
+      // pathQuery는 "vs=8235" 같은 도전장 질의. 받는 쪽은 이 주소로 앱을
+      // 열게 되고, getInitialSchemeUrl이 그대로 돌려준다. 빈 값이면 예전과
+      // 똑같은 주소가 나가므로 도전장을 못 실어도 공유는 그대로 된다.
+      const path = pathQuery ? `${base}${base.includes('?') ? '&' : '?'}${pathQuery}` : base;
       // ogImageUrl은 링크 미리보기에 뜨는 그림. 공개 주소여야 하고
       // 구버전 토스는 무시한다 - 없으면 그림 없는 링크가 될 뿐이다.
       const params = ogImageUrl ? { path, ogImageUrl } : { path };

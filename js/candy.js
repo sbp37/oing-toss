@@ -33,7 +33,7 @@ export function installCandyFeeding({ onFed } = {}) {
   const stage = document.querySelector('.home-character-stage');
   const bubble = document.querySelector('#home-bubble');
   const heart = document.querySelector('#candy-heart');
-  if (!tray || !piece || !count || !cat || !stage) return { refresh() {} };
+  if (!tray || !piece || !count || !cat || !stage) return { refresh() {}, say() {} };
 
   let happyTimer = 0;
   let bubbleTimer = 0;
@@ -214,5 +214,8 @@ export function installCandyFeeding({ onFed } = {}) {
   });
 
   refresh();
-  return { refresh };
+  // say를 밖으로 내보내는 이유. 홈 말풍선의 타이머는 이 안에 하나뿐이라,
+  // 도전장 안내처럼 밖에서 띄우는 말도 같은 통로를 타야 사탕 대사와 서로
+  // 덮어쓰지 않는다. 말풍선 주인은 계속 여기다.
+  return { refresh, say };
 }

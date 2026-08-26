@@ -159,6 +159,9 @@ export class GameUI {
       bombButton: document.querySelector('#bomb-button'),
       clockButton: document.querySelector('#clock-button'),
       homeBest: document.querySelector('#home-best-score'),
+      homeChallenge: document.querySelector('#home-challenge'),
+      homeChallengeScore: document.querySelector('#home-challenge-score'),
+      resultChallenge: document.querySelector('#result-challenge'),
       rankingBest: document.querySelector('#ranking-best-score'),
       rankingLast: document.querySelector('#ranking-last-score'),
       rankingAverage: document.querySelector('#ranking-average-score'),
@@ -2431,6 +2434,35 @@ export class GameUI {
     this.elements.rankingBest.textContent = text;
   }
 
+  // 홈의 도전장 띠. 친구가 보낸 링크로 들어왔을 때만 뜬다. 넘을 점수가
+  // 시작 버튼 바로 위에 있어야 "이걸 하러 왔다"가 첫 화면에서 읽힌다.
+  updateHomeChallenge(target = 0) {
+    const banner = this.elements.homeChallenge;
+    if (!banner) return;
+    const value = Math.max(0, Math.round(Number(target) || 0));
+    banner.hidden = value <= 0;
+    if (value > 0) this.elements.homeChallengeScore.textContent = value.toLocaleString('ko-KR');
+  }
+
+  // 결과창의 도전장 한 줄. 이겼으면 축하, 못 넘었으면 남은 점수를 알려준다.
+  // 남은 점수를 굳이 숫자로 보여주는 이유는, "조금만 더"가 막연한 응원보다
+  // 다음 한 판을 부르기 때문이다.
+  updateResultChallenge(verdict = null) {
+    const line = this.elements.resultChallenge;
+    if (!line) return;
+    if (!verdict) {
+      line.hidden = true;
+      line.textContent = '';
+      delete line.dataset.won;
+      return;
+    }
+    line.hidden = false;
+    line.dataset.won = verdict.won ? 'yes' : 'no';
+    line.textContent = verdict.won
+      ? `친구 기록 ${verdict.target.toLocaleString('ko-KR')}점을 넘었다냥!`
+      : `친구 기록까지 ${verdict.diff.toLocaleString('ko-KR')}점 남았다냥`;
+  }
+
   // Which scene of 고양이의 모험 is painted behind the board. The art itself
   // lives in CSS (one rule per chapter) so a missing file falls back to the
   // original garden painting instead of leaving a blank frame.
@@ -2741,13 +2773,14 @@ export class GameUI {
     score, maxCombo, round, successCount = 0, catsCollected = 0,
     catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
-    classic = null, cardAward = null, candy = null,
+    classic = null, cardAward = null, candy = null, challenge = null,
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
     // 지난 판의 연출이 남아 있으면 새 판의 첫 프레임에 그것이 먼저 보인다.
     this.resetCardAward();
     // 카드 패널이 서는 판에서는 장면 소식을 패널이 대신 전한다. 같은 말을
     // 두 줄에 나눠 쓰면 무엇이 이번 판의 수확인지 흐려진다.
+    this.updateResultChallenge(challenge);
     const cardAwardActive = Boolean(cardAward?.fresh?.length);
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
