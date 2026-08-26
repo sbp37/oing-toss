@@ -59,19 +59,53 @@ export function adReady(kind) {
   return adsAvailable(kind) && loadedKinds.has(kind);
 }
 
-// 광고를 띄우고 { rewarded, amount }를 돌려준다. 어떤 실패든 rewarded=false로
-// 조용히 끝난다 - 호출자는 실패를 따로 다룰 필요가 없고, 지급만 안 하면 된다.
+// 광고를 띄우고 { rewarded, amount, shown }를 돌려준다. 어떤 실패든
+// rewarded=false로 조용히 끝난다 - 호출자는 지급만 안 하면 된다. shown은
+// "광고가 실제로 떴는가"로, 안 떴으면 부르는 쪽이 사람에게 알려줄 수 있다.
 // 한 번 쓴 로드는 소모되므로 다음을 위해 다시 불러 둔다.
+//
+// 실기기 제보: 이어하기는 "광고 보고 +30초"를 눌러도 그냥 결과창으로 갔다.
+// 힌트(도움팩)는 멀쩡했다. 차이는 기다린 시간이다. 도움팩은 판 도중에 바로
+// 쓰지만, 이어하기 광고는 판 시작에 불러 두고 2분 넘게 묵혀 뒀다가 쓴다.
+// 그런데 loadedKinds는 우리 쪽 기억일 뿐이라, 그 사이 광고가 만료되거나
+// 무효가 돼도 계속 "준비됨"이라고 답한다. 그 상태로 show를 부르면 SDK가
+// failedToShow로 끝내고, 우리는 보상 없이 결과로 갔다.
+//
+// 그래서 띄우기 직전에 SDK에게 직접 물어보고, 아니라면 그 자리에서 한 번
+// 다시 불러온다. 몇 초 늦어질 수는 있어도 "눌렀는데 아무 일도 안 일어남"
+// 보다는 낫다.
 export async function showAd(kind) {
   const adGroupId = adGroupIdFor(kind);
-  if (!adGroupId || !isAppsInTossWebView()) return { rewarded: false, amount: 0 };
+  if (!adGroupId || !isAppsInTossWebView()) return { rewarded: false, amount: 0, shown: false };
   try {
     const module = await bridge();
-    if (!module?.showRewardedAd) return { rewarded: false, amount: 0 };
+    if (!module?.showRewardedAd) return { rewarded: false, amount: 0, shown: false };
+
+    let live = true;
+    try {
+      if (typeof module.isRewardedAdLoaded === 'function') {
+        live = Boolean(await module.isRewardedAdLoaded(adGroupId));
+      }
+    } catch {
+      // 물어볼 수 없으면 우리 기억을 믿고 그냥 진행한다.
+      live = true;
+    }
+    if (!live) {
+      loadedKinds.delete(kind);
+      loadingKinds.delete(kind);
+      const reloaded = await module.loadRewardedAd(adGroupId).catch(() => false);
+      if (!reloaded) return { rewarded: false, amount: 0, shown: false };
+      loadedKinds.add(kind);
+    }
+
     const result = await module.showRewardedAd(adGroupId);
-    return { rewarded: Boolean(result?.rewarded), amount: Number(result?.amount) || 0 };
+    return {
+      rewarded: Boolean(result?.rewarded),
+      amount: Number(result?.amount) || 0,
+      shown: true,
+    };
   } catch {
-    return { rewarded: false, amount: 0 };
+    return { rewarded: false, amount: 0, shown: false };
   } finally {
     loadedKinds.delete(kind);
     preloadAd(kind);

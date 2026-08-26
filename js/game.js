@@ -2470,10 +2470,18 @@ class OingGame {
     }
 
     this.adContinueUsed = true;
-    const { rewarded, amount } = await this.runRewardedAd('continue');
+    // 광고가 묵어서 다시 불러와야 할 수 있다. 그동안 화면이 멈춰 있으면
+    // 눌렀는데 아무 일도 안 일어나는 것처럼 보인다.
+    this.ui.showCenterNotice('광고 준비 중...', 2600);
+    const { rewarded, amount, shown } = await this.runRewardedAd('continue');
     this.adContinueOffering = false;
     this.finishing = false;
-    if (!rewarded) return false;
+    if (!rewarded) {
+      // 광고가 아예 뜨지 않았다면 그건 우리 사정이다. 조용히 결과로
+      // 보내면 "버튼이 먹통"으로 읽힌다(실기기 제보).
+      if (!shown) this.ui.toast('광고를 못 불러왔다냥. 미안하다냥!', 2200);
+      return false;
+    }
 
     // 되살리기: 시계만 새로 감고 점수·콤보·판은 그대로 둔다. 지급량은
     // 광고가 알려준 콘솔 등록값을 우선한다 - 콘솔에서 바꾸면 그대로 반영.
@@ -2554,7 +2562,8 @@ class OingGame {
       return false;
     }
     try {
-      const { rewarded } = await this.runRewardedAd('helpPack');
+      const { rewarded, shown } = await this.runRewardedAd('helpPack');
+      if (!rewarded && !shown) this.ui.toast('광고를 못 불러왔다냥. 미안하다냥!', 2200);
       if (rewarded) {
         this.adHelpPackUsed = true;
         // 팩 내용은 코드가 정한다 - 콘솔 수량은 '팩 1개'라는 뜻일 뿐이다.

@@ -1996,7 +1996,9 @@ export class GameUI {
     }
     await delay(160);
     timeUp.classList.add('is-visible');
-    await delay(1000);
+    // 1초는 점수를 읽기 전에 사라졌다는 제보를 받았다. 도장이 뜨고, 눈이
+    // 점수로 내려가고, 숫자를 읽는 데 걸리는 시간을 준다.
+    await delay(1750);
   }
 
   // 도장을 지우고 판을 원래대로. 제안 창이 뜨기 전에 부른다.
@@ -2017,6 +2019,14 @@ export class GameUI {
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-game-ending');
     this.showEndAnswers(answers);
+    // 이어하기 제안 전에 이미 끝을 보여줬다면 여기서는 아무것도 다시 하지
+    // 않는다. '결과 보기'를 누른 사람은 이미 결정을 내린 것이고, 거기서
+    // TIME UP과 쓸어내는 연출을 한 번 더 보면 끝이 두 번 나는 것처럼
+    // 어색하다는 제보를 받았다. 곧바로 결과 시트를 올린다.
+    if (stamped) {
+      this.boardFrame.classList.remove('is-game-ending');
+      return;
+    }
     // Show the stop cue almost immediately. A half-second frozen board before
     // TIME UP read as a dropped frame even though the end sequence was live.
     await delay(180);
@@ -2024,16 +2034,9 @@ export class GameUI {
     sweep.className = 'game-end-sweep';
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
-    // 이어하기 제안 전에 이미 도장을 찍었다면 여기서 또 찍지 않는다 -
-    // 같은 TIME UP을 두 번 보면 끝이 두 번 나는 것처럼 어색하다. 대신
-    // 놓친 답만 짧게 비춰 주고 결과로 넘어간다.
-    if (!stamped) {
-      timeUp.classList.add('is-visible');
-      await delay(900);
-      timeUp.classList.remove('is-visible');
-    } else {
-      await delay(420);
-    }
+    timeUp.classList.add('is-visible');
+    await delay(900);
+    timeUp.classList.remove('is-visible');
     sweep.remove();
     // The score is about to be the sheet's headline, so it is not announced
     // twice; the missed answers stay lit underneath it.

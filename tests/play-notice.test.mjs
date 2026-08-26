@@ -29,9 +29,20 @@ test('board-change notices are mint, not cream on a cream board', async () => {
   // 바탕이 되는 규칙은 크림색이다. 그 위에 크림 알약이 뜨니 안 보였다.
   assert.match(layout, /\.play-ui-v4 \.board-entry \{[\s\S]*?background: rgba\(255, 247, 226/);
   // 마지막에 실리는 이 파일이 민트로 덮어써야 한다. ID를 써야 클래스
-  // 두 개짜리 규칙을 이긴다.
-  assert.match(polish, /#play-screen \.board-entry \{[\s\S]*?background: linear-gradient\(180deg, #4fd1ae, #16a085\)/);
-  assert.match(polish, /#play-screen \.cat-message\[data-tone="classicBoard"\][\s\S]*?background: linear-gradient\(180deg, #4fd1ae, #16a085\)/);
+  // 두 개짜리 규칙을 이긴다. 색은 홈 규칙 카드의 4/6 타일과 같은 밝은
+  // 민트다 - 진한 민트는 판 위에서 너무 세게 눌렀다.
+  assert.match(polish, /#play-screen \.board-entry \{[\s\S]*?background: linear-gradient\(180deg, #eefffa, #cdf3e9\)/);
+  assert.match(polish, /#play-screen \.play-center-notice \{[\s\S]*?background: linear-gradient\(180deg, #eefffa, #cdf3e9\)/);
+});
+
+test('the speech bubble keeps its own art - no painted rectangle over it', async () => {
+  const [polish, html] = await Promise.all([read('css/claude-polish.css'), read('index.html')]);
+
+  // 플레이 화면의 말풍선은 글자에 배경이 없다. 모양은 뒤에 깔린 그림이
+  // 만든다. 배경색을 주면 둥근 그림 위에 각진 사각형이 덧그려진다.
+  assert.match(html, /speech-bubble-wide-v4\.webp/);
+  assert.doesNotMatch(polish, /\.cat-message\[data-tone="classicBoard"\]/);
+  assert.doesNotMatch(polish, /\.cat-message\[data-tone="classicRule"\]/);
 });
 
 test('the run visibly ends before the ad offer arrives', async () => {
@@ -59,7 +70,9 @@ test('TIME UP is not stamped twice on the same run', async () => {
   // 제안 전에 찍었으면 결과로 넘어갈 때는 건너뛴다. 같은 TIME UP을 두 번
   // 보면 끝이 두 번 나는 것처럼 어색하다.
   assert.match(ui, /async animateGameEnd\(\{ answers = \[\], stamped = false \} = \{\}\)/);
-  assert.match(ui, /if \(!stamped\) \{[\s\S]*?timeUp\.classList\.add\('is-visible'\)/);
+  // 이미 찍었으면 쓸어내는 연출까지 통째로 건너뛰고 결과로 간다 - 그
+  // 연출이 남아 있으면 '결과 보기'를 눌러도 끝이 한 번 더 나는 느낌이다.
+  assert.match(ui, /if \(stamped\) \{[\s\S]{0,200}?return;/);
   assert.match(game, /animateGameEnd\(\{ answers: endAnswers, stamped \}\)/);
   // 되살아나면 기억을 지운다 - 다음 종료는 처음부터 다시 보여줘야 한다.
   assert.ok(game.split('this.adStampedTimeUp = false;').length - 1 >= 3);

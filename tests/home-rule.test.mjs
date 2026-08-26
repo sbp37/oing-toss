@@ -9,8 +9,11 @@ test('home teaches the rectangle rule once, as the large display headline', asyn
   const finalHomeRules = css.slice(css.lastIndexOf('Home rule headline'));
 
   assert.doesNotMatch(home, /class="home-tagline"/);
-  // 홈 화면만 게임 이름을 따라 '오잉!'을 쓴다. 게임 안 연출은 뿅을 유지한다.
-assert.match(home, /<em>사각형<\/em>으로 묶어서 합이 <em>10<\/em>이면, 오잉!/);
+  // 한 화면에 오잉!이 두 번 뜨면 어느 쪽이 게임 이름인지 흐려진다는 제보를
+  // 받았다. 윗줄은 성공 연출과 같은 '뿅!'으로 두고, 아래 데모 한 곳만
+  // 게임 이름을 따라 '오잉!'을 남긴다.
+assert.match(home, /<em>사각형<\/em>으로 묶어서 합이 <em>10<\/em>이면, 뿅!/);
+  assert.match(home, /<i>오잉!<\/i>/);
   assert.match(finalHomeRules, /\.home-instruction[\s\S]*?font-family:\s*var\(--font-display\)/);
   assert.match(finalHomeRules, /font-size:\s*clamp\(14px,\s*4vw,\s*16px\)/);
   assert.match(finalHomeRules, /white-space:\s*nowrap/);
