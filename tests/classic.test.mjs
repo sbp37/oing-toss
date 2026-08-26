@@ -89,22 +89,32 @@ test('a wrong answer always costs multiplier, above the cap as well as below', (
   }
 });
 
-test('classic ladder holds a stable 6x6 opener before growing to eight rows', () => {
+test('classic ladder opens on two 5x6 warm-ups before growing to eight rows', () => {
+  // 2026-08 초보 진입 패스: 앞에 계단을 하나 더 놓고 전체를 한 칸씩 뒤로 밀었다.
+  // 실기기 제보 "세 판째에서 나가떨어져"가 시뮬(초보 300런)과 맞아떨어졌고
+  // (57%가 3판에서 끝남), 첫 두 판을 5x6으로 낮추니 초보 점수 +16%, 도달 판
+  // 3->4, 3판 이탈 57%->9%가 됐다. 숙련은 -2%/런 3.1->3.0분으로 거의 그대로다.
   assert.deepEqual(
     CLASSIC_BOARD_LADDER.map((step) => [step.rows, step.cols]),
-    [[6, 6], [6, 6], [7, 6], [8, 6]],
+    [[5, 6], [5, 6], [6, 6], [7, 6], [8, 6]],
   );
   // 워밍업 판일수록 판갈이 보상이 작다 — 작은 판은 금방 마르니까.
   // 2026-08 페이싱 패스: 보통 4.0분/숙련 6.6분까지 늘어지던 런을
   // 3.5분/4.5분으로 줄인 값 (tools/classic-balance-sim.mjs로 측정).
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 5, 5]);
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [10, 12, 16, 16]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [4, 5, 5, 5, 5]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [10, 12, 14, 16, 16]);
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
   CLASSIC_BOARD_LADDER.forEach((step) => assert.equal(step.cols, 6));
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.rows), [6, 6, 7, 8]);
+  // 계단은 한 번에 한 칸씩만 오른다. 두 칸을 한꺼번에 올리면 그 판에서
+  // 사람이 떨어진다 - 이 사다리를 다시 만지는 사람이 제일 밟기 쉬운 곳이다.
+  CLASSIC_BOARD_LADDER.forEach((step, index) => {
+    if (index === 0) return;
+    const grew = step.rows - CLASSIC_BOARD_LADDER[index - 1].rows;
+    assert.ok(grew === 0 || grew === 1, `${index}번째 계단이 ${grew}칸 올랐다`);
+  });
   assert.equal(classicBoardForIndex(0), CLASSIC_BOARD_LADDER[0]);
-  assert.equal(classicBoardForIndex(3), CLASSIC_BOARD_LADDER[3]);
-  assert.equal(classicBoardForIndex(9), CLASSIC_BOARD_LADDER[3]);
+  assert.equal(classicBoardForIndex(4), CLASSIC_BOARD_LADDER[4]);
+  assert.equal(classicBoardForIndex(9), CLASSIC_BOARD_LADDER[4]);
   assert.equal(classicBoardForIndex(-1), CLASSIC_BOARD_LADDER[0]);
 });
 

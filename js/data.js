@@ -491,9 +491,17 @@ export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
 // 아래 피로 상수와 함께 줄이면 초보 2.5분(변화 없음), 보통 3.5분, 숙련
 // 4.5분으로 수렴한다. 판갈이 한 번의 보상이 원조(+15초)보다 약간 작아지는
 // 대신, 판갈이 빈도가 원조보다 훨씬 높다는 차이를 흡수한다.
+// 2026-08 초보 진입 패스: 앞에 계단을 하나 더 놓고 전체를 한 칸씩 뒤로 밀었다.
+// 실기기 제보 "세 판째에서 나가떨어져"가 시뮬(초보 300런)과 정확히 맞았다 -
+// 57%가 3판에서 끝났다. 원인은 3판이 어려워서가 아니라 초보 속도(1판 42초)로는
+// 3판이 2분의 끝이라서였고, 그래서 판이 커지는 것을 즐길 시간이 없었다.
+// 첫 두 판을 5x6으로 낮추니 초보 점수 1521->1767(+16%), 도달 판 3->4,
+// 3판 이탈 57%->9%. 숙련은 15956->15638(-2%), 런 3.1->3.0분으로 거의 그대로다 -
+// 끝(8x6)이 같아서 잘하는 쪽은 계단 하나를 금방 통과하기 때문이다.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 4, timeBonus: 10 }),
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 12 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 4, timeBonus: 10 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 5, timeBonus: 12 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
   Object.freeze({ rows: 7, cols: 6, timeFloor: 5, timeBonus: 16 }),
   Object.freeze({ rows: 8, cols: 6, timeFloor: 5, timeBonus: 16 }),
 ]);
