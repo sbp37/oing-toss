@@ -533,3 +533,45 @@ test('drops ramp with board depth, so an unlocked start is not a rarity handout'
   // 해금으로 3번째 판에서 시작해도 최심 풀이 바로 열리지는 않는다.
   assert.ok(classicDropStage(classicStartBoardIndex(4000)) < 10);
 });
+
+test('꼬리 구제는 판이 마른 뒤에만, 판마다 한 번만 걸린다', async () => {
+  const { CLASSIC_THIN_BOARD_ANSWERS, CLASSIC_THIN_BOARD_MAX_FILL } = await import('../js/data.js');
+
+  // 게임 객체 없이 판정 부분만 떼어 본다. 이 세 줄이 이 기능의 전부다 -
+  // 언제 세어보고(비용), 언제 걸고(문턱), 몇 번 거는가(한 번).
+  const decide = ({ coached, remaining, initial, answers }) => {
+    if (coached) return false;
+    if (remaining > initial * CLASSIC_THIN_BOARD_MAX_FILL) return false;
+    return answers > 0 && answers <= CLASSIC_THIN_BOARD_ANSWERS;
+  };
+
+  // 판이 아직 많이 남았으면 답이 적어도 안 건다. findAnswers가 비싸서
+  // 세어보지도 않는 구간이고, 초반에 답이 적은 판은 곧 답이 늘어난다.
+  assert.equal(decide({ coached: false, remaining: 30, initial: 30, answers: 1 }), false);
+  assert.equal(decide({ coached: false, remaining: 19, initial: 30, answers: 1 }), false);
+
+  // 마른 판에서만 건다.
+  assert.equal(decide({ coached: false, remaining: 12, initial: 30, answers: 2 }), true);
+  assert.equal(decide({ coached: false, remaining: 12, initial: 30, answers: 1 }), true);
+
+  // 답이 넉넉하면 안 건다 - 못 찾는 게 아니라 안 찾은 것이다.
+  assert.equal(decide({ coached: false, remaining: 12, initial: 30, answers: 3 }), false);
+
+  // 답이 아예 없으면 여기가 아니라 판갈이가 맡는다.
+  assert.equal(decide({ coached: false, remaining: 12, initial: 30, answers: 0 }), false);
+
+  // 한 판에 한 번. 이게 풀리면 꼬리 내내 힌트가 켜져 게임이 아니게 된다.
+  assert.equal(decide({ coached: true, remaining: 12, initial: 30, answers: 1 }), false);
+});
+
+test('꼬리 구제는 두 칸짜리 답을 먼저 고른다', () => {
+  // 두 칸 답(3+7처럼 붙어 있는 한 쌍)은 암산이 거의 없어 눈에 바로 띈다.
+  // 도움을 준다면 가장 읽히는 형태여야 한다.
+  const size = (a) => (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1);
+  const pickCoachAnswer = (answers) => answers.find((a) => size(a) === 2) || answers[0];
+
+  const four = { r1: 0, c1: 0, r2: 1, c2: 1 };
+  const two = { r1: 3, c1: 0, r2: 3, c2: 1 };
+  assert.equal(pickCoachAnswer([four, two]), two, '네 칸을 먼저 골랐다');
+  assert.equal(pickCoachAnswer([four]), four, '두 칸이 없는데 아무것도 안 골랐다');
+});

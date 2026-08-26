@@ -27,6 +27,8 @@ import {
   unseenRareBoardItemTypes,
   RARE_BOARD_ITEM_INTROS,
   CLASSIC_CHAPTERS,
+  CLASSIC_THIN_BOARD_ANSWERS,
+  CLASSIC_THIN_BOARD_MAX_FILL,
   OING_CARDS,
   classicComboAfterFailure,
   classicComboGain,
@@ -787,6 +789,33 @@ class OingGame {
     return true;
   }
 
+  // 판이 말라붙으면 고양이가 한 개를 비춰 준다. 판마다 한 번, 공짜다.
+  //
+  // 지워갈수록 답이 주는 건 당연한데, "바로 보이는 답"(두 칸짜리)이 먼저
+  // 사라지는 게 문제다. 판을 반쯤 지우면 남은 답이 전부 세 칸 이상이라
+  // 앞부분은 패턴 찾기였다가 뒷부분은 암산 노동이 된다(data.js의 실측표).
+  //
+  // 유료 힌트와 겹치지 않는다. 저건 아무 때나 쓰는 것이고 이건 꼬리 전용이라,
+  // 광고를 보고 힌트를 산 사람의 손해가 되지 않는다. 잘하는 사람은 이 지점을
+  // 이미 지나쳐 있어 혜택이 거의 없다 - 초보만 받는 도움이다.
+  maybeCoachThinBoard(remainingCells = 0) {
+    if (this.thinBoardCoached) return false;
+    if (!this.state.running || this.state.paused) return false;
+    // 판이 아직 많이 남았으면 세어 보지도 않는다 - findAnswers는 비싸고,
+    // 답이 마르는 일은 판이 꽤 지워진 뒤에만 일어난다.
+    const initial = Math.max(1, this.state.initialPlayableCells);
+    if (remainingCells > initial * CLASSIC_THIN_BOARD_MAX_FILL) return false;
+    const answers = this.model.findAnswers();
+    if (!answers.length || answers.length > CLASSIC_THIN_BOARD_ANSWERS) return false;
+    this.thinBoardCoached = true;
+    // 두 칸짜리가 있으면 그것부터. 초보에게 가장 읽히는 형태다.
+    const pick = answers.find((a) => (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1) === 2) || answers[0];
+    this.telemetry?.hint('thin-board');
+    this.ui.showHint(pick, { tone: 'coach' });
+    this.showCatMessage('thinBoard', { force: true });
+    return true;
+  }
+
   beginCountdown() {
     if (this.timer || !this.state.running || this.stageDuration <= 0) return;
     this.lastInteractionAt = performance.now();
@@ -817,6 +846,8 @@ class OingGame {
     this.itemTapCandidate = null;
     // 새 판에서는 이전 판 좌표로 눌러둔 탭이 의미가 없다.
     this.pendingBoardItemTap = null;
+    // 꼬리 구제는 판마다 한 번이다. 새 판이 서면 다시 쓸 수 있다.
+    this.thinBoardCoached = false;
     const classicBoard = this.classic ? classicBoardForIndex(this.classic.boardIndex) : null;
     if (this.classic) this.applyClassicChapter();
     const config = classicBoard
@@ -1403,7 +1434,8 @@ class OingGame {
       if (placed.length) {
         this.announceBoardItems(placed, { playSound: this.state.combo % ITEM_REWARD_INTERVAL !== 0 });
       }
-      if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
+      if (remainingAnswer) this.maybeCoachThinBoard(remaining);
+      else await this.classicBoardChange({ emptied: remaining === 0 });
       this.state.inputLocked = false;
       this.updateHUD();
       await this.fireCaughtBoardItems(caughtItems);
