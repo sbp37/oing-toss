@@ -123,6 +123,7 @@ export class GameUI {
       startCountdown: document.querySelector('#start-countdown'),
       startCountdownKicker: document.querySelector('#start-countdown-kicker'),
       startCountdownValue: document.querySelector('#start-countdown-value'),
+      startCountdownGoal: document.querySelector('#start-countdown-goal'),
       combo: document.querySelector('#combo-value'),
       comboChip: document.querySelector('#combo-chip'),
       comboTimerFill: document.querySelector('#combo-timer-fill'),
@@ -270,6 +271,17 @@ export class GameUI {
   // quick은 박자만 짧게 한다. 글씨·색·막은 첫 시작과 똑같다 - 시작 연출이
   // 두 가지로 보이면 안 된다는 실기기 제보로 모양 차이는 걷어냈고, 남은
   // 차이는 "재시작은 두 박"이라는 리듬뿐이다.
+  // 시작 카운트다운에 걸어두는 이번 판의 목표. 끝날 때의 목표는 "한 판 더 할
+  // 이유"지만, 시작할 때의 목표는 이 판을 어떻게 칠지의 기준이다 - 3·2·1을
+  // 보는 2초가 그 기준을 읽는 유일한 순간이라 여기가 자리다.
+  setStartCountdownGoal(goal = null) {
+    const line = this.elements.startCountdownGoal;
+    if (!line) return;
+    const text = goal?.startText || '';
+    line.hidden = !text;
+    line.textContent = text;
+  }
+
   async animateStartCountdown(steps, onStep = () => {}, { quick = false } = {}) {
     const token = ++this.startCountdownToken;
     const overlay = this.elements.startCountdown;

@@ -886,10 +886,16 @@ export function newlyUnlockedOingCards(totals = {}, previousKeys = []) {
 // 결과 화면에는 이미 최고기록 비교도, 카드 진행도도, 도전장도 다 있다.
 // 그런데 전부 "방금 끝난 판"의 이야기라서, 다 읽고 나면 판이 닫힌다.
 // 여기서 고르는 한 줄만 다음 판의 이야기다 - "그만할까"를 "한 판만 더"로
-// 돌리는 것이 목적이고, 그래서 자리가 '한 판 더!' 버튼 바로 위다.
+// 돌리는 것이 목적이다.
+//
+// 같은 고르기를 두 자리에서 쓴다(설계: docs/DESIGN-next-goal-v1.md).
+// - 결과창의 '한 판 더!' 버튼 바로 위: 남은 몫을 말한다. 다음 판의 이유다.
+// - 시작 카운트다운: 넘어야 할 수를 말한다. 끝날 때의 목표는 "한 판 더 할
+//   이유"지만 시작할 때의 목표는 "이 판을 어떻게 칠지의 기준"이라, 문장이
+//   같은 목표를 가리켜도 말하는 방식이 달라야 한다.
 //
 // 여러 개를 늘어놓으면 목록이 되고, 목록은 목표가 아니다. 그래서 딱 하나만
-// 고른다. 고르는 잣대는 "남은 비율" 하나다 - 점·판·일·칸이 단위가 제각각인데
+// 고른다. 고르는 잣대는 "남은 비율" 하나다 - 점·판·칸이 단위가 제각각인데
 // 절대값으로는 서로 비교가 안 되기 때문이다. 남은 몫을 목표로 나누면 전부
 // 0~1로 떨어지고, 그 중 가장 작은 것이 손에 닿는 목표다.
 //
@@ -898,66 +904,104 @@ export function newlyUnlockedOingCards(totals = {}, previousKeys = []) {
 //
 // 다만 비율만으로 자르면 첫 판을 막 끝낸 사람이 아무것도 못 본다. 그 사람의
 // 누적은 전부 0에 가까워서 모든 목표가 멀기 때문인데, 정작 이 한 줄이 가장
-// 필요한 사람이 그 사람이다. 그래서 세는 단위가 작은 목표(판·일)는 남은
-// 수가 한 자리면 비율과 무관하게 들여보낸다 - "9판"은 벽이 아니라 셈이다.
-//
-// 출석 일수(playDays)는 이 예외를 안 준다. 날짜는 판을 더 한다고 오지 않아서,
-// "다음 카드까지 6일"은 지금 한 판 더 할 이유가 못 된다. 비율이 충분히
-// 줄어든 뒤에야(6일차의 "1일 남음") 들어온다.
+// 필요한 사람이 그 사람이다. 그래서 판 수 목표는 남은 수가 한 자리면 비율과
+// 무관하게 들여보낸다 - "9판"은 벽이 아니라 셈이다.
 export const NEXT_GOAL_MAX_RATIO = 0.6;
 export const NEXT_GOAL_COUNTABLE_MAX = 9;
 const NEXT_GOAL_COUNTABLE = Object.freeze(['runs']);
 
-const NEXT_GOAL_CARD_UNIT = Object.freeze({
-  runs: (left) => `${left}판`,
-  playDays: (left) => `${left}일`,
-  cats: (left) => `고양이 ${left.toLocaleString('ko-KR')}마리`,
-  bigClears: (left) => `${left.toLocaleString('ko-KR')}번`,
-  cellsCleared: (left) => `${left.toLocaleString('ko-KR')}칸`,
+// 시작 화면에서 "신기록"이 놓이는 거리. 최고기록은 언제나 바로 위에 있어서
+// 진짜 비율(0)로 재면 늘 이 목표만 나온다. 그렇다고 늘 지게 두면 신기록이
+// 영영 목표가 안 된다. 그래서 "손에 닿지만 제일 가깝지는 않은" 자리에 둔다 -
+// 이보다 가까운 카드가 있으면 카드가, 없으면 신기록이 나온다.
+export const NEXT_GOAL_RECORD_START_RATIO = 0.1;
+
+// 출석 일수는 후보가 아니다. 날짜는 판을 더 한다고 오지 않아서, "다음 카드까지
+// 6일"은 지금 한 판 더 할 이유가 못 된다. 갤러리에는 그대로 남는다.
+const NEXT_GOAL_SKIP_METRICS = Object.freeze(['playDays']);
+
+// 남은 몫을 말하는 말투(결과창)와 넘어야 할 수를 말하는 말투(시작).
+const NEXT_GOAL_CARD_WORDING = Object.freeze({
+  // 남은 판이 하나면 그게 지금 하는 이 판이다. "1판만 더"는 이 판을 안 세는
+  // 말이라 첫 판을 시작하는 사람에게 거짓말이 된다.
+  runs: (left) => [
+    `다음 카드까지 ${left}판!`,
+    left === 1 ? '이 판을 끝내면 새 카드!' : `${left}판만 더 하면 새 카드!`,
+  ],
+  cats: (left) => [
+    `다음 카드까지 고양이 ${left.toLocaleString('ko-KR')}마리!`,
+    `고양이 ${left.toLocaleString('ko-KR')}마리만 더 모으면 새 카드!`,
+  ],
+  bigClears: (left) => [
+    `다음 카드까지 ${left.toLocaleString('ko-KR')}번!`,
+    `5칸 묶기 ${left.toLocaleString('ko-KR')}번만 더 하면 새 카드!`,
+  ],
+  cellsCleared: (left) => [
+    `다음 카드까지 ${left.toLocaleString('ko-KR')}칸!`,
+    `${left.toLocaleString('ko-KR')}칸만 더 지우면 새 카드!`,
+  ],
 });
 
+// phase는 두 자리를 가른다.
+// - 'result': 방금 낸 점수에서 잰다. 점수 목표는 "이 판에 얼마나 모자랐나"다.
+// - 'start': 아직 0점이라 이번 판 점수로는 아무것도 못 잰다. 그 사람이 이미
+//   낼 수 있는 점수(최고기록)에서 재고, 문장도 넘어야 할 수로 말한다.
 export function nextGoalLine({
   totals = {},
   score = 0,
   previousBest = 0,
   challengeTarget = 0,
+  phase = 'result',
 } = {}) {
-  const mine = Math.max(0, Math.round(Number(score) || 0));
+  const atStart = phase === 'start';
   const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  // 시작할 때의 기준점은 "이미 낼 수 있는 점수"다.
+  const from = atStart ? best : Math.max(0, Math.round(Number(score) || 0));
   const rival = Math.max(0, Math.round(Number(challengeTarget) || 0));
   const candidates = [];
 
   // 친구 기록이 먼저다. 사람이 걸린 목표라서, 같은 거리면 이쪽이 더 당긴다.
-  if (rival > mine) {
+  if (rival > from) {
     candidates.push({
       kind: 'challenge',
-      ratio: (rival - mine) / rival,
-      text: `친구 기록까지 ${(rival - mine).toLocaleString('ko-KR')}점!`,
+      target: rival,
+      ratio: (rival - from) / rival,
+      text: `친구 기록까지 ${(rival - from).toLocaleString('ko-KR')}점!`,
+      startText: `이번 판 ${rival.toLocaleString('ko-KR')}점 넘기면 친구 이기기!`,
     });
   }
-  // 이번 판에 이미 깼으면 목표가 아니다.
-  if (best > mine) {
+  // 결과창에서는 이번 판에 이미 깼으면 목표가 아니다. 시작할 때는 언제나
+  // 목표다 - 신기록은 늘 바로 위에 있다.
+  if (best > 0 && (atStart || best > from)) {
     candidates.push({
       kind: 'best',
-      ratio: (best - mine) / best,
-      text: `최고기록까지 ${(best - mine).toLocaleString('ko-KR')}점!`,
+      target: best,
+      ratio: atStart ? NEXT_GOAL_RECORD_START_RATIO : (best - from) / best,
+      text: `최고기록까지 ${(best - from).toLocaleString('ko-KR')}점!`,
+      startText: `이번 판 ${best.toLocaleString('ko-KR')}점 넘기면 신기록!`,
     });
   }
   for (const card of oingCardRows(totals)) {
-    if (card.unlocked) continue;
+    if (card.unlocked || NEXT_GOAL_SKIP_METRICS.includes(card.metric)) continue;
     const left = card.goal - card.current;
     if (left <= 0) continue;
     // 점수 카드는 문턱을 함께 말한다. "4,000점 카드"라고 해야 남은 370점이
-    // 무엇을 향한 370점인지 한 번에 읽힌다.
-    const text = card.metric === 'bestScore'
-      ? `${card.goal.toLocaleString('ko-KR')}점 카드까지 ${left.toLocaleString('ko-KR')}점!`
-      : `다음 카드까지 ${(NEXT_GOAL_CARD_UNIT[card.metric] || ((n) => `${n}`))(left)}!`;
+    // 무엇을 향한 370점인지 한 번에 읽힌다. 카드 이름은 안 쓴다 - 아직 못 본
+    // 카드라서 이름으로는 아무것도 안 그려진다.
+    const [text, startText] = card.metric === 'bestScore'
+      ? [
+        `${card.goal.toLocaleString('ko-KR')}점 카드까지 ${left.toLocaleString('ko-KR')}점!`,
+        `이번 판 ${card.goal.toLocaleString('ko-KR')}점이면 새 카드!`,
+      ]
+      : (NEXT_GOAL_CARD_WORDING[card.metric] || ((n) => [`${n}`, `${n}`]))(left);
     candidates.push({
       kind: 'card',
       cardKey: card.key,
+      target: card.goal,
       ratio: left / card.goal,
       countable: NEXT_GOAL_COUNTABLE.includes(card.metric) && left <= NEXT_GOAL_COUNTABLE_MAX,
       text,
+      startText,
     });
   }
 
