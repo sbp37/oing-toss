@@ -145,3 +145,28 @@ test('the home bubble clears the ears: centred, screen-wide, see-through', async
   // 머리 위. top:0(무대 왼쪽 위)으로 돌아가면 귀를 다시 덮는다.
   assert.match(rule, /bottom: 90%/);
 });
+
+test('the feeding tally lives in the records sheet, not on the home screen', async () => {
+  const [html, ui, game] = await Promise.all([
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../js/ui.js', import.meta.url), 'utf8'),
+    readFile(new URL('../js/game.js', import.meta.url), 'utf8'),
+  ]);
+
+  // 준 것이 아무 데도 안 쌓이면 "이걸 왜 하지"가 남는다. 그렇다고 홈에
+  // 숫자를 하나 더 붙이면 사탕 개수·최고점수 옆에 세 번째 숫자가 생겨
+  // 첫 화면이 시끄러워진다. 누적은 기록 시트의 몫이다.
+  const records = html.slice(html.indexOf('id="ranking-overlay"'), html.indexOf('id="ranking-bars"'));
+  assert.match(records, /id="ranking-candy-line"/);
+  assert.match(records, /id="ranking-candy-total"/);
+  const home = html.slice(html.indexOf('id="home-screen"'), html.indexOf('id="play-screen"'));
+  assert.doesNotMatch(home, /ranking-candy-total/);
+  assert.doesNotMatch(home, /함께한 간식/);
+
+  // 기록 시트를 열 때마다 지금 값으로 다시 그린다.
+  assert.match(ui, /updateCandyFed\(total = 0\)/);
+  assert.match(game, /refreshClassicRecordSurfaces\(\) \{[\s\S]*?updateCandyFed\(storageAdapter\.getFedCount\(\)\)/);
+
+  // 한 번도 안 준 사람에게는 뜨지 않는다. 0인 줄은 알려주는 것이 없다.
+  assert.match(ui, /rankingCandyLine\.hidden = count <= 0/);
+});

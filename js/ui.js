@@ -168,6 +168,8 @@ export class GameUI {
       rankingEmpty: document.querySelector('#ranking-empty'),
       rankingCatsLine: document.querySelector('#ranking-cats-line'),
       rankingCatsTotal: document.querySelector('#ranking-cats-total'),
+      rankingCandyLine: document.querySelector('#ranking-candy-line'),
+      rankingCandyTotal: document.querySelector('#ranking-candy-total'),
       homeGardenCount: document.querySelector('#home-garden-count'),
       gardenScene: document.querySelector('#garden-scene'),
       gardenCatsTotal: document.querySelector('#garden-cats-total'),
@@ -2440,6 +2442,21 @@ export class GameUI {
     if (this.elements.homeGardenCount) {
       this.elements.homeGardenCount.textContent = `고양이 ${formatted}마리`;
     }
+  }
+
+  // 고양이에게 간식을 준 횟수. 홈이 아니라 기록 시트에 둔다.
+  //
+  // 사탕을 줘서 얻는 것이 하나도 없으면 "이걸 왜 하지"가 남는다. 그렇다고
+  // 홈에 숫자를 하나 더 붙이면 사탕 개수와 최고점수 옆에 세 번째 숫자가
+  // 생겨 첫 화면이 시끄러워진다. 누적은 원래 기록 시트의 몫이고, 거기에는
+  // '구조한 고양이' 줄이 이미 같은 틀로 서 있다 - 그 옆이 제자리다.
+  //
+  // 한 번도 안 준 사람에게는 뜨지 않는다. 0인 줄은 알려주는 것이 없다.
+  updateCandyFed(total = 0) {
+    const count = Math.max(0, Math.round(Number(total) || 0));
+    if (!this.elements.rankingCandyLine || !this.elements.rankingCandyTotal) return;
+    this.elements.rankingCandyTotal.textContent = count.toLocaleString('ko-KR');
+    this.elements.rankingCandyLine.hidden = count <= 0;
   }
 
   renderGarden(total = 0, cleanClears = 0) {

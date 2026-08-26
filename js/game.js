@@ -2929,6 +2929,7 @@ class OingGame {
   // job, so the card no longer carries a second line for it.
   refreshClassicRecordSurfaces() {
     this.ui.updateBestScore(storageAdapter.getClassicBestScore());
+    this.ui.updateCandyFed(storageAdapter.getFedCount());
   }
 
   updateHUD() {
