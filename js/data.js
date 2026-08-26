@@ -468,6 +468,29 @@ export const AD_CONTINUE_OFFER_MS = 7000;
 export const AD_HELP_PACK = Object.freeze({ hint: 2, shuffle: 1 });
 
 export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
+
+// 판이 말라붙었을 때 고양이가 거드는 문턱.
+//
+// 왜 필요한가. 판을 지워갈수록 답이 줄어드는 건 당연한데, 줄어드는 방식이
+// 문제다. 실측(6x5 판, 60회 재생):
+//
+//   지운 비율   남은 답   그중 두 칸 답
+//     0~10%      12.6      5.1
+//    50~60%       5.9      0.9
+//    70~80%       3.2      0.2
+//
+// 두 칸 답(3+7처럼 붙어 있는 한 쌍)은 암산이 거의 없어 눈에 바로 띈다.
+// 그런데 판을 반쯤 지우면 그게 사라지고, 남은 답은 전부 세 칸 이상이 된다 -
+// 앞부분은 패턴 찾기인데 뒷부분은 암산 노동이 되는 것이다. 실기기 제보
+// "겜이 생각보다 어렵던데요"가 가리키는 자리가 여기다.
+//
+// 그래서 답이 이 수 이하로 마르면 한 개를 비춰 준다. 판마다 한 번, 공짜다.
+// 광고로 파는 힌트와 겹치지 않는다 - 저건 아무 때나 쓰는 것이고 이건 꼬리
+// 전용이다. 잘하는 사람은 이 지점을 이미 지나쳐서 혜택이 거의 없다.
+export const CLASSIC_THIN_BOARD_ANSWERS = 2;
+// 판이 이만큼 남아 있으면 세어 보지도 않는다. findAnswers는 비싸고, 답이
+// 마르는 일은 판이 꽤 지워진 뒤에만 일어난다.
+export const CLASSIC_THIN_BOARD_MAX_FILL = 0.6;
 // The board ladder folds the stage mode's onboarding ramp into the classic
 // loop itself: two 6×6 learning boards give a first-timer enough visible
 // answers without changing the physical tile size after the first clear,
@@ -1325,6 +1348,13 @@ export const MESSAGES = Object.freeze({
   // 사탕이 처음 생겼는데 아직 한 번도 안 줘 봤을 때의 안내. 한 번 먹이면
   // 다시 뜨지 않는다 - 홈에 상시 안내를 얹으면 첫 화면이 시끄러워진다.
   candyHowTo: Object.freeze(['별사탕을 끌어서 나한테 줘보라냥!']),
+  // 판이 말라붙었을 때. 가르치는 말투여야 한다 - "정답 여기"가 아니라
+  // "이거 남았다"로 읽혀야 도움을 받은 기분이 든다.
+  thinBoard: Object.freeze([
+    '거의 다 지웠다냥! 여기 남았다냥',
+    '이제 몇 개 안 남았다냥. 저기 보라냥!',
+    '어려우면 내가 하나 찾아준다냥!',
+  ]),
   // 도전장. 친구가 보낸 링크로 들어온 사람에게 나가는 말이다.
   challengeIntro: Object.freeze([
     '친구가 도전장을 보냈다냥!',
