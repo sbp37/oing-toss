@@ -384,3 +384,119 @@ test('a cleanup that throws does not break the ad flow', async () => {
     restore();
   }
 });
+
+// 실기기 제보(아이폰): "30초 광고를 다 봤는데 +30초가 안 붙고 바로 결과창."
+// 광고비는 이미 발생한 뒤라 이건 제일 나쁜 결말이다 - 유저 입장에서 먹튀다.
+// AdMob 이벤트 순서는 기기마다 같지 않다. 안드로이드는 보통 보상 -> 닫힘인데
+// 아이폰에서 닫힘이 먼저 오면, 닫힘에서 곧장 결론을 내는 코드는 끝까지 본
+// 사람을 빈손으로 돌려보낸다.
+test('닫힘이 보상보다 먼저 와도 지급한다 (아이폰 순서)', async () => {
+  const restore = fakeTossScope();
+  try {
+    const bundle = await import(`${ENTRY.href}?ios=order`);
+    const sdk = await import('@apps-in-toss/web-framework');
+    const original = sdk.GoogleAdMob.showAppsInTossAdMob;
+    sdk.GoogleAdMob.showAppsInTossAdMob = ({ onEvent }) => {
+      setTimeout(() => onEvent({ type: 'show' }), 0);
+      // 닫힘이 먼저, 보상이 나중.
+      setTimeout(() => onEvent({ type: 'dismissed' }), 20);
+      setTimeout(() => onEvent({ type: 'userEarnedReward', data: { unitType: 's', unitAmount: 30 } }), 60);
+      return () => {};
+    };
+    bundle.__setAdDeadlinesForTest(60, 5000, 400, 999999);
+    try {
+      const result = await bundle.showRewardedAd('ait.test.group');
+      assert.equal(result.rewarded, true, '다 본 사람이 빈손으로 돌아갔다');
+      assert.equal(result.amount, 30, '콘솔 지급량을 못 받았다');
+      assert.equal(result.failed, false);
+    } finally {
+      sdk.GoogleAdMob.showAppsInTossAdMob = original;
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('보상 없이 닫으면 그대로 미지급이다 - 유예가 공짜 지급이 되면 안 된다', async () => {
+  const restore = fakeTossScope();
+  try {
+    const bundle = await import(`${ENTRY.href}?ios=skip`);
+    const sdk = await import('@apps-in-toss/web-framework');
+    const original = sdk.GoogleAdMob.showAppsInTossAdMob;
+    sdk.GoogleAdMob.showAppsInTossAdMob = ({ onEvent }) => {
+      setTimeout(() => onEvent({ type: 'show' }), 0);
+      setTimeout(() => onEvent({ type: 'dismissed' }), 20);   // 보상은 영영 안 온다
+      return () => {};
+    };
+    // 오래 본 것으로 쳐주는 그물을 아주 높게 잡아 이 시험에서는 안 걸리게 한다.
+    bundle.__setAdDeadlinesForTest(60, 5000, 150, 999999);
+    try {
+      const result = await bundle.showRewardedAd('ait.test.group');
+      assert.equal(result.rewarded, false, '중간에 닫았는데 지급했다');
+      assert.equal(result.failed, false, '못 띄운 것이 아니라 본인이 닫은 것이다');
+    } finally {
+      sdk.GoogleAdMob.showAppsInTossAdMob = original;
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('보상 이벤트를 못 받아도 오래 떠 있었으면 다 본 것으로 친다', async () => {
+  const restore = fakeTossScope();
+  try {
+    const bundle = await import(`${ENTRY.href}?ios=watched`);
+    const sdk = await import('@apps-in-toss/web-framework');
+    const original = sdk.GoogleAdMob.showAppsInTossAdMob;
+    sdk.GoogleAdMob.showAppsInTossAdMob = ({ onEvent }) => {
+      setTimeout(() => onEvent({ type: 'show' }), 0);
+      setTimeout(() => onEvent({ type: 'dismissed' }), 120);  // 보상 이벤트 유실
+      return () => {};
+    };
+    // 100ms 이상 떠 있었으면 다 본 것으로 (실제 값은 15초).
+    bundle.__setAdDeadlinesForTest(60, 5000, 30, 100);
+    try {
+      const result = await bundle.showRewardedAd('ait.test.group');
+      assert.equal(result.rewarded, true, '유실 경로에서 다 본 사람이 빈손이 됐다');
+      assert.equal(result.failed, false);
+    } finally {
+      sdk.GoogleAdMob.showAppsInTossAdMob = original;
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('평소 순서(보상 -> 닫힘)에서는 유예 없이 곧장 끝난다', async () => {
+  const restore = fakeTossScope();
+  try {
+    const bundle = await import(`${ENTRY.href}?ios=normal`);
+    const sdk = await import('@apps-in-toss/web-framework');
+    const original = sdk.GoogleAdMob.showAppsInTossAdMob;
+    sdk.GoogleAdMob.showAppsInTossAdMob = ({ onEvent }) => {
+      setTimeout(() => onEvent({ type: 'show' }), 0);
+      setTimeout(() => onEvent({ type: 'userEarnedReward', data: { unitType: 's', unitAmount: 30 } }), 10);
+      setTimeout(() => onEvent({ type: 'dismissed' }), 20);
+      return () => {};
+    };
+    // 유예를 아주 길게 잡아도, 이미 보상을 받았으면 기다리지 않아야 한다.
+    bundle.__setAdDeadlinesForTest(60, 5000, 4000, 999999);
+    try {
+      const started = Date.now();
+      const result = await bundle.showRewardedAd('ait.test.group');
+      assert.equal(result.rewarded, true);
+      assert.ok(Date.now() - started < 1000, '보상을 이미 받았는데 유예를 기다렸다');
+    } finally {
+      sdk.GoogleAdMob.showAppsInTossAdMob = original;
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('번들에도 늦은-보상 유예가 들어가 있다 - 소스만 고치고 안 구우면 실기기는 그대로다', async () => {
+  const source = await readFile(BUNDLE, 'utf8');
+  // 축소되면 이름이 바뀌므로 상수값으로 확인한다. 1500(유예)과 15000(그물).
+  assert.match(source, /1500/, '유예 시간이 번들에 없다 - 다시 구워야 한다');
+  assert.match(source, /15e3|15000/, '오래 본 것으로 쳐주는 문턱이 번들에 없다');
+});

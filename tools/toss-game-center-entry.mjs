@@ -151,11 +151,24 @@ export function isRewardedAdSupported() {
 // 놓치지 않도록 show 쪽은 넉넉히 잡는다 - 광고 자체가 30초 안팎이고
 // 사람이 보상 화면에서 머무는 시간까지 감안한 값이다.
 let LOAD_TIMEOUT_MS = 20000;
+// 닫힘 뒤에 보상 이벤트가 늦게 오는 경우를 기다려 주는 시간.
+// 실기기 제보(아이폰): "30초 광고를 다 봤는데 +30초가 안 붙고 바로 결과창."
+// AdMob 이벤트 순서가 기기마다 같지 않다. 안드로이드는 보통 보상 -> 닫힘인데
+// 아이폰에서 닫힘이 먼저 오면, 닫힘에서 곧장 결론을 내는 코드는 끝까지 본
+// 사람을 빈손으로 돌려보낸다. 광고비는 이미 발생한 뒤라 제일 나쁜 결말이다.
+let REWARD_GRACE_MS = 1500;
+// 보상 이벤트를 끝내 못 받았어도, 광고가 이만큼 떠 있었으면 다 본 것으로
+// 친다. 이벤트가 유실되는 경로를 우리가 다 알 수 없어서 두는 마지막 그물이다.
+// 짧게 보다 닫은 사람에게 잘못 주는 것보다, 다 본 사람에게 안 주는 쪽이
+// 훨씬 나쁘다 - 주는 것은 게임 시간 30초지 돈이 아니다.
+let REWARD_WATCHED_MS = 15000;
 let SHOW_TIMEOUT_MS = 180000;
 
 // 시험에서만 쓴다. 20초·180초를 실제로 기다릴 수는 없어서, 시간 제한이
 // "정말로 약속을 끝내는지"를 짧은 값으로 확인한다. 게임 코드는 부르지 않는다.
-export function __setAdDeadlinesForTest(loadMs, showMs) {
+export function __setAdDeadlinesForTest(loadMs, showMs, graceMs, watchedMs) {
+  if (Number.isFinite(graceMs)) REWARD_GRACE_MS = graceMs;
+  if (Number.isFinite(watchedMs)) REWARD_WATCHED_MS = watchedMs;
   LOAD_TIMEOUT_MS = Number(loadMs) || LOAD_TIMEOUT_MS;
   SHOW_TIMEOUT_MS = Number(showMs) || SHOW_TIMEOUT_MS;
 }
@@ -230,25 +243,50 @@ export function showRewardedAd(adGroupId) {
   let rewarded = false;
   let amount = 0;
   let failed = false;
-  return withDeadline(SHOW_TIMEOUT_MS, (settle) => GoogleAdMob.showAppsInTossAdMob({
-    options: { adGroupId },
-    onEvent: (event) => {
-      if (event.type === 'userEarnedReward') {
-        rewarded = true;
-        amount = Number(event.data?.unitAmount) || 0;
-      } else if (event.type === 'dismissed') {
-        settle('dismissed');
-      } else if (event.type === 'failedToShow') {
-        failed = true;
-        settle('failedToShow');
-      }
-    },
-    onError: () => { failed = true; settle('error'); },
-  })).then((how) => {
+  let shownAt = 0;
+  let graceTimer = null;
+  const clearGrace = () => {
+    if (graceTimer === null) return;
+    try { clearTimeout(graceTimer); } catch {}
+    graceTimer = null;
+  };
+  return withDeadline(SHOW_TIMEOUT_MS, (settle) => {
+    const stop = GoogleAdMob.showAppsInTossAdMob({
+      options: { adGroupId },
+      onEvent: (event) => {
+        if (event.type === 'show' || event.type === 'impression') {
+          if (!shownAt) shownAt = Date.now();
+        } else if (event.type === 'userEarnedReward') {
+          rewarded = true;
+          amount = Number(event.data?.unitAmount) || 0;
+          // 닫힘을 기다리던 중에 보상이 왔다면 더 기다릴 이유가 없다.
+          if (graceTimer !== null) { clearGrace(); settle('dismissed'); }
+        } else if (event.type === 'failedToShow') {
+          failed = true;
+          settle('failedToShow');
+        } else if (event.type === 'dismissed') {
+          // 여기서 곧장 결론을 내지 않는다. 아이폰에서 닫힘이 보상보다
+          // 먼저 오는 경우가 있어서, 그러면 다 본 사람이 빈손이 된다.
+          if (rewarded) settle('dismissed');
+          else if (graceTimer === null) {
+            graceTimer = setTimeout(() => { graceTimer = null; settle('dismissed'); }, REWARD_GRACE_MS);
+          }
+        }
+      },
+      onError: () => { failed = true; settle('error'); },
+    });
+    // withDeadline이 정리할 때 늦은-보상 타이머도 같이 끈다.
+    return () => { clearGrace(); try { stop?.(); } catch {} };
+  }).then((how) => {
     // 시간 제한에 걸렸는데 보상 이벤트는 이미 왔다면, 그건 유저가 끝까지
     // 본 것이고 닫힘 이벤트만 유실된 경우다. 그때는 지급하는 것이 맞다.
     if (how === 'timeout' && !rewarded) failed = true;
     if (how === 'threw') failed = true;
+    // 마지막 그물: 보상 이벤트를 못 받았지만 광고가 충분히 오래 떠 있었으면
+    // 다 본 것으로 친다. 이벤트 유실 경로를 우리가 다 알 수 없기 때문이다.
+    if (!rewarded && !failed && shownAt && Date.now() - shownAt >= REWARD_WATCHED_MS) {
+      rewarded = true;
+    }
     return { rewarded, amount, failed };
   });
 }
