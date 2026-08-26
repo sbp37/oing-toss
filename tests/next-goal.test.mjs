@@ -43,23 +43,93 @@ test('첫 판을 끝낸 사람도 이유를 하나 받는다', () => {
   assert.ok(goal.ratio > NEXT_GOAL_MAX_RATIO, '비율 예외를 타지 않고 통과했다');
 });
 
-test('출석 일수는 판을 더 한다고 가까워지지 않으므로 예외를 안 받는다', () => {
-  // "다음 카드까지 6일"은 지금 한 판 더 할 이유가 못 된다. 같은 상황에서
-  // 판 수 목표가 대신 나와야 한다.
+test('출석 일수는 아무리 가까워도 후보가 아니다', () => {
+  // 날짜는 판을 더 한다고 오지 않는다. "다음 카드까지 1일"은 지금 한 판 더
+  // 할 이유가 못 되므로, 남은 하루짜리가 되어도 헤드라인에 안 올린다.
+  // (갤러리에는 그대로 남는다 - 여기서 거르는 건 이 한 줄뿐이다.)
   const goal = nextGoalLine({
+    totals: { runs: 400, cats: 99999, bigClears: 9999, cellsCleared: 99999, playDays: 6, bestScore: 20000 },
+    score: 100,
+    previousBest: 0,
+  });
+  assert.equal(goal, null, `날짜 목표가 헤드라인에 올라온다: ${goal?.text}`);
+
+  // 첫 판 직후에도 마찬가지 - 판 수 목표가 대신 나와야 한다.
+  const first = nextGoalLine({
     totals: { runs: 1, cats: 6, bigClears: 11, cellsCleared: 154, playDays: 1, bestScore: 900 },
     score: 900,
     previousBest: 0,
   });
-  assert.ok(!goal.text.includes('일!'), `날짜 목표가 첫 판 직후에 나온다: ${goal.text}`);
+  assert.equal(first.text, '다음 카드까지 9판!');
+});
 
-  // 비율이 충분히 줄면 그때는 들어온다.
+test('시작할 때는 넘어야 할 수를 말한다', () => {
+  // 아직 0점이라 이번 판 점수로는 아무것도 못 잰다. 그 사람이 이미 낼 수 있는
+  // 점수에서 재고, 문장도 "남은 몫"이 아니라 "넘어야 할 수"여야 한다 -
+  // 시작할 때의 목표는 이 판을 어떻게 칠지의 기준이기 때문이다.
   const near = nextGoalLine({
-    totals: { runs: 40, cats: 99999, bigClears: 9999, cellsCleared: 99999, playDays: 6, bestScore: 20000 },
-    score: 100,
-    previousBest: 0,
+    totals: { ...RICH, bestScore: 3620 },
+    previousBest: 3620,
+    phase: 'start',
   });
-  assert.equal(near.text, '다음 카드까지 1일!');
+  assert.equal(near.startText, '이번 판 4,000점이면 새 카드!');
+
+  // 카드가 멀면 신기록이 그 자리를 맡는다. 최고기록은 언제나 바로 위에 있어서
+  // 시작 화면에서는 후보가 없어지는 일이 사실상 없다.
+  const record = nextGoalLine({
+    totals: { ...RICH, bestScore: 2000 },
+    previousBest: 2000,
+    phase: 'start',
+  });
+  assert.equal(record.kind, 'best');
+  assert.equal(record.startText, '이번 판 2,000점 넘기면 신기록!');
+
+  // 도전장이 있으면 그 수를 넘는 것이 이번 판의 기준이다.
+  const rival = nextGoalLine({
+    totals: { ...RICH, bestScore: 8000 },
+    previousBest: 8000,
+    challengeTarget: 8235,
+    phase: 'start',
+  });
+  assert.equal(rival.startText, '이번 판 8,235점 넘기면 친구 이기기!');
+});
+
+test('맨 처음 판은 이 판 자체가 목표다', () => {
+  // 최고기록도 누적도 0이라 넘어야 할 수가 없다. 남은 것은 "첫 판 끝내기"
+  // 카드 하나인데, 그 한 판이 바로 지금 시작하는 판이다. "1판만 더"라고
+  // 하면 이 판을 안 세는 말이 되어 거짓말이 된다.
+  const goal = nextGoalLine({
+    totals: { runs: 0, cats: 0, bigClears: 0, cellsCleared: 0, playDays: 0, bestScore: 0 },
+    previousBest: 0,
+    phase: 'start',
+  });
+  assert.equal(goal.startText, '이 판을 끝내면 새 카드!');
+});
+
+test('내밀 것이 없으면 아무것도 안 띄운다', () => {
+  // 억지 목표는 없느니만 못하다. 다 모았고 신기록도 방금 냈으면 침묵이 맞다.
+  const goal = nextGoalLine({ totals: RICH, score: 20000, previousBest: 15000 });
+  assert.equal(goal, null);
+});
+
+test('두 자리가 같은 목표를 서로 다른 말로 가리킨다', async () => {
+  // 하나의 고르기가 두 화면을 먹인다. 말투만 갈라진다.
+  const totals = { ...RICH, bestScore: 3620 };
+  const ending = nextGoalLine({ totals, score: 3000, previousBest: 3620 });
+  const opening = nextGoalLine({ totals, previousBest: 3620, phase: 'start' });
+  assert.equal(ending.cardKey, opening.cardKey, '같은 목표를 가리켜야 한다');
+  assert.equal(ending.text, '4,000점 카드까지 380점!');
+  assert.equal(opening.startText, '이번 판 4,000점이면 새 카드!');
+
+  // 시작 카운트다운에 줄이 실제로 붙어 있는지. 다리가 끊기면 화면에는 아무
+  // 일도 안 일어나고, 그건 눈으로 찾기 전에는 알 수가 없다.
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="start-countdown-goal"/);
+  const ui = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /setStartCountdownGoal/);
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(game, /setStartCountdownGoal\(nextGoalLine\(/, '시작 카운트다운이 목표를 안 받는다');
+  assert.match(game, /phase: 'start'/);
 });
 
 test('너무 먼 목표는 벽이라 아무것도 안 내보낸다', () => {

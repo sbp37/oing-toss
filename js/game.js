@@ -735,6 +735,16 @@ class OingGame {
 
   async runStartCountdown(sequenceId, quickCountdown = false, { skipPrimedStep = false } = {}) {
     this.startCountdownInProgress = true;
+    // 이번 판의 목표를 카운트다운에 걸어둔다. 결과창과 같은 고르기를 쓰되
+    // 말투만 다르다 - 여기서는 남은 몫이 아니라 넘어야 할 수를 말한다.
+    // 아직 0점이라 이번 판 점수로는 아무것도 못 재므로, 그 사람이 이미 낼 수
+    // 있는 점수(최고기록)에서 잰다.
+    this.ui.setStartCountdownGoal(nextGoalLine({
+      totals: this.currentCardTotals(),
+      previousBest: storageAdapter.getClassicBestScore(),
+      challengeTarget: challengeScore(),
+      phase: 'start',
+    }));
     const all = quickCountdown ? RETRY_COUNTDOWN_STEPS : START_COUNTDOWN_STEPS;
     const steps = skipPrimedStep && all.length > 1 ? all.slice(1) : all;
     const completed = await this.ui.animateStartCountdown(steps, (step) => {
