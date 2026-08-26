@@ -621,14 +621,15 @@ class OingGame {
       }
       if (this.state.running) this.updateHUD();
     })();
-    // 친구 초대로 약속한 힌트. 기기에 적어 둔 값을 꺼내 쓰고 비운다 -
-    // 예전에는 메모리에만 있어서 앱을 닫으면 사라졌다.
+    // 친구 초대로 약속한 힌트. 읽고 - 지급하고 - 지급이 끝난 뒤에 덜어낸다.
+    // 순서가 중요하다. 먼저 비우면 지급이 실패했을 때 보상이 사라진다.
     const pendingHints = this.runtime.testMode
       ? this.pendingShareHints
-      : storageAdapter.takePendingShareHints();
-    this.pendingShareHints = 0;
+      : storageAdapter.getPendingShareHints();
     if (pendingHints > 0) {
       this.grantItems({ hint: pendingHints }, { source: 'earned' });
+      if (!this.runtime.testMode) storageAdapter.consumePendingShareHints(pendingHints);
+      this.pendingShareHints = 0;
       this.ui.toast(`친구 초대 보너스! 힌트 +${pendingHints}다냥`);
     }
     // Classic mode: state.round is the generation depth ramp, not a stage —

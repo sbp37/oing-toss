@@ -140,21 +140,40 @@ export function __setAdDeadlinesForTest(loadMs, showMs) {
 function withDeadline(ms, run) {
   return new Promise((resolve) => {
     let cleanup = null;
+    let cleaned = false;
     let settled = false;
     let timer = null;
+
+    // 정리는 많아야 한 번. 던져도 광고 흐름은 계속 간다.
+    const runCleanup = () => {
+      if (cleaned) return;
+      const fn = cleanup;
+      if (typeof fn !== 'function') return;
+      cleaned = true;
+      try { fn(); } catch {}
+    };
+
     const settle = (value) => {
       if (settled) return;
       settled = true;
       if (timer !== null) { try { clearTimeout(timer); } catch {} }
-      try { cleanup?.(); } catch {}
+      runCleanup();
       resolve(value);
     };
+
     timer = setTimeout(() => settle('timeout'), ms);
     try {
       cleanup = run(settle);
     } catch {
       settle('threw');
     }
+
+    // SDK가 콜백을 동기로 부르면 위 settle이 cleanup을 대입하기 전에 돈다.
+    // 그러면 SDK가 준 정리 함수가 영영 안 불려 리스너가 샌다 - 검수에서
+    // "ok=true인데 cleanups=0"으로 재현된 그 자리다. run이 돌아온 뒤에
+    // 이미 끝나 있었다면 여기서 한 번 치운다. runCleanup이 스스로 한 번만
+    // 도는 것을 지키므로 비동기 경로와 겹쳐도 두 번 불리지 않는다.
+    if (settled) runCleanup();
   });
 }
 

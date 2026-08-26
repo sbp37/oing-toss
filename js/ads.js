@@ -23,6 +23,25 @@ const loadingKinds = new Set();
 // 이게 없으면 광고를 한 번 쓴 뒤 다시 불러와도 배지가 안 돌아온다.
 const readyListeners = new Set();
 
+// 광고가 화면에 떠 있는 동안에는 새 광고를 불러오지 않는다.
+//
+// 검수 지적: 기존 GoogleAdMob API는 하나를 불러 두고 다른 것을 또 부르면
+// 이벤트가 섞일 수 있다. 판 시작의 연달아 부르기는 이미 순차로 바꿨는데,
+// 남아 있던 구멍이 showAd의 finally다 - 광고를 쓴 자리에서 곧바로 같은
+// 자리를 다시 불러오므로, 그 순간 다른 종류가 이미 로드돼 있으면 두 개가
+// 겹친다. 그리고 그 재로드는 광고 창이 아직 떠 있는 동안 시작될 수도 있다.
+//
+// 그래서 "지금 광고가 떠 있는가"를 한 곳에서 들고, 떠 있는 동안의 로드
+// 요청은 미뤘다가 끝난 뒤에 한 번만 처리한다. 두 광고를 미리 들고 있는
+// 구조 자체는 유지한다 - 이어하기는 판 끝, 도움팩은 아이템이 떨어진
+// 순간이라 둘 다 "필요할 때 준비돼 있는 것"이 이 기능의 값이기 때문이다.
+let showingKind = null;
+const deferredLoads = new Set();
+
+export function isAdShowing() {
+  return showingKind !== null;
+}
+
 export function onAdReadyChange(listener) {
   if (typeof listener !== 'function') return () => {};
   readyListeners.add(listener);
@@ -57,6 +76,11 @@ export async function preloadAd(kind) {
   const adGroupId = adGroupIdFor(kind);
   if (!adGroupId || !isAppsInTossWebView()) return false;
   if (loadedKinds.has(kind) || loadingKinds.has(kind)) return loadedKinds.has(kind);
+  // 광고가 떠 있는 동안의 요청은 접어 뒀다가 끝난 뒤에 한 번만 처리한다.
+  if (showingKind !== null) {
+    deferredLoads.add(kind);
+    return false;
+  }
   loadingKinds.add(kind);
   try {
     const module = await bridge();
@@ -121,6 +145,7 @@ export async function showAd(kind) {
       if (reloaded) loadedKinds.add(kind);
     }
 
+    showingKind = kind;
     const result = await module.showRewardedAd(adGroupId);
     return {
       rewarded: Boolean(result?.rewarded),
@@ -132,8 +157,17 @@ export async function showAd(kind) {
   } catch {
     return { rewarded: false, amount: 0, shown: false };
   } finally {
+    showingKind = null;
     loadedKinds.delete(kind);
     announceReadyChange();
-    preloadAd(kind);
+    // 방금 쓴 자리를 다시 채우고, 광고가 떠 있는 동안 미뤄 둔 요청도 같이
+    // 처리한다. preloadAd 자체가 순차로 돌므로 여기서도 하나씩 간다.
+    const pending = [kind, ...deferredLoads];
+    deferredLoads.clear();
+    void (async () => {
+      for (const next of pending) {
+        await preloadAd(next);
+      }
+    })();
   }
 }

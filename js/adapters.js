@@ -103,13 +103,21 @@ export const storageAdapter = {
     return next;
   },
 
-  // 지급하면서 비운다. 지급과 소비가 한 호출이라 두 번 받을 수 없다.
-  takePendingShareHints() {
-    const pending = this.getPendingShareHints();
-    if (pending > 0) {
-      try { localStorage.setItem(PENDING_SHARE_HINTS_KEY, '0'); } catch {}
-    }
-    return pending;
+  // 지급이 끝난 뒤에 그만큼만 덜어낸다.
+  //
+  // 처음에는 읽으면서 바로 0으로 만들었다. 그러면 지급 쪽이 실패했을 때
+  // 보상이 조용히 사라진다 - 친구에게 초대장까지 보낸 사람에게 제일
+  // 나쁜 결말이다. 두 갈래 중 하나를 골라야 한다면 "잃는 것"보다 "다시
+  // 시도할 수 있는 것"이 낫다. 그래서 지급을 확인한 뒤에 덜어낸다.
+  //
+  // 저장이 실패하면(사파리 비공개 모드 등) 값이 남아 다음 판에 한 번 더
+  // 지급될 수 있다. 그것은 감수한다 - 잃는 쪽이 더 나쁘다.
+  consumePendingShareHints(amount) {
+    const used = Math.max(0, Math.round(Number(amount) || 0));
+    if (used <= 0) return this.getPendingShareHints();
+    const next = Math.max(0, this.getPendingShareHints() - used);
+    try { localStorage.setItem(PENDING_SHARE_HINTS_KEY, String(next)); } catch {}
+    return next;
   },
 
   getFedCount() {

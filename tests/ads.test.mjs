@@ -106,25 +106,81 @@ test('the shipped bundle carries the deadline, not just the source', async () =>
     '시간 제한이 번들에 안 들어갔다');
 });
 
-test('an invite reward survives the app being closed before the next run', async () => {
-  const [adapters, game] = await Promise.all([
-    readFile(new URL('../js/adapters.js', import.meta.url), 'utf8'),
-    readFile(new URL('../js/game.js', import.meta.url), 'utf8'),
-  ]);
+// ── 친구 초대 보상: 진짜 저장소를 흉내내어 잰다 ─────────────────────────
+//
+// 이 보상은 결과 화면에서 받고 다음 판 시작에 지급된다. 그 사이에만
+// 존재하는 메모리 변수에 두면, 앱을 닫은 사람은 초대장까지 보내고도
+// 아무것도 못 받는다. 그리고 "읽으면서 곧바로 비우기"는 지급이 실패했을 때
+// 보상을 조용히 없앤다 - 잃는 쪽이 두 번 받는 쪽보다 나쁘다.
 
-  // 이 보상은 결과 화면에서 받고 다음 판 시작에 지급된다. 그 사이에만
-  // 존재하는 메모리 변수에 두면, 앱을 닫은 사람은 친구에게 초대장까지
-  // 보내고도 아무것도 못 받는다. 토스가 sendViral을 보낸 시점에 이미
-  // 지급이 확정된 것이므로 그 순간 기기에 적어야 한다.
-  assert.match(adapters, /PENDING_SHARE_HINTS_KEY = 'oing_toss_v3_pending_share_hints'/);
-  assert.match(adapters, /addPendingShareHints\(amount\)/);
-  assert.match(adapters, /takePendingShareHints\(\)/);
-  assert.match(game, /storageAdapter\.addPendingShareHints\(earned\)/);
-  assert.match(game, /storageAdapter\.takePendingShareHints\(\)/);
+function withFakeStorage(run) {
+  const scope = globalThis;
+  const had = 'localStorage' in scope;
+  const previous = had ? scope.localStorage : undefined;
+  const map = new Map();
+  const store = {
+    failWrites: false,
+    getItem: (k) => (map.has(k) ? map.get(k) : null),
+    setItem: (k, v) => {
+      if (store.failWrites) throw new Error('저장 실패');
+      map.set(k, String(v));
+    },
+    removeItem: (k) => map.delete(k),
+    clear: () => map.clear(),
+  };
+  scope.localStorage = store;
+  return Promise.resolve()
+    .then(() => run(store))
+    .finally(() => {
+      if (had) scope.localStorage = previous;
+      else delete scope.localStorage;
+    });
+}
 
-  // 지급과 비우기가 한 호출이어야 두 번 받는 일이 없다.
-  const take = adapters.slice(adapters.indexOf('takePendingShareHints() {'), adapters.indexOf('getFedCount() {'));
-  assert.match(take, /setItem\(PENDING_SHARE_HINTS_KEY, '0'\)/);
+test('an invite reward survives the app being closed, and only clears once paid', async () => {
+  await withFakeStorage(async (store) => {
+    const { storageAdapter } = await import(`../js/adapters.js?invite=${Math.random()}`);
+
+    // 초대 두 번 -> 수량이 쌓인다
+    storageAdapter.addPendingShareHints(2);
+    storageAdapter.addPendingShareHints(1);
+    assert.equal(storageAdapter.getPendingShareHints(), 3, '여러 번 초대하면 누적된다');
+
+    // 앱을 껐다 켠 상황: 저장소만 남고 메모리는 사라진다
+    const reopened = await import(`../js/adapters.js?invite2=${Math.random()}`);
+    assert.equal(reopened.storageAdapter.getPendingShareHints(), 3, '새로 켜도 살아 있다');
+
+    // 지급이 실패한 판: 아직 비우지 않았으므로 그대로 남아야 한다
+    assert.equal(reopened.storageAdapter.getPendingShareHints(), 3, '지급 전에는 남는다');
+
+    // 지급 성공 -> 그만큼만 덜어낸다
+    assert.equal(reopened.storageAdapter.consumePendingShareHints(3), 0);
+    assert.equal(reopened.storageAdapter.getPendingShareHints(), 0, '지급 뒤에는 비어야 한다');
+
+    // 한 번 더 지급을 시도해도 줄 것이 없다(중복 지급 없음)
+    assert.equal(reopened.storageAdapter.getPendingShareHints(), 0);
+
+    // 부분 지급도 남은 만큼 지킨다
+    reopened.storageAdapter.addPendingShareHints(4);
+    reopened.storageAdapter.consumePendingShareHints(1);
+    assert.equal(reopened.storageAdapter.getPendingShareHints(), 3);
+
+    // 저장이 막힌 기기(사파리 비공개 모드 등)에서도 던지지 않는다.
+    // 이때 값이 남아 다음 판에 한 번 더 지급될 수는 있다 - 잃는 것보다 낫다.
+    store.failWrites = true;
+    assert.doesNotThrow(() => reopened.storageAdapter.consumePendingShareHints(3));
+    store.failWrites = false;
+  });
+});
+
+test('the game pays the invite reward before it clears it', async () => {
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const block = game.slice(game.indexOf('const pendingHints ='), game.indexOf('const pendingHints =') + 700);
+  const grantAt = block.indexOf('grantItems({ hint: pendingHints }');
+  const clearAt = block.indexOf('consumePendingShareHints');
+  assert.ok(grantAt > 0 && clearAt > 0);
+  assert.ok(grantAt < clearAt, '비우고 나서 지급하면 실패했을 때 보상이 사라진다');
+  assert.ok(!block.includes('takePendingShareHints'), '읽으면서 비우는 옛 방식이 남아 있다');
 });
 
 test('music comes back after a help-pack ad', async () => {
@@ -151,13 +207,37 @@ test('the AD badge only promises an ad that is actually loaded', async () => {
   assert.match(game, /onAdReadyChange\(\(\) => \{[\s\S]{0,80}updateHUD\(\)/);
 });
 
-test('the two ad slots load one after the other, not at once', async () => {
-  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+// ── 광고 슬롯: 문법이 아니라 실제 호출 순서를 잰다 ──────────────────────
+//
+// 예전 시험은 소스에 for/await가 있는지만 봤다. 그건 판 시작의 연달아
+// 부르기만 덮고, 정작 남아 있던 구멍(광고를 쓴 자리에서 곧바로 다시
+// 불러오는 finally)은 통과시킨다. 가짜 SDK에 실제 상태를 물려 잰다.
 
-  // 공식 문서가 한 번에 하나씩 load -> show -> 다음 load를 권하고, 여러
-  // 그룹을 연달아 부르면 이벤트가 누락되던 사례가 안드로이드 특정 버전에
-  // 기록돼 있다. 병렬로 얻을 것도 없다 - 이어하기는 판 끝, 도움팩은
-  // 아이템이 떨어진 뒤라 둘 다 급하지 않다.
+// ads.js는 다리를 경로로 동적 import한다. 노드에서는 그 경로를 가로챌
+// 수 없어서, 실제 호출 순서(광고가 떠 있는 동안 load가 안 불리는지)는
+// 브라우저 쪽 하네스에서 잰다 - scratchpad/ad-slot.mjs가 route로 다리를
+// 바꿔치기해 load/show 로그를 찍는다. 여기서는 그 보증을 떠받치는 구조가
+// 코드에 살아 있는지만 지킨다.
+
+test('ads.js exposes the guard the reload path needs', async () => {
+  const ads = await readFile(new URL('../js/ads.js', import.meta.url), 'utf8');
+
+  // 광고가 떠 있는 동안의 로드 요청은 접어 뒀다가 끝난 뒤에 한 번만 돈다.
+  assert.match(ads, /let showingKind = null;/);
+  assert.match(ads, /const deferredLoads = new Set\(\);/);
+  assert.match(ads, /if \(showingKind !== null\) \{[\s\S]{0,120}deferredLoads\.add\(kind\);[\s\S]{0,40}return false;/);
+  assert.match(ads, /showingKind = kind;[\s\S]{0,120}showRewardedAd\(adGroupId\)/);
+  assert.match(ads, /showingKind = null;/);
+
+  // 끝난 뒤에는 방금 쓴 자리와 미뤄 둔 것을 순차로 채운다.
+  const fin = ads.slice(ads.indexOf('} finally {', ads.indexOf('export async function showAd')));
+  assert.match(fin, /const pending = \[kind, \.\.\.deferredLoads\]/);
+  assert.match(fin, /for \(const next of pending\) \{[\s\S]{0,60}await preloadAd\(next\)/);
+});
+
+test('the two ad slots are filled one after the other at run start', async () => {
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  // 판 시작에서 두 광고를 동시에 부르지 않는다.
   assert.doesNotMatch(game, /\['continue', 'helpPack'\]\.forEach\(\(kind\) => preloadAd/);
   assert.match(game, /for \(const kind of \['continue', 'helpPack'\]\) \{[\s\S]{0,60}await preloadAd\(kind\)/);
 });
@@ -172,4 +252,118 @@ test('the share link preview uses a real OG image, not a tall card', async () =>
   // 비율도 형식도 어긋나서 미리보기가 제대로 안 그려질 수 있다.
   assert.match(data, /SHARE_OG_IMAGE = 'assets\/share\/og-oing-1200x600\.png'/);
   assert.match(adapters, /publicImageUrl\(SHARE_OG_IMAGE\)/);
+});
+
+// ── 검수 2차: 동기 콜백에서도 정리는 정확히 한 번 ────────────────────────
+//
+// SDK가 run() 안에서 곧바로 콜백을 부르면, settle이 cleanup을 대입하기
+// 전에 돈다. 그러면 SDK가 준 정리 함수가 영영 안 불려 리스너가 샌다.
+// 검수에서 "ok=true인데 cleanups=0"으로 재현된 자리다.
+
+async function countCleanups(patch, call) {
+  const restore = fakeTossScope();
+  const sdk = await import('@apps-in-toss/web-framework');
+  const originals = {
+    load: sdk.GoogleAdMob.loadAppsInTossAdMob,
+    show: sdk.GoogleAdMob.showAppsInTossAdMob,
+  };
+  let cleanups = 0;
+  const cleanup = () => { cleanups += 1; };
+  patch(sdk, cleanup);
+  try {
+    const bundle = await import(`${ENTRY.href}?cleanup=${Math.random().toString(36).slice(2)}`);
+    bundle.__setAdDeadlinesForTest(80, 80);
+    const result = await call(bundle);
+    return { cleanups, result };
+  } finally {
+    sdk.GoogleAdMob.loadAppsInTossAdMob = originals.load;
+    sdk.GoogleAdMob.showAppsInTossAdMob = originals.show;
+    restore();
+  }
+}
+
+test('a synchronous loaded event still runs cleanup exactly once', async () => {
+  const { cleanups, result } = await countCleanups(
+    (sdk, cleanup) => {
+      sdk.GoogleAdMob.loadAppsInTossAdMob = ({ onEvent }) => {
+        onEvent({ type: 'loaded' });   // 동기 호출
+        return cleanup;
+      };
+    },
+    (bundle) => bundle.loadRewardedAd('ait.test'),
+  );
+  assert.equal(result, true);
+  assert.equal(cleanups, 1, `동기 콜백에서 정리가 ${cleanups}회 불렸다`);
+});
+
+test('a synchronous onError still runs cleanup exactly once', async () => {
+  const { cleanups, result } = await countCleanups(
+    (sdk, cleanup) => {
+      sdk.GoogleAdMob.loadAppsInTossAdMob = ({ onError }) => {
+        onError(new Error('nope'));
+        return cleanup;
+      };
+    },
+    (bundle) => bundle.loadRewardedAd('ait.test'),
+  );
+  assert.equal(result, false);
+  assert.equal(cleanups, 1);
+});
+
+test('a synchronous failedToShow still runs cleanup exactly once', async () => {
+  const { cleanups, result } = await countCleanups(
+    (sdk, cleanup) => {
+      sdk.GoogleAdMob.showAppsInTossAdMob = ({ onEvent }) => {
+        onEvent({ type: 'failedToShow' });
+        return cleanup;
+      };
+    },
+    (bundle) => bundle.showRewardedAd('ait.test'),
+  );
+  assert.equal(result.failed, true);
+  assert.equal(result.rewarded, false);
+  assert.equal(cleanups, 1);
+});
+
+test('a late event after the deadline changes neither the result nor the cleanup count', async () => {
+  let fire = null;
+  const { cleanups, result } = await countCleanups(
+    (sdk, cleanup) => {
+      sdk.GoogleAdMob.showAppsInTossAdMob = ({ onEvent }) => {
+        fire = onEvent;                 // 아무것도 안 보내고 시간 제한을 넘긴다
+        return cleanup;
+      };
+    },
+    async (bundle) => {
+      const promise = bundle.showRewardedAd('ait.test');
+      const settled = await promise;    // timeout으로 끝난다
+      // 끝난 뒤에 늦게 도착하는 이벤트
+      fire?.({ type: 'userEarnedReward', data: { unitAmount: 999 } });
+      fire?.({ type: 'dismissed' });
+      await new Promise((r) => setTimeout(r, 40));
+      return settled;
+    },
+  );
+  assert.equal(result.rewarded, false, '이미 끝난 뒤의 보상은 반영하지 않는다');
+  assert.equal(result.amount, 0);
+  assert.equal(result.failed, true);
+  assert.equal(cleanups, 1, `늦은 이벤트로 정리가 ${cleanups}회 불렸다`);
+});
+
+test('a cleanup that throws does not break the ad flow', async () => {
+  const restore = fakeTossScope();
+  const sdk = await import('@apps-in-toss/web-framework');
+  const original = sdk.GoogleAdMob.loadAppsInTossAdMob;
+  sdk.GoogleAdMob.loadAppsInTossAdMob = ({ onEvent }) => {
+    onEvent({ type: 'loaded' });
+    return () => { throw new Error('cleanup 실패'); };
+  };
+  try {
+    const bundle = await import(`${ENTRY.href}?throwing=1`);
+    bundle.__setAdDeadlinesForTest(80, 80);
+    assert.equal(await bundle.loadRewardedAd('ait.test'), true);
+  } finally {
+    sdk.GoogleAdMob.loadAppsInTossAdMob = original;
+    restore();
+  }
 });

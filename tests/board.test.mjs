@@ -426,6 +426,15 @@ console.log('board.test.mjs: 240 regular and 300 early-assist boards plus scorin
   };
   try {
   for (const [cols, rows, round] of [[4, 4, 1], [5, 5, 2], [5, 5, 3], [6, 6, 4], [6, 6, 5], [6, 7, 6], [6, 7, 9]]) {
+    // 스테이지마다 씨드를 다시 놓는다.
+    //
+    // 검수 지적: 이 파일에는 표본 루프가 둘인데 위쪽(난이도 다양성)만
+    // 재시드를 하고 이쪽은 하나의 난수 흐름을 전 스테이지가 이어 쓰고
+    // 있었다. 그러면 1스테이지 생성 방식을 손보는 순간 소비하는 난수
+    // 개수가 달라져 9스테이지 표본까지 전부 바뀐다 - 고친 곳과 무관한
+    // 단언이 빨개지고, 그때마다 기준을 다시 재게 된다.
+    // 내가 앞서 "재시드는 되어 있다"고 반박했는데 절반만 맞았다.
+    seedState = (0x2f6e2b1 + round * 0x9e3779b9) | 0;
     let trains = 0;
     let fullClears = 0;
     let smoothFinishes = 0;
