@@ -2475,6 +2475,7 @@ class OingGame {
     // 눌렀는데 아무 일도 안 일어나는 것처럼 보인다.
     this.ui.showCenterNotice('광고 준비 중...', 2600);
     const { rewarded, amount, shown } = await this.runRewardedAd('continue');
+    this.ui.hideCenterNotice();
     this.adContinueOffering = false;
     this.finishing = false;
     if (!rewarded) {

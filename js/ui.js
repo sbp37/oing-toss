@@ -1774,6 +1774,16 @@ export class GameUI {
     }, Math.max(500, Number(duration) || 1400));
   }
 
+  // 기다림을 알리던 알림을 곧바로 치운다. 광고가 순식간에 실패하면
+  // "광고 준비 중..."이 결과로 넘어가는 내내 남아 있다.
+  hideCenterNotice() {
+    const el = this.elements.playCenterNotice;
+    if (!el) return;
+    clearTimeout(this.centerNoticeTimer);
+    el.classList.remove('is-visible');
+    el.setAttribute('aria-hidden', 'true');
+  }
+
   showTimeNotice(label = '') {
     const text = String(label || '').trim();
     if (!text || !this.elements.boardTimeGauge) return;

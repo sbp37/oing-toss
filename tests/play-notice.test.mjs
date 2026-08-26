@@ -77,3 +77,29 @@ test('TIME UP is not stamped twice on the same run', async () => {
   // 되살아나면 기억을 지운다 - 다음 종료는 처음부터 다시 보여줘야 한다.
   assert.ok(game.split('this.adStampedTimeUp = false;').length - 1 >= 3);
 });
+
+test('a rewarded ad that never appears says so instead of going quiet', async () => {
+  const [ads, entry, bundle, game] = await Promise.all([
+    read('js/ads.js'), read('tools/toss-game-center-entry.mjs'),
+    read('js/vendor/toss-game-center-v1.js'), read('js/game.js'),
+  ]);
+
+  // 광고를 보다가 중간에 닫은 것(dismissed)과 애초에 못 띄운 것
+  // (failedToShow)은 사람에게 전혀 다른 일이다. 앞은 본인 선택이라 아무
+  // 말도 필요 없고, 뒤는 우리 사정이라 알려줘야 한다 - 조용히 결과로
+  // 보내면 "버튼이 먹통"으로 읽힌다(실기기 제보).
+  assert.match(entry, /else if \(event\.type === 'failedToShow'\) \{[\s\S]{0,80}failed = true/);
+  assert.match(entry, /onError: \(\) => \{ failed = true; settle\(\); \}/);
+  assert.ok(bundle.includes('failed'), '다리를 다시 굽지 않았다');
+  assert.match(ads, /shown: !result\?\.failed/);
+  assert.match(game, /if \(!shown\) this\.ui\.toast\('광고를 못 불러왔다냥/);
+
+  // 묵은 광고는 띄우기 직전에 SDK에게 다시 물어본다. 다만 다시 못 불러와도
+  // 포기하지 않고 띄워는 본다 - isRewardedAdLoaded가 기기에 따라 실제와
+  // 다르게 false를 줄 수 있는데, 거기서 포기하면 예전 같으면 떴을 광고까지
+  // 안 뜨게 된다.
+  assert.match(ads, /isRewardedAdLoaded\(adGroupId\)/);
+  assert.match(ads, /if \(reloaded\) loadedKinds\.add\(kind\);/);
+  const stale = ads.slice(ads.indexOf('if (!live) {'), ads.indexOf('const result = await module.showRewardedAd'));
+  assert.ok(!stale.includes('return'), '다시 못 불러왔다고 띄워보지도 않고 포기한다');
+});

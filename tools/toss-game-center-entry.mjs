@@ -150,17 +150,24 @@ export function isRewardedAdLoaded(adGroupId) {
 // 광고를 띄우고 결과를 기다린다. userEarnedReward를 봤으면 rewarded=true.
 // 실제 지급은 광고 창이 닫힌(dismissed) 뒤에 하는 것이 안전하다 - 게임이
 // 다시 화면에 있을 때 보상 연출이 보여야 하기 때문이다.
+//
+// failed는 "광고가 뜨지도 못했다"이다. 광고를 보다가 중간에 닫은 것
+// (dismissed, 보상 없음)과 애초에 못 띄운 것(failedToShow, onError)은
+// 사람에게 전혀 다른 일이다. 앞은 본인 선택이라 아무 말도 필요 없지만,
+// 뒤는 우리 사정이므로 알려줘야 한다 - 조용히 넘어가면 "버튼이 먹통"으로
+// 읽힌다(실기기 제보: "+30초를 눌렀는데 그냥 결과창으로 간다").
 export function showRewardedAd(adGroupId) {
   return new Promise((resolve) => {
     let cleanup = null;
     let settled = false;
     let rewarded = false;
     let amount = 0;
+    let failed = false;
     const settle = () => {
       if (settled) return;
       settled = true;
       try { cleanup?.(); } catch {}
-      resolve({ rewarded, amount });
+      resolve({ rewarded, amount, failed });
     };
     try {
       cleanup = GoogleAdMob.showAppsInTossAdMob({
@@ -169,13 +176,17 @@ export function showRewardedAd(adGroupId) {
           if (event.type === 'userEarnedReward') {
             rewarded = true;
             amount = Number(event.data?.unitAmount) || 0;
-          } else if (event.type === 'dismissed' || event.type === 'failedToShow') {
+          } else if (event.type === 'dismissed') {
+            settle();
+          } else if (event.type === 'failedToShow') {
+            failed = true;
             settle();
           }
         },
-        onError: () => settle(),
+        onError: () => { failed = true; settle(); },
       });
     } catch {
+      failed = true;
       settle();
     }
   });

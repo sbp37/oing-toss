@@ -93,16 +93,21 @@ export async function showAd(kind) {
     if (!live) {
       loadedKinds.delete(kind);
       loadingKinds.delete(kind);
+      // 다시 못 불러와도 그냥 띄워는 본다. isRewardedAdLoaded가 기기나
+      // 버전에 따라 실제와 다르게 false를 줄 수 있는데, 여기서 포기하면
+      // 예전 같으면 떴을 광고까지 안 뜨게 만든다. 띄워보는 데 드는 값은
+      // 없고, 실패해도 아래 failed로 똑같이 걸린다.
       const reloaded = await module.loadRewardedAd(adGroupId).catch(() => false);
-      if (!reloaded) return { rewarded: false, amount: 0, shown: false };
-      loadedKinds.add(kind);
+      if (reloaded) loadedKinds.add(kind);
     }
 
     const result = await module.showRewardedAd(adGroupId);
     return {
       rewarded: Boolean(result?.rewarded),
       amount: Number(result?.amount) || 0,
-      shown: true,
+      // 중간에 닫은 것(dismissed)은 본인 선택이라 조용히 넘어가고,
+      // 아예 못 띄운 것(failedToShow)만 부르는 쪽에 알린다.
+      shown: !result?.failed,
     };
   } catch {
     return { rewarded: false, amount: 0, shown: false };
