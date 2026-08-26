@@ -455,9 +455,10 @@ export const AD_CONTINUE_SECONDS = 30;
 
 // 이어하기 제안을 보여주는 시간. 지나면 결과로 넘어간다 - 광고를 볼 생각이
 // 없는 사람을 오래 붙잡는 것이 더 나쁘다. 버튼에 남은 초를 세어 준다.
-// 제안이 스스로 닫히기까지. 5초는 문구를 다 읽기도 전에 넘어간다는
-// 실기기 제보를 받았다. 읽고 - 고민하고 - 손이 올라가는 데 걸리는 시간이다.
-export const AD_CONTINUE_OFFER_MS = 7000;
+// 제안이 스스로 닫히기까지. 5초 -> 7초 -> 10초로 두 번 늘렸다. 매번 같은
+// 제보였다 - "너무 빨리 넘어간다". 읽고, 고민하고, 손이 올라가는 데 걸리는
+// 시간을 계속 과소평가한 셈이다. 판이 이미 끝난 자리라 서두를 이유도 없다.
+export const AD_CONTINUE_OFFER_MS = 10000;
 
 // 광고 한 번에 주는 도움팩. 실기기 제보: "힌트 하나 받으려고 이 길이 광고를
 // 보는 건 에바." 광고 길이는 구글이 정해서 우리가 못 줄이므로, 한 번의
@@ -878,6 +879,93 @@ export function newlyUnlockedOingCards(totals = {}, previousKeys = []) {
     unlockedCount: unlocked.length,
     total: rows.length,
   };
+}
+
+// 다음 목표 한 줄.
+//
+// 결과 화면에는 이미 최고기록 비교도, 카드 진행도도, 도전장도 다 있다.
+// 그런데 전부 "방금 끝난 판"의 이야기라서, 다 읽고 나면 판이 닫힌다.
+// 여기서 고르는 한 줄만 다음 판의 이야기다 - "그만할까"를 "한 판만 더"로
+// 돌리는 것이 목적이고, 그래서 자리가 '한 판 더!' 버튼 바로 위다.
+//
+// 여러 개를 늘어놓으면 목록이 되고, 목록은 목표가 아니다. 그래서 딱 하나만
+// 고른다. 고르는 잣대는 "남은 비율" 하나다 - 점·판·일·칸이 단위가 제각각인데
+// 절대값으로는 서로 비교가 안 되기 때문이다. 남은 몫을 목표로 나누면 전부
+// 0~1로 떨어지고, 그 중 가장 작은 것이 손에 닿는 목표다.
+//
+// 너무 먼 목표는 아예 내보내지 않는다. "20,000칸 남았다"는 다음 판을 부르는
+// 대신 벽을 보여준다.
+//
+// 다만 비율만으로 자르면 첫 판을 막 끝낸 사람이 아무것도 못 본다. 그 사람의
+// 누적은 전부 0에 가까워서 모든 목표가 멀기 때문인데, 정작 이 한 줄이 가장
+// 필요한 사람이 그 사람이다. 그래서 세는 단위가 작은 목표(판·일)는 남은
+// 수가 한 자리면 비율과 무관하게 들여보낸다 - "9판"은 벽이 아니라 셈이다.
+//
+// 출석 일수(playDays)는 이 예외를 안 준다. 날짜는 판을 더 한다고 오지 않아서,
+// "다음 카드까지 6일"은 지금 한 판 더 할 이유가 못 된다. 비율이 충분히
+// 줄어든 뒤에야(6일차의 "1일 남음") 들어온다.
+export const NEXT_GOAL_MAX_RATIO = 0.6;
+export const NEXT_GOAL_COUNTABLE_MAX = 9;
+const NEXT_GOAL_COUNTABLE = Object.freeze(['runs']);
+
+const NEXT_GOAL_CARD_UNIT = Object.freeze({
+  runs: (left) => `${left}판`,
+  playDays: (left) => `${left}일`,
+  cats: (left) => `고양이 ${left.toLocaleString('ko-KR')}마리`,
+  bigClears: (left) => `${left.toLocaleString('ko-KR')}번`,
+  cellsCleared: (left) => `${left.toLocaleString('ko-KR')}칸`,
+});
+
+export function nextGoalLine({
+  totals = {},
+  score = 0,
+  previousBest = 0,
+  challengeTarget = 0,
+} = {}) {
+  const mine = Math.max(0, Math.round(Number(score) || 0));
+  const best = Math.max(0, Math.round(Number(previousBest) || 0));
+  const rival = Math.max(0, Math.round(Number(challengeTarget) || 0));
+  const candidates = [];
+
+  // 친구 기록이 먼저다. 사람이 걸린 목표라서, 같은 거리면 이쪽이 더 당긴다.
+  if (rival > mine) {
+    candidates.push({
+      kind: 'challenge',
+      ratio: (rival - mine) / rival,
+      text: `친구 기록까지 ${(rival - mine).toLocaleString('ko-KR')}점!`,
+    });
+  }
+  // 이번 판에 이미 깼으면 목표가 아니다.
+  if (best > mine) {
+    candidates.push({
+      kind: 'best',
+      ratio: (best - mine) / best,
+      text: `최고기록까지 ${(best - mine).toLocaleString('ko-KR')}점!`,
+    });
+  }
+  for (const card of oingCardRows(totals)) {
+    if (card.unlocked) continue;
+    const left = card.goal - card.current;
+    if (left <= 0) continue;
+    // 점수 카드는 문턱을 함께 말한다. "4,000점 카드"라고 해야 남은 370점이
+    // 무엇을 향한 370점인지 한 번에 읽힌다.
+    const text = card.metric === 'bestScore'
+      ? `${card.goal.toLocaleString('ko-KR')}점 카드까지 ${left.toLocaleString('ko-KR')}점!`
+      : `다음 카드까지 ${(NEXT_GOAL_CARD_UNIT[card.metric] || ((n) => `${n}`))(left)}!`;
+    candidates.push({
+      kind: 'card',
+      cardKey: card.key,
+      ratio: left / card.goal,
+      countable: NEXT_GOAL_COUNTABLE.includes(card.metric) && left <= NEXT_GOAL_COUNTABLE_MAX,
+      text,
+    });
+  }
+
+  // 같은 거리면 먼저 담은 쪽이 이긴다 - 친구, 내 기록, 카드 순이다.
+  const near = candidates
+    .filter((one) => one.countable || one.ratio <= NEXT_GOAL_MAX_RATIO)
+    .sort((a, b) => a.ratio - b.ratio)[0];
+  return near ? Object.freeze(near) : null;
 }
 
 // The deepest scene a player has actually reached — the home card's one-line

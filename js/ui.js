@@ -162,6 +162,7 @@ export class GameUI {
       homeChallenge: document.querySelector('#home-challenge'),
       homeChallengeScore: document.querySelector('#home-challenge-score'),
       resultChallenge: document.querySelector('#result-challenge'),
+      resultNextGoal: document.querySelector('#result-next-goal'),
       cardReveal: document.querySelector('#card-reveal'),
       cardRevealFace: document.querySelector('#card-reveal-face'),
       cardRevealName: document.querySelector('#card-reveal-name'),
@@ -253,11 +254,10 @@ export class GameUI {
     if (name === 'play') this.scheduleLayoutFit();
   }
 
-  primeStartCountdown(step = 3, { compact = false } = {}) {
+  primeStartCountdown(step = 3) {
     const overlay = this.elements.startCountdown;
     const isGo = step === 'GO!';
     overlay.classList.remove('is-go', 'is-leaving');
-    overlay.classList.toggle('is-compact', compact);
     overlay.classList.toggle('is-go', isGo);
     overlay.classList.add('is-visible', 'is-primed');
     overlay.dataset.step = String(step);
@@ -267,13 +267,15 @@ export class GameUI {
     this.elements.startCountdownValue.classList.remove('is-popping');
   }
 
-  async animateStartCountdown(steps, onStep = () => {}, { compact = false } = {}) {
+  // quick은 박자만 짧게 한다. 글씨·색·막은 첫 시작과 똑같다 - 시작 연출이
+  // 두 가지로 보이면 안 된다는 실기기 제보로 모양 차이는 걷어냈고, 남은
+  // 차이는 "재시작은 두 박"이라는 리듬뿐이다.
+  async animateStartCountdown(steps, onStep = () => {}, { quick = false } = {}) {
     const token = ++this.startCountdownToken;
     const overlay = this.elements.startCountdown;
     const isPrimed = overlay.classList.contains('is-primed');
     overlay.classList.remove('is-go', 'is-leaving');
     if (!isPrimed) overlay.classList.remove('is-visible');
-    overlay.classList.toggle('is-compact', compact);
     overlay.setAttribute('aria-hidden', 'false');
     if (!isPrimed) {
       void overlay.offsetWidth;
@@ -295,13 +297,13 @@ export class GameUI {
       // 옮겼는데 실기기에서 "살짝 느리다"는 제보가 왔다. 박은 그대로 두고
       // 한 박씩만 당긴다 - 더 줄이면 숫자가 튀는 연출이 다 피기 전에 넘어가
       // 뚝뚝 끊겨 보인다.
-      await delay(compact ? (isGo ? 340 : 370) : (isGo ? 430 : 545));
+      await delay(quick ? (isGo ? 340 : 370) : (isGo ? 430 : 545));
     }
 
     if (token !== this.startCountdownToken) return false;
     overlay.classList.add('is-leaving');
-    await delay(compact ? 110 : 150);
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact', 'is-primed');
+    await delay(quick ? 110 : 150);
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-primed');
     overlay.setAttribute('aria-hidden', 'true');
     return true;
   }
@@ -309,7 +311,7 @@ export class GameUI {
   cancelStartCountdown() {
     this.startCountdownToken += 1;
     const overlay = this.elements.startCountdown;
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-compact', 'is-primed');
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-primed');
     overlay.setAttribute('aria-hidden', 'true');
   }
 
@@ -2024,7 +2026,9 @@ export class GameUI {
     timeUp.classList.add('is-visible');
     // 1초는 점수를 읽기 전에 사라졌다는 제보를 받았다. 도장이 뜨고, 눈이
     // 점수로 내려가고, 숫자를 읽는 데 걸리는 시간을 준다.
-    await delay(1750);
+    // 1.75초로도 "점수 보기 전에 넘어간다"는 제보가 또 왔다. 여기는 판이
+    // 끝난 자리라 서두를 이유가 없다 - 다음에 오는 것도 광고 제안뿐이다.
+    await delay(2400);
   }
 
   // 도장을 지우고 판을 원래대로. 제안 창이 뜨기 전에 부른다.
@@ -2458,10 +2462,12 @@ export class GameUI {
   // 결과창의 도전장 한 줄. 이겼으면 축하, 못 넘었으면 남은 점수를 알려준다.
   // 남은 점수를 굳이 숫자로 보여주는 이유는, "조금만 더"가 막연한 응원보다
   // 다음 한 판을 부르기 때문이다.
-  updateResultChallenge(verdict = null) {
+  updateResultChallenge(verdict = null, { suppressPending = false } = {}) {
     const line = this.elements.resultChallenge;
     if (!line) return;
-    if (!verdict) {
+    // 못 넘은 도전장은 '다음 목표' 줄이 대신 말하는 경우가 있다. 같은 숫자를
+    // 한 화면에 두 번 쓰면 둘 다 안 읽힌다.
+    if (!verdict || (suppressPending && !verdict.won)) {
       line.hidden = true;
       line.textContent = '';
       delete line.dataset.won;
@@ -2472,6 +2478,23 @@ export class GameUI {
     line.textContent = verdict.won
       ? `친구 기록 ${verdict.target.toLocaleString('ko-KR')}점을 넘었다냥!`
       : `친구 기록까지 ${verdict.diff.toLocaleString('ko-KR')}점 남았다냥`;
+  }
+
+  // 다음 목표 한 줄. 고르는 일은 data.js가 하고, 여기서는 있으면 켜고 없으면
+  // 끈다 - 목표가 없는 판(전부 멀거나 전부 이미 달성)에서는 줄 자체가 사라져야
+  // 버튼이 원래 자리로 돌아온다.
+  updateResultNextGoal(goal = null) {
+    const line = this.elements.resultNextGoal;
+    if (!line) return;
+    if (!goal?.text) {
+      line.hidden = true;
+      line.textContent = '';
+      delete line.dataset.kind;
+      return;
+    }
+    line.hidden = false;
+    line.dataset.kind = goal.kind;
+    line.textContent = goal.text;
   }
 
   // Which scene of 고양이의 모험 is painted behind the board. The art itself
@@ -2808,14 +2831,15 @@ export class GameUI {
     score, maxCombo, round, successCount = 0, catsCollected = 0,
     catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
-    classic = null, cardAward = null, candy = null, challenge = null,
+    classic = null, cardAward = null, candy = null, challenge = null, nextGoal = null,
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
     // 지난 판의 연출이 남아 있으면 새 판의 첫 프레임에 그것이 먼저 보인다.
     this.resetCardAward();
     // 카드 패널이 서는 판에서는 장면 소식을 패널이 대신 전한다. 같은 말을
     // 두 줄에 나눠 쓰면 무엇이 이번 판의 수확인지 흐려진다.
-    this.updateResultChallenge(challenge);
+    this.updateResultChallenge(challenge, { suppressPending: nextGoal?.kind === 'challenge' });
+    this.updateResultNextGoal(nextGoal);
     const cardAwardActive = Boolean(cardAward?.fresh?.length);
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
