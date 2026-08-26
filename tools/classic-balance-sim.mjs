@@ -112,8 +112,16 @@ export function simulateRun(profile, opts = {}) {
   let boardScoreAtStart = 0;
   let boardStartElapsed = 0;
 
+  // 사다리 오버라이드는 판 크기까지 바꾼다. 예전에는 환급 상수(timeFloor,
+  // timeBonus)만 갈아끼워서, 정작 "1판을 작게" 같은 실험을 이 도구로 못 했다.
+  const ladderSpec = (index) => {
+    const base = classicBoardForIndex(index);
+    const over = ladderOverride?.[Math.min(index, (ladderOverride?.length ?? 1) - 1)];
+    return over ? { ...base, ...over } : base;
+  };
+
   const newBoard = () => {
-    const spec = classicBoardForIndex(S.boardIndex);
+    const spec = ladderSpec(S.boardIndex);
     const rule = classicBoardRuleForIndex(S.boardIndex);
     model.generateClassic(spec.cols, spec.rows, classicRoundForBoard(S.boardIndex), {
       catMultiplier: rule?.catMultiplier,
@@ -132,9 +140,7 @@ export function simulateRun(profile, opts = {}) {
   };
 
   const boardChange = () => {
-    const base = classicBoardForIndex(S.boardIndex);
-    const over = ladderOverride?.[Math.min(S.boardIndex, (ladderOverride?.length ?? 1) - 1)];
-    const clearedBoard = over ? { ...base, ...over } : base;
+    const clearedBoard = ladderSpec(S.boardIndex);
     const clearedRatio = Math.min(1, Math.max(0, 1 - model.remainingPlayableCells() / Math.max(1, S.initialPlayable)));
     const refund = refundWithFatigue(
       classicBoardChangeSeconds(clearedBoard, clearedRatio),

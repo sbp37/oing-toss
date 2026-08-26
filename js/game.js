@@ -395,6 +395,8 @@ class OingGame {
     this.ui.board.addEventListener('keydown', (event) => this.handleBoardItemKey(event), { capture: true });
     document.querySelector('#home-settings-button').addEventListener('click', () => this.ui.setOverlay('settings-overlay', true));
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
+    document.querySelector('#record-tab-stats')?.addEventListener('click', () => this.ui.setRecordTab('stats'));
+    document.querySelector('#record-tab-cards')?.addEventListener('click', () => this.ui.setRecordTab('cards'));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openGameLeaderboard());
     document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openGameLeaderboard());
@@ -2805,6 +2807,9 @@ class OingGame {
   }
 
   async openRanking() {
+    // 창은 늘 기록 탭으로 연다. 이 창을 여는 흔한 이유는 여전히 점수
+    // 확인이고, 수집을 보러 온 사람에게는 탭이 바로 옆에 있다.
+    this.ui.setRecordTab('stats');
     // From the result screen the sheet bows out so the panel reads
     // full-screen; every close path brings it back.
     if (document.querySelector('#result-screen')?.classList.contains('is-active')) {

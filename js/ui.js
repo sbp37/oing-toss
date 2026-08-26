@@ -186,6 +186,12 @@ export class GameUI {
       gardenTiers: document.querySelector('#garden-tiers'),
       chapterGallery: document.querySelector('#chapter-gallery'),
       chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
+      recordTabs: [...document.querySelectorAll('.record-tab')],
+      recordTabCount: document.querySelector('#record-tab-count'),
+      recordPanes: {
+        stats: document.querySelector('#record-pane-stats'),
+        cards: document.querySelector('#record-pane-cards'),
+      },
       oingCardGallery: document.querySelector('#oing-card-gallery'),
       oingCardNote: document.querySelector('#oing-card-note'),
       chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
@@ -2631,6 +2637,24 @@ export class GameUI {
   // 오잉 카드. 장면과 같은 칸 모양을 쓰되, 잠긴 칸에 진행도를 함께 보여준다.
   // 잠긴 칸이 그냥 회색이면 목표가 아니라 벽으로 읽힌다 - 얼마나 남았는지가
   // 보여야 다음 한 장이 손에 닿는 것처럼 느껴진다.
+  // 기록 / 수집 전환.
+  //
+  // 어느 탭을 봤는지는 기억하지 않는다. 창을 열 때마다 기록으로 돌아오는
+  // 편이 낫다 - 이 창을 여는 흔한 이유는 여전히 점수 확인이고, 수집을 보러
+  // 온 사람에게는 탭이 바로 옆에 있다.
+  setRecordTab(name = 'stats') {
+    const key = name === 'cards' ? 'cards' : 'stats';
+    for (const tab of this.elements.recordTabs || []) {
+      const active = tab.id === `record-tab-${key}`;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    }
+    for (const [paneKey, pane] of Object.entries(this.elements.recordPanes || {})) {
+      if (pane) pane.hidden = paneKey !== key;
+    }
+    return key;
+  }
+
   renderOingCards(cards = []) {
     if (!this.elements.oingCardGallery) return;
     const list = Array.isArray(cards) ? cards : [];
@@ -2685,6 +2709,12 @@ export class GameUI {
       return item;
     });
     this.elements.oingCardGallery.replaceChildren(...items);
+    // 탭 배지. 창을 안 열어봐도 "수집 2/9"가 보여야 여기 뭔가 있다는 것이
+    // 읽힌다 - 제보의 "갤러리 있는 줄 몰랐다"가 바로 이 자리에서 갈린다.
+    if (this.elements.recordTabCount) {
+      const unlocked = list.filter((card) => card.unlocked).length;
+      this.elements.recordTabCount.textContent = `${unlocked}/${list.length}`;
+    }
     if (this.elements.oingCardNote) {
       const found = list.filter((card) => card.unlocked).length;
       this.elements.oingCardNote.textContent = list.length ? `카드 ${found}/${list.length}` : '';
