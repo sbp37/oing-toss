@@ -75,6 +75,7 @@ import {
   AD_CONTINUE_SECONDS,
   AD_HELP_PACK,
   candyForRun,
+  CANDY_STARTER_MINIMUM,
 } from './data.js';
 import { adReady, adsAvailable, preloadAd, showAd } from './ads.js';
 import { installCandyFeeding } from './candy.js';
@@ -2906,8 +2907,12 @@ class OingGame {
     // 그 사탕이 판의 대가라는 걸 알 길이 없기 때문이었다. 받은 개수와 함께
     // 총 개수도 보여준다 - 총량이 보여야 "홈 가서 줘야지"가 생긴다.
     if (!this.runtime.testMode) {
-      this.lastCandyEarned = candyForRun(this.state.score);
-      storageAdapter.addCandy(this.lastCandyEarned);
+      const earned = candyForRun(this.state.score);
+      storageAdapter.addCandy(earned);
+      // 첫 판만은 한 번 먹일 만큼을 채워 준다. 3~4개만 쌓이고 접시가 숨어
+      // 있으면 처음 하는 사람은 이 기능이 있는 줄도 모르고 끝난다.
+      const starter = storageAdapter.claimCandyStarter(CANDY_STARTER_MINIMUM);
+      this.lastCandyEarned = earned + starter;
       this.lastResultSummary.candy = {
         earned: this.lastCandyEarned,
         total: storageAdapter.getCandy(),

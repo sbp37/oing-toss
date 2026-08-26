@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   CANDY_PER_FEED,
+  CANDY_STARTER_MINIMUM,
   CANDY_MIN_PER_RUN,
   CANDY_MAX_PER_RUN,
   CANDY_FEED_MILESTONES,
@@ -169,4 +170,29 @@ test('the feeding tally lives in the records sheet, not on the home screen', asy
 
   // 한 번도 안 준 사람에게는 뜨지 않는다. 0인 줄은 알려주는 것이 없다.
   assert.match(ui, /rankingCandyLine\.hidden = count <= 0/);
+});
+
+test('a first-timer can always feed the cat after one game', async () => {
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const adapters = await readFile(new URL('../js/adapters.js', import.meta.url), 'utf8');
+
+  // 실기기 제보: "한 판 하고 나면 별사탕 주는 게 안 생긴다." 맞았다.
+  // 한 판 수급이 3~8인데 먹이기가 5라, 6,000점을 넘겨야 첫 판에 사탕이
+  // 보인다. 처음 하는 사람은 그 점수를 못 낸다 - 기능이 있는 줄도 모르고
+  // 끝난다. 이 시험이 그 문을 지킨다.
+  assert.ok(candyForRun(0) < CANDY_PER_FEED, '보충이 필요 없다면 이 장치가 무의미하다');
+  assert.equal(CANDY_STARTER_MINIMUM, CANDY_PER_FEED, '첫 판은 딱 한 번 먹일 만큼');
+  assert.match(game, /claimCandyStarter\(CANDY_STARTER_MINIMUM\)/);
+  assert.match(game, /this\.lastCandyEarned = earned \+ starter/);
+
+  // 딱 한 번이어야 한다. "아직 안 먹였으면"으로 두면 모으기만 하는 사람에게
+  // 매 판 보충이 나가 경제가 무너진다 - 받았다는 사실을 따로 적어 둔다.
+  assert.match(adapters, /const CANDY_STARTER_KEY = 'oing_toss_v3_candy_starter'/);
+  assert.match(adapters, /if \(safeRead\(CANDY_STARTER_KEY, ''\) === '1'\) return 0;/);
+  const body = adapters.slice(
+    adapters.indexOf('claimCandyStarter(minimum = 0) {'),
+    adapters.indexOf('getFedCount() {'),
+  );
+  assert.ok(body.length > 0);
+  assert.ok(!body.includes('getFedCount'), '먹인 횟수로 판단하면 매 판 보충이 나간다');
 });

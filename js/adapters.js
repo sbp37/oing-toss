@@ -6,6 +6,7 @@ const LAST_SCORE_KEY = 'oing_toss_v3_last_score';
 const RECENT_SCORES_KEY = 'oing_toss_v3_recent_scores';
 const CANDY_KEY = 'oing_toss_v3_candy';
 const FED_COUNT_KEY = 'oing_toss_v3_fed_count';
+const CANDY_STARTER_KEY = 'oing_toss_v3_candy_starter';
 const SETTINGS_KEY = 'oing_toss_v3_settings';
 const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
 const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
@@ -66,6 +67,23 @@ export const storageAdapter = {
     try { localStorage.setItem(CANDY_KEY, String(balance - cost)); } catch {}
     return true;
   },
+  // 첫 판이 끝날 때 딱 한 번, 잔고를 minimum까지 올려 준다. 올린 만큼을
+  // 돌려주고, 이미 충분하거나 이미 받았으면 0이다.
+  //
+  // 조건을 "아직 한 번도 안 먹였으면"으로 두면 안 된다 - 사탕을 모으기만
+  // 하고 안 주는 사람에게 매 판 보충이 나가 경제가 무너진다. 받았다는
+  // 사실 자체를 따로 적어 두고, 그 한 번으로 끝낸다.
+  claimCandyStarter(minimum = 0) {
+    const target = Math.max(0, Math.round(Number(minimum) || 0));
+    if (safeRead(CANDY_STARTER_KEY, '') === '1') return 0;
+    try { localStorage.setItem(CANDY_STARTER_KEY, '1'); } catch {}
+    const balance = this.getCandy();
+    if (balance >= target) return 0;
+    const topUp = target - balance;
+    this.addCandy(topUp);
+    return topUp;
+  },
+
   getFedCount() {
     const value = Number(safeRead(FED_COUNT_KEY, '0'));
     return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
