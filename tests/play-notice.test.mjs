@@ -89,7 +89,18 @@ test('a rewarded ad that never appears says so instead of going quiet', async ()
   // 말도 필요 없고, 뒤는 우리 사정이라 알려줘야 한다 - 조용히 결과로
   // 보내면 "버튼이 먹통"으로 읽힌다(실기기 제보).
   assert.match(entry, /else if \(event\.type === 'failedToShow'\) \{[\s\S]{0,80}failed = true/);
-  assert.match(entry, /onError: \(\) => \{ failed = true; settle\(\); \}/);
+  assert.match(entry, /onError: \(\) => \{ failed = true; settle\('error'\); \}/);
+
+  // 어떤 이벤트도 안 오면 약속이 영원히 안 끝나고, 그 위에서 기다리던
+  // 게임이 통째로 굳는다(이어하기는 finishing, 도움팩은 paused). 토스
+  // 공식 문서에도 dismissed가 오지 않은 안드로이드 버전이 적혀 있다.
+  assert.match(entry, /LOAD_TIMEOUT_MS = \d+/);
+  assert.match(entry, /SHOW_TIMEOUT_MS = \d+/);
+  assert.match(entry, /function withDeadline\(ms, run\)/);
+  assert.match(entry, /timer = setTimeout\(\(\) => settle\('timeout'\), ms\)/);
+  // 시간 제한에 걸렸어도 보상 이벤트를 이미 봤다면 지급한다 - 끝까지 본
+  // 사람에게서 닫힘 이벤트만 유실된 경우다.
+  assert.match(entry, /if \(how === 'timeout' && !rewarded\) failed = true;/);
   assert.ok(bundle.includes('failed'), '다리를 다시 굽지 않았다');
   assert.match(ads, /shown: !result\?\.failed/);
   assert.match(game, /if \(!shown\) this\.ui\.toast\('광고를 못 불러왔다냥/);

@@ -18,6 +18,23 @@ let bridgePromise = null;
 const loadedKinds = new Set();
 const loadingKinds = new Set();
 
+// 준비 상태가 바뀌면 알린다. 버튼의 광고 배지가 "실제로 불러왔는가"를
+// 보고 뜨기 때문에, 배경에서 로드가 끝나는 순간 화면을 다시 그려야 한다.
+// 이게 없으면 광고를 한 번 쓴 뒤 다시 불러와도 배지가 안 돌아온다.
+const readyListeners = new Set();
+
+export function onAdReadyChange(listener) {
+  if (typeof listener !== 'function') return () => {};
+  readyListeners.add(listener);
+  return () => readyListeners.delete(listener);
+}
+
+function announceReadyChange() {
+  for (const listener of readyListeners) {
+    try { listener(); } catch {}
+  }
+}
+
 function bridge() {
   bridgePromise ||= loadBridge().catch(() => null);
   return bridgePromise;
@@ -45,7 +62,10 @@ export async function preloadAd(kind) {
     const module = await bridge();
     if (!module?.isRewardedAdSupported?.()) return false;
     const ok = await module.loadRewardedAd(adGroupId);
-    if (ok) loadedKinds.add(kind);
+    if (ok) {
+      loadedKinds.add(kind);
+      announceReadyChange();
+    }
     return Boolean(ok);
   } catch {
     return false;
@@ -113,6 +133,7 @@ export async function showAd(kind) {
     return { rewarded: false, amount: 0, shown: false };
   } finally {
     loadedKinds.delete(kind);
+    announceReadyChange();
     preloadAd(kind);
   }
 }

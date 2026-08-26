@@ -1,4 +1,4 @@
-import { PUBLIC_SITE_URL } from './data.js';
+import { PUBLIC_SITE_URL, SHARE_OG_IMAGE } from './data.js';
 import { isAppsInTossWebView } from './leaderboard.js';
 
 const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
@@ -7,6 +7,7 @@ const RECENT_SCORES_KEY = 'oing_toss_v3_recent_scores';
 const CANDY_KEY = 'oing_toss_v3_candy';
 const FED_COUNT_KEY = 'oing_toss_v3_fed_count';
 const CANDY_STARTER_KEY = 'oing_toss_v3_candy_starter';
+const PENDING_SHARE_HINTS_KEY = 'oing_toss_v3_pending_share_hints';
 const SETTINGS_KEY = 'oing_toss_v3_settings';
 const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
 const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
@@ -82,6 +83,33 @@ export const storageAdapter = {
     const topUp = target - balance;
     this.addCandy(topUp);
     return topUp;
+  },
+
+  // 친구 초대로 약속한 힌트. 기기에 적어 둔다.
+  //
+  // 예전에는 게임 객체의 변수에만 쌓았다. 그런데 이 보상은 결과 화면에서
+  // 받고 다음 판 시작에 지급되므로, 그 사이에 앱을 닫거나 새로고침하면
+  // 통째로 사라졌다 - 친구에게 초대장까지 보낸 사람이 아무것도 못 받는
+  // 것이다. 토스가 sendViral을 보냈다는 것은 지급이 확정됐다는 뜻이므로,
+  // 그 순간 기기에 남겨야 한다.
+  getPendingShareHints() {
+    const value = Number(safeRead(PENDING_SHARE_HINTS_KEY, '0'));
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+  },
+
+  addPendingShareHints(amount) {
+    const next = this.getPendingShareHints() + Math.max(0, Math.round(Number(amount) || 0));
+    try { localStorage.setItem(PENDING_SHARE_HINTS_KEY, String(next)); } catch {}
+    return next;
+  },
+
+  // 지급하면서 비운다. 지급과 소비가 한 호출이라 두 번 받을 수 없다.
+  takePendingShareHints() {
+    const pending = this.getPendingShareHints();
+    if (pending > 0) {
+      try { localStorage.setItem(PENDING_SHARE_HINTS_KEY, '0'); } catch {}
+    }
+    return pending;
   },
 
   getFedCount() {
@@ -399,7 +427,10 @@ function publicImageUrl(imageUrl) {
 
 async function tossShareLink(imageUrl = '') {
   if (!isAppsInTossWebView()) return '';
-  const ogImageUrl = publicImageUrl(imageUrl);
+  // 미리보기 그림은 카드가 아니라 공유 전용 한 장을 쓴다 - 규격(1200x600)과
+  // 형식(PNG)을 맞춰야 미리보기가 제대로 그려진다. 카드 원본은 세로로 길고
+  // webp라 둘 다 어긋났다. imageUrl은 클립보드 공유가 계속 쓴다.
+  const ogImageUrl = publicImageUrl(SHARE_OG_IMAGE);
   if (!tossShareLinkCache.has(ogImageUrl)) {
     tossShareLinkCache.set(ogImageUrl, import('./vendor/toss-game-center-v1.js')
       .then((module) => (typeof module.createTossShareLink === 'function'

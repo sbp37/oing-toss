@@ -254,9 +254,21 @@ test('classic chapters cycle in order while album ownership stays key-based', as
   assert.equal(classicChapterForBoard(24).key, 'garden');
   assert.equal(classicChapterForBoard(28).key, 'forest');
   assert.equal(classicChapterForBoard(-3).key, 'garden');
-  // Thresholds must stay ordered, or a deeper board could show an earlier scene.
-  CLASSIC_CHAPTERS.forEach((chapter, index) => {
-    if (index > 0) assert.ok(chapter.fromBoard > CLASSIC_CHAPTERS[index - 1].fromBoard);
+  // 기록 시트가 적는 "N번째 판"이 실제로 그 장면이 처음 걸리는 판이어야
+  // 한다. 예전에는 fromBoard를 손으로 0/3/6/9/12/15로 적어 두고 실제
+  // 계산식만 네 판 간격으로 바꿔서, 안내는 4번째 판이라는데 장면은 5번째
+  // 판에서 바뀌는 상태가 살아 있었다. 이제 한 자리에서 계산하고, 여기서
+  // 두 값을 맞대어 본다.
+  const rows = classicChapterGallery({ seenKeys: [], bestScore: 0 })
+    .filter((chapter) => !chapter.secret);
+  rows.forEach((chapter, index) => {
+    if (index > 0) assert.ok(chapter.fromBoard > rows[index - 1].fromBoard, '장면 순서가 뒤집혔다');
+    // 그 판은 이 장면이고, 바로 앞 판은 아니어야 "처음 걸리는 판"이다.
+    assert.equal(classicChapterForBoard(chapter.fromBoard).key, chapter.key);
+    if (chapter.fromBoard > 0) {
+      assert.notEqual(classicChapterForBoard(chapter.fromBoard - 1).key, chapter.key);
+    }
+    assert.match(chapter.requirement, new RegExp(`^${chapter.fromBoard + 1}번째 판`));
   });
 
   const fresh = classicChapterGallery({ seenKeys: [], bestScore: 0 });

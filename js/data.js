@@ -305,7 +305,7 @@ export const CLASSIC_TIME_CAP_SECONDS = 300;
 // 시계·프리즈 아이템은 이 선을 넘겨 벌 수 있다(cappedSessionTime, 120초
 // 상한) - 아이템이 "선을 뚫는 프리미엄"이 된다.
 // 보상형 광고. 그룹 ID는 토스 콘솔의 인앱 광고 > 광고 그룹에서 만든 값이고,
-// 그룹 하나가 보상 하나를 뜻한다(이어하기 20초 / 힌트 1 / 셔플 1).
+// 그룹 하나가 보상 하나를 뜻한다(이어하기 30초 / 도움팩 1).
 // 비어 있으면 그 광고 자리는 게임에 아예 나타나지 않는다.
 // 별사탕. 판이 끝나면 점수에 비례해 쌓이고, 홈에서 고양이에게 끌어다
 // 먹인다. 못한 판도 반드시 몇 개는 남게 최소치를 둔다 - 2분을 쓰고 아무것도
@@ -374,6 +374,16 @@ export const AD_GROUP_IDS = Object.freeze({
 // 공개 웹 주소. 토스 안에서 만든 공유 링크의 미리보기 그림(og:image)은
 // 공개 주소여야 해서, 번들 안의 상대 경로를 이 주소로 바꿔 넘긴다.
 export const PUBLIC_SITE_URL = 'https://sbp37.github.io/oing-toss/';
+
+// 링크 미리보기에 실릴 그림.
+//
+// 처음에는 그 순간의 카드 그림(1086x1448 webp)을 그대로 넘겼다. 두 가지가
+// 틀렸다. 토스 권장 규격은 1200x600 가로형인데 세로로 긴 그림이라 미리보기
+// 상자에 안 맞고, webp는 미리보기를 그리는 쪽(카톡 등)이 못 읽을 수 있다.
+// 그래서 공유 전용으로 1200x600 PNG 한 장을 따로 둔다. 어떤 카드를
+// 공유하든 미리보기 그림은 같지만, 미리보기는 "이 게임이 무엇인가"를
+// 보여주는 자리라 오히려 그편이 맞다.
+export const SHARE_OG_IMAGE = 'assets/share/og-oing-1200x600.png';
 
 export const SHARE_REWARD_MODULE_ID = '89c3bed0-84a2-4542-91d3-ca383982d4e1';
 
@@ -572,12 +582,15 @@ export function classicRoundForBoard(boardIndex = 0) {
 export const CLASSIC_CHAPTER_BOARDS_PER_SCENE = 4;
 
 export const CLASSIC_CHAPTERS = Object.freeze([
-  Object.freeze({ key: 'garden', label: '비밀의 정원', fromBoard: 0, art: 'chapter-garden', hasArt: true }),
-  Object.freeze({ key: 'forest', label: '이끼 숲길', fromBoard: 3, art: 'chapter-forest', hasArt: true }),
-  Object.freeze({ key: 'stream', label: '반짝이는 개울', fromBoard: 6, art: 'chapter-stream', hasArt: true }),
-  Object.freeze({ key: 'village', label: '고양이 마을', fromBoard: 9, art: 'chapter-village', hasArt: true }),
-  Object.freeze({ key: 'sunset', label: '노을 언덕', fromBoard: 12, art: 'chapter-sunset', hasArt: true }),
-  Object.freeze({ key: 'night', label: '별밤 지붕', fromBoard: 15, art: 'chapter-night', hasArt: true }),
+  // fromBoard는 손으로 적지 않는다. 아래에서 순서 x 간격으로 계산한다 -
+  // 예전에 간격을 3에서 4로 올리면서 이 숫자들을 3칸 그대로 두는 바람에,
+  // 기록 시트는 "4번째 판"이라 적고 실제 장면은 5번째 판에서 바뀌었다.
+  Object.freeze({ key: 'garden', label: '비밀의 정원', art: 'chapter-garden', hasArt: true }),
+  Object.freeze({ key: 'forest', label: '이끼 숲길', art: 'chapter-forest', hasArt: true }),
+  Object.freeze({ key: 'stream', label: '반짝이는 개울', art: 'chapter-stream', hasArt: true }),
+  Object.freeze({ key: 'village', label: '고양이 마을', art: 'chapter-village', hasArt: true }),
+  Object.freeze({ key: 'sunset', label: '노을 언덕', art: 'chapter-sunset', hasArt: true }),
+  Object.freeze({ key: 'night', label: '별밤 지붕', art: 'chapter-night', hasArt: true }),
 ]);
 
 // Reaching a scene is not collecting it - the album asks for the board to
@@ -652,15 +665,25 @@ export function classicChapterForBoard(boardIndex = 0) {
 // One row per scene for the gallery: unlocked once its board has actually
 // been cleared to the collect ratio (the ladder chapters) or once the score
 // bar is cleared (the secret one).
+// 장면이 처음 걸리는 boardIndex. classicChapterForBoard의 계산식과 같은
+// 자리에서 나와야 안내 숫자와 실제 등장이 어긋나지 않는다.
+export function chapterFromBoard(order = 0) {
+  return Math.max(0, Math.round(Number(order) || 0)) * CLASSIC_CHAPTER_BOARDS_PER_SCENE;
+}
+
 export function classicChapterGallery({ seenKeys = [], bestScore = 0 } = {}) {
   const seen = new Set(seenKeys);
   const best = Math.max(0, Math.round(Number(bestScore) || 0));
-  const ladder = CLASSIC_CHAPTERS.map((chapter) => ({
-    ...chapter,
-    unlocked: seen.has(chapter.key),
-    requirement: `${chapter.fromBoard + 1}번째 판 ${Math.round(CLASSIC_CHAPTER_COLLECT_RATIO * 100)}%`,
-    secret: false,
-  }));
+  const ladder = CLASSIC_CHAPTERS.map((chapter, order) => {
+    const fromBoard = chapterFromBoard(order);
+    return {
+      ...chapter,
+      fromBoard,
+      unlocked: seen.has(chapter.key),
+      requirement: `${fromBoard + 1}번째 판 ${Math.round(CLASSIC_CHAPTER_COLLECT_RATIO * 100)}%`,
+      secret: false,
+    };
+  });
   return [...ladder, {
     ...CLASSIC_SECRET_CHAPTER,
     fromBoard: null,
@@ -1189,7 +1212,11 @@ export const MESSAGES = Object.freeze({
   struggleHint: Object.freeze(['이건 내가 살짝 보여줄게냥!', '잠깐, 여기부터 다시 봐봐!', '이 조합은 서비스다냥.']),
   hint: Object.freeze(['여기 한번 봐봐!', '이쪽이 수상한데?', '반짝이는 칸을 봐라냥!']),
   autoHint: Object.freeze(['막혔냥? 여기 봐보라냥!', '반짝이는 칸을 보라냥!']),
-  adContinue: Object.freeze(['20초 더 간다냥!', '한 번 더 달려보자냥!']),
+  // 숫자를 넣지 않는다. 실제 지급량은 콘솔 등록값(userEarnedReward)이 정하고
+  // 코드 기본값도 바뀐다 - 예전에 여기 '20초'가 박혀 있어서, 30초를 주면서
+  // 고양이는 20초라고 말하는 상태가 한동안 살아 있었다. 숫자는 중앙 배너
+  // ("+30초 이어간다냥!")가 실제 값으로 말한다.
+  adContinue: Object.freeze(['이어서 더 달린다냥!', '한 번 더 달려보자냥!', '아직 안 끝났다냥!']),
   // 홈에서 별사탕을 먹였을 때. 이 대사가 사실상 '반응'의 전부다 - 고양이
   // 그림은 여섯 장뿐이라 포즈로는 세 가지밖에 못 돌린다. 같은 그림이어도
   // 말이 다르면 다르게 느껴지므로, 다양성은 여기에 싣는다.

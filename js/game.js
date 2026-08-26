@@ -77,7 +77,7 @@ import {
   candyForRun,
   CANDY_STARTER_MINIMUM,
 } from './data.js';
-import { adReady, adsAvailable, preloadAd, showAd } from './ads.js';
+import { adReady, adsAvailable, onAdReadyChange, preloadAd, showAd } from './ads.js';
 import { installCandyFeeding } from './candy.js';
 import { SHARE_REWARD_MODULE_ID } from './data.js';
 import {
@@ -578,7 +578,12 @@ class OingGame {
       stage: this.classic ? classicDropStage(this.classic.boardIndex) : this.state.round,
       clockAvailable: this.stageDuration > 0,
       // 0개여도 광고 리필이 남아 있으면 버튼이 죽지 않고 광고 배지를 단다.
-      adRefill: { pack: adsAvailable('helpPack') && !this.adHelpPackUsed },
+      //
+      // adsAvailable(환경과 ID만 봄)이 아니라 adReady(실제로 불러왔는가)를
+      // 본다. 예전에는 로드가 실패해도 배지가 떴고, 누르면 watchItemRefillAd가
+      // adReady에서 조용히 되돌아가 아무 일도 일어나지 않았다 - 안내조차
+      // 없어서 버튼이 먹통인 것으로 읽혔다. 약속은 지킬 수 있을 때만 한다.
+      adRefill: { pack: adReady('helpPack') && !this.adHelpPackUsed },
     };
   }
 
@@ -604,12 +609,27 @@ class OingGame {
     this.adContinueOffering = false;
     this.adStampedTimeUp = false;
     this.adHelpPackUsed = false;
-    ['continue', 'helpPack'].forEach((kind) => preloadAd(kind));
-    if (this.pendingShareHints > 0) {
-      const bonus = this.pendingShareHints;
-      this.pendingShareHints = 0;
-      this.grantItems({ hint: bonus }, { source: 'earned' });
-      this.ui.toast(`친구 초대 보너스! 힌트 +${bonus}다냥`);
+    // 순차로 불러온다. 공식 문서가 한 번에 하나씩 load -> show -> 다음 load를
+    // 권하고, 여러 그룹을 연달아 부르면 이벤트가 누락되던 사례가 안드로이드
+    // 특정 버전에 기록돼 있다. 병렬로 얻을 것도 없다 - 이어하기는 판 끝,
+    // 도움팩은 아이템이 떨어진 뒤라 둘 다 급하지 않다.
+    //
+    // 도움팩은 준비돼야 배지가 뜨므로, 다 불러온 뒤 HUD를 다시 그린다.
+    void (async () => {
+      for (const kind of ['continue', 'helpPack']) {
+        await preloadAd(kind);
+      }
+      if (this.state.running) this.updateHUD();
+    })();
+    // 친구 초대로 약속한 힌트. 기기에 적어 둔 값을 꺼내 쓰고 비운다 -
+    // 예전에는 메모리에만 있어서 앱을 닫으면 사라졌다.
+    const pendingHints = this.runtime.testMode
+      ? this.pendingShareHints
+      : storageAdapter.takePendingShareHints();
+    this.pendingShareHints = 0;
+    if (pendingHints > 0) {
+      this.grantItems({ hint: pendingHints }, { source: 'earned' });
+      this.ui.toast(`친구 초대 보너스! 힌트 +${pendingHints}다냥`);
     }
     // Classic mode: state.round is the generation depth ramp, not a stage —
     // the ladder machinery is bypassed at every branch below.
@@ -2519,7 +2539,10 @@ class OingGame {
       }
       const { earned } = await module.openContactsInvite(SHARE_REWARD_MODULE_ID);
       if (earned > 0) {
+        // 받은 즉시 기기에 남긴다. 결과 화면에서 받고 다음 판에 지급되는
+        // 사이에 앱이 닫혀도 보상이 살아남아야 한다.
         this.pendingShareHints = (this.pendingShareHints || 0) + earned;
+        if (!this.runtime.testMode) storageAdapter.addPendingShareHints(earned);
         this.ui.toast(`다음 판에 힌트 +${earned} 들어간다냥!`);
       }
     } catch {
@@ -2595,6 +2618,10 @@ class OingGame {
     this.state.paused = false;
     this.adFlowActive = false;
     this.adRefillShowing = false;
+    // 음악을 여기서 되살린다. runRewardedAd의 finally는 이 함수보다 먼저
+    // 도는데 그때는 아직 paused가 true라 복원을 건너뛴다 - 그래서 도움팩
+    // 광고를 한 번 보면 그 판 내내 배경음악이 꺼져 있었다.
+    if (this.settings.music && this.state.running) playMusic();
     this.updateHUD();
   }
 
@@ -3033,6 +3060,8 @@ class OingGame {
 
 const game = new OingGame();
 installBackNavigation(game);
+// 광고가 배경에서 준비되거나 소모되면 아이템 버튼의 배지를 다시 그린다.
+onAdReadyChange(() => { if (game.state?.running) game.updateHUD(); });
 // 홈의 별사탕 접시. 고양이에게 끌어다 주면 포즈가 바뀌고 말풍선이 뜬다.
 // 반응은 candy.js가 직접 낸다 - 토스트까지 겹치면 같은 말이 두 군데서 난다.
 game.candy = installCandyFeeding();

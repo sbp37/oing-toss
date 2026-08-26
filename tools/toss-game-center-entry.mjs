@@ -115,28 +115,56 @@ export function isRewardedAdSupported() {
   }
 }
 
-// 광고는 미리 불러 둬야 누른 순간 바로 뜬다(공식 권장). 로드 완료/실패를
-// Promise로 돌려주고, 반환된 cleanup은 결과가 나온 뒤 스스로 정리한다.
-export function loadRewardedAd(adGroupId) {
+// 광고 다리에는 반드시 시간 제한이 있어야 한다.
+//
+// 이 약속들은 이벤트가 와야만 끝난다. 그런데 토스 공식 문서에도 예외가
+// 적혀 있다 - 안드로이드 특정 버전에서 dismissed가 아예 오지 않은 사례가
+// 있었고, 로드는 네트워크에 따라 1분 가까이 걸릴 수 있다. 아무 이벤트도
+// 안 오면 이 약속은 영원히 안 끝나고, 그 위에서 기다리던 게임은
+// 이어하기라면 finishing 상태로, 도움팩이라면 paused 상태로 굳는다.
+// 화면상 아무 표시도 없이 그냥 안 눌리는 판이 되는 것이다.
+//
+// 그래서 어떤 경우에도 시간이 지나면 스스로 끝낸다. 늦게 오는 보상을
+// 놓치지 않도록 show 쪽은 넉넉히 잡는다 - 광고 자체가 30초 안팎이고
+// 사람이 보상 화면에서 머무는 시간까지 감안한 값이다.
+let LOAD_TIMEOUT_MS = 20000;
+let SHOW_TIMEOUT_MS = 180000;
+
+// 시험에서만 쓴다. 20초·180초를 실제로 기다릴 수는 없어서, 시간 제한이
+// "정말로 약속을 끝내는지"를 짧은 값으로 확인한다. 게임 코드는 부르지 않는다.
+export function __setAdDeadlinesForTest(loadMs, showMs) {
+  LOAD_TIMEOUT_MS = Number(loadMs) || LOAD_TIMEOUT_MS;
+  SHOW_TIMEOUT_MS = Number(showMs) || SHOW_TIMEOUT_MS;
+}
+
+function withDeadline(ms, run) {
   return new Promise((resolve) => {
     let cleanup = null;
     let settled = false;
-    const settle = (ok) => {
+    let timer = null;
+    const settle = (value) => {
       if (settled) return;
       settled = true;
+      if (timer !== null) { try { clearTimeout(timer); } catch {} }
       try { cleanup?.(); } catch {}
-      resolve(ok);
+      resolve(value);
     };
+    timer = setTimeout(() => settle('timeout'), ms);
     try {
-      cleanup = GoogleAdMob.loadAppsInTossAdMob({
-        options: { adGroupId },
-        onEvent: (event) => { if (event.type === 'loaded') settle(true); },
-        onError: () => settle(false),
-      });
+      cleanup = run(settle);
     } catch {
-      settle(false);
+      settle('threw');
     }
   });
+}
+
+// 광고는 미리 불러 둬야 누른 순간 바로 뜬다(공식 권장).
+export function loadRewardedAd(adGroupId) {
+  return withDeadline(LOAD_TIMEOUT_MS, (settle) => GoogleAdMob.loadAppsInTossAdMob({
+    options: { adGroupId },
+    onEvent: (event) => { if (event.type === 'loaded') settle(true); },
+    onError: () => settle(false),
+  })).then((value) => value === true);
 }
 
 export function isRewardedAdLoaded(adGroupId) {
@@ -157,38 +185,29 @@ export function isRewardedAdLoaded(adGroupId) {
 // 뒤는 우리 사정이므로 알려줘야 한다 - 조용히 넘어가면 "버튼이 먹통"으로
 // 읽힌다(실기기 제보: "+30초를 눌렀는데 그냥 결과창으로 간다").
 export function showRewardedAd(adGroupId) {
-  return new Promise((resolve) => {
-    let cleanup = null;
-    let settled = false;
-    let rewarded = false;
-    let amount = 0;
-    let failed = false;
-    const settle = () => {
-      if (settled) return;
-      settled = true;
-      try { cleanup?.(); } catch {}
-      resolve({ rewarded, amount, failed });
-    };
-    try {
-      cleanup = GoogleAdMob.showAppsInTossAdMob({
-        options: { adGroupId },
-        onEvent: (event) => {
-          if (event.type === 'userEarnedReward') {
-            rewarded = true;
-            amount = Number(event.data?.unitAmount) || 0;
-          } else if (event.type === 'dismissed') {
-            settle();
-          } else if (event.type === 'failedToShow') {
-            failed = true;
-            settle();
-          }
-        },
-        onError: () => { failed = true; settle(); },
-      });
-    } catch {
-      failed = true;
-      settle();
-    }
+  let rewarded = false;
+  let amount = 0;
+  let failed = false;
+  return withDeadline(SHOW_TIMEOUT_MS, (settle) => GoogleAdMob.showAppsInTossAdMob({
+    options: { adGroupId },
+    onEvent: (event) => {
+      if (event.type === 'userEarnedReward') {
+        rewarded = true;
+        amount = Number(event.data?.unitAmount) || 0;
+      } else if (event.type === 'dismissed') {
+        settle('dismissed');
+      } else if (event.type === 'failedToShow') {
+        failed = true;
+        settle('failedToShow');
+      }
+    },
+    onError: () => { failed = true; settle('error'); },
+  })).then((how) => {
+    // 시간 제한에 걸렸는데 보상 이벤트는 이미 왔다면, 그건 유저가 끝까지
+    // 본 것이고 닫힘 이벤트만 유실된 경우다. 그때는 지급하는 것이 맞다.
+    if (how === 'timeout' && !rewarded) failed = true;
+    if (how === 'threw') failed = true;
+    return { rewarded, amount, failed };
   });
 }
 
