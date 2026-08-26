@@ -3042,14 +3042,23 @@ class OingGame {
     // 카드 개봉이 결과 시트보다 먼저다. 시트가 이미 떠 있는 채로 카드가
     // 뜨면 "여러 정보 중 하나"가 되고, 그러면 뜯는 맛이 사라진다.
     // 실기기 제보 "받았으? 싶은 느낌"이 정확히 그 상태였다.
+    //
+    // 통째로 감싼 이유가 있다. 여기서 무엇이든 던지면 아래 showResult가 영영
+    // 안 불리고 finishing이 true로 굳는다 - 어두운 화면에 카드만 떠 있고
+    // 아무것도 안 눌리는 판이 되는 것이다. 개봉은 연출이지 결과의 조건이
+    // 아니므로, 실패하면 조용히 건너뛰고 결과를 보여주는 것이 맞다.
     const revealHero = cardAward?.fresh?.at(-1);
     if (revealHero) {
-      playWideClearSound();
-      cloverHaptic();
-      await this.ui.playCardReveal(revealHero, {
-        unlockedCount: cardAward.unlockedCount,
-        total: cardAward.total,
-      });
+      try {
+        playWideClearSound();
+        cloverHaptic();
+        await this.ui.playCardReveal(revealHero, {
+          unlockedCount: cardAward.unlockedCount,
+          total: cardAward.total,
+        });
+      } catch {
+        this.ui.hideCardReveal?.();
+      }
     }
     this.ui.showResult(this.lastResultSummary);
     this.finishing = false;

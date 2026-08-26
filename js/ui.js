@@ -3088,6 +3088,16 @@ export class GameUI {
     });
   }
 
+  // 개봉이 도중에 어그러졌을 때 화면을 걷어낸다. 이게 없으면 어두운 막이
+  // 남아 결과 화면을 덮는다.
+  hideCardReveal() {
+    const layer = this.elements.cardReveal;
+    if (!layer) return;
+    layer.hidden = true;
+    layer.setAttribute('aria-hidden', 'true');
+    layer.classList.remove('is-closing');
+  }
+
   // The original's record moment pops from several places at once, not one
   // curtain from the top - so the celebration is three staggered bursts,
   // each seeded to a different band of the screen.
