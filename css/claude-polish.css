@@ -1561,3 +1561,246 @@
   background: linear-gradient(180deg, #fffdf8, #ffeef0);
   color: #a4515f;
 }
+
+/* ==========================================================================
+   오잉 카드 개봉
+   실기기 제보: "이미지 카드를 받으면 츄ㅏ! 하고 화려한 모션이 있어야 할 것
+   같아요. 지금은 받았으? 싶은 느낌." 맞는 말이다. 수집형의 쾌감은 전부
+   뜯는 순간에 있는데, 그 순간이 결과 시트 안의 84px 패널에서 지나갔다.
+   카드도 판정도 그림도 다 있는데 연출만 없어서 만들어둔 걸 못 쓰고 있었다.
+
+   순서를 이렇게 짰다. 뒷면이 튀어나오고(기대) - 잠깐 떨고(긴장) - 뒤집히고
+   (공개) - 터진다(보상). 세 번째와 네 번째 사이의 0.1초가 이 연출의 전부라,
+   뒤집기가 90도를 넘는 순간에 정확히 반짝임이 터지게 맞췄다.
+   ========================================================================== */
+.card-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+  padding: 24px;
+  animation: card-reveal-in 260ms ease-out both;
+}
+
+/* 블러를 이 요소가 아니라 그 뒤에 깐 층에 건다.
+   backdrop-filter는 filter와 마찬가지로 자손의 3D를 납작하게 만든다. 여기에
+   걸었더니 카드의 preserve-3d가 죽어서 뒤집혀도 뒷면이 그대로 보였다 -
+   실측으로 잡았다(180도에서도 뒷면 그림). 조상이 아니라 형제로 두면 3D가
+   산다. */
+.card-reveal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(24, 30, 46, .72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@keyframes card-reveal-in { from { opacity: 0; } }
+
+/* 뒤에서 번지는 빛. 카드가 무대 위에 있다는 느낌을 만드는 값싼 방법이다. */
+.card-reveal-glow {
+  position: absolute;
+  width: min(96vw, 460px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 233, 176, .5), rgba(255, 210, 150, 0) 62%);
+  animation: card-reveal-glow 2400ms ease-out both;
+}
+
+@keyframes card-reveal-glow {
+  0% { opacity: 0; transform: scale(.4); }
+  38% { opacity: 0; transform: scale(.6); }
+  56% { opacity: 1; transform: scale(1); }
+  100% { opacity: .55; transform: scale(1.06); }
+}
+
+/* 뒤집히는 순간에만 뻗는 광선. 계속 돌면 어지럽다. */
+.card-reveal-rays {
+  position: absolute;
+  width: min(92vw, 420px);
+  aspect-ratio: 1;
+  opacity: 0;
+  animation: card-reveal-rays 1500ms 900ms ease-out both;
+}
+
+.card-reveal-rays i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 46%;
+  margin-left: -1.5px;
+  background: linear-gradient(to top, rgba(255, 236, 180, 0), rgba(255, 240, 200, .85));
+  transform-origin: 50% 100%;
+}
+
+.card-reveal-rays i:nth-child(1) { transform: rotate(0deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(2) { transform: rotate(45deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(3) { transform: rotate(90deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(4) { transform: rotate(135deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(5) { transform: rotate(180deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(6) { transform: rotate(225deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(7) { transform: rotate(270deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(8) { transform: rotate(315deg) translateY(-100%); }
+
+@keyframes card-reveal-rays {
+  0% { opacity: 0; transform: scale(.5) rotate(0deg); }
+  22% { opacity: .9; transform: scale(1) rotate(14deg); }
+  100% { opacity: 0; transform: scale(1.3) rotate(40deg); }
+}
+
+.card-reveal-kicker {
+  position: relative;
+  margin: 0 0 14px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe89a, #f7c53f);
+  color: #6b4c04;
+  font-family: var(--font-display);
+  font-size: clamp(15px, 4.4vw, 18px);
+  animation: card-reveal-pop 420ms 120ms cubic-bezier(.2, .9, .3, 1.4) both;
+}
+
+@keyframes card-reveal-pop {
+  from { opacity: 0; transform: translateY(10px) scale(.8); }
+}
+
+/* 무대. 원근을 여기 두어야 카드가 실제로 돌아 보인다. */
+.card-reveal-stage {
+  position: relative;
+  width: min(62vw, 250px);
+  aspect-ratio: 3 / 4;
+  perspective: 1100px;
+}
+
+.card-reveal-card {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  /* 등장(튀어나옴) → 떨림 → 뒤집기를 한 흐름으로 잇는다. */
+  /* 뒤집기는 forwards다. both로 두면 900ms 지연 동안 뒤집기가 자기 시작
+     상태(rotateY 0)를 계속 덮어써서, 앞의 등장·떨림이 통째로 사라진다.
+     실측으로 잡았다 - 0.84초까지 transform이 identity로 굳어 있었다. */
+  animation: card-reveal-enter 900ms cubic-bezier(.2, .9, .3, 1.5) both,
+             card-reveal-flip 620ms 900ms cubic-bezier(.45, .05, .2, 1) forwards;
+}
+
+/* opacity를 여기서 건드리면 안 된다.
+   불투명도가 애니메이션되는 요소는 크로미움이 합성 층으로 올리면서
+   preserve-3d를 납작하게 만든다. 그러면 backface-visibility가 죽어서,
+   180도로 뒤집혀도 뒷면이 앞면 위에 그대로 남는다 - 실측으로 잡았다
+   (matrix3d는 -1인데 화면에는 계속 뒷면 그림). 등장은 scale만으로 낸다. */
+@keyframes card-reveal-enter {
+  0% { transform: scale(.34) translateY(50px); }
+  46% { transform: scale(1.06) translateY(0); }
+  60% { transform: scale(1) rotate(-2.5deg); }
+  72% { transform: scale(1) rotate(2.5deg); }
+  84% { transform: scale(1) rotate(-1.6deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes card-reveal-flip {
+  0% { transform: rotateY(0deg) scale(1); }
+  50% { transform: rotateY(90deg) scale(1.09); }
+  100% { transform: rotateY(180deg) scale(1); }
+}
+
+.card-reveal-card > i {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 14px 36px rgba(10, 16, 30, .5), inset 0 0 0 2.5px rgba(255, 255, 255, .82);
+}
+
+.card-reveal-back { background-image: url("../assets/cards/card-back-v1.webp"); }
+
+/* 앞면은 180도에서 시작한다. 0도에 두면 뒤집힐 때 반대로 돌아 접혀 보인다. */
+.card-reveal-face { transform: rotateY(180deg); }
+
+/* 공개 순간의 반짝임. 뒤집기가 90도를 넘는 시점(0.9s + 0.31s)에 터진다. */
+.card-reveal-burst {
+  position: absolute;
+  width: min(80vw, 340px);
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.card-reveal-burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--spark, #ffe9a8);
+  opacity: 0;
+  animation: card-reveal-spark 900ms 1180ms cubic-bezier(.15, .7, .3, 1) both;
+  animation-delay: calc(1180ms + var(--spark-delay, 0ms));
+}
+
+@keyframes card-reveal-spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--spark-x, 0), var(--spark-y, 0)) scale(.5); }
+}
+
+.card-reveal-name {
+  margin: 18px 0 0;
+  color: #fffdf6;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 5.8vw, 25px);
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+  animation: card-reveal-rise 460ms 1280ms cubic-bezier(.2, .9, .3, 1.3) both;
+}
+
+.card-reveal-count {
+  margin: 5px 0 0;
+  color: rgba(255, 253, 246, .78);
+  font-family: var(--font-display);
+  font-size: clamp(13px, 4vw, 15px);
+  animation: card-reveal-rise 460ms 1400ms cubic-bezier(.2, .9, .3, 1.3) both;
+}
+
+.card-reveal-hint {
+  margin: 22px 0 0;
+  color: rgba(255, 253, 246, .5);
+  font-family: var(--font-display);
+  font-size: 13px;
+  animation: card-reveal-rise 500ms 1900ms ease-out both;
+}
+
+@keyframes card-reveal-rise {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+.card-reveal.is-closing { animation: card-reveal-out 220ms ease-in both; }
+
+@keyframes card-reveal-out { to { opacity: 0; } }
+
+/* 움직임을 줄여 달라고 한 사람에게는 결과만 보여준다. 개봉은 연출이지
+   정보가 아니라서, 빼도 무엇을 받았는지는 그대로 읽힌다. */
+@media (prefers-reduced-motion: reduce) {
+  .card-reveal,
+  .card-reveal-glow,
+  .card-reveal-rays,
+  .card-reveal-kicker,
+  .card-reveal-card,
+  .card-reveal-burst i,
+  .card-reveal-name,
+  .card-reveal-count,
+  .card-reveal-hint { animation: none; opacity: 1; }
+  .card-reveal-card { transform: rotateY(180deg); }
+  .card-reveal-rays { opacity: 0; }
+}

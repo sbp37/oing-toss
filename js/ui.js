@@ -162,6 +162,11 @@ export class GameUI {
       homeChallenge: document.querySelector('#home-challenge'),
       homeChallengeScore: document.querySelector('#home-challenge-score'),
       resultChallenge: document.querySelector('#result-challenge'),
+      cardReveal: document.querySelector('#card-reveal'),
+      cardRevealFace: document.querySelector('#card-reveal-face'),
+      cardRevealName: document.querySelector('#card-reveal-name'),
+      cardRevealCount: document.querySelector('#card-reveal-count'),
+      cardRevealBurst: document.querySelector('#card-reveal-burst'),
       rankingBest: document.querySelector('#ranking-best-score'),
       rankingLast: document.querySelector('#ranking-last-score'),
       rankingAverage: document.querySelector('#ranking-average-score'),
@@ -2982,6 +2987,75 @@ export class GameUI {
       window.setTimeout(() => panel.classList.add('is-revealed'), enterAt + 460),
     ];
     return true;
+  }
+
+  // 카드 개봉. 화면을 잠깐 독점하고, 끝나면 promise가 풀린다.
+  //
+  // 결과 시트 안의 작은 패널은 "무엇을 받았는지"를 적어두는 자리로 그대로
+  // 남는다. 이 창은 "받는 순간"만 맡는다 - 둘을 한 자리에 합치면 개봉이
+  // 정보가 되고, 정보가 된 개봉은 아무도 기억하지 않는다.
+  //
+  // 연출 길이는 2.6초다. 그보다 짧으면 뒤집기가 급해 보이고, 길면 결과를
+  // 보러 온 사람을 붙잡아두는 것이 된다. 아무 데나 누르면 바로 넘어간다.
+  playCardReveal(card, { unlockedCount = 0, total = 0 } = {}) {
+    const layer = this.elements.cardReveal;
+    if (!layer || !card) return Promise.resolve(false);
+    const art = oingCardThumbUrl(card);
+    if (art) this.elements.cardRevealFace.style.backgroundImage = cssUrl(art);
+    this.elements.cardRevealName.textContent = card.label || '';
+    this.elements.cardRevealCount.textContent = total > 0 ? `${unlockedCount} / ${total}` : '';
+    this.elements.cardRevealCount.setAttribute(
+      'aria-label',
+      `오잉 카드 ${total}장 중 ${unlockedCount}장 수집`,
+    );
+
+    // 반짝임은 매번 새로 뿌린다. 같은 자리에서 터지면 두 번째부터 연출로
+    // 안 읽히고 그림의 일부처럼 보인다.
+    const burst = this.elements.cardRevealBurst;
+    if (burst) {
+      burst.replaceChildren();
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reduced) {
+        const COLORS = ['#ffe9a8', '#ffd0dc', '#cdf3e9', '#fff6dd'];
+        for (let i = 0; i < 18; i += 1) {
+          const spark = document.createElement('i');
+          const angle = (i / 18) * Math.PI * 2 + (i % 3) * 0.22;
+          const distance = 92 + (i % 5) * 26;
+          spark.style.setProperty('--spark-x', `${Math.cos(angle) * distance}px`);
+          spark.style.setProperty('--spark-y', `${Math.sin(angle) * distance}px`);
+          spark.style.setProperty('--spark-delay', `${(i % 6) * 40}ms`);
+          spark.style.setProperty('--spark', COLORS[i % COLORS.length]);
+          burst.appendChild(spark);
+        }
+      }
+    }
+
+    layer.hidden = false;
+    layer.setAttribute('aria-hidden', 'false');
+    layer.classList.remove('is-closing');
+    // 애니메이션을 처음부터 다시 돌린다. 연속으로 두 장이 열릴 때 두 번째가
+    // 이미 끝난 상태로 떠 있으면 개봉이 아니라 결과 화면이 된다.
+    void layer.offsetWidth;
+
+    return new Promise((resolve) => {
+      let done = false;
+      const close = () => {
+        if (done) return;
+        done = true;
+        window.clearTimeout(autoTimer);
+        layer.removeEventListener('pointerdown', close);
+        layer.classList.add('is-closing');
+        window.setTimeout(() => {
+          layer.hidden = true;
+          layer.setAttribute('aria-hidden', 'true');
+          layer.classList.remove('is-closing');
+          resolve(true);
+        }, 220);
+      };
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const autoTimer = window.setTimeout(close, reduced ? 1200 : 2600);
+      layer.addEventListener('pointerdown', close);
+    });
   }
 
   // The original's record moment pops from several places at once, not one

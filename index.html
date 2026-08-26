@@ -279,6 +279,28 @@
       </div>
     </section>
 
+    <!-- 오잉 카드 개봉.
+         결과 시트 안의 작은 패널은 "무엇을 받았는지"를 적어두는 자리이고,
+         이 창은 "받는 순간"을 위한 자리다. 실기기 제보: "받았으? 싶은 느낌.
+         가챠처럼 짠! 하고 화려한 모션이 있어야 할 것 같아요." 맞는 말이다 -
+         수집형의 쾌감은 전부 뜯는 순간에 있는데, 그 순간이 여러 정보 중
+         한 줄로 지나가고 있었다. 그래서 화면을 잠깐 독점한다. -->
+    <div class="card-reveal" id="card-reveal" hidden aria-hidden="true">
+      <div class="card-reveal-glow" aria-hidden="true"></div>
+      <div class="card-reveal-rays" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <p class="card-reveal-kicker" id="card-reveal-kicker">새 오잉 카드!</p>
+      <div class="card-reveal-stage" aria-hidden="true">
+        <div class="card-reveal-card" id="card-reveal-card">
+          <i class="card-reveal-back"></i>
+          <i class="card-reveal-face" id="card-reveal-face"></i>
+        </div>
+      </div>
+      <div class="card-reveal-burst" id="card-reveal-burst" aria-hidden="true"></div>
+      <p class="card-reveal-name" id="card-reveal-name"></p>
+      <p class="card-reveal-count" id="card-reveal-count"></p>
+      <p class="card-reveal-hint">화면을 누르면 계속</p>
+    </div>
+
     <div class="overlay" id="pause-overlay" hidden>
       <div class="mini-panel pause-panel" role="dialog" aria-modal="true" aria-labelledby="pause-title">
         <div class="pause-character-stage" aria-hidden="true"><img data-src="assets/characters/cat-peek.webp" width="359" height="306" decoding="async" alt=""></div>
