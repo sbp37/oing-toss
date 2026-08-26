@@ -80,6 +80,7 @@ import {
 import { adReady, adsAvailable, onAdReadyChange, preloadAd, showAd } from './ads.js';
 import { installCandyFeeding } from './candy.js';
 import { SHARE_REWARD_MODULE_ID } from './data.js';
+import { challengeScore, clearChallengeIfWon, isFreshChallenge, markChallengeSeen, receiveChallenge } from './challenge.js';
 import {
   BoardModel, answerReadabilityClass, boardAssistForPerformance, closestReadableAnswer,
 } from './board.js';
@@ -2736,7 +2737,38 @@ class OingGame {
     this.finishing = false;
   }
 
+  // 친구가 보낸 링크를 타고 들어왔는지 본다.
+  //
+  // 토스 안에서는 진입 스킴 주소에 점수가 실려 온다. 그 값을 읽으려면 다리를
+  // 불러야 하는데, 다리는 첫 화면을 그린 뒤에 느긋하게 불러도 된다 - 도전장이
+  // 없는 사람에게는 아무 일도 일어나지 않아야 하기 때문이다. 웹에서는 지금
+  // 주소의 질의가 같은 일을 한다.
+  //
+  // 실패는 조용히 넘긴다. 도전장은 덤이지 게임의 조건이 아니다.
+  async loadChallenge() {
+    let schemeUrl = '';
+    if (gameLeaderboardAdapter.isTossEnvironment()) {
+      try {
+        const module = await import('./vendor/toss-game-center-v1.js');
+        schemeUrl = module.getInitialSchemeUrl?.() || '';
+      } catch {
+        schemeUrl = '';
+      }
+    }
+    const search = typeof location !== 'undefined' ? location.search || '' : '';
+    const target = receiveChallenge({ schemeUrl, search });
+    this.ui.updateHomeChallenge(target);
+    // 링크로 방금 받은 도전장만 말로 알린다. 켤 때마다 말을 걸면 잔소리다.
+    if (target > 0 && isFreshChallenge()) {
+      this.candy?.say?.(pickMessage('challengeIntro', ''));
+      markChallengeSeen();
+    }
+    return target;
+  }
+
   goHome() {
+    // 이긴 판 뒤에는 도전장이 지워져 있다. 띠도 같이 내려야 한다.
+    this.ui.updateHomeChallenge(challengeScore());
     if (this.telemetry && !this.telemetry.closed) this.telemetry.finish(this.state, 'home');
     this.startSequenceId += 1;
     this.ui.cancelStartCountdown();
@@ -2899,6 +2931,13 @@ class OingGame {
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
     this.commitLifetimeTotals();
+    // 도전장은 판이 끝난 값으로 판정한다. 이어하기로 늘어난 점수도 그대로
+    // 포함된다 - 광고를 봐서 이겼든 한 번에 이겼든 이긴 건 이긴 거다.
+    //
+    // 다른 저장과 달리 testMode를 가르지 않는다. 도전장은 주소(?vs=)가 만드는
+    // 상태라, 시험에서만 꺼버리면 정작 시험이 이 기능을 못 본다. 값이 서는
+    // 경우도 링크로 들어왔을 때뿐이라 다른 판을 오염시키지 않는다.
+    const challengeVerdict = clearChallengeIfWon(this.state.score);
     const cardAward = this.cardsUnlockedThisRun();
     const seenChapterKeys = storageAdapter.getSeenChapters();
     this.ui.updateCatsRescued(catsRescuedTotal);
@@ -2918,7 +2957,15 @@ class OingGame {
       previousBest: oldBest,
       previousScore: null,
       recordEligible: true,
-      resultMessage: classicReaction.message,
+      // 도전장을 넘은 판은 그게 머리기사다. 점수 구간 멘트보다 앞선다.
+      resultMessage: challengeVerdict?.won
+        ? pickMessage('challengeWin', '')
+        : classicReaction.message,
+      // 도전장 판정. 넘었으면 여기서 도전장을 지운다 - 한 번 이긴 상대가
+      // 계속 붙어 있으면 그때부터는 목표가 아니라 잔상이다. 이겼을 때만
+      // beatScore를 실어, 공유 글귀가 "넘었다냥"으로 바뀌게 한다.
+      challenge: challengeVerdict,
+      beatScore: challengeVerdict?.won ? challengeVerdict.target : 0,
       classic: {
         boards: this.classic.boardsPlayed,
         collectedLabels: this.classic.collectedLabels || [],
@@ -3066,6 +3113,9 @@ onAdReadyChange(() => { if (game.state?.running) game.updateHUD(); });
 // 홈의 별사탕 접시. 고양이에게 끌어다 주면 포즈가 바뀌고 말풍선이 뜬다.
 // 반응은 candy.js가 직접 낸다 - 토스트까지 겹치면 같은 말이 두 군데서 난다.
 game.candy = installCandyFeeding();
+// 도전장은 사탕 접시 다음이다. 안내를 홈 말풍선으로 내보내는데, 그 말풍선의
+// 주인이 방금 붙은 candy.js이기 때문이다.
+void game.loadChallenge();
 
 if (game.runtime.testMode) {
   window.__OING_TEST__ = {

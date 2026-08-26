@@ -1,4 +1,4 @@
-import { PUBLIC_SITE_URL, shareOgImageFor } from './data.js';
+import { CHALLENGE_PARAM, PUBLIC_SITE_URL, shareOgImageFor } from './data.js';
 import { isAppsInTossWebView } from './leaderboard.js';
 
 const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
@@ -8,6 +8,7 @@ const CANDY_KEY = 'oing_toss_v3_candy';
 const FED_COUNT_KEY = 'oing_toss_v3_fed_count';
 const CANDY_STARTER_KEY = 'oing_toss_v3_candy_starter';
 const PENDING_SHARE_HINTS_KEY = 'oing_toss_v3_pending_share_hints';
+const CHALLENGE_KEY = 'oing_toss_v3_challenge';
 const SETTINGS_KEY = 'oing_toss_v3_settings';
 const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
 const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
@@ -92,6 +93,25 @@ export const storageAdapter = {
   // 통째로 사라졌다 - 친구에게 초대장까지 보낸 사람이 아무것도 못 받는
   // 것이다. 토스가 sendViral을 보냈다는 것은 지급이 확정됐다는 뜻이므로,
   // 그 순간 기기에 남겨야 한다.
+  // 도전장으로 받은 점수. 링크를 타고 들어온 뒤 앱을 껐다 켜도 남아 있어야
+  // 한다 - 받자마자 바로 한 판 하는 사람만 있는 게 아니다. 넘고 나면 지운다.
+  getChallengeScore() {
+    const value = Number(safeRead(CHALLENGE_KEY, '0'));
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+  },
+
+  saveChallengeScore(score) {
+    const value = Math.max(0, Math.round(Number(score) || 0));
+    if (value <= 0) return this.clearChallengeScore();
+    try { localStorage.setItem(CHALLENGE_KEY, String(value)); } catch {}
+    return value;
+  },
+
+  clearChallengeScore() {
+    try { localStorage.removeItem(CHALLENGE_KEY); } catch {}
+    return 0;
+  },
+
   getPendingShareHints() {
     const value = Number(safeRead(PENDING_SHARE_HINTS_KEY, '0'));
     return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
@@ -399,11 +419,22 @@ export const rankingAdapter = {
   },
 };
 
-export function buildShareText({ score, maxCombo, round, classic = null }) {
+// 공유 글귀.
+//
+// 예전 글귀는 "8,235점 냈다냥! ... 이겨보라냥!"이었다. 그런데 정작 링크를
+// 눌러도 이길 대상이 없어서 그냥 첫 화면이 떴다 - 받는 사람에게는 남의
+// 자랑일 뿐이었다. 이제 점수가 링크에 실려 가므로 그 말이 사실이 된다.
+// 되받아친 판(beat)은 말이 달라진다. 진 사람이 다시 던지는 자리라
+// "이겼다"가 앞에 와야 다음 한 판이 걸린다.
+export function buildShareText({ score, maxCombo, round, classic = null, beatScore = 0 }) {
   const points = Math.max(0, Math.round(Number(score) || 0)).toLocaleString('ko-KR');
   const progress = classic
     ? `${Math.max(1, Math.round(Number(round) || 1))}판 진행`
     : `STAGE ${Math.max(1, Math.round(Number(round) || 1))} 도달`;
+  const beat = Math.max(0, Math.round(Number(beatScore) || 0));
+  if (beat > 0) {
+    return `${beat.toLocaleString('ko-KR')}점 넘었다냥! 내 기록은 ${points}점이다냥. 다시 해보라냥!`;
+  }
   return `오잉게임에서 ${points}점 냈다냥! 최고 콤보 ${Math.max(0, Math.round(Number(maxCombo) || 0))}, ${progress}. 이겨보라냥!`;
 }
 
@@ -413,11 +444,14 @@ export function buildShareText({ score, maxCombo, round, classic = null }) {
 // 실기기 제보: 토스 안에서 만들어진 링크(location.href)는 앱인토스 내부
 // 주소라 받은 사람이 열면 오류가 난다. 토스 안에서는 링크를 아예 싣지 않고
 // "토스에서 검색" 안내를 글귀에 넣는다. 공개 웹에서는 지금 주소를 그대로.
-function shareableUrl() {
+function shareableUrl(challengeScore = 0) {
   if (typeof location === 'undefined') return '';
   if (isAppsInTossWebView()) return '';
   if (!/^https?:$/.test(location.protocol)) return '';
-  return location.href.split('?')[0];
+  const base = location.href.split('?')[0];
+  // 웹에서도 같은 규칙을 쓴다. 토스 밖에서 받은 링크로도 도전장이 돈다.
+  const target = Math.max(0, Math.round(Number(challengeScore) || 0));
+  return target > 0 ? `${base}?${CHALLENGE_PARAM}=${target}` : base;
 }
 
 // 토스 안에서 쓸 링크. 다리가 만들어 주는 "토스 앱에서 열리는" 주소이고,
@@ -433,22 +467,28 @@ function publicImageUrl(imageUrl) {
   return PUBLIC_SITE_URL.replace(/\/$/, '') + '/' + imageUrl.replace(/^\//, '');
 }
 
-async function tossShareLink(imageUrl = '') {
+async function tossShareLink(imageUrl = '', challengeScore = 0) {
   if (!isAppsInTossWebView()) return '';
   // 미리보기 그림은 카드마다 미리 구워 둔 1200x600 PNG를 쓴다. 카드가
   // 아니면 공통 배너로 떨어진다. 카드 원본을 그대로 넘기지 않는 이유는
   // 세로로 길고 webp라 미리보기가 제대로 안 그려지기 때문이다.
   // imageUrl 원본은 클립보드 공유가 계속 쓴다(거기서는 실제 그림이 간다).
   const ogImageUrl = publicImageUrl(shareOgImageFor(imageUrl));
-  if (!tossShareLinkCache.has(ogImageUrl)) {
-    tossShareLinkCache.set(ogImageUrl, import('./vendor/toss-game-center-v1.js')
+  // 도전 점수는 링크에 실어 보낸다. 받는 사람이 이 주소로 앱을 열면
+  // Environment.initialURL이 그대로 돌려주고, challenge.js가 읽는다.
+  const target = Math.max(0, Math.round(Number(challengeScore) || 0));
+  const pathQuery = target > 0 ? `${CHALLENGE_PARAM}=${target}` : '';
+  // 점수마다 링크가 다르므로 그림만으로는 구분이 안 된다. 둘을 함께 열쇠로.
+  const cacheKey = `${ogImageUrl}|${pathQuery}`;
+  if (!tossShareLinkCache.has(cacheKey)) {
+    tossShareLinkCache.set(cacheKey, import('./vendor/toss-game-center-v1.js')
       .then((module) => (typeof module.createTossShareLink === 'function'
-        ? module.createTossShareLink(ogImageUrl)
+        ? module.createTossShareLink(ogImageUrl, pathQuery)
         : ''))
       .catch(() => ''));
   }
   try {
-    const link = await tossShareLinkCache.get(ogImageUrl);
+    const link = await tossShareLinkCache.get(cacheKey);
     return typeof link === 'string' ? link : '';
   } catch {
     return '';
@@ -506,11 +546,11 @@ async function fetchShareImage(imageUrl) {
   }
 }
 
-async function shareTextAndUrl(text, { imageUrl = null } = {}) {
+async function shareTextAndUrl(text, { imageUrl = null, challengeScore = 0 } = {}) {
   // 공개 웹은 지금 주소를, 토스 안에서는 토스가 만들어 준 링크를 싣는다.
   // 실기기 제보 "공유하기 눌러도 링크가 안 뜬다"가 이 두 번째 경우였다.
   // 카드 그림이 있으면 링크 미리보기에 그 그림이 뜨도록 함께 넘긴다.
-  const url = shareableUrl() || await tossShareLink(imageUrl || '');
+  const url = shareableUrl(challengeScore) || await tossShareLink(imageUrl || '', challengeScore);
   const fullText = url ? text : `${text} 토스에서 '오잉게임'을 검색하면 바로 할 수 있다냥!`;
   try {
     // 토스 안에서는 네이티브 공유 시트가 먼저다. navigator.share가 없어
@@ -557,8 +597,11 @@ export const shareAdapter = {
     const label = chapter?.label || '장면';
     return shareTextAndUrl(`오잉게임에서 '${label}' 장면을 모았다냥!`, { imageUrl });
   },
+  // 결과 공유는 곧 도전장이다. 방금 낸 점수가 그대로 상대가 넘어야 할 벽이 된다.
   async shareResult(result) {
-    return shareTextAndUrl(buildShareText(result));
+    return shareTextAndUrl(buildShareText(result), {
+      challengeScore: Math.max(0, Math.round(Number(result?.score) || 0)),
+    });
   },
 };
 

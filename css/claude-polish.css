@@ -1508,3 +1508,56 @@
 }
 
 #play-screen .time-up-score[hidden] { display: none; }
+
+/* ==========================================================================
+   도전장
+   친구가 보낸 링크에 점수가 실려 온다. 그 점수가 시작 버튼 바로 위에 서야
+   "이걸 하러 왔다"가 첫 화면에서 읽힌다. 홈에서 이 띠가 뜨는 경우는 링크로
+   들어왔을 때뿐이라, 평소 홈의 밀도는 그대로다.
+   ========================================================================== */
+.home-challenge {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 2px;
+  padding: 7px 12px;
+  border: 1.5px solid rgba(235, 164, 164, .62);
+  border-radius: 15px;
+  background: linear-gradient(180deg, #fffdf8, #ffeef0);
+  box-shadow: inset 0 1px 0 #fff;
+  color: #a4515f;
+  font-family: var(--font-display);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.home-challenge span { font-size: 14px; opacity: .82; }
+.home-challenge strong { font-size: 21px; letter-spacing: -.01em; }
+.home-challenge b { font-size: 14px; font-weight: 400; opacity: .82; }
+
+/* 결과창의 도전장 한 줄. 이겼을 때와 못 넘었을 때의 색을 나눈다 - 같은
+   자리에 같은 톤으로 두면 이겼는지가 글자를 읽어야만 알게 된다. */
+.result-challenge {
+  margin: 5px 0 0;
+  padding: 5px 11px;
+  justify-self: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-align: center;
+}
+
+.result-challenge[data-won="yes"] {
+  border: 1.5px solid rgba(99, 192, 171, .7);
+  background: linear-gradient(180deg, #eefffa, #cdf3e9);
+  color: #1f6f60;
+}
+
+.result-challenge[data-won="no"] {
+  border: 1.5px solid rgba(235, 164, 164, .6);
+  background: linear-gradient(180deg, #fffdf8, #ffeef0);
+  color: #a4515f;
+}

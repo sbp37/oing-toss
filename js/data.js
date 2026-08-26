@@ -404,6 +404,45 @@ export function shareOgImageFor(imageUrl = '') {
 
 export const SHARE_REWARD_MODULE_ID = '89c3bed0-84a2-4542-91d3-ca383982d4e1';
 
+// ── 도전장 ────────────────────────────────────────────────────────────────
+// 점수를 링크에 실어 보낸다. 받은 사람이 그 링크로 들어오면 "넘어야 할 점수"를
+// 들고 게임을 시작한다.
+//
+// 왜 이렇게 하나. 지금까지 공유 글귀는 "8,235점 냈다냥! 이겨보라냥"이었는데,
+// 정작 링크를 눌러도 이길 대상이 없었다. 그냥 첫 화면이 떴다. 받는 사람 입장
+// 에서는 남의 자랑일 뿐이라 누를 이유가 없다.
+//
+// 점수를 링크 안에 넣으면 서버도 계정도 필요 없다. 숫자가 주소에 들어 있으니
+// 어디에도 저장할 데가 없다 - 자체 랭킹을 만들지 않는다는 원칙 그대로다.
+// 토스는 Environment.initialURL로 "처음 진입할 때 쓴 스킴 주소"를 돌려주므로
+// 그 주소에서 이 값을 읽는다. 웹에서는 location.search가 같은 일을 한다.
+export const CHALLENGE_PARAM = 'vs';
+// 사람이 낼 수 있는 점수의 아득한 위. 손으로 주소를 고쳐 넣은 값을 거른다.
+export const CHALLENGE_MAX_SCORE = 9999999;
+
+// 주소에서 도전 점수를 꺼낸다. 없거나 말이 안 되면 0(도전장 없음)이다.
+// 스킴 주소(intoss://oing-game?vs=8235)와 웹 주소(?vs=8235)를 모두 받는다.
+export function parseChallengeScore(url = '') {
+  const text = String(url || '');
+  const query = text.slice(text.indexOf('?') + 1);
+  if (!query || text.indexOf('?') < 0) return 0;
+  // URLSearchParams는 스킴 주소를 통째로는 못 읽어서 질의 부분만 떼어 넘긴다.
+  let raw = '';
+  try { raw = new URLSearchParams(query).get(CHALLENGE_PARAM) || ''; } catch { return 0; }
+  const value = Math.round(Number(raw));
+  if (!Number.isFinite(value) || value <= 0 || value > CHALLENGE_MAX_SCORE) return 0;
+  return value;
+}
+
+// 공유할 딥링크에 도전 점수를 붙인다. 점수가 없으면 주소를 건드리지 않는다.
+export function withChallengeParam(path = '', score = 0) {
+  const base = String(path || '');
+  const value = Math.round(Number(score) || 0);
+  if (!base || value <= 0 || value > CHALLENGE_MAX_SCORE) return base;
+  const joiner = base.includes('?') ? '&' : '?';
+  return `${base}${joiner}${CHALLENGE_PARAM}=${value}`;
+}
+
 // TIME UP 이어하기가 주는 시간. 처음엔 20초로 냈는데, 실기기에서 광고가
 // 30초를 훌쩍 넘겨서 "본 값"이 안 나왔다. 광고 길이는 구글이 정하는 것이라
 // 우리가 못 줄이므로, 보상 쪽을 30초로 올려 균형을 맞춘다.
@@ -1278,6 +1317,17 @@ export const MESSAGES = Object.freeze({
   // 사탕이 처음 생겼는데 아직 한 번도 안 줘 봤을 때의 안내. 한 번 먹이면
   // 다시 뜨지 않는다 - 홈에 상시 안내를 얹으면 첫 화면이 시끄러워진다.
   candyHowTo: Object.freeze(['별사탕을 끌어서 나한테 줘보라냥!']),
+  // 도전장. 친구가 보낸 링크로 들어온 사람에게 나가는 말이다.
+  challengeIntro: Object.freeze([
+    '친구가 도전장을 보냈다냥!',
+    '넘어보라는 도전장이 왔다냥!',
+    '친구 기록을 깨보자냥!',
+  ]),
+  challengeWin: Object.freeze([
+    '이겼다냥! 친구 기록을 넘었다냥!',
+    '역전이다냥! 이제 자랑할 차례다냥!',
+    '친구를 눌렀다냥! 되돌려주라냥!',
+  ]),
   // 판이 열릴 때의 출발 안내. 정답을 알려주는 말이 아니라 조작을 가르치는
   // 말이어야 한다 - 초기 오잉의 '슥 밀거나, 양끝을 톡톡!' 자리다.
   openingGift: Object.freeze([
