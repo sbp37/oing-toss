@@ -544,3 +544,29 @@ test('광고를 봤는데 보상이 없으면 그 사실을 알린다', async ()
     '떴는데 보상 없는 경우가 다시 조용해졌다',
   );
 });
+
+// 광고 뒤에 음악이 이어지는가.
+//
+// 제작자 제보: "광고가 너무 길고, 음악도 새로 시작하고 해서 게임이 끊겼다
+// 다시 시작하는 느낌." 코드는 이어서 틀도록 되어 있는데(pauseMusic이
+// currentTime을 안 건드리고, 광고 뒤 playMusic은 restart를 안 준다),
+// 전체화면 영상 광고가 오디오 포커스를 가져가면 돌려받는 순간의 play()가
+// 거부될 수 있다. 예전에는 그 실패를 통째로 삼켜서 음악이 조용히 사라졌다.
+test('광고 뒤 음악은 처음부터가 아니라 이어서 틀고, 거부되면 다시 붙잡는다', async () => {
+  const music = await readFile(new URL('../js/music.js', import.meta.url), 'utf8');
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+
+  // 광고 전후: 멈출 때 자리를 안 버리고, 돌아올 때 restart를 안 준다.
+  assert.match(music, /export function pauseMusic\(\)[\s\S]{0,200}musicAudio\.pause\(\)/);
+  assert.ok(
+    !/export function pauseMusic\(\)[\s\S]{0,200}currentTime = 0/.test(music),
+    '멈추면서 재생 위치를 버린다 - 광고 뒤에 처음부터 다시 튼다',
+  );
+  const finallyBlock = game.slice(game.indexOf('async runRewardedAd(kind)'), game.indexOf('async runRewardedAd(kind)') + 500);
+  assert.match(finallyBlock, /playMusic\(\)/, '광고 뒤에 음악을 다시 안 튼다');
+  assert.ok(!/playMusic\(\{ restart/.test(finallyBlock), '광고 뒤에 음악을 처음부터 튼다');
+
+  // 거부되면 포기하지 않는다.
+  assert.match(music, /retryTimer/, '재생 거부 시 다시 시도하지 않는다');
+  assert.match(music, /pointerdown', retryOnTap/, '몸짓이 필요한 기기를 위한 재시도가 없다');
+});
