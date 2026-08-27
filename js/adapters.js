@@ -444,11 +444,24 @@ export function buildShareText({ score, maxCombo, round, classic = null, beatSco
 // 실기기 제보: 토스 안에서 만들어진 링크(location.href)는 앱인토스 내부
 // 주소라 받은 사람이 열면 오류가 난다. 토스 안에서는 링크를 아예 싣지 않고
 // "토스에서 검색" 안내를 글귀에 넣는다. 공개 웹에서는 지금 주소를 그대로.
+// 앱으로 묶인 빌드(Capacitor)인가. 웹뷰가 자기 파일을 https://localhost/에서
+// 띄우기 때문에, 지금 주소를 그대로 공유하면 받는 사람에게는 죽은 링크가 된다.
+// 구글플레이 빌드가 정확히 이 경우다.
+function isPackagedApp(scope = globalThis) {
+  const host = scope?.location?.hostname || '';
+  return host === 'localhost' || host === '127.0.0.1' || Boolean(scope?.Capacitor);
+}
+
 function shareableUrl(challengeScore = 0) {
   if (typeof location === 'undefined') return '';
   if (isAppsInTossWebView()) return '';
   if (!/^https?:$/.test(location.protocol)) return '';
-  const base = location.href.split('?')[0];
+  // 스토어에서 받은 앱은 자기 주소를 공유할 수 없다. 누구나 열 수 있는
+  // 공개 웹 주소를 대신 보낸다 - 도전장(?vs=)도 그대로 실려서, 받은 사람이
+  // 앱이 없어도 링크만으로 바로 도전할 수 있다.
+  const base = isPackagedApp()
+    ? PUBLIC_SITE_URL
+    : location.href.split('?')[0];
   // 웹에서도 같은 규칙을 쓴다. 토스 밖에서 받은 링크로도 도전장이 돈다.
   const target = Math.max(0, Math.round(Number(challengeScore) || 0));
   return target > 0 ? `${base}?${CHALLENGE_PARAM}=${target}` : base;

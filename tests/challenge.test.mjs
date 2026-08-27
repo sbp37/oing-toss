@@ -117,3 +117,19 @@ test('도전장 표면이 마크업과 다리에 실제로 들어 있다', async
   assert.match(bundle, /getInitialSchemeUrl/, '번들에 진입 주소 읽기가 없다 - 다시 구워야 한다');
   assert.equal(CHALLENGE_PARAM, 'vs');
 });
+
+test('앱으로 묶인 빌드는 자기 주소 대신 공개 주소를 공유한다', async () => {
+  // 구글플레이 빌드는 웹뷰가 자기 파일을 https://localhost/에서 띄운다.
+  // 지금 주소를 그대로 공유하면 "https://localhost/?vs=8235"가 나가고,
+  // 받는 사람에게는 죽은 링크다 - 도전장이 통째로 끊긴다. 스토어에 올리는
+  // 바로 그 빌드에서 바이럴 루프가 죽는 것이라 눈으로는 절대 안 잡힌다
+  // (개발자 폰에서는 localhost가 자기 자신이라 열리기도 한다).
+  const adapters = await readFile(new URL('../js/adapters.js', import.meta.url), 'utf8');
+  assert.match(adapters, /function isPackagedApp/, '앱으로 묶인 빌드를 가려내지 않는다');
+  assert.match(adapters, /hostname[\s\S]{0,120}localhost/, 'localhost 판정이 없다');
+  assert.match(
+    adapters,
+    /isPackagedApp\(\)\s*\?\s*PUBLIC_SITE_URL/,
+    '앱 빌드에서 공개 주소로 안 바꾼다',
+  );
+});
