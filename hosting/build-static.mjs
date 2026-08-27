@@ -10,6 +10,15 @@ const client = resolve(dist, "client");
 const server = resolve(dist, "server");
 const BUILD_TOKEN = "__OING_BUILD_ID__";
 
+// 앱인토스 꾸러미(.ait)용 빌드인가. `--ait`를 붙이면 켜진다.
+//
+// 웹과 .ait는 같은 dist/client에서 나오지만, 딱 한 갈래에서 갈라진다.
+// 공유 미리보기 그림(assets/share)은 링크를 받은 쪽의 미리보기 크롤러가
+// 공개 웹 주소로 가져가는 파일이라, 앱 안에서는 한 번도 불리지 않는다
+// (adapters.js의 publicImageUrl이 항상 절대 주소로 바꿔서 넘긴다).
+// 웹 배포본에는 반드시 있어야 하고, .ait에는 있을 이유가 없다.
+const forAit = process.argv.includes("--ait");
+
 async function addTreeToHash(hash, directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((a, b) => a.name.localeCompare(b.name));
@@ -110,6 +119,13 @@ for (const entry of [
   "assets/ui/tile-success.webp",
 ]) {
   await rm(resolve(client, entry), { recursive: true, force: true });
+}
+
+// 공유 미리보기 그림은 .ait에서만 뺀다. 첫 설치 다운로드에서 1.3MB다.
+// 웹 배포본(GitHub Pages)에는 그대로 남아야 크롤러가 그림을 찾는다 -
+// 여기서 빼면 공유 링크의 미리보기가 빈칸이 된다.
+if (forAit) {
+  await rm(resolve(client, "assets/share"), { recursive: true, force: true });
 }
 
 // The board is one tile now, so only `mint` ships; `peach` stays for the home

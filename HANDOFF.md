@@ -369,9 +369,16 @@ megabomb / freeze / clover가 보드에 처음 놓인 그 한 번만 기존 토�
 - 토스 썸네일은 원스토어에 올린 **그래픽 이미지 원본**을 그대로 쓴다
   (`store/toss/source/graphic-source.webp`). 다시 뽑으려면
   `python3 tools/build-toss-thumbnail.py`.
-- 꾸러미: `npm run build && npx ait build` → `oing-game.ait`
+- 꾸러미: **`npm run ait`** → `oing-game.ait`
   (`apps-in-toss.config.mjs`가 `webBundleDir`을 `dist/client`로 가리킨다).
   `.ait`는 빌드 산출물이라 저장소에 두지 않는다.
+
+  `npm run build && npx ait build`를 손으로 하지 말 것. `npm run ait`는 세
+  단계다 - `--ait`로 빌드(공유 미리보기 그림 1.3MB를 뺀다) → 꾸러미 굽기 →
+  기본 빌드로 되돌리기. 마지막 단계가 있어야 `dist/client`가 다시 웹용
+  완전본이 된다. 공유 그림을 뺀 채로 GitHub Pages에 올리면 공유 링크의
+  미리보기가 빈칸이 된다(그 파일들은 앱이 아니라 미리보기 크롤러가 공개
+  웹 주소로 가져간다). 안전장치는 `tests/bundle.test.mjs`에 있다.
 - **아직 안 쓴 것: 앱 설명 문구.** 두 스토어 모두 필요하다.
 
 ---
