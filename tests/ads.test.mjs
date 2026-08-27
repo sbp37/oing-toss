@@ -502,8 +502,8 @@ test('평소 순서(보상 -> 닫힘)에서는 유예 없이 곧장 끝난다', 
 
 test('번들에도 늦은-보상 유예가 들어가 있다 - 소스만 고치고 안 구우면 실기기는 그대로다', async () => {
   const source = await readFile(BUNDLE, 'utf8');
-  // 축소되면 이름이 바뀌므로 상수값으로 확인한다. 1500은 유예 시간이다.
-  assert.match(source, /1500/, '유예 시간이 번들에 없다 - 다시 구워야 한다');
+  // 축소되면 이름이 바뀌므로 상수값으로 확인한다. 3000은 유예 시간이다.
+  assert.match(source, /3e3|3000/, '유예 시간이 번들에 없다 - 다시 구워야 한다');
   // 15초 그물은 걷어냈다. 번들에 남아 있으면 실기기에서는 아직 지급된다.
   assert.ok(!/15e3|15000/.test(source), '걷어낸 15초 그물이 번들에 남아 있다 - 다시 구워야 한다');
 });
@@ -529,4 +529,18 @@ test('쓸 시간이 없으면 도움팩을 권하지 않는다', async () => {
   // 이 숫자가 팩 내용보다 작아지면 문턱이 무의미해진다.
   assert.ok(AD_HELP_PACK.hint >= 1, '팩에 힌트가 없다');
   assert.ok(AD_HELP_PACK_MIN_SECONDS >= 10, '문턱이 너무 짧아 광고만 보고 끝난다');
+});
+
+// 광고를 봤는데 보상이 없는 판. 예전에는 여기가 통째로 조용했다 - 유저는
+// 광고를 다 보고 돌아왔는데 아무것도 못 받고 아무 말도 못 들었다.
+// 이게 실제 "먹튀" 경험이라, 안내가 사라지면 안 된다.
+test('광고를 봤는데 보상이 없으면 그 사실을 알린다', async () => {
+  const source = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const spots = [...source.matchAll(/shown \? '광고 보상을 못 받았다냥/g)];
+  assert.equal(spots.length, 2, '이어하기와 도움팩 두 자리 모두에 안내가 있어야 한다');
+  // 예전 조건(!shown일 때만 알림)으로 되돌아가면 이 시험이 걸린다.
+  assert.ok(
+    !/if \(!rewarded && !shown\) this\.ui\.toast/.test(source),
+    '떴는데 보상 없는 경우가 다시 조용해졌다',
+  );
 });

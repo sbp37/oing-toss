@@ -2552,7 +2552,15 @@ class OingGame {
     if (!rewarded) {
       // 광고가 아예 뜨지 않았다면 그건 우리 사정이다. 조용히 결과로
       // 보내면 "버튼이 먹통"으로 읽힌다(실기기 제보).
-      if (!shown) this.ui.toast('광고를 못 불러왔다냥. 미안하다냥!', 2200);
+      //
+      // 떴는데도 보상이 없는 경우가 더 나쁘다. 광고를 본 사람이 아무것도
+      // 못 받고 아무 말도 못 듣는다 - 예전에는 여기가 통째로 비어 있었다.
+      // 끝까지 안 봤을 수도, 보상 신호가 유실됐을 수도 있어서 누구 탓도
+      // 하지 않는 말로 알린다.
+      this.ui.toast(
+        shown ? '광고 보상을 못 받았다냥... 미안하다냥!' : '광고를 못 불러왔다냥. 미안하다냥!',
+        2200,
+      );
       return false;
     }
 
@@ -2645,7 +2653,13 @@ class OingGame {
     }
     try {
       const { rewarded, shown } = await this.runRewardedAd('helpPack');
-      if (!rewarded && !shown) this.ui.toast('광고를 못 불러왔다냥. 미안하다냥!', 2200);
+      // 이어하기와 같은 이유로, 떴는데 보상이 없는 경우도 알린다.
+      if (!rewarded) {
+        this.ui.toast(
+          shown ? '광고 보상을 못 받았다냥... 미안하다냥!' : '광고를 못 불러왔다냥. 미안하다냥!',
+          2200,
+        );
+      }
       if (rewarded) {
         this.adHelpPackUsed = true;
         // 팩 내용은 코드가 정한다 - 콘솔 수량은 '팩 1개'라는 뜻일 뿐이다.

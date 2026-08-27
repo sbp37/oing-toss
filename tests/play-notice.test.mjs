@@ -84,10 +84,14 @@ test('a rewarded ad that never appears says so instead of going quiet', async ()
     read('js/vendor/toss-game-center-v1.js'), read('js/game.js'),
   ]);
 
-  // 광고를 보다가 중간에 닫은 것(dismissed)과 애초에 못 띄운 것
-  // (failedToShow)은 사람에게 전혀 다른 일이다. 앞은 본인 선택이라 아무
-  // 말도 필요 없고, 뒤는 우리 사정이라 알려줘야 한다 - 조용히 결과로
-  // 보내면 "버튼이 먹통"으로 읽힌다(실기기 제보).
+  // 광고를 못 띄운 것(failedToShow)은 우리 사정이라 알려줘야 한다 - 조용히
+  // 결과로 보내면 "버튼이 먹통"으로 읽힌다(실기기 제보).
+  //
+  // 예전에는 "보다가 중간에 닫은 것은 본인 선택이라 아무 말도 필요 없다"고
+  // 보고 그 경우를 조용히 뒀다. 판단을 바꿨다. 우리는 중간에 닫은 사람과
+  // 보상 신호가 유실된 사람을 구별할 방법이 없고, 뒤쪽 사람에게 침묵은
+  // 그냥 먹튀다. 중간에 닫은 사람에게도 "그래서 못 받았다"는 확인이라
+  // 잡음이 아니다. 그래서 이제 둘 다 알린다(문구만 다르다).
   assert.match(entry, /else if \(event\.type === 'failedToShow'\) \{[\s\S]{0,80}failed = true/);
   assert.match(entry, /onError: \(\) => \{ failed = true; settle\('error'\); \}/);
 
@@ -103,7 +107,7 @@ test('a rewarded ad that never appears says so instead of going quiet', async ()
   assert.match(entry, /if \(how === 'timeout' && !rewarded\) failed = true;/);
   assert.ok(bundle.includes('failed'), '다리를 다시 굽지 않았다');
   assert.match(ads, /shown: !result\?\.failed/);
-  assert.match(game, /if \(!shown\) this\.ui\.toast\('광고를 못 불러왔다냥/);
+  assert.match(game, /shown \? '광고 보상을 못 받았다냥[\s\S]{0,80}'광고를 못 불러왔다냥/);
 
   // 묵은 광고는 띄우기 직전에 SDK에게 다시 물어본다. 다만 다시 못 불러와도
   // 포기하지 않고 띄워는 본다 - isRewardedAdLoaded가 기기에 따라 실제와
