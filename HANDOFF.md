@@ -15,7 +15,8 @@ git fetch origin
 git checkout main
 git reset --hard origin/main
 npm install
-npm test          # 180개 전부 통과해야 정상 (약 60~110초)
+npm test          # 전부 통과해야 정상 (2026-08-27 기준 250개, 약 60~110초)
+node tools/measure-repaint.mjs   # 화면별 repaint 측정 (Playwright 필요)
 ```
 
 로컬 브랜치가 뒤쳐져 있으면 그냥 버리고 `origin/main`을 기준으로 삼는다.
@@ -373,10 +374,12 @@ megabomb / freeze / clover가 보드에 처음 놓인 그 한 번만 기존 토�
   (`apps-in-toss.config.mjs`가 `webBundleDir`을 `dist/client`로 가리킨다).
   `.ait`는 빌드 산출물이라 저장소에 두지 않는다.
 
-  `npm run build && npx ait build`를 손으로 하지 말 것. `npm run ait`는 세
-  단계다 - `--ait`로 빌드(공유 미리보기 그림 1.3MB를 뺀다) → 꾸러미 굽기 →
-  기본 빌드로 되돌리기. 마지막 단계가 있어야 `dist/client`가 다시 웹용
-  완전본이 된다. 공유 그림을 뺀 채로 GitHub Pages에 올리면 공유 링크의
+  `npm run build && npx ait build`를 손으로 하지 말 것. `npm run ait`는
+  `tools/build-ait.mjs`를 돌리고, 그 안이 세 단계다 - `--ait`로 빌드(공유
+  미리보기 그림 1.3MB를 뺀다) → 꾸러미 굽기 → 기본 빌드로 되돌리기.
+  되돌리기는 `finally`에 있어서 가운데가 실패해도 반드시 돈다(예전에는 `&&`로
+  이어 붙였는데, 꾸러미 굽기가 실패하면 되돌리기가 아예 안 돌았다).
+  마지막 단계가 있어야 `dist/client`가 다시 웹용 완전본이 된다. 공유 그림을 뺀 채로 GitHub Pages에 올리면 공유 링크의
   미리보기가 빈칸이 된다(그 파일들은 앱이 아니라 미리보기 크롤러가 공개
   웹 주소로 가져간다). 안전장치는 `tests/bundle.test.mjs`에 있다.
 - **아직 안 쓴 것: 앱 설명 문구.** 두 스토어 모두 필요하다.
@@ -421,4 +424,6 @@ megabomb / freeze / clover가 보드에 처음 놓인 그 한 번만 기존 토�
 - 코드 주석도 한국어로 쓰되, 서브셋에 없는 글자를 조심한다(2절).
 - 게임 규칙이나 밸런스를 바꿀 때는 **먼저 측정**한다. 봇으로 실제 판을
   돌려보는 것이 감보다 정확하다 — 이 문서의 표가 그렇게 나왔다.
-- `npm test`는 180개 전부 통과해야 한다. 새 기능에는 가드 테스트를 붙인다.
+- `npm test`는 전부 통과해야 한다(2026-08-27 기준 250개). 새 기능에는 가드
+  테스트를 붙인다. 숫자는 늘어나는 값이라 여기 적힌 것은 그때의 눈금일 뿐이고,
+  줄었다면 시험이 사라진 것이니 그때는 이유를 찾을 것.

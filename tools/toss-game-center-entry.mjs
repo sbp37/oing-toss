@@ -157,18 +157,26 @@ let LOAD_TIMEOUT_MS = 20000;
 // 아이폰에서 닫힘이 먼저 오면, 닫힘에서 곧장 결론을 내는 코드는 끝까지 본
 // 사람을 빈손으로 돌려보낸다. 광고비는 이미 발생한 뒤라 제일 나쁜 결말이다.
 let REWARD_GRACE_MS = 1500;
-// 보상 이벤트를 끝내 못 받았어도, 광고가 이만큼 떠 있었으면 다 본 것으로
-// 친다. 이벤트가 유실되는 경로를 우리가 다 알 수 없어서 두는 마지막 그물이다.
-// 짧게 보다 닫은 사람에게 잘못 주는 것보다, 다 본 사람에게 안 주는 쪽이
-// 훨씬 나쁘다 - 주는 것은 게임 시간 30초지 돈이 아니다.
-let REWARD_WATCHED_MS = 15000;
 let SHOW_TIMEOUT_MS = 180000;
+
+// 여기 예전에 "광고가 15초 넘게 떠 있었으면 보상 이벤트가 없어도 다 본
+// 것으로 친다"는 마지막 그물이 있었다. 걷어냈다.
+//
+// 외부 검수에서 지적받았고 지적이 옳았다. 30초 광고를 15초에 닫아도 보상이
+// 나갔다. privacy.html은 "광고가 끝까지 재생됐다는 신호만 받아 보상을
+// 지급합니다"라고 적어 두었는데 코드가 그 약속을 어기고 있었고, 광고
+// 제공사가 승인하지 않은 보상을 우리가 임의로 준 것이기도 하다.
+//
+// 원래 고치려던 문제(아이폰에서 닫힘이 보상보다 먼저 와서 보상을 잃는 것)는
+// 위의 유예만으로 해결된다. 그건 순서 문제지 이벤트 유실이 아니다. 이벤트가
+// 정말로 안 오면 우리는 그 사람이 다 봤는지 알 방법이 없고, 모르는 것을
+// 안다고 치는 대신 조용히 실패로 두는 편이 맞다 - 부르는 쪽이 이미
+// "광고를 못 불러왔다냥" 안내를 띄운다.
 
 // 시험에서만 쓴다. 20초·180초를 실제로 기다릴 수는 없어서, 시간 제한이
 // "정말로 약속을 끝내는지"를 짧은 값으로 확인한다. 게임 코드는 부르지 않는다.
-export function __setAdDeadlinesForTest(loadMs, showMs, graceMs, watchedMs) {
+export function __setAdDeadlinesForTest(loadMs, showMs, graceMs) {
   if (Number.isFinite(graceMs)) REWARD_GRACE_MS = graceMs;
-  if (Number.isFinite(watchedMs)) REWARD_WATCHED_MS = watchedMs;
   LOAD_TIMEOUT_MS = Number(loadMs) || LOAD_TIMEOUT_MS;
   SHOW_TIMEOUT_MS = Number(showMs) || SHOW_TIMEOUT_MS;
 }
@@ -243,7 +251,6 @@ export function showRewardedAd(adGroupId) {
   let rewarded = false;
   let amount = 0;
   let failed = false;
-  let shownAt = 0;
   let graceTimer = null;
   const clearGrace = () => {
     if (graceTimer === null) return;
@@ -254,9 +261,7 @@ export function showRewardedAd(adGroupId) {
     const stop = GoogleAdMob.showAppsInTossAdMob({
       options: { adGroupId },
       onEvent: (event) => {
-        if (event.type === 'show' || event.type === 'impression') {
-          if (!shownAt) shownAt = Date.now();
-        } else if (event.type === 'userEarnedReward') {
+        if (event.type === 'userEarnedReward') {
           rewarded = true;
           amount = Number(event.data?.unitAmount) || 0;
           // 닫힘을 기다리던 중에 보상이 왔다면 더 기다릴 이유가 없다.
@@ -282,11 +287,8 @@ export function showRewardedAd(adGroupId) {
     // 본 것이고 닫힘 이벤트만 유실된 경우다. 그때는 지급하는 것이 맞다.
     if (how === 'timeout' && !rewarded) failed = true;
     if (how === 'threw') failed = true;
-    // 마지막 그물: 보상 이벤트를 못 받았지만 광고가 충분히 오래 떠 있었으면
-    // 다 본 것으로 친다. 이벤트 유실 경로를 우리가 다 알 수 없기 때문이다.
-    if (!rewarded && !failed && shownAt && Date.now() - shownAt >= REWARD_WATCHED_MS) {
-      rewarded = true;
-    }
+    // 보상은 userEarnedReward를 실제로 받았을 때만 준다. 오래 떠 있었다는
+    // 것만으로는 다 봤다고 칠 수 없다(위 상수 자리의 주석 참고).
     return { rewarded, amount, failed };
   });
 }

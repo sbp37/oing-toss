@@ -442,23 +442,29 @@ test('보상 없이 닫으면 그대로 미지급이다 - 유예가 공짜 지�
   }
 });
 
-test('보상 이벤트를 못 받아도 오래 떠 있었으면 다 본 것으로 친다', async () => {
+test('보상 이벤트가 없으면 아무리 오래 떠 있었어도 지급하지 않는다', async () => {
+  // 여기 예전에는 정반대 시험이 있었다. "오래 떠 있었으면 다 본 것으로
+  // 친다"를 정상 동작으로 인정했는데, 그 탓에 30초 광고를 15초에 닫아도
+  // 보상이 나갔다. privacy.html이 "끝까지 재생됐다는 신호만 받아 지급한다"고
+  // 적어둔 것과도 어긋났다. 시험이 회귀를 막는 대신 결함을 지키고 있었다.
+  //
+  // 이 시험은 그 반대를 고정한다. 이벤트를 못 받으면 모르는 것이고,
+  // 모르는 것은 주지 않는다.
   const restore = fakeTossScope();
   try {
-    const bundle = await import(`${ENTRY.href}?ios=watched`);
+    const bundle = await import(`${ENTRY.href}?ios=nogrant`);
     const sdk = await import('@apps-in-toss/web-framework');
     const original = sdk.GoogleAdMob.showAppsInTossAdMob;
     sdk.GoogleAdMob.showAppsInTossAdMob = ({ onEvent }) => {
       setTimeout(() => onEvent({ type: 'show' }), 0);
-      setTimeout(() => onEvent({ type: 'dismissed' }), 120);  // 보상 이벤트 유실
+      // 한참 떠 있다가 닫힌다. 보상 이벤트는 끝내 안 온다.
+      setTimeout(() => onEvent({ type: 'dismissed' }), 200);
       return () => {};
     };
-    // 100ms 이상 떠 있었으면 다 본 것으로 (실제 값은 15초).
-    bundle.__setAdDeadlinesForTest(60, 5000, 30, 100);
+    bundle.__setAdDeadlinesForTest(60, 5000, 30);
     try {
       const result = await bundle.showRewardedAd('ait.test.group');
-      assert.equal(result.rewarded, true, '유실 경로에서 다 본 사람이 빈손이 됐다');
-      assert.equal(result.failed, false);
+      assert.equal(result.rewarded, false, '보상 신호 없이 지급됐다');
     } finally {
       sdk.GoogleAdMob.showAppsInTossAdMob = original;
     }
@@ -496,9 +502,10 @@ test('평소 순서(보상 -> 닫힘)에서는 유예 없이 곧장 끝난다', 
 
 test('번들에도 늦은-보상 유예가 들어가 있다 - 소스만 고치고 안 구우면 실기기는 그대로다', async () => {
   const source = await readFile(BUNDLE, 'utf8');
-  // 축소되면 이름이 바뀌므로 상수값으로 확인한다. 1500(유예)과 15000(그물).
+  // 축소되면 이름이 바뀌므로 상수값으로 확인한다. 1500은 유예 시간이다.
   assert.match(source, /1500/, '유예 시간이 번들에 없다 - 다시 구워야 한다');
-  assert.match(source, /15e3|15000/, '오래 본 것으로 쳐주는 문턱이 번들에 없다');
+  // 15초 그물은 걷어냈다. 번들에 남아 있으면 실기기에서는 아직 지급된다.
+  assert.ok(!/15e3|15000/.test(source), '걷어낸 15초 그물이 번들에 남아 있다 - 다시 구워야 한다');
 });
 
 // 실기기 제보: "힌트 광고 눌러서 보고 돌아오니 결과창이 뜨네요."

@@ -3103,6 +3103,12 @@ export class GameUI {
     // 이미 끝난 상태로 떠 있으면 개봉이 아니라 결과 화면이 된다.
     void layer.offsetWidth;
 
+    // 화면을 독점하는 창이라 포커스를 데려온다. 안 그러면 스크린리더는 뒤에
+    // 깔린 결과 화면을 계속 읽고, 방금 받은 카드는 지나가버린다.
+    // (외부 검수 지적. role/aria-modal은 마크업에 있다.)
+    const focusBefore = document.activeElement;
+    try { layer.focus({ preventScroll: true }); } catch {}
+
     return new Promise((resolve) => {
       let done = false;
       const close = () => {
@@ -3110,17 +3116,33 @@ export class GameUI {
         done = true;
         window.clearTimeout(autoTimer);
         layer.removeEventListener('pointerdown', close);
+        window.removeEventListener('keydown', onKey, true);
         layer.classList.add('is-closing');
         window.setTimeout(() => {
           layer.hidden = true;
           layer.setAttribute('aria-hidden', 'true');
           layer.classList.remove('is-closing');
+          // 포커스를 원래 자리로 돌려준다. 안 돌려주면 키보드/스위치 이용자가
+          // 문서 맨 위로 튕긴다.
+          try { focusBefore?.focus?.({ preventScroll: true }); } catch {}
           resolve(true);
         }, 220);
       };
+      // 손가락이 없는 사람도 닫을 수 있어야 한다. 창 밖으로 새지 않게
+      // 캡처 단계에서 받는다.
+      const onKey = (event) => {
+        if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          close();
+        }
+      };
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const autoTimer = window.setTimeout(close, reduced ? 1200 : 2600);
+      // 자동으로 닫히는 시간. 스크린리더는 읽는 데 시간이 걸리므로, 화면을
+      // 읽어주는 설정이 켜져 있을 때를 대신해 모션 축소 설정에서는 오히려
+      // 넉넉하게 준다 - 짧게 두면 카드 이름을 다 읽기 전에 사라진다.
+      const autoTimer = window.setTimeout(close, reduced ? 4000 : 2600);
       layer.addEventListener('pointerdown', close);
+      window.addEventListener('keydown', onKey, true);
     });
   }
 
