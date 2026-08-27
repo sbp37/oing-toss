@@ -1465,6 +1465,20 @@ export class GameUI {
     setTimeout(() => targetElement.classList.remove('is-stocked'), 520);
   }
 
+  // 받은 아이템 칸을 잠깐 반짝인다. 중앙 안내가 "무엇을 받았는지"를 말하고,
+  // 이쪽은 "그게 어디로 갔는지"를 가리킨다 - 숫자가 오른 자리를 눈이 한 번
+  // 따라가야 광고를 본 값이 실제로 손에 들어왔다는 것이 읽힌다.
+  flashItemStock(types = []) {
+    for (const type of types) {
+      const button = this.itemButton(type);
+      if (!button) continue;
+      button.classList.remove('is-stocked');
+      void button.offsetWidth;
+      button.classList.add('is-stocked');
+      window.setTimeout(() => button.classList.remove('is-stocked'), 520);
+    }
+  }
+
   async animateItemCast(type, targetElement = this.boardFrame) {
     const sourceElement = this.itemButton(type);
     if (!sourceElement || !targetElement) return;
@@ -1785,12 +1799,20 @@ export class GameUI {
   // 바꾸는 사건인데, 지금까지는 시계 아이콘이 얼음으로 바뀌고 얇은 시간
   // 게이지에 글자가 스치는 것이 전부라 실기기에서 아무도 못 알아봤다
   // ("프리즈 발동될 때 안내가 안 뜬다"). 눈이 이미 가 있는 자리는 보드다.
-  showCenterNotice(label = '', duration = 1400) {
+  // detail은 둘째 줄이다. 광고로 무엇을 받았는지처럼, 한 마디만으로는
+  // 확인이 안 되는 것을 적는다. 안 주면 예전과 똑같은 한 줄짜리 안내다.
+  showCenterNotice(label = '', duration = 1400, { detail = '' } = {}) {
     const el = this.elements.playCenterNotice;
     const text = String(label || '').trim();
     if (!el || !text) return;
     const strong = el.querySelector('strong') || el;
     strong.textContent = text;
+    const note = el.querySelector('small');
+    if (note) {
+      const extra = String(detail || '').trim();
+      note.textContent = extra;
+      note.hidden = !extra;
+    }
     el.setAttribute('aria-hidden', 'false');
     clearTimeout(this.centerNoticeTimer);
     el.classList.remove('is-visible');

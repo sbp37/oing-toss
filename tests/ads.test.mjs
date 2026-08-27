@@ -570,3 +570,25 @@ test('광고 뒤 음악은 처음부터가 아니라 이어서 틀고, 거부되
   assert.match(music, /retryTimer/, '재생 거부 시 다시 시도하지 않는다');
   assert.match(music, /pointerdown', retryOnTap/, '몸짓이 필요한 기기를 위한 재시도가 없다');
 });
+
+// 도움팩 보상 확인. 이어하기는 화면 한가운데서 알리는데 도움팩만 구석의
+// 토스트 한 줄이었다 - 30초짜리 광고를 보고 돌아온 사람이 작은 글씨로
+// 보상을 확인해야 했다(제작자 제보: "힌트도 중앙에 안내문 뜨게 해주고,
+// 광고 받은 거 확인할 수 있게 해줘").
+test('도움팩은 무엇을 받았는지까지 화면 한가운데서 알린다', async () => {
+  const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  const ui = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+
+  // 받은 내용(힌트 +2 · 셔플 +1)이 둘째 줄로 같이 나가야 한다. 문구만 뜨고
+  // 수량이 없으면 "받긴 받았나?"가 그대로 남는다.
+  assert.match(game, /showCenterNotice\('도움팩 받았다냥!', \d+, \{ detail: contents \}\)/);
+  // 숫자가 오른 자리도 짚어 준다.
+  assert.match(game, /flashItemStock\(Object\.keys\(AD_HELP_PACK\)\)/);
+  assert.match(ui, /flashItemStock\(types = \[\]\)/);
+  // 둘째 줄을 담을 자리가 마크업에 있어야 한다.
+  assert.match(html, /play-center-notice[^>]*>\s*<strong><\/strong><small/);
+  // detail이 없는 보통 안내는 둘째 줄을 감춰야 한다 - 지난 보상 문구가
+  // 다음 안내에 얹혀 남으면 안 된다.
+  assert.match(ui, /note\.hidden = !extra/);
+});
