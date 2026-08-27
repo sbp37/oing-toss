@@ -2129,21 +2129,21 @@
 
 /* Under ten seconds the pill itself keeps a steady halo, so the clock is
    findable in peripheral vision while the eyes are down on the board. The
-   per-second `is-counting` scale pulse rides on top of this. */
+   per-second `is-counting` scale pulse rides on top of this.
+
+   후광이 깜빡이던 것을 고정으로 바꿨다. 발열 제보를 받고 잰 결과, 게임에서
+   제일 비싼 연출이 이것이었다 - CPU 6배 스로틀에서 +14.2%p. 화면에서 제일
+   작은 요소인데 제일 비쌌던 이유는 blur 반경이 변했기 때문이다.
+   drop-shadow는 반경이 그대로면 한 번 그려두고 재사용하지만, 0px에서 7px로
+   움직이면 프레임마다 흐림을 처음부터 다시 계산한다.
+
+   왜 그냥 고정해도 되는가: 이 연출의 목적은 위 주석 그대로 "눈이 보드에
+   가 있을 때 곁눈으로 시계를 찾게 하는 것"이고, 그건 깜빡임이 아니라
+   후광 자체가 하는 일이다. 박자는 초마다 도는 is-counting 크기 펄스가
+   이미 따로 주고 있다. 실제로 prefers-reduced-motion 갈래가 예전부터
+   똑같이 고정 후광이었다 - 그 갈래를 기본으로 올린 셈이다. */
 .play-ui-v4 .play-top-controls .time-readout.is-warning {
-  animation: play-timer-urgent 1s ease-in-out infinite;
-}
-
-@keyframes play-timer-urgent {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(224, 49, 80, 0)); }
-  50% { filter: drop-shadow(0 0 7px rgba(224, 49, 80, .55)); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .play-ui-v4 .play-top-controls .time-readout.is-warning {
-    animation: none;
-    filter: drop-shadow(0 0 5px rgba(224, 49, 80, .45));
-  }
+  filter: drop-shadow(0 0 6px rgba(224, 49, 80, .5));
 }
 
 /* HUD swap: 콤보 to the wide centre, 성공 to the right ------------------
@@ -3367,15 +3367,43 @@
 }
 
 /* And the original's danger-pulse on the digits themselves — the same two
-   vermilions alternating twice a second. */
+   vermilions alternating twice a second.
+
+   색(color)을 직접 오가던 것을 filter로 옮겼다. 발열 제보를 받고 재보니
+   이 한 줄이 마지막 30초 비용의 거의 전부였다 - CPU 6배 스로틀에서 7.3%p로,
+   화면에서 제일 작은 요소(1213px²)인데 제일 비쌌다.
+   color는 합성기가 못 만지는 속성이라 초당 두 번 왕복하는 동안 프레임마다
+   시계 알약을 통째로 다시 칠했다. filter의 brightness/saturate는 합성기가
+   처리해서, 같은 자리에서 재보니 0.3%p였다. (drop-shadow는 예외 - 반경이
+   변하면 흐림을 다시 계산한다. 그래서 위의 후광은 고정값이다.)
+
+   두 주홍은 그대로 살아 있다. #DD6032에 brightness(1.15) saturate(.82)를
+   걸면 rgb(233,115,71)이 나오는데, 원래 목표였던 #f08050 rgb(240,128,80)과
+   거리 17이다(안 걸었을 때는 48). 초당 두 번 깜빡이는 색이라 이 차이는
+   눈에 안 잡힌다. */
 .play-ui-v4 .time-readout.is-warning strong,
 .screen-play.play-ui-v4 .time-readout.is-warning strong {
+  /* 이 색은 예전에 keyframes 안에만 있었다. 애니메이션이 위쪽의 #e03150을
+     덮고 있었던 것이라, 색을 keyframes에서 빼는 순간 숫자가 진홍으로
+     바뀌어버린다. 실제로 지금까지 보이던 주홍을 여기 명시해 둔다. */
+  color: #DD6032;
   animation: time-danger-pulse .5s infinite;
 }
 
 @keyframes time-danger-pulse {
-  0%, 100% { color: #DD6032; }
-  50% { color: #f08050; }
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50% { filter: brightness(1.15) saturate(.82); }
+}
+
+/* 예전에는 이 자리 바로 위의 후광 규칙이 모션 줄이기 갈래를 따로 갖고
+   있었다. 후광이 고정으로 바뀌면서 그 갈래는 필요가 없어졌지만, 숫자의
+   깜빡임은 여전히 움직임이라 여기서 받아준다. */
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .time-readout.is-warning strong,
+  .screen-play.play-ui-v4 .time-readout.is-warning strong {
+    animation: none;
+    filter: brightness(1.08) saturate(.9);
+  }
 }
 
 /* Combo tiers. The fever band tops out at 8, which classic passes in the
@@ -5327,6 +5355,37 @@
   box-shadow:
     0 0 0 4px rgba(255, 253, 247, .99),
     0 3px 0 5px rgba(222, 211, 195, .92);
+}
+
+/* 피버의 분홍 후광.
+   원래는 styles.css에서 box-shadow를 애니메이션했다. .board-frame은 배경
+   그림을 깔고 있는 큰 요소라 프레임마다 그 전체를 다시 그렸고, 발열 제보를
+   받고 재보니 5초에 600번 다시 그리며 raster에만 1초를 썼다.
+
+   고정으로 바꾸면서 자리도 여기로 옮겼다. 예전 규칙은 .board-frame.is-fever라
+   바로 위 .play-ui-v4 .board-frame과 특이도가 같았는데, 애니메이션이라서
+   이기고 있었던 것이다. 그대로 평범한 선언으로 내리면 후광이 통째로 사라진다.
+   (이 함정에 이 저장소에서만 세 번째 걸렸다 - 애니메이션은 평범한 선언을
+   언제나 이긴다.)
+
+   숨쉬는 느낌은 아래 .board의 filter가 맡는다. saturate/brightness는 합성기가
+   처리해서 다시 그리는 일이 없다 - 같은 조건에서 재보니 0회였다. */
+.play-ui-v4 .board-frame.is-fever,
+.play-ui-v4 .board-frame[data-round].is-fever,
+.screen-play.play-ui-v4[data-stage-band] .board-frame.is-fever {
+  box-shadow:
+    0 0 0 4px rgba(255, 253, 247, .99),
+    0 3px 0 5px rgba(222, 211, 195, .92),
+    0 0 19px rgba(255, 113, 136, .25);
+}
+
+.play-ui-v4 .board-frame.is-fever-expiring,
+.play-ui-v4 .board-frame[data-round].is-fever-expiring,
+.screen-play.play-ui-v4[data-stage-band] .board-frame.is-fever-expiring {
+  box-shadow:
+    0 0 0 4px rgba(255, 253, 247, .99),
+    0 3px 0 5px rgba(222, 211, 195, .92),
+    0 0 24px rgba(255, 101, 132, .34);
 }
 
 .play-ui-v4 .board {
