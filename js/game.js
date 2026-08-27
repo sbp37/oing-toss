@@ -2664,7 +2664,14 @@ class OingGame {
         this.adHelpPackUsed = true;
         // 팩 내용은 코드가 정한다 - 콘솔 수량은 '팩 1개'라는 뜻일 뿐이다.
         this.grantItems({ ...AD_HELP_PACK }, { source: 'ad' });
-        this.ui.toast(`도움팩 도착이다냥! ${contents}`);
+        // 이어하기와 같은 무게로 알린다. 예전에는 토스트 한 줄이었는데,
+        // 30초짜리 광고를 보고 돌아온 사람이 화면 구석의 작은 글씨로
+        // 보상을 확인해야 했다 - 이어하기는 화면 한가운데서 알리면서
+        // 도움팩만 그러지 않을 이유가 없다.
+        this.ui.showCenterNotice('도움팩 받았다냥!', 1600, { detail: contents });
+        // 그리고 숫자가 오른 자리를 짚어 준다. 무엇을 받았는지와 그게
+        // 어디로 갔는지는 다른 이야기다.
+        this.ui.flashItemStock(Object.keys(AD_HELP_PACK));
         itemHaptic();
       }
       return rewarded;
