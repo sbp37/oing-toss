@@ -48,9 +48,12 @@ test('.ait 빌드만 공유 그림을 걷어낸다', async () => {
 
   const pkg = JSON.parse(await readFile(url('package.json'), 'utf8'));
   assert.equal(pkg.scripts['build:ait'], 'node hosting/build-static.mjs --ait');
-  // 마지막의 기본 빌드가 중요하다. 이게 없으면 .ait를 구운 뒤의 dist/client가
-  // 공유 그림이 빠진 채로 남고, 그걸 웹에 올리면 미리보기가 빈칸이 된다.
-  assert.match(pkg.scripts.ait, /npm run build:ait &&.*ait build.*&& npm run build$/);
+  // 되돌리기는 반드시 finally에 있어야 한다. `&&`로 이으면 가운데 단계가
+  // 실패했을 때 되돌리기가 아예 안 돌고, dist/client가 공유 그림이 빠진 채로
+  // 남는다. 그걸 웹에 올리면 미리보기가 조용히 빈칸이 된다.
+  assert.equal(pkg.scripts.ait, 'node tools/build-ait.mjs');
+  const runner = await readFile(url('tools/build-ait.mjs'), 'utf8');
+  assert.match(runner, /finally\s*\{[\s\S]*build-static\.mjs/, '복구가 finally 안에 없다');
   // 웹/안드로이드는 완전본을 써야 한다.
   assert.equal(pkg.scripts.build, 'node hosting/build-static.mjs');
   assert.match(pkg.scripts['android:sync'], /^npm run build /);

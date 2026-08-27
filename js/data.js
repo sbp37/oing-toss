@@ -895,26 +895,41 @@ export function newlyUnlockedOingCards(totals = {}, previousKeys = []) {
 //   같은 목표를 가리켜도 말하는 방식이 달라야 한다.
 //
 // 여러 개를 늘어놓으면 목록이 되고, 목록은 목표가 아니다. 그래서 딱 하나만
-// 고른다. 고르는 잣대는 "남은 비율" 하나다 - 점·판·칸이 단위가 제각각인데
-// 절대값으로는 서로 비교가 안 되기 때문이다. 남은 몫을 목표로 나누면 전부
-// 0~1로 떨어지고, 그 중 가장 작은 것이 손에 닿는 목표다.
+// 고른다.
 //
-// 너무 먼 목표는 아예 내보내지 않는다. "20,000칸 남았다"는 다음 판을 부르는
-// 대신 벽을 보여준다.
+// ── 잣대를 한 번 갈아엎었다 ────────────────────────────────────────────
+// 처음에는 "남은 비율"(남은 몫 ÷ 목표) 하나로 전부 줄 세웠다. 단위가 다른
+// 목표들을 한 자로 재려던 것인데, 외부 검수에서 그게 틀렸다는 지적을 받았고
+// 지적이 옳았다. 비율 0.6이면 통과인 규칙 아래에서 실제로 이런 줄이 나갔다.
 //
-// 다만 비율만으로 자르면 첫 판을 막 끝낸 사람이 아무것도 못 본다. 그 사람의
-// 누적은 전부 0에 가까워서 모든 목표가 멀기 때문인데, 정작 이 한 줄이 가장
-// 필요한 사람이 그 사람이다. 그래서 판 수 목표는 남은 수가 한 자리면 비율과
-// 무관하게 들여보낸다 - "9판"은 벽이 아니라 셈이다.
-export const NEXT_GOAL_MAX_RATIO = 0.6;
-export const NEXT_GOAL_COUNTABLE_MAX = 9;
-const NEXT_GOAL_COUNTABLE = Object.freeze(['runs']);
+//   고양이 120/300 -> "고양이 180마리만 더"   초보 기준 약 27판
+//   지운 칸 8,000/20,000 -> "12,000칸만 더"    초보 기준 약 78판
+//
+// "한 판 더 할 이유"가 아니라 장기 업적이다. 비율은 목표의 크기를 못 보기
+// 때문에 이런 것을 걸러내지 못한다.
+//
+// 그래서 설계 문서가 원래 지시한 방법으로 돌아왔다. 잣대는 "몇 판 더 걸리나"
+// 하나이고, 목표의 성격에 따라 재는 법이 다르다.
+//
+//   누적 목표(칸·고양이·묶기·판 수)  남은 몫 ÷ 그 사람의 판당 평균
+//   한 판 목표(점수·기록·도전장)      이번 판/최고기록에서의 거리
+//
+// 판당 평균은 그 사람 자신의 누적값에서 나온다(누적 ÷ 플레이한 판 수).
+// 전역 상수를 박지 않으므로 초보에게는 초보의 속도로, 숙련자에게는 숙련자의
+// 속도로 저절로 맞는다.
+//
+// 한 판 목표는 이번 판에 닿을 수 있으니 1판보다 작은 값으로 잡는다. 그래야
+// "이번 판에 되는 것"이 "두 판 뒤에 되는 것"보다 언제나 먼저 나온다.
+export const NEXT_GOAL_MAX_RUNS = 3;
 
-// 시작 화면에서 "신기록"이 놓이는 거리. 최고기록은 언제나 바로 위에 있어서
-// 진짜 비율(0)로 재면 늘 이 목표만 나온다. 그렇다고 늘 지게 두면 신기록이
-// 영영 목표가 안 된다. 그래서 "손에 닿지만 제일 가깝지는 않은" 자리에 둔다 -
-// 이보다 가까운 카드가 있으면 카드가, 없으면 신기록이 나온다.
-export const NEXT_GOAL_RECORD_START_RATIO = 0.1;
+// 도전장은 이 자들을 안 탄다.
+//
+// 검수 지적: 도전 링크로 들어온 새 사람에게 친구 기록이 안 뜨고 엉뚱한 카드
+// 목표가 떴다. 기록이 없으면 친구 점수까지의 거리가 무한대라 어떤 문턱에도
+// 걸리기 때문이다. 그런데 그 사람은 바로 그 점수를 넘으러 온 사람이다.
+// 홈 배너에는 뜨는데 시작 카운트다운에서만 사라지는 것도 앞뒤가 안 맞았다.
+// 도전장은 거리와 무관하게 후보로 들어오고, 있으면 가장 먼저다.
+const NEXT_GOAL_CHALLENGE_RUNS = -1;
 
 // 출석 일수는 후보가 아니다. 날짜는 판을 더 한다고 오지 않아서, "다음 카드까지
 // 6일"은 지금 한 판 더 할 이유가 못 된다. 갤러리에는 그대로 남는다.
@@ -958,33 +973,52 @@ export function nextGoalLine({
   // 시작할 때의 기준점은 "이미 낼 수 있는 점수"다.
   const from = atStart ? best : Math.max(0, Math.round(Number(score) || 0));
   const rival = Math.max(0, Math.round(Number(challengeTarget) || 0));
+  const runsPlayed = Math.max(1, Math.round(Number(totals.runs) || 0));
   const candidates = [];
 
-  // 친구 기록이 먼저다. 사람이 걸린 목표라서, 같은 거리면 이쪽이 더 당긴다.
   if (rival > from) {
     candidates.push({
       kind: 'challenge',
       target: rival,
-      ratio: (rival - from) / rival,
+      runs: NEXT_GOAL_CHALLENGE_RUNS,
       text: `친구 기록까지 ${(rival - from).toLocaleString('ko-KR')}점!`,
       startText: `이번 판 ${rival.toLocaleString('ko-KR')}점 넘기면 친구 이기기!`,
     });
   }
-  // 결과창에서는 이번 판에 이미 깼으면 목표가 아니다. 시작할 때는 언제나
-  // 목표다 - 신기록은 늘 바로 위에 있다.
-  if (best > 0 && (atStart || best > from)) {
+
+  // 내 최고기록. 결과창에서는 이번 판이 충분히 가까웠을 때만 - 200점 내고
+  // "최고기록까지 19,800점"을 보는 것은 목표가 아니라 면박이다. 판단은 이미
+  // 있는 isRecordInReach가 한다(결과창 헤드라인과 같은 자를 쓰게 된다).
+  // 시작 화면에서는 언제나 목표다. 신기록은 늘 바로 위에 있다.
+  if (best > 0 && (atStart || isRecordInReach(from, best))) {
     candidates.push({
       kind: 'best',
       target: best,
-      ratio: atStart ? NEXT_GOAL_RECORD_START_RATIO : (best - from) / best,
+      // 이번 판에 닿을 수 있는 목표라 1판보다 작다. 거리가 가까울수록 앞선다.
+      runs: atStart ? 0.5 : (best - from) / best,
       text: `최고기록까지 ${(best - from).toLocaleString('ko-KR')}점!`,
       startText: `이번 판 ${best.toLocaleString('ko-KR')}점 넘기면 신기록!`,
     });
   }
+
   for (const card of oingCardRows(totals)) {
     if (card.unlocked || NEXT_GOAL_SKIP_METRICS.includes(card.metric)) continue;
     const left = card.goal - card.current;
     if (left <= 0) continue;
+
+    let runs;
+    if (card.metric === 'bestScore') {
+      // 한 판에 내는 점수라 누적이 아니다. 최고기록과 같은 자로 잰다.
+      if (left > Math.max(1500, card.goal * 0.25)) continue;
+      runs = left / card.goal;
+    } else {
+      // 누적 목표. 그 사람 자신의 판당 평균으로 몇 판이 남았는지 잰다.
+      const perRun = (card.metric === 'runs' ? runsPlayed : Math.max(0, Number(totals[card.metric]) || 0)) / runsPlayed;
+      if (perRun <= 0) continue;
+      runs = left / perRun;
+      if (runs > NEXT_GOAL_MAX_RUNS) continue;
+    }
+
     // 점수 카드는 문턱을 함께 말한다. "4,000점 카드"라고 해야 남은 370점이
     // 무엇을 향한 370점인지 한 번에 읽힌다. 카드 이름은 안 쓴다 - 아직 못 본
     // 카드라서 이름으로는 아무것도 안 그려진다.
@@ -994,21 +1028,13 @@ export function nextGoalLine({
         `이번 판 ${card.goal.toLocaleString('ko-KR')}점이면 새 카드!`,
       ]
       : (NEXT_GOAL_CARD_WORDING[card.metric] || ((n) => [`${n}`, `${n}`]))(left);
-    candidates.push({
-      kind: 'card',
-      cardKey: card.key,
-      target: card.goal,
-      ratio: left / card.goal,
-      countable: NEXT_GOAL_COUNTABLE.includes(card.metric) && left <= NEXT_GOAL_COUNTABLE_MAX,
-      text,
-      startText,
-    });
+    candidates.push({ kind: 'card', cardKey: card.key, target: card.goal, runs, text, startText });
   }
 
-  // 같은 거리면 먼저 담은 쪽이 이긴다 - 친구, 내 기록, 카드 순이다.
-  const near = candidates
-    .filter((one) => one.countable || one.ratio <= NEXT_GOAL_MAX_RATIO)
-    .sort((a, b) => a.ratio - b.ratio)[0];
+  // 가장 적은 판이 남은 것 하나. 같으면 먼저 담은 쪽이 이긴다 - 친구, 내
+  // 기록, 카드 순이다. 하나도 안 남으면 아무것도 안 띄운다: 억지 목표는
+  // 없느니만 못하다(설계 문서가 이 판단을 이 기능에서 제일 중요하다고 했다).
+  const near = candidates.sort((a, b) => a.runs - b.runs)[0];
   return near ? Object.freeze(near) : null;
 }
 
