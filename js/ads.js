@@ -17,6 +17,8 @@ const loadBridge = () => import('./vendor/toss-game-center-v1.js');
 let bridgePromise = null;
 const loadedKinds = new Set();
 const loadingKinds = new Set();
+let googleInterstitialLoaded = false;
+let googleInterstitialLoading = false;
 
 // 준비 상태가 바뀌면 알린다. 버튼의 광고 배지가 "실제로 불러왔는가"를
 // 보고 뜨기 때문에, 배경에서 로드가 끝나는 순간 화면을 다시 그려야 한다.
@@ -59,6 +61,15 @@ function bridge() {
   return bridgePromise;
 }
 
+function googleBridge() {
+  const plugin = globalThis.Capacitor?.Plugins?.OingAds;
+  return plugin && typeof plugin.preloadRewarded === 'function' ? plugin : null;
+}
+
+export function isGoogleAdsEnvironment() {
+  return Boolean(googleBridge());
+}
+
 export function adGroupIdFor(kind) {
   const id = AD_GROUP_IDS[kind];
   return typeof id === 'string' && id.length > 0 ? id : '';
@@ -68,11 +79,36 @@ export function adGroupIdFor(kind) {
 // 표시 여부) 토스 웹뷰 여부와 ID 유무만 본다. SDK 지원 여부는 실제로
 // 불러올 때 확인되고, 안 되면 로드가 실패해 버튼이 조용히 사라진다.
 export function adsAvailable(kind) {
+  if (isGoogleAdsEnvironment()) return kind === 'continue' || kind === 'helpPack';
   return Boolean(adGroupIdFor(kind)) && isAppsInTossWebView();
 }
 
 // 미리 불러 두기. 여러 번 불러도 로드 중이거나 이미 로드됐으면 조용히 넘어간다.
 export async function preloadAd(kind) {
+  const google = googleBridge();
+  if (google) {
+    if (loadedKinds.has(kind)) return true;
+    if (loadingKinds.has(kind)) return false;
+    if (showingKind !== null) {
+      deferredLoads.add(kind);
+      return false;
+    }
+    loadingKinds.add(kind);
+    try {
+      const result = await google.preloadRewarded();
+      const ready = Boolean(result?.ready);
+      if (ready) {
+        loadedKinds.add('continue');
+        loadedKinds.add('helpPack');
+        announceReadyChange();
+      }
+      return ready;
+    } catch {
+      return false;
+    } finally {
+      loadingKinds.delete(kind);
+    }
+  }
   const adGroupId = adGroupIdFor(kind);
   if (!adGroupId || !isAppsInTossWebView()) return false;
   if (loadedKinds.has(kind) || loadingKinds.has(kind)) return loadedKinds.has(kind);
@@ -119,6 +155,35 @@ export function adReady(kind) {
 // 다시 불러온다. 몇 초 늦어질 수는 있어도 "눌렀는데 아무 일도 안 일어남"
 // 보다는 낫다.
 export async function showAd(kind) {
+  const google = googleBridge();
+  if (google) {
+    if (!adsAvailable(kind)) return { rewarded: false, amount: 0, shown: false };
+    try {
+      showingKind = kind;
+      const result = await google.showRewarded({ kind });
+      return {
+        rewarded: Boolean(result?.rewarded),
+        // Google reward values are configured per ad unit, while OING owns
+        // the actual continue/help-pack amount. Zero keeps that single source.
+        amount: 0,
+        shown: Boolean(result?.shown),
+      };
+    } catch {
+      return { rewarded: false, amount: 0, shown: false };
+    } finally {
+      showingKind = null;
+      loadedKinds.delete('continue');
+      loadedKinds.delete('helpPack');
+      announceReadyChange();
+      const pending = [kind, ...deferredLoads];
+      deferredLoads.clear();
+      void (async () => {
+        for (const next of pending) {
+          await preloadAd(next);
+        }
+      })();
+    }
+  }
   const adGroupId = adGroupIdFor(kind);
   if (!adGroupId || !isAppsInTossWebView()) return { rewarded: false, amount: 0, shown: false };
   try {
@@ -169,5 +234,42 @@ export async function showAd(kind) {
         await preloadAd(next);
       }
     })();
+  }
+}
+
+export async function preloadInterstitial() {
+  const google = googleBridge();
+  if (!google || typeof google.preloadInterstitial !== 'function') return false;
+  if (googleInterstitialLoaded || googleInterstitialLoading) return googleInterstitialLoaded;
+  googleInterstitialLoading = true;
+  try {
+    const result = await google.preloadInterstitial();
+    googleInterstitialLoaded = Boolean(result?.ready);
+    return googleInterstitialLoaded;
+  } catch {
+    return false;
+  } finally {
+    googleInterstitialLoading = false;
+  }
+}
+
+export function interstitialReady() {
+  return isGoogleAdsEnvironment() && googleInterstitialLoaded;
+}
+
+export async function showInterstitial() {
+  const google = googleBridge();
+  if (!google || !googleInterstitialLoaded || typeof google.showInterstitial !== 'function') {
+    void preloadInterstitial();
+    return { shown: false };
+  }
+  googleInterstitialLoaded = false;
+  try {
+    const result = await google.showInterstitial();
+    return { shown: Boolean(result?.shown) };
+  } catch {
+    return { shown: false };
+  } finally {
+    void preloadInterstitial();
   }
 }

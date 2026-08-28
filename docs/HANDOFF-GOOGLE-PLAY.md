@@ -2,6 +2,11 @@
 
 작성 2026-08-28 · 기준 커밋 `4c1d66e` (main)
 
+> 후속 작업 메모: `codex/google-admob-v1` 브랜치에서는 다음 Google Play
+> 버전용 AdMob 보상형·전면 광고를 준비한다. 이 문서의 "광고 없음" 안내는
+> 현재 비공개 테스트 1.1.1에 대한 기록이다. 광고 브랜치를 머지한 다음에는
+> `store/GOOGLE-PLAY.md`의 새 광고·데이터 보안 안내를 기준으로 삼는다.
+
 읽는 대상: 이 저장소를 이어받아 **서명된 `.aab` 하나를 만들어 내는** 작업자.
 게임 코드는 손댈 일이 없다. 포장과 서명만 남았다.
 
@@ -218,7 +223,7 @@ keytool -printcert -jarfile android/app/build/outputs/bundle/release/app-release
    스크린샷 `store/screenshots/*.jpg` 7장
 5. AAB 업로드
 
-### 체크리스트에서 틀리기 쉬운 두 칸
+### 현재 1.1.1 체크리스트에서 틀리기 쉬운 두 칸
 
 - **광고 → "아니요, 광고 없음"**
   보상형 광고 코드는 있지만 `isAppsInTossWebView()`(= `ReactNativeWebView` &&
@@ -229,6 +234,10 @@ keytool -printcert -jarfile android/app/build/outputs/bundle/release/app-release
   `fetch`는 번들에 들어 있는 카드 이미지를 읽는다). 분석 도구 없음, 안드로이드
   빌드에 광고 SDK 없음. 이름과 달리 `js/telemetry.js`는 localStorage 전용이다.
   개인정보처리방침: <https://sbp37.github.io/oing-toss/privacy.html>
+
+> 위 두 답은 광고가 없는 현재 1.1.1 비공개 테스트에만 해당한다. AdMob
+> 브랜치를 머지한 다음 버전은 광고를 "예"로 표시하고, Google Mobile Ads
+> SDK 기준으로 데이터 보안 양식을 다시 제출한다.
 
 ---
 

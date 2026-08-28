@@ -24,6 +24,24 @@ if (!hasReleaseSigning) {
         "android/keystore.properties를 만들거나 OING_KEYSTORE_* 환경변수를 설정하세요.")
 }
 
+def adValue = { String propertyName, String fallback ->
+    def value = project.findProperty(propertyName)
+    if (value == null || value.toString().trim().isEmpty()) value = System.getenv(propertyName)
+    return (value == null || value.toString().trim().isEmpty()) ? fallback : value.toString().trim()
+}
+def sampleAdMobAppId = 'ca-app-pub-3940256099942544~3347511713'
+def sampleRewardedId = 'ca-app-pub-3940256099942544/5224354917'
+def sampleInterstitialId = 'ca-app-pub-3940256099942544/1033173712'
+def admobAppId = adValue('OING_ADMOB_APP_ID', sampleAdMobAppId)
+def admobRewardedId = adValue('OING_ADMOB_REWARDED_ID', sampleRewardedId)
+def admobInterstitialId = adValue('OING_ADMOB_INTERSTITIAL_ID', sampleInterstitialId)
+def admobTestMode = admobAppId == sampleAdMobAppId ||
+    admobRewardedId == sampleRewardedId || admobInterstitialId == sampleInterstitialId
+def admobTestAdsEnabled = adValue('OING_ADMOB_ENABLE_TEST_ADS', 'false').toBoolean()
+def admobEnabled = !admobTestMode || admobTestAdsEnabled
+def admobMode = !admobEnabled ? 'disabled' : (admobTestMode ? 'Google test ads' : 'live ad units')
+logger.lifecycle("[oing] AdMob mode: ${admobMode}")
+
 android {
     namespace = "com.oinggame.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -33,12 +51,20 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 8
         versionName "1.1.1"
+        manifestPlaceholders = [admobAppId: admobAppId]
+        buildConfigField "String", "ADMOB_REWARDED_AD_UNIT_ID", "\"${admobRewardedId}\""
+        buildConfigField "String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", "\"${admobInterstitialId}\""
+        buildConfigField "boolean", "ADMOB_TEST_MODE", admobTestMode.toString()
+        buildConfigField "boolean", "ADMOB_ENABLED", admobEnabled.toString()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+    }
+    buildFeatures {
+        buildConfig true
     }
     signingConfigs {
         if (hasReleaseSigning) {
@@ -73,6 +99,8 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    implementation 'com.google.android.gms:play-services-ads:25.4.0'
+    implementation 'com.google.android.ump:user-messaging-platform:4.0.0'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

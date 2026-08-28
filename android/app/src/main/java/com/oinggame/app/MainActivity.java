@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(OingAdsPlugin.class);
         super.onCreate(savedInstanceState);
 
         // 웹뷰는 기본적으로 기기의 글꼴 크기 설정을 글자에만 곱한다. 화면

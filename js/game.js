@@ -82,7 +82,20 @@ import {
   candyForRun,
   CANDY_STARTER_MINIMUM,
 } from './data.js';
-import { adReady, adsAvailable, onAdReadyChange, preloadAd, showAd } from './ads.js';
+import {
+  adReady,
+  adsAvailable,
+  isGoogleAdsEnvironment,
+  onAdReadyChange,
+  preloadAd,
+  preloadInterstitial,
+  showAd,
+  showInterstitial,
+} from './ads.js';
+import {
+  GOOGLE_INTERSTITIAL_RUN_INTERVAL,
+  shouldOfferGoogleInterstitial,
+} from './ad-pacing.js';
 import { installCandyFeeding } from './candy.js';
 import { SHARE_REWARD_MODULE_ID } from './data.js';
 import { challengeScore, clearChallengeIfWon, isFreshChallenge, markChallengeSeen, receiveChallenge } from './challenge.js';
@@ -238,6 +251,10 @@ class OingGame {
     this.adShowing = false;
     this.adFlowActive = false;
     this.adRefillShowing = false;
+    this.rewardedAdShownThisRun = false;
+    this.completedRunsSinceInterstitial = 0;
+    this.interstitialDueAfterLastRun = false;
+    this.interstitialStarting = false;
     this.pendingShareHints = 0;
     this.inviteOpening = false;
     // 친구 초대 버튼은 토스 안 + 모듈 ID가 있을 때만 존재한다.
@@ -381,8 +398,8 @@ class OingGame {
     // Classic is the only mode reachable from the UI now — every "play"
     // entry point launches it. The stage ladder stays in the codebase (test
     // harness, tests/) but nothing on screen starts it any more.
-    document.querySelector('#start-button').addEventListener('click', () => this.start(1, { classic: true }));
-    document.querySelector('#retry-button').addEventListener('click', () => this.startCurrentMode({ quickCountdown: true }));
+    document.querySelector('#start-button').addEventListener('click', () => this.startClassicFromEntry());
+    document.querySelector('#retry-button').addEventListener('click', () => this.startClassicFromEntry({ quickCountdown: true }));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
     document.querySelector('#home-button').addEventListener('click', () => this.goHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
@@ -418,7 +435,7 @@ class OingGame {
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
       this.setResultTucked(false);
-      this.start(1, { classic: true });
+      this.startClassicFromEntry();
     });
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
     document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
@@ -426,7 +443,7 @@ class OingGame {
     document.querySelector('#chapter-viewer-share')?.addEventListener('click', () => this.shareChapter());
     document.querySelector('#garden-play-button').addEventListener('click', () => {
       this.ui.setOverlay('garden-overlay', false);
-      this.start(1, { classic: true });
+      this.startClassicFromEntry();
     });
     const toggleSound = () => {
       this.settings.sound = !this.settings.sound;
@@ -539,6 +556,24 @@ class OingGame {
       : options);
   }
 
+  async startClassicFromEntry(options = {}) {
+    if (this.interstitialStarting) return false;
+    this.interstitialStarting = true;
+    try {
+      if (this.interstitialDueAfterLastRun) {
+        const { shown } = await showInterstitial();
+        if (shown) {
+          this.completedRunsSinceInterstitial = 0;
+          this.interstitialDueAfterLastRun = false;
+        }
+      }
+      await this.start(1, { ...options, classic: true });
+      return true;
+    } finally {
+      this.interstitialStarting = false;
+    }
+  }
+
   // The scene behind the board for the board the run is on. Reaching it is
   // what unlocks it in the gallery, so the mark happens here — at the moment
   // the player actually sees it — not when a run ends.
@@ -621,6 +656,7 @@ class OingGame {
     this.adContinueOffering = false;
     this.adStampedTimeUp = false;
     this.adHelpPackUsed = false;
+    this.rewardedAdShownThisRun = false;
     // 순차로 불러온다. 공식 문서가 한 번에 하나씩 load -> show -> 다음 load를
     // 권하고, 여러 그룹을 연달아 부르면 이벤트가 누락되던 사례가 안드로이드
     // 특정 버전에 기록돼 있다. 병렬로 얻을 것도 없다 - 이어하기는 판 끝,
@@ -631,6 +667,7 @@ class OingGame {
       for (const kind of ['continue', 'helpPack']) {
         await preloadAd(kind);
       }
+      await preloadInterstitial();
       if (this.state.running) this.updateHUD();
     })();
     // 친구 초대로 약속한 힌트. 읽고 - 지급하고 - 지급이 끝난 뒤에 덜어낸다.
@@ -2618,7 +2655,9 @@ class OingGame {
     this.adShowing = true;
     pauseMusic();
     try {
-      return await showAd(kind);
+      const result = await showAd(kind);
+      if (result.shown) this.rewardedAdShownThisRun = true;
+      return result;
     } finally {
       this.adShowing = false;
       if (this.settings.music && this.state.running && !this.state.paused) playMusic();
@@ -2980,6 +3019,20 @@ class OingGame {
     this.tutorialActive = false;
     this.waitingForFirstDrag = false;
     this.ui.hideTutorial();
+    if (isGoogleAdsEnvironment()) {
+      this.completedRunsSinceInterstitial += 1;
+      this.interstitialDueAfterLastRun = shouldOfferGoogleInterstitial({
+        completedRuns: this.completedRunsSinceInterstitial,
+        rewardedShown: this.rewardedAdShownThisRun,
+      });
+      if (
+        this.completedRunsSinceInterstitial >= GOOGLE_INTERSTITIAL_RUN_INTERVAL &&
+        this.rewardedAdShownThisRun
+      ) {
+        // A rewarded ad already occupied this run's full-screen ad moment.
+        this.completedRunsSinceInterstitial = 0;
+      }
+    }
     // The board the timer ran out on never gets a 판갈이, so its scene would
     // otherwise be unclaimable no matter how far the player got through it.
     this.markChapterCollected(

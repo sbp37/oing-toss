@@ -96,6 +96,9 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          OING_ADMOB_APP_ID: ${{ secrets.OING_ADMOB_APP_ID }}
+          OING_ADMOB_REWARDED_ID: ${{ secrets.OING_ADMOB_REWARDED_ID }}
+          OING_ADMOB_INTERSTITIAL_ID: ${{ secrets.OING_ADMOB_INTERSTITIAL_ID }}
         run: |
           # 선택 시크릿의 기본값. 셸에서 채우는 이유는, 스텝 출력으로 넘기면
           # 비밀번호가 마스킹되지 않은 채 실행 기록에 남기 때문이다.
