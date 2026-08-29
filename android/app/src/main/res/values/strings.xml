@@ -4,4 +4,6 @@
     <string name="title_activity_main">오잉게임</string>
     <string name="package_name">com.oinggame.app</string>
     <string name="custom_url_scheme">com.oinggame.app</string>
+    <string name="game_services_project_id" translatable="false">974542803508</string>
+    <string name="classic_leaderboard_id" translatable="false">CgkItKScuq4cEAIQAA</string>
 </resources>

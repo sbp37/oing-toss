@@ -509,7 +509,7 @@ class OingGame {
     const home = document.querySelector('#home-leaderboard-button');
     if (home) home.hidden = false;
     actions?.classList.add('has-online-leaderboard');
-    this.leaderboardAvailable = gameLeaderboardAdapter.isTossEnvironment()
+    this.leaderboardAvailable = gameLeaderboardAdapter.isSupportedEnvironment()
       ? await gameLeaderboardAdapter.isAvailable()
       : false;
   }
@@ -2908,7 +2908,7 @@ class OingGame {
 
   async openGameLeaderboard() {
     if (!this.leaderboardAvailable) {
-      this.ui.toast('랭킹은 토스 앱에서 열린다냥! 조금만 기다려냥');
+      this.ui.toast('랭킹은 토스나 Google Play 앱에서 열린다냥!');
       return;
     }
     // 세 자리(홈·결과·플레이 상단) 어디서 눌렀든 중복 실행만 막으면 된다.
@@ -2919,7 +2919,8 @@ class OingGame {
     this.leaderboardOpening = true;
     buttons.forEach((button) => { button.disabled = true; });
     try {
-      await gameLeaderboardAdapter.open();
+      const result = await gameLeaderboardAdapter.open();
+      if (!result.ok) this.ui.toast('Google Play 게임 로그인을 확인해달라냥!');
     } finally {
       this.leaderboardOpening = false;
       buttons.forEach((button) => { button.disabled = false; });
