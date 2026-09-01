@@ -45,6 +45,17 @@ CREATE TABLE IF NOT EXISTS oing_leaderboard_best (
 CREATE INDEX IF NOT EXISTS oing_leaderboard_best_score_idx
   ON oing_leaderboard_best (score DESC, achieved_at ASC);
 
+CREATE TABLE IF NOT EXISTS oing_friendships (
+  owner_player_id uuid NOT NULL REFERENCES oing_players(id) ON DELETE CASCADE,
+  friend_player_id uuid NOT NULL REFERENCES oing_players(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (owner_player_id, friend_player_id),
+  CHECK (owner_player_id <> friend_player_id)
+);
+
+CREATE INDEX IF NOT EXISTS oing_friendships_friend_idx
+  ON oing_friendships (friend_player_id, owner_player_id);
+
 CREATE TABLE IF NOT EXISTS oing_jelly_wallet (
   player_id uuid PRIMARY KEY REFERENCES oing_players(id) ON DELETE CASCADE,
   balance integer NOT NULL DEFAULT 0 CHECK (balance >= 0),

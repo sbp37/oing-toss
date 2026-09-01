@@ -54,8 +54,43 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
   const sql = getDatabase();
   const safeLimit = Math.min(100, Math.max(3, Math.round(Number(limit) || 100)));
   const isAllTime = mode === 'all';
+  const isFriends = mode === 'friends';
 
-  const rows = isAllTime
+  if (isFriends && !playerId) return { rows: [], me: null };
+
+  const rows = isFriends
+    ? await sql`
+        WITH friend_set AS (
+          SELECT ${playerId}::uuid AS player_id
+          UNION
+          SELECT friend_player_id FROM oing_friendships WHERE owner_player_id = ${playerId}
+        ), weekly_best AS (
+          SELECT DISTINCT ON (r.player_id)
+            r.player_id, r.score, r.finished_at AS achieved_at
+          FROM oing_runs r
+          JOIN friend_set f ON f.player_id = r.player_id
+          WHERE r.status = 'accepted'
+            AND r.finished_at >= date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul'
+          ORDER BY r.player_id, r.score DESC, r.finished_at ASC
+        ), ranked AS (
+          SELECT
+            w.player_id,
+            p.nickname,
+            w.score,
+            w.achieved_at,
+            dense_rank() OVER (ORDER BY w.score DESC, w.achieved_at ASC) AS rank,
+            (w.player_id <> ${playerId}::uuid) AS is_friend,
+            LEAST(20, 1 + floor(sqrt((
+              SELECT count(*)::numeric FROM oing_runs activity
+              WHERE activity.player_id = w.player_id AND activity.status = 'accepted'
+            )))::integer) AS level,
+            (w.achieved_at >= now() - interval '24 hours') AS hot
+          FROM weekly_best w
+          JOIN oing_players p ON p.id = w.player_id
+        )
+        SELECT * FROM ranked ORDER BY rank ASC, achieved_at ASC LIMIT ${safeLimit}
+      `
+    : isAllTime
     ? await sql`
         WITH ranked AS (
           SELECT
@@ -63,7 +98,16 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
             p.nickname,
             b.score,
             b.achieved_at,
-            dense_rank() OVER (ORDER BY b.score DESC, b.achieved_at ASC) AS rank
+            dense_rank() OVER (ORDER BY b.score DESC, b.achieved_at ASC) AS rank,
+            CASE WHEN ${playerId}::uuid IS NULL THEN false ELSE EXISTS (
+              SELECT 1 FROM oing_friendships f
+              WHERE f.owner_player_id = ${playerId}::uuid AND f.friend_player_id = b.player_id
+            ) END AS is_friend,
+            LEAST(20, 1 + floor(sqrt((
+              SELECT count(*)::numeric FROM oing_runs activity
+              WHERE activity.player_id = b.player_id AND activity.status = 'accepted'
+            )))::integer) AS level,
+            (b.achieved_at >= now() - interval '24 hours') AS hot
           FROM oing_leaderboard_best b
           JOIN oing_players p ON p.id = b.player_id
         )
@@ -83,7 +127,16 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
             p.nickname,
             w.score,
             w.achieved_at,
-            dense_rank() OVER (ORDER BY w.score DESC, w.achieved_at ASC) AS rank
+            dense_rank() OVER (ORDER BY w.score DESC, w.achieved_at ASC) AS rank,
+            CASE WHEN ${playerId}::uuid IS NULL THEN false ELSE EXISTS (
+              SELECT 1 FROM oing_friendships f
+              WHERE f.owner_player_id = ${playerId}::uuid AND f.friend_player_id = w.player_id
+            ) END AS is_friend,
+            LEAST(20, 1 + floor(sqrt((
+              SELECT count(*)::numeric FROM oing_runs activity
+              WHERE activity.player_id = w.player_id AND activity.status = 'accepted'
+            )))::integer) AS level,
+            (w.achieved_at >= now() - interval '24 hours') AS hot
           FROM weekly_best w
           JOIN oing_players p ON p.id = w.player_id
         )
@@ -92,11 +145,20 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
 
   let me = null;
   if (playerId) {
-    const meRows = isAllTime
+    if (isFriends) {
+      me = rows.find((row) => row.player_id === playerId) || null;
+    } else {
+      const meRows = isAllTime
       ? await sql`
           WITH ranked AS (
             SELECT b.player_id, p.nickname, b.score, b.achieved_at,
-              dense_rank() OVER (ORDER BY b.score DESC, b.achieved_at ASC) AS rank
+              dense_rank() OVER (ORDER BY b.score DESC, b.achieved_at ASC) AS rank,
+              false AS is_friend,
+              LEAST(20, 1 + floor(sqrt((
+                SELECT count(*)::numeric FROM oing_runs activity
+                WHERE activity.player_id = b.player_id AND activity.status = 'accepted'
+              )))::integer) AS level,
+              (b.achieved_at >= now() - interval '24 hours') AS hot
             FROM oing_leaderboard_best b JOIN oing_players p ON p.id = b.player_id
           ) SELECT * FROM ranked WHERE player_id = ${playerId}
         `
@@ -109,13 +171,99 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
             ORDER BY r.player_id, r.score DESC, r.finished_at ASC
           ), ranked AS (
             SELECT w.player_id, p.nickname, w.score, w.achieved_at,
-              dense_rank() OVER (ORDER BY w.score DESC, w.achieved_at ASC) AS rank
+              dense_rank() OVER (ORDER BY w.score DESC, w.achieved_at ASC) AS rank,
+              false AS is_friend,
+              LEAST(20, 1 + floor(sqrt((
+                SELECT count(*)::numeric FROM oing_runs activity
+                WHERE activity.player_id = w.player_id AND activity.status = 'accepted'
+              )))::integer) AS level,
+              (w.achieved_at >= now() - interval '24 hours') AS hot
             FROM weekly_best w JOIN oing_players p ON p.id = w.player_id
           ) SELECT * FROM ranked WHERE player_id = ${playerId}
         `;
-    me = meRows[0] || null;
+      me = meRows[0] || null;
+    }
+  }
+
+  const scoreGap = (entry) => {
+    if (!entry || Number(entry.rank) === 1) return 0;
+    const ahead = [...rows].reverse().find((candidate) => Number(candidate.rank) < Number(entry.rank));
+    return ahead ? Math.max(0, Number(ahead.score) - Number(entry.score) + 1) : null;
+  };
+  rows.forEach((row) => { row.score_to_next = scoreGap(row); });
+  if (me) me.score_to_next = scoreGap(me);
+
+  if (!isAllTime) {
+    const previousRows = isFriends
+      ? await sql`
+          WITH friend_set AS (
+            SELECT ${playerId}::uuid AS player_id
+            UNION
+            SELECT friend_player_id FROM oing_friendships WHERE owner_player_id = ${playerId}
+          ), previous_best AS (
+            SELECT DISTINCT ON (r.player_id) r.player_id, r.score, r.finished_at AS achieved_at
+            FROM oing_runs r
+            JOIN friend_set f ON f.player_id = r.player_id
+            WHERE r.status = 'accepted'
+              AND r.finished_at >= (date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul') - interval '1 week'
+              AND r.finished_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul'
+            ORDER BY r.player_id, r.score DESC, r.finished_at ASC
+          )
+          SELECT player_id, dense_rank() OVER (ORDER BY score DESC, achieved_at ASC) AS rank
+          FROM previous_best
+        `
+      : await sql`
+          WITH previous_best AS (
+            SELECT DISTINCT ON (r.player_id) r.player_id, r.score, r.finished_at AS achieved_at
+            FROM oing_runs r
+            WHERE r.status = 'accepted'
+              AND r.finished_at >= (date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul') - interval '1 week'
+              AND r.finished_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul'
+            ORDER BY r.player_id, r.score DESC, r.finished_at ASC
+          )
+          SELECT player_id, dense_rank() OVER (ORDER BY score DESC, achieved_at ASC) AS rank
+          FROM previous_best
+        `;
+    const previousRanks = new Map(previousRows.map((row) => [row.player_id, Number(row.rank)]));
+    const addMovement = (entry) => {
+      if (!entry) return;
+      const previousRank = previousRanks.get(entry.player_id);
+      entry.previous_rank = previousRank || null;
+      entry.is_new = !previousRank;
+      entry.rank_delta = previousRank ? previousRank - Number(entry.rank) : null;
+    };
+    rows.forEach(addMovement);
+    addMovement(me);
   }
   return { rows, me };
+}
+
+export async function setFriend({ playerId, friendPlayerId, saved }) {
+  const sql = getDatabase();
+  if (saved) {
+    const rows = await sql`
+      INSERT INTO oing_friendships (owner_player_id, friend_player_id)
+      SELECT ${playerId}, p.id
+      FROM oing_players p
+      WHERE p.id = ${friendPlayerId} AND p.id <> ${playerId}::uuid
+      ON CONFLICT DO NOTHING
+      RETURNING friend_player_id
+    `;
+    if (!rows[0]) {
+      const existing = await sql`
+        SELECT friend_player_id FROM oing_friendships
+        WHERE owner_player_id = ${playerId} AND friend_player_id = ${friendPlayerId}
+      `;
+      if (!existing[0]) return null;
+    }
+    return { friendPlayerId, saved: true };
+  }
+
+  await sql`
+    DELETE FROM oing_friendships
+    WHERE owner_player_id = ${playerId} AND friend_player_id = ${friendPlayerId}
+  `;
+  return { friendPlayerId, saved: false };
 }
 
 export async function getProfile(playerId) {

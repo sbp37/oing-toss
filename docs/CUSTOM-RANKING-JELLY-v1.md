@@ -17,8 +17,11 @@
 ### 클라이언트
 
 - 홈·플레이·결과의 `오잉 랭킹` 버튼과 파스텔 랭킹 시트
-- 이번주(월요일 00:00 KST부터) / 전체 최고점수
-- 1~3위 시상대, 4위 이후 목록, 내 순위 고정줄
+- 이번주(월요일 00:00 KST부터) / 전체 최고점수 / 저장한 친구끼리 이번주 랭킹
+- 1~3위 금·은·동 시상대, 4위 이후 목록, 상단 고정 규격의 내 순위 요약 카드
+- 전주 대비 등락, Top3·Top10·Top30 배지, 다음 순위까지 필요한 점수
+- 랭킹 행을 0.6초 길게 눌러 친구 저장·해제. 10px 이상 움직이면 스크롤로 보고 취소
+- 활동 레벨 배지. 정상 완료 판 수의 제곱근 곡선(`1 + floor(sqrt(완료 판 수))`, 최대 20)만 표시하며 점수·보상 이점은 없음
 - 토스 안에서는 `토스 랭킹 보기`를 보조 버튼으로 유지
 - 토스 밖 웹에서도 공개 순위 읽기 가능, 인증 실패·서버 장애 시 게임 흐름 유지
 - 시작/성공 시각/종료 전송. 종료 응답이 유실되면 세션 저장소에 둔 서명 티켓으로 다음 실행 때 한 번 더 제출
@@ -35,6 +38,7 @@
 - 전체 최고점수는 max-only
 - 첫 정상판 +10, 하루 첫 정상판 +1. 지급·점수·최고점수 반영은 한 DB 트랜잭션
 - 꾸미기 카탈로그·구매·장착 API와 서버 전용 젤리 원장 기반 마련
+- 친구 관계는 닉네임이 아니라 `(내 player_id, 친구 player_id)` 단방향 저장
 
 ## 아직 운영에 연결하지 않은 것
 
@@ -67,7 +71,8 @@
 - `POST bootstrap`: 토스 게임 hash 확인 → 내부 플레이어와 bearer token
 - `POST start-run`: bearer token + `clientRunId` → 서명 run ticket
 - `POST finish-run`: run ticket + 점수/시간/성공 원장 → accepted 또는 pending
-- `GET ?action=leaderboard&mode=weekly|all`: 공개 순위, bearer가 있으면 내 줄 포함
+- `GET ?action=leaderboard&mode=weekly|all|friends`: 공개 순위, bearer가 있으면 내 요약·친구 표시 포함
+- `POST friend`: bearer token + `playerId` + `saved`로 친구 저장·해제
 - `GET ?action=profile`, `GET ?action=catalog`: 로그인한 내 정보
 - `POST purchase`, `POST equip`: 서버 트랜잭션으로 구매·장착
 

@@ -165,11 +165,18 @@ export function createOingOnlineAdapter({
 
     async leaderboard(mode = 'weekly') {
       if (isAppsInTossWebView(scope) && !token) await bootstrap();
-      const normalized = mode === 'all' ? 'all' : 'weekly';
+      const normalized = ['all', 'friends'].includes(mode) ? mode : 'weekly';
       const result = await request('leaderboard', null, {
         query: `?action=leaderboard&mode=${normalized}`,
       });
       return result?.ok ? result : { ok: false, reason: result?.reason || 'offline', rows: [] };
+    },
+
+    async setFriend(playerId, saved = true) {
+      const identity = await bootstrap();
+      if (!identity.ok) return identity;
+      const result = await request('friend', { playerId, saved });
+      return result?.ok ? result : { ok: false, reason: result?.reason || 'offline' };
     },
 
     getPlayer() {
@@ -182,11 +189,48 @@ function rankMedal(rank) {
   return rank === 1 ? '1' : rank === 2 ? '2' : '3';
 }
 
+function rankChange(entry) {
+  if (entry?.isNew) return { text: 'NEW', className: 'is-new' };
+  const delta = Number(entry?.rankDelta);
+  if (!Number.isFinite(delta) || delta === 0) return { text: '－', className: 'same' };
+  return delta > 0
+    ? { text: `▲${delta}`, className: 'up' }
+    : { text: `▼${Math.abs(delta)}`, className: 'down' };
+}
+
+function levelBadge(entry) {
+  const level = Math.max(1, Math.min(20, Math.round(Number(entry?.level) || 1)));
+  const badge = document.createElement('span');
+  badge.className = 'oing-rank-level';
+  badge.textContent = `${level >= 11 ? '💎' : level >= 7 ? '🧶' : level >= 4 ? '🏠' : level >= 2 ? '🍡' : '🌱'} Lv.${level}`;
+  badge.setAttribute('aria-label', `오잉 레벨 ${level}`);
+  return badge;
+}
+
+function tierBadge(rank) {
+  const value = Number(rank);
+  if (value > 30) return null;
+  const badge = document.createElement('span');
+  badge.className = `oing-rank-tier tier-${value <= 3 ? '3' : value <= 10 ? '10' : '30'}`;
+  badge.textContent = value <= 3 ? '👑 TOP3' : value <= 10 ? '🔥 Top10' : '✨ Top30';
+  return badge;
+}
+
+function podiumCrownAsset(rank) {
+  const medal = rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze';
+  return `assets/ui/ranking/podium-crown-${medal}-original-v1.webp`;
+}
+
+function podiumRankLabel(rank) {
+  return rank === 1 ? '1st' : rank === 2 ? '2nd' : '3rd';
+}
+
 export class OingLeaderboardView {
   constructor(root) {
     this.root = root;
     this.mode = 'weekly';
     this.onModeChange = null;
+    this.onFriendToggle = null;
     this.root?.querySelectorAll('[data-oing-rank-mode]').forEach((button) => {
       button.addEventListener('click', () => {
         const mode = button.dataset.oingRankMode;
@@ -204,6 +248,16 @@ export class OingLeaderboardView {
       button.classList.toggle('active', active);
       button.setAttribute('aria-selected', String(active));
     });
+    const title = this.root?.querySelector('#oing-rank-period-title');
+    const note = this.root?.querySelector('#oing-rank-period-note');
+    if (title) title.textContent = this.mode === 'weekly'
+      ? '이번 주 랭킹'
+      : this.mode === 'friends' ? '친구 랭킹' : '전체 랭킹';
+    if (note) note.textContent = this.mode === 'weekly'
+      ? '매주 월요일 0시에 새로 시작한다냥!'
+      : this.mode === 'friends'
+        ? '저장한 친구들과 이번 주 기록을 겨룬다냥!'
+        : '지금까지 가장 높은 기록을 모았다냥!';
   }
 
   setLoading() {
@@ -211,7 +265,46 @@ export class OingLeaderboardView {
     this.root.querySelector('#oing-rank-status').textContent = '기록을 불러오는 중이다냥…';
     this.root.querySelector('#oing-rank-list').replaceChildren();
     this.root.querySelector('#oing-rank-podium').replaceChildren();
-    this.root.querySelector('#oing-my-rank').hidden = true;
+    this.root.querySelector('#oing-my-rank-summary').hidden = true;
+  }
+
+  bindFriendPress(node, entry) {
+    if (!node || !entry?.playerId || entry.isMe) return;
+    node.classList.add('can-save-friend');
+    node.setAttribute('aria-label', `${entry.nickname}, 길게 눌러 친구 ${entry.isFriend ? '해제' : '저장'}`);
+    let timer = null;
+    let startX = 0;
+    let startY = 0;
+    let fired = false;
+    const clear = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      node.classList.remove('is-pressing');
+    };
+    node.addEventListener('pointerdown', (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      clear();
+      fired = false;
+      startX = event.clientX;
+      startY = event.clientY;
+      node.classList.add('is-pressing');
+      timer = setTimeout(() => {
+        timer = null;
+        fired = true;
+        node.classList.remove('is-pressing');
+        this.onFriendToggle?.(entry);
+      }, 600);
+    });
+    node.addEventListener('pointermove', (event) => {
+      if (Math.hypot(event.clientX - startX, event.clientY - startY) > 10) clear();
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => {
+      node.addEventListener(type, clear);
+    });
+    node.addEventListener('contextmenu', (event) => {
+      if (fired || timer !== null) event.preventDefault();
+      clear();
+    });
   }
 
   render(result) {
@@ -219,7 +312,7 @@ export class OingLeaderboardView {
     const status = this.root.querySelector('#oing-rank-status');
     const list = this.root.querySelector('#oing-rank-list');
     const podium = this.root.querySelector('#oing-rank-podium');
-    const myRank = this.root.querySelector('#oing-my-rank');
+    const myRank = this.root.querySelector('#oing-my-rank-summary');
     list.replaceChildren();
     podium.replaceChildren();
     if (!result?.ok) {
@@ -228,16 +321,18 @@ export class OingLeaderboardView {
       return;
     }
     const rows = Array.isArray(result.rows) ? result.rows : [];
-    status.textContent = rows.length ? '' : '아직 기록이 없다냥. 첫 번째 자리를 차지해봐!';
+    status.textContent = rows.length
+      ? ''
+      : this.mode === 'friends'
+        ? '친구를 저장하면 여기서 함께 겨룰 수 있다냥!'
+        : '아직 기록이 없다냥. 첫 번째 자리를 차지해봐!';
     const top = rows.slice(0, 3);
     [top[1], top[0], top[2]].filter(Boolean).forEach((entry) => {
       const card = document.createElement('article');
       card.className = `oing-podium-card rank-${entry.rank}${entry.isMe ? ' is-me' : ''}`;
       const crown = document.createElement('img');
       crown.className = 'oing-podium-crown';
-      crown.src = entry.rank === 1
-        ? 'assets/icons/navigation/ranking-trophy-v1.webp'
-        : 'assets/decor/star.webp';
+      crown.src = podiumCrownAsset(entry.rank);
       crown.alt = '';
       crown.decoding = 'async';
       const avatar = document.createElement('img');
@@ -246,38 +341,97 @@ export class OingLeaderboardView {
       avatar.alt = '';
       avatar.decoding = 'async';
       const name = document.createElement('strong');
-      name.textContent = entry.nickname;
+      name.textContent = `${entry.nickname}${entry.isFriend ? ' ♡' : ''}`;
+      const meta = document.createElement('div');
+      meta.className = 'oing-podium-meta';
+      meta.append(levelBadge(entry));
+      const changeData = rankChange(entry);
+      const rankBadge = document.createElement('span');
+      rankBadge.className = `oing-podium-rank-badge ${changeData.className}`;
+      rankBadge.textContent = `${podiumRankLabel(entry.rank)}  ${changeData.text}`;
       const score = document.createElement('b');
       score.textContent = `${Number(entry.score).toLocaleString('ko-KR')}점`;
       const base = document.createElement('span');
       base.className = 'oing-podium-base';
       base.textContent = rankMedal(entry.rank);
-      card.append(crown, avatar, name, score, base);
+      card.append(crown, avatar, rankBadge, meta, name, score, base);
+      this.bindFriendPress(card, entry);
       podium.append(card);
     });
     rows.slice(3).forEach((entry) => {
       const row = document.createElement('div');
-      row.className = `oing-rank-row${entry.isMe ? ' is-me' : ''}`;
+      const tier = Number(entry.rank) <= 10 ? ' top10' : Number(entry.rank) <= 30 ? ' top30' : '';
+      row.className = `oing-rank-row${tier}${entry.isMe ? ' is-me' : ''}`;
       const rank = document.createElement('b');
       rank.className = 'oing-rank-number';
       rank.textContent = entry.rank;
-      const avatar = document.createElement('img');
-      avatar.className = 'oing-rank-avatar';
-      avatar.src = entry.isMe ? 'assets/decor/paw.webp' : 'assets/characters/cat-idle.webp';
-      avatar.alt = '';
-      avatar.decoding = 'async';
+      const changeData = rankChange(entry);
+      const change = document.createElement('span');
+      change.className = `oing-rank-change ${changeData.className}`;
+      change.textContent = changeData.text;
+      const identity = document.createElement('div');
+      identity.className = 'oing-rank-identity';
+      const nameLine = document.createElement('div');
+      nameLine.className = 'oing-rank-name-line';
+      nameLine.append(levelBadge(entry));
       const name = document.createElement('span');
       name.className = 'oing-rank-name';
       name.textContent = entry.nickname;
+      nameLine.append(name);
+      if (entry.isFriend) {
+        const friend = document.createElement('span');
+        friend.className = 'oing-rank-friend';
+        friend.textContent = '♡';
+        friend.title = '저장한 친구';
+        nameLine.append(friend);
+      }
+      if (entry.hot) {
+        const hot = document.createElement('span');
+        hot.className = 'oing-rank-hot';
+        hot.textContent = '🔥';
+        hot.title = '최근 기록 갱신';
+        nameLine.append(hot);
+      }
+      identity.append(nameLine);
+      const tail = document.createElement('div');
+      tail.className = 'oing-rank-tail';
+      const badge = tierBadge(entry.rank);
+      if (badge) tail.append(badge);
       const score = document.createElement('strong');
       score.textContent = Number(entry.score).toLocaleString('ko-KR');
-      row.append(rank, avatar, name, score);
+      tail.append(score);
+      row.append(rank, change, identity, tail);
+      this.bindFriendPress(row, entry);
       list.append(row);
     });
     if (result.me) {
       myRank.hidden = false;
-      myRank.querySelector('b').textContent = `${result.me.rank}위`;
-      myRank.querySelector('strong').textContent = `${Number(result.me.score).toLocaleString('ko-KR')}점`;
+      const place = myRank.querySelector('#oing-my-rank-place');
+      const points = myRank.querySelector('#oing-my-rank-points');
+      const change = myRank.querySelector('#oing-my-rank-change');
+      const gap = myRank.querySelector('#oing-my-rank-gap');
+      const previous = myRank.querySelector('#oing-my-rank-previous');
+      const changeData = rankChange(result.me);
+      place.textContent = `${result.me.rank}위`;
+      points.textContent = `${Number(result.me.score).toLocaleString('ko-KR')}점`;
+      change.className = changeData.className;
+      change.textContent = this.mode === 'all'
+        ? '전체 최고 기록'
+        : changeData.text === '－' ? '지난 순위와 같아요' : changeData.text;
+      const computedGap = Number(result.me.scoreToNext);
+      if (result.me.rank === 1) gap.textContent = '지금 내가 1등!';
+      else if (Number.isFinite(computedGap) && computedGap > 0) gap.textContent = `${computedGap.toLocaleString('ko-KR')}점 남았다냥!`;
+      else {
+        const ahead = rows.find((entry) => Number(entry.rank) === Number(result.me.rank) - 1);
+        const difference = ahead ? Math.max(0, Number(ahead.score) - Number(result.me.score) + 1) : 0;
+        gap.textContent = difference ? `${difference.toLocaleString('ko-KR')}점 남았다냥!` : '조금만 더 달려보자냥!';
+      }
+      const previousRank = Number(result.me.previousRank);
+      previous.textContent = this.mode === 'all'
+        ? '🏅 내 오잉 기록 보기'
+        : Number.isFinite(previousRank) && previousRank > 0
+          ? `🏅 지난주 ${previousRank}위 · 내 기록 보기`
+          : '✨ 이번 주 첫 기록을 세웠다냥!';
     } else {
       myRank.hidden = true;
     }

@@ -432,14 +432,37 @@
         <div class="oing-rank-tabs" role="tablist" aria-label="랭킹 기간">
           <button class="active" type="button" role="tab" aria-selected="true" data-oing-rank-mode="weekly">이번주</button>
           <button type="button" role="tab" aria-selected="false" data-oing-rank-mode="all">전체</button>
+          <button type="button" role="tab" aria-selected="false" data-oing-rank-mode="friends">친구</button>
         </div>
+        <section class="oing-rank-hero" aria-labelledby="oing-rank-period-title">
+          <img src="assets/ui/ranking/ranking-crown-original-v1.webp" width="180" height="136" decoding="async" alt="">
+          <h3 id="oing-rank-period-title">이번 주 랭킹</h3>
+          <p id="oing-rank-period-note">매주 월요일 0시에 새로 시작한다냥!</p>
+        </section>
+        <section class="oing-my-rank-summary" id="oing-my-rank-summary" hidden aria-label="내 랭킹 요약">
+          <span class="oing-my-rank-ribbon">내 오잉</span>
+          <div class="oing-my-rank-main">
+            <img src="assets/characters/cat-idle.webp" width="431" height="481" decoding="async" alt="">
+            <div class="oing-my-rank-score">
+              <span id="oing-my-rank-place">순위 밖</span>
+              <strong id="oing-my-rank-points">0점</strong>
+              <b id="oing-my-rank-change">이번 주 첫 기록</b>
+            </div>
+            <i aria-hidden="true"></i>
+            <div class="oing-my-rank-next">
+              <span>다음 순위까지</span>
+              <strong id="oing-my-rank-gap">첫 기록을 기다려요</strong>
+            </div>
+          </div>
+          <button id="oing-my-rank-previous" type="button">지난주 기록이 아직 없다냥</button>
+        </section>
         <button class="btn btn-cream oing-native-rank-button" id="oing-native-rank-button" type="button" hidden>
           <img class="button-icon" data-src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>기존 토스 랭킹 보기</span>
         </button>
         <div class="oing-rank-podium" id="oing-rank-podium" aria-label="상위 세 명"></div>
+        <p class="oing-friend-hint" id="oing-friend-hint">랭킹을 꾹 누르면 친구로 저장할 수 있다냥</p>
         <p class="oing-rank-status" id="oing-rank-status">기록을 불러오는 중이다냥…</p>
         <div class="oing-rank-list" id="oing-rank-list"></div>
-        <div class="oing-my-rank" id="oing-my-rank" hidden><span>내 순위</span><b>0위</b><strong>0점</strong></div>
       </div>
     </div>
 

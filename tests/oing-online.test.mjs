@@ -111,6 +111,39 @@ test('public web can read OING ranks without pretending to have a native identit
   assert.equal(result.rows[0].score, 9000);
 });
 
+test('friend ranking and long-press save use the authenticated OING API', async () => {
+  const calls = [];
+  const adapter = createOingOnlineAdapter({
+    scope: { window: { ReactNativeWebView: {}, __appsInTossConstants: {} } },
+    storage: memoryStorage(),
+    loadTossProvider: async () => ({
+      getTossGameIdentity: async () => ({ provider: 'toss', credential: 'raw-hash' }),
+    }),
+    fetchImpl: async (url, options) => {
+      if (!options.body) {
+        calls.push({ url, method: 'GET' });
+        return { ok: true, json: async () => ({ ok: true, rows: [] }) };
+      }
+      const body = JSON.parse(options.body);
+      calls.push(body);
+      if (body.action === 'bootstrap') {
+        return { ok: true, json: async () => ({ ok: true, token: 'player-token', player: {} }) };
+      }
+      return { ok: true, json: async () => ({ ok: true, friendship: { saved: body.saved } }) };
+    },
+  });
+
+  await adapter.leaderboard('friends');
+  const saved = await adapter.setFriend('11111111-1111-4111-8111-111111111111', true);
+  assert.equal(saved.friendship.saved, true);
+  assert.match(calls.find((call) => call.method === 'GET').url, /mode=friends/);
+  assert.deepEqual(calls.at(-1), {
+    action: 'friend',
+    playerId: '11111111-1111-4111-8111-111111111111',
+    saved: true,
+  });
+});
+
 test('opening moves are retained while the mobile identity and run ticket are loading', async () => {
   let releaseStart;
   const startResponse = new Promise((resolve) => { releaseStart = resolve; });
@@ -183,6 +216,9 @@ test('database schema keeps identity, score, wallet, and immutable ledger separa
   assert.match(schema, /PRIMARY KEY \(provider, provider_user_key\)/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS oing_jelly_wallet/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS oing_jelly_ledger/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS oing_friendships/);
+  assert.match(schema, /PRIMARY KEY \(owner_player_id, friend_player_id\)/);
+  assert.match(schema, /CHECK \(owner_player_id <> friend_player_id\)/);
   assert.match(schema, /UNIQUE \(player_id, idempotency_key\)/);
   assert.match(schema, /CREATE OR REPLACE FUNCTION oing_purchase_cosmetic/);
   assert.match(schema, /pg_advisory_xact_lock\(hashtextextended\(p_player_id::text \|\| ':' \|\| p_item_key/);

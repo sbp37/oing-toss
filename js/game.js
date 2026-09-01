@@ -224,6 +224,7 @@ class OingGame {
     this.oingOnline = oingOnlineAdapter;
     this.oingLeaderboardView = new OingLeaderboardView(document.querySelector('#online-ranking-overlay'));
     this.oingLeaderboardView.onModeChange = () => this.refreshOingLeaderboard();
+    this.oingLeaderboardView.onFriendToggle = (entry) => this.toggleOingFriend(entry);
     this.startCountdownInProgress = false;
     this.resumeNeedsCountdown = false;
     this.activePauseOverlay = 'pause-overlay';
@@ -430,6 +431,10 @@ class OingGame {
       this.setResultTucked(false);
     });
     document.querySelector('#oing-native-rank-button')?.addEventListener('click', () => this.openGameLeaderboard());
+    document.querySelector('#oing-my-rank-previous')?.addEventListener('click', () => {
+      this.ui.setOverlay('online-ranking-overlay', false);
+      this.openRanking();
+    });
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
     document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
     document.querySelector('#chapter-viewer-close').addEventListener('click', () => this.ui.setOverlay('chapter-viewer', false));
@@ -2946,6 +2951,18 @@ class OingGame {
       jelly.textContent = Number(player.jelly || 0).toLocaleString('ko-KR');
       jelly.hidden = false;
     }
+  }
+
+  async toggleOingFriend(entry) {
+    if (!entry?.playerId || entry.isMe) return;
+    const saved = !entry.isFriend;
+    const result = await this.oingOnline.setFriend(entry.playerId, saved);
+    if (!result.ok) {
+      this.ui.toast('친구 저장은 토스 앱에서 로그인하면 쓸 수 있다냥!');
+      return;
+    }
+    this.ui.toast(saved ? '친구로 저장했다냥! ♡' : '친구 목록에서 뺐다냥');
+    await this.refreshOingLeaderboard();
   }
 
   async openGameLeaderboard() {

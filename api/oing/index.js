@@ -15,6 +15,7 @@ import {
   getProfile,
   leaderboard,
   purchaseCosmetic,
+  setFriend,
   startRun,
 } from '../../server/oing/repository.js';
 
@@ -49,11 +50,19 @@ async function identityIsValid(provider, credential) {
 
 function publicRankRow(row, playerId) {
   return {
+    playerId: row.player_id,
     rank: Number(row.rank),
     nickname: row.nickname,
     score: Number(row.score),
     achievedAt: row.achieved_at,
     isMe: Boolean(playerId && row.player_id === playerId),
+    isFriend: Boolean(row.is_friend),
+    level: Number(row.level) || 1,
+    hot: Boolean(row.hot),
+    rankDelta: row.rank_delta === null || row.rank_delta === undefined ? null : Number(row.rank_delta),
+    isNew: Boolean(row.is_new),
+    previousRank: row.previous_rank === null || row.previous_rank === undefined ? null : Number(row.previous_rank),
+    scoreToNext: row.score_to_next === null || row.score_to_next === undefined ? null : Number(row.score_to_next),
   };
 }
 
@@ -140,7 +149,8 @@ async function handleFinishRun(body, response) {
 async function handleLeaderboard(request, response) {
   const player = authorize(request);
   const url = new URL(request.url, 'https://oing.invalid');
-  const mode = url.searchParams.get('mode') === 'all' ? 'all' : 'weekly';
+  const requestedMode = url.searchParams.get('mode');
+  const mode = requestedMode === 'all' || requestedMode === 'friends' ? requestedMode : 'weekly';
   const result = await leaderboard({ mode, limit: 100, playerId: player?.playerId || null });
   return json(response, 200, {
     ok: true,
@@ -172,6 +182,20 @@ async function handlePrivateAction(request, action, body, response) {
     return equipped
       ? json(response, 200, { ok: true, equipped })
       : json(response, 400, { ok: false, reason: 'item-not-owned' });
+  }
+  if (action === 'friend') {
+    const friendPlayerId = String(body.playerId || '').trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(friendPlayerId)) {
+      return json(response, 400, { ok: false, reason: 'invalid-friend' });
+    }
+    const friendship = await setFriend({
+      playerId: player.playerId,
+      friendPlayerId,
+      saved: body.saved !== false,
+    });
+    return friendship
+      ? json(response, 200, { ok: true, friendship })
+      : json(response, 404, { ok: false, reason: 'player-not-found' });
   }
   return json(response, 404, { ok: false, reason: 'unknown-action' });
 }

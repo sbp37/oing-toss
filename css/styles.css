@@ -10183,7 +10183,7 @@ img {
 
 .oing-rank-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 5px;
   margin: 10px 0 11px;
   padding: 4px;
@@ -10207,13 +10207,158 @@ img {
   box-shadow: 0 3px 0 #d94f70, inset 0 1px 0 rgba(255,255,255,.42);
 }
 
+.oing-rank-hero {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  margin: 2px 0 14px;
+  padding: 5px 6px 0;
+  text-align: center;
+}
+
+.oing-rank-hero > img {
+  width: 48px;
+  height: 37px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 4px rgba(225, 154, 56, .28));
+}
+
+.oing-rank-hero h3 {
+  margin: -1px 0 2px;
+  color: #665049;
+  font: 400 23px var(--font-display);
+}
+
+.oing-rank-hero p {
+  margin: 0;
+  color: #a68175;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.oing-my-rank-summary {
+  position: relative;
+  margin: 18px 1px 12px;
+  min-height: 100px;
+  padding: 18px 11px 9px;
+  border: 1.5px solid rgba(87, 180, 190, .52);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 9% 15%, rgba(255, 255, 255, .78), transparent 26%),
+    linear-gradient(135deg, rgba(224, 251, 249, .92), rgba(236, 246, 255, .88));
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.8), 0 5px 12px rgba(71, 143, 148, .12);
+}
+
+.oing-my-rank-summary[hidden] { display: none; }
+
+.oing-my-rank-ribbon {
+  position: absolute;
+  top: -13px;
+  left: 14px;
+  min-width: 72px;
+  padding: 4px 14px 5px;
+  color: #fff;
+  font: 400 13px var(--font-display);
+  text-align: center;
+  border: 1px solid rgba(216, 82, 113, .45);
+  border-radius: 5px 12px 12px 5px;
+  background: linear-gradient(180deg, #ff9aaf, #ee6787);
+  box-shadow: 0 3px 6px rgba(213, 79, 111, .18), inset 0 1px 0 rgba(255,255,255,.45);
+}
+
+.oing-my-rank-main {
+  display: grid;
+  grid-template-columns: 44px minmax(102px, 1fr) 1px 116px;
+  gap: 8px;
+  align-items: center;
+  min-height: 51px;
+}
+
+.oing-my-rank-main > img {
+  width: 43px;
+  height: 43px;
+  padding: 2px 2px 0;
+  object-fit: contain;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #dff8ff;
+  box-shadow: 0 3px 7px rgba(67, 132, 147, .18);
+}
+
+.oing-my-rank-main > i {
+  width: 1px;
+  height: 45px;
+  background: rgba(81, 164, 172, .28);
+}
+
+.oing-my-rank-score,
+.oing-my-rank-next {
+  display: grid;
+  min-width: 0;
+  min-height: 47px;
+  gap: 1px;
+  align-content: center;
+}
+
+.oing-my-rank-score > span {
+  color: #ef6785;
+  font: 400 23px var(--font-display);
+  line-height: 1;
+}
+
+.oing-my-rank-score > strong {
+  min-height: 17px;
+  color: #66524a;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.oing-my-rank-score > b {
+  overflow: hidden;
+  color: #9d887e;
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oing-my-rank-score > b.up { color: #33a68c; }
+.oing-my-rank-score > b.down { color: #ef765f; }
+.oing-my-rank-score > b.is-new { color: #548fca; }
+.oing-my-rank-next { text-align: center; }
+.oing-my-rank-next > span { min-height: 14px; color: #88746b; font-size: 10px; font-weight: 800; }
+.oing-my-rank-next > strong {
+  display: grid;
+  min-height: 34px;
+  place-items: center;
+  color: #3ba5b1;
+  font: 400 15px var(--font-display);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+
+.oing-my-rank-summary > button {
+  display: block;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 0;
+  color: #8b776d;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: center;
+  border: 0;
+  background: transparent;
+}
+
 .oing-rank-podium {
   display: flex;
   align-items: flex-end;
   justify-content: center;
   min-height: 164px;
   gap: 7px;
-  padding: 10px 2px 0;
+  padding: 5px 2px 0;
 }
 
 .oing-podium-card {
@@ -10229,14 +10374,15 @@ img {
 .oing-podium-card.rank-1 { flex-basis: 106px; }
 
 .oing-podium-crown {
-  width: 24px;
-  height: 20px;
+  width: 30px;
+  height: 25px;
   object-fit: contain;
   filter: drop-shadow(0 2px 1px rgba(214, 139, 48, .22));
 }
 
-.oing-podium-card.rank-1 .oing-podium-crown { width: 31px; height: 25px; }
-.oing-podium-card:not(.rank-1) .oing-podium-crown { width: 18px; height: 18px; }
+.oing-podium-card.rank-1 .oing-podium-crown { width: 40px; height: 31px; }
+.oing-podium-card.rank-2 .oing-podium-crown { width: 31px; height: 25px; }
+.oing-podium-card.rank-3 .oing-podium-crown { width: 29px; height: 24px; }
 
 .oing-podium-avatar {
   width: 44px;
@@ -10251,6 +10397,21 @@ img {
 }
 
 .oing-podium-card.rank-1 .oing-podium-avatar { width: 52px; height: 52px; }
+.oing-podium-card.rank-1 .oing-podium-avatar {
+  border-color: #fff3c1;
+  outline: 3px solid #f1bc3c;
+  box-shadow: 0 0 0 6px rgba(255, 221, 101, .18), 0 5px 13px rgba(206, 143, 31, .3);
+}
+.oing-podium-card.rank-2 .oing-podium-avatar {
+  border-color: #f8fcff;
+  outline: 3px solid #a7bece;
+  box-shadow: 0 0 0 5px rgba(200, 223, 237, .2), 0 4px 11px rgba(97, 132, 151, .24);
+}
+.oing-podium-card.rank-3 .oing-podium-avatar {
+  border-color: #fff4ea;
+  outline: 3px solid #cf8b61;
+  box-shadow: 0 0 0 5px rgba(232, 177, 133, .18), 0 4px 11px rgba(157, 91, 54, .23);
+}
 
 .oing-podium-card > strong {
   max-width: 100%;
@@ -10259,6 +10420,34 @@ img {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.oing-podium-meta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 2px;
+}
+
+.oing-podium-rank-badge {
+  min-width: 47px;
+  margin: 2px 0 3px;
+  padding: 2px 6px;
+  color: #7b5b21;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  border: 1px solid #e5bd4e;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff4bb, #f3ce66);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+}
+.rank-2 .oing-podium-rank-badge { color: #607687; border-color: #afc3d1; background: linear-gradient(180deg, #f7fbff, #cfdee8); }
+.rank-3 .oing-podium-rank-badge { color: #89583c; border-color: #d89a72; background: linear-gradient(180deg, #ffe8d6, #e6ad84); }
+.oing-podium-rank-badge.up { color: #23896f; }
+.oing-podium-rank-badge.down { color: #d56452; }
+.oing-podium-rank-badge.is-new { color: #477fae; }
 
 .oing-podium-card > b { margin: 2px 0 5px; color: #f05d7d; font-size: 12px; }
 
@@ -10278,42 +10467,131 @@ img {
 .rank-1 .oing-podium-base { height: 66px; background: linear-gradient(180deg, #ffe27d, #f0ae3f); }
 .rank-2 .oing-podium-base { height: 51px; background: linear-gradient(180deg, #dcecf5, #9db9cb); }
 .rank-3 .oing-podium-base { height: 42px; background: linear-gradient(180deg, #f5c59e, #cf8d62); }
-.oing-podium-card.is-me .oing-podium-avatar { outline: 3px solid rgba(101, 198, 195, .32); }
+.oing-podium-card.is-me .oing-podium-base { outline: 3px solid rgba(101, 198, 195, .32); }
+
+.oing-friend-hint {
+  margin: 10px 3px 1px;
+  color: #4f8190;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.oing-friend-hint::before { content: '♡ '; color: #ef6e8b; }
 
 .oing-rank-status {
   min-height: 18px;
-  margin: 10px 4px;
+  margin: 3px 4px 7px;
   color: #a18a7b;
   font-size: 12px;
   line-height: 1.4;
   text-align: center;
 }
 
-.oing-rank-list { display: grid; gap: 7px; }
+.oing-rank-list {
+  display: grid;
+  gap: 7px;
+  margin: 0 -2px;
+  padding: 8px 6px;
+  border: 1px solid rgba(75, 137, 154, .36);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 90% 0, rgba(255,255,255,.32), transparent 29%),
+    linear-gradient(180deg, #8fc1cf, #a9d1d9);
+  box-shadow: inset 0 2px 8px rgba(44, 104, 119, .15), 0 3px 8px rgba(73, 124, 133, .1);
+}
+
+.oing-rank-list:empty { display: none; }
 
 .oing-rank-row {
   display: grid;
-  grid-template-columns: 30px 31px minmax(0, 1fr) auto;
+  grid-template-columns: 27px 32px minmax(0, 1fr) auto;
   align-items: center;
-  min-height: 47px;
-  padding: 5px 10px 5px 6px;
+  min-height: 56px;
+  padding: 6px 9px 6px 6px;
   color: #725e56;
   border: 1px solid rgba(217, 190, 151, .46);
   border-radius: 13px;
-  background: rgba(255,255,255,.72);
-  box-shadow: 0 2px 5px rgba(119, 87, 54, .07);
+  background: #fffaf1;
+  box-shadow: 0 2px 6px rgba(54, 100, 111, .16), inset 0 1px 0 #fff;
+  touch-action: pan-y;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.oing-rank-row.top10 {
+  border-color: rgba(223, 178, 83, .52);
+  background: linear-gradient(90deg, #fff0b2, #fffaf0 62%);
+  box-shadow: inset 4px 0 0 #f1c45d, 0 2px 5px rgba(119, 87, 54, .07);
+}
+
+.oing-rank-row.top30 {
+  border-color: rgba(157, 161, 224, .45);
+  background: linear-gradient(90deg, #e9e7ff, #fffaf2 62%);
+  box-shadow: inset 4px 0 0 #a8a9eb, 0 2px 5px rgba(119, 87, 54, .07);
 }
 
 .oing-rank-row.is-me {
   border-color: rgba(89, 189, 186, .6);
-  background: linear-gradient(90deg, rgba(222, 250, 246, .88), rgba(255,255,255,.8));
+  background: linear-gradient(90deg, #d9faf5, #fffdf5);
+}
+
+.oing-rank-row.can-save-friend.is-pressing,
+.oing-podium-card.can-save-friend.is-pressing {
+  transform: scale(.975);
+  filter: brightness(.97);
 }
 
 .oing-rank-number { color: #a28c7d; font-size: 14px; text-align: center; }
-.oing-rank-avatar { width: 25px; height: 25px; padding: 1px; object-fit: contain; justify-self: center; }
+.oing-rank-change {
+  min-width: 30px;
+  color: #b7a79e;
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+}
+.oing-rank-change.up { color: #2eaa89; }
+.oing-rank-change.down { color: #ed765e; }
+.oing-rank-change.is-new { color: #4b93cf; font-size: 9px; }
+.oing-rank-identity { min-width: 0; }
+.oing-rank-name-line { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .oing-rank-name { min-width: 0; overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.oing-rank-row > strong { color: #ee6684; font-size: 14px; }
-.oing-rank-row > strong::after { content: '점'; margin-left: 1px; font-size: 10px; }
+.oing-rank-hot { flex: 0 0 auto; font-size: 11px; }
+.oing-rank-friend { flex: 0 0 auto; color: #ee6e8c; font-size: 13px; font-weight: 900; }
+.oing-rank-level {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 2px 4px;
+  color: #7c6b62;
+  font-size: 9px;
+  font-weight: 900;
+  white-space: nowrap;
+  border: 1px solid rgba(222, 177, 103, .4);
+  border-radius: 6px;
+  background: rgba(255, 242, 210, .8);
+}
+.oing-podium-meta .oing-rank-level { padding: 1px 3px; font-size: 8px; }
+.oing-podium-meta .oing-rank-change { min-width: 0; font-size: 8px; }
+.oing-rank-tail {
+  display: flex;
+  min-width: 112px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.oing-rank-tail > strong { color: #ee6684; font-size: 13px; white-space: nowrap; }
+.oing-rank-tail > strong::after { content: '점'; margin-left: 1px; font-size: 9px; }
+.oing-rank-tier {
+  padding: 2px 5px;
+  font-size: 8px;
+  font-weight: 900;
+  white-space: nowrap;
+  border-radius: 7px;
+}
+.oing-rank-tier.tier-3,
+.oing-rank-tier.tier-10 { color: #89611e; border: 1px solid #e4b948; background: #fff1b8; }
+.oing-rank-tier.tier-30 { color: #6660a6; border: 1px solid #b3afe8; background: #eeecff; }
 
 .oing-my-rank {
   position: sticky;
@@ -10344,6 +10622,10 @@ img {
   .oing-online-rank-heading { min-height: 46px; padding-left: 36px; }
   .oing-online-rank-heading > img { width: 44px; height: 44px; }
   .oing-online-rank-heading h2 { font-size: 22px; }
+  .oing-rank-hero { margin-bottom: 11px; }
+  .oing-my-rank-main { grid-template-columns: 39px minmax(91px, 1fr) 1px 100px; gap: 6px; }
+  .oing-my-rank-main > img { width: 39px; height: 39px; }
+  .oing-my-rank-next > strong { font-size: 13px; }
   .oing-rank-podium { min-height: 142px; }
   .oing-podium-avatar { width: 38px; height: 38px; }
   .oing-podium-card.rank-1 .oing-podium-avatar { width: 46px; height: 46px; }
@@ -10351,4 +10633,10 @@ img {
   .rank-1 .oing-podium-base { height: 56px; }
   .rank-2 .oing-podium-base { height: 43px; }
   .rank-3 .oing-podium-base { height: 35px; }
+  .oing-rank-row { grid-template-columns: 24px 27px minmax(0, 1fr) auto; padding-right: 6px; }
+  .oing-rank-level { font-size: 8px; padding-inline: 3px; }
+  .oing-rank-name { font-size: 13px; }
+  .oing-rank-tail { min-width: 102px; gap: 3px; }
+  .oing-rank-tier { padding-inline: 4px; font-size: 7px; }
+  .oing-rank-tail > strong { font-size: 12px; }
 }
