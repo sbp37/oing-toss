@@ -111,6 +111,51 @@ test('public web can read OING ranks without pretending to have a native identit
   assert.equal(result.rows[0].score, 9000);
 });
 
+test('Vercel branch previews show labeled sample ranks when the backend is unavailable', async () => {
+  const adapter = createOingOnlineAdapter({
+    scope: {
+      location: {
+        hostname: 'oing-toss-git-preview-sbp37s-projects.vercel.app',
+        origin: 'https://oing-toss-git-preview-sbp37s-projects.vercel.app',
+      },
+    },
+    storage: null,
+    fetchImpl: async () => ({
+      ok: false,
+      json: async () => ({ ok: false, reason: 'offline' }),
+    }),
+  });
+  const weekly = await adapter.leaderboard('weekly');
+  assert.equal(weekly.preview, true);
+  assert.equal(weekly.rows.length, 30);
+  assert.equal(weekly.me.rank, 22);
+  const friends = await adapter.leaderboard('friends');
+  assert.ok(friends.rows.length >= 4);
+  assert.equal((await adapter.setFriend(weekly.rows[5].playerId, true)).ok, true);
+  assert.equal((await adapter.leaderboard('friends')).rows.some((row) => row.playerId === weekly.rows[5].playerId), true);
+});
+
+test('the production Vercel host never substitutes sample rankings', async () => {
+  const adapter = createOingOnlineAdapter({
+    scope: {
+      location: {
+        hostname: 'oing-toss.vercel.app',
+        origin: 'https://oing-toss.vercel.app',
+        search: '?rankingDemo=1',
+      },
+    },
+    storage: null,
+    fetchImpl: async () => ({
+      ok: false,
+      json: async () => ({ ok: false, reason: 'offline' }),
+    }),
+  });
+  const result = await adapter.leaderboard('weekly');
+  assert.equal(result.ok, false);
+  assert.equal(result.preview, undefined);
+  assert.deepEqual(result.rows, []);
+});
+
 test('friend ranking and long-press save use the authenticated OING API', async () => {
   const calls = [];
   const adapter = createOingOnlineAdapter({

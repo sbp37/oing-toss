@@ -31,6 +31,60 @@ function runtimeApiUrl(scope) {
     : DEFAULT_API_URL;
 }
 
+function usesRankingPreviewData(scope) {
+  const location = scope?.location;
+  const hostname = String(location?.hostname || '');
+  if (hostname.endsWith('.vercel.app') && hostname !== 'oing-toss.vercel.app') return true;
+  if (!['localhost', '127.0.0.1'].includes(hostname)) return false;
+  try {
+    return new URLSearchParams(String(location?.search || '')).get('rankingDemo') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function previewPlayerId(rank) {
+  return `00000000-0000-4000-8000-${String(rank).padStart(12, '0')}`;
+}
+
+function previewLeaderboard(mode, friendIds) {
+  const rows = Array.from({ length: 30 }, (_, index) => {
+    const rank = index + 1;
+    return {
+      playerId: previewPlayerId(rank),
+      rank,
+      nickname: rank === 22 ? '내고양이' : `오잉냥${String(rank).padStart(2, '0')}`,
+      score: 19060 - rank * 520,
+      isMe: rank === 22,
+      isFriend: friendIds.has(previewPlayerId(rank)),
+      hot: [5, 8, 12].includes(rank),
+      rankDelta: rank === 22 ? 43 : rank % 4 === 0 ? 2 : rank % 6 === 0 ? -2 : 0,
+      isNew: rank === 13,
+    };
+  });
+  if (mode === 'all') {
+    rows.forEach((row) => {
+      row.score = Math.round(row.score * 1.8);
+      row.rankDelta = null;
+      row.isNew = false;
+    });
+  }
+  const visible = mode === 'friends'
+    ? rows
+      .filter((row) => row.isMe || row.isFriend)
+      .sort((a, b) => b.score - a.score)
+      .map((row, index) => ({ ...row, rank: index + 1 }))
+    : rows;
+  const me = visible.find((row) => row.isMe) || null;
+  if (me) {
+    me.previousRank = mode === 'all' ? null : mode === 'friends' ? me.rank + 1 : 65;
+    me.scoreToNext = me.rank > 1
+      ? Math.max(1, Number(visible[me.rank - 2]?.score || me.score) - Number(me.score) + 1)
+      : 0;
+  }
+  return { ok: true, preview: true, rows: visible, me };
+}
+
 async function responseJson(response) {
   if (!response) return null;
   try { return await response.json(); } catch { return null; }
@@ -48,6 +102,8 @@ export function createOingOnlineAdapter({
   let player = null;
   let bootstrapPromise = null;
   let activeRun = null;
+  const previewMode = usesRankingPreviewData(scope);
+  const previewFriendIds = new Set([2, 4, 8, 12].map(previewPlayerId));
 
   const request = async (action, body = null, { query = '' } = {}) => {
     if (typeof fetchImpl !== 'function') return null;
@@ -169,10 +225,18 @@ export function createOingOnlineAdapter({
       const result = await request('leaderboard', null, {
         query: `?action=leaderboard&mode=${normalized}`,
       });
-      return result?.ok ? result : { ok: false, reason: result?.reason || 'offline', rows: [] };
+      if (result?.ok) return result;
+      return previewMode
+        ? previewLeaderboard(normalized, previewFriendIds)
+        : { ok: false, reason: result?.reason || 'offline', rows: [] };
     },
 
     async setFriend(playerId, saved = true) {
+      if (previewMode) {
+        if (saved) previewFriendIds.add(playerId);
+        else previewFriendIds.delete(playerId);
+        return { ok: true, preview: true, friendship: { saved } };
+      }
       const identity = await bootstrap();
       if (!identity.ok) return identity;
       const result = await request('friend', { playerId, saved });
@@ -312,7 +376,9 @@ export class OingLeaderboardView {
       return;
     }
     const rows = Array.isArray(result.rows) ? result.rows : [];
-    status.textContent = rows.length
+    status.textContent = result.preview
+      ? '미리보기용 샘플 랭킹이다냥'
+      : rows.length
       ? ''
       : this.mode === 'friends'
         ? '친구를 저장하면 여기서 함께 겨룰 수 있다냥!'
