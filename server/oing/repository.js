@@ -80,10 +80,6 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
             w.achieved_at,
             dense_rank() OVER (ORDER BY w.score DESC, w.achieved_at ASC) AS rank,
             (w.player_id <> ${playerId}::uuid) AS is_friend,
-            LEAST(20, 1 + floor(sqrt((
-              SELECT count(*)::numeric FROM oing_runs activity
-              WHERE activity.player_id = w.player_id AND activity.status = 'accepted'
-            )))::integer) AS level,
             (w.achieved_at >= now() - interval '24 hours') AS hot
           FROM weekly_best w
           JOIN oing_players p ON p.id = w.player_id
@@ -103,10 +99,6 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
               SELECT 1 FROM oing_friendships f
               WHERE f.owner_player_id = ${playerId}::uuid AND f.friend_player_id = b.player_id
             ) END AS is_friend,
-            LEAST(20, 1 + floor(sqrt((
-              SELECT count(*)::numeric FROM oing_runs activity
-              WHERE activity.player_id = b.player_id AND activity.status = 'accepted'
-            )))::integer) AS level,
             (b.achieved_at >= now() - interval '24 hours') AS hot
           FROM oing_leaderboard_best b
           JOIN oing_players p ON p.id = b.player_id
@@ -132,10 +124,6 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
               SELECT 1 FROM oing_friendships f
               WHERE f.owner_player_id = ${playerId}::uuid AND f.friend_player_id = w.player_id
             ) END AS is_friend,
-            LEAST(20, 1 + floor(sqrt((
-              SELECT count(*)::numeric FROM oing_runs activity
-              WHERE activity.player_id = w.player_id AND activity.status = 'accepted'
-            )))::integer) AS level,
             (w.achieved_at >= now() - interval '24 hours') AS hot
           FROM weekly_best w
           JOIN oing_players p ON p.id = w.player_id
@@ -154,10 +142,6 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
             SELECT b.player_id, p.nickname, b.score, b.achieved_at,
               dense_rank() OVER (ORDER BY b.score DESC, b.achieved_at ASC) AS rank,
               false AS is_friend,
-              LEAST(20, 1 + floor(sqrt((
-                SELECT count(*)::numeric FROM oing_runs activity
-                WHERE activity.player_id = b.player_id AND activity.status = 'accepted'
-              )))::integer) AS level,
               (b.achieved_at >= now() - interval '24 hours') AS hot
             FROM oing_leaderboard_best b JOIN oing_players p ON p.id = b.player_id
           ) SELECT * FROM ranked WHERE player_id = ${playerId}
@@ -173,10 +157,6 @@ export async function leaderboard({ mode = 'weekly', limit = 100, playerId = nul
             SELECT w.player_id, p.nickname, w.score, w.achieved_at,
               dense_rank() OVER (ORDER BY w.score DESC, w.achieved_at ASC) AS rank,
               false AS is_friend,
-              LEAST(20, 1 + floor(sqrt((
-                SELECT count(*)::numeric FROM oing_runs activity
-                WHERE activity.player_id = w.player_id AND activity.status = 'accepted'
-              )))::integer) AS level,
               (w.achieved_at >= now() - interval '24 hours') AS hot
             FROM weekly_best w JOIN oing_players p ON p.id = w.player_id
           ) SELECT * FROM ranked WHERE player_id = ${playerId}

@@ -198,15 +198,6 @@ function rankChange(entry) {
     : { text: `▼${Math.abs(delta)}`, className: 'down' };
 }
 
-function levelBadge(entry) {
-  const level = Math.max(1, Math.min(20, Math.round(Number(entry?.level) || 1)));
-  const badge = document.createElement('span');
-  badge.className = 'oing-rank-level';
-  badge.textContent = `${level >= 11 ? '💎' : level >= 7 ? '🧶' : level >= 4 ? '🏠' : level >= 2 ? '🍡' : '🌱'} Lv.${level}`;
-  badge.setAttribute('aria-label', `오잉 레벨 ${level}`);
-  return badge;
-}
-
 function tierBadge(rank) {
   const value = Number(rank);
   if (value > 30) return null;
@@ -340,11 +331,18 @@ export class OingLeaderboardView {
       avatar.src = 'assets/characters/cat-idle.webp';
       avatar.alt = '';
       avatar.decoding = 'async';
+      const identity = document.createElement('div');
+      identity.className = 'oing-podium-identity';
       const name = document.createElement('strong');
-      name.textContent = `${entry.nickname}${entry.isFriend ? ' ♡' : ''}`;
-      const meta = document.createElement('div');
-      meta.className = 'oing-podium-meta';
-      meta.append(levelBadge(entry));
+      name.textContent = entry.nickname;
+      identity.append(name);
+      if (!entry.isMe) {
+        const friend = document.createElement('span');
+        friend.className = `oing-rank-friend${entry.isFriend ? ' is-saved' : ''}`;
+        friend.textContent = entry.isFriend ? '♥' : '♡';
+        friend.setAttribute('aria-hidden', 'true');
+        identity.append(friend);
+      }
       const changeData = rankChange(entry);
       const rankBadge = document.createElement('span');
       rankBadge.className = `oing-podium-rank-badge ${changeData.className}`;
@@ -354,7 +352,7 @@ export class OingLeaderboardView {
       const base = document.createElement('span');
       base.className = 'oing-podium-base';
       base.textContent = rankMedal(entry.rank);
-      card.append(crown, avatar, rankBadge, meta, name, score, base);
+      card.append(crown, avatar, rankBadge, identity, score, base);
       this.bindFriendPress(card, entry);
       podium.append(card);
     });
@@ -373,16 +371,16 @@ export class OingLeaderboardView {
       identity.className = 'oing-rank-identity';
       const nameLine = document.createElement('div');
       nameLine.className = 'oing-rank-name-line';
-      nameLine.append(levelBadge(entry));
       const name = document.createElement('span');
       name.className = 'oing-rank-name';
       name.textContent = entry.nickname;
       nameLine.append(name);
-      if (entry.isFriend) {
+      if (!entry.isMe) {
         const friend = document.createElement('span');
-        friend.className = 'oing-rank-friend';
-        friend.textContent = '♡';
-        friend.title = '저장한 친구';
+        friend.className = `oing-rank-friend${entry.isFriend ? ' is-saved' : ''}`;
+        friend.textContent = entry.isFriend ? '♥' : '♡';
+        friend.title = entry.isFriend ? '저장한 친구' : '꾹 눌러 친구 저장';
+        friend.setAttribute('aria-hidden', 'true');
         nameLine.append(friend);
       }
       if (entry.hot) {

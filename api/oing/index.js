@@ -57,7 +57,6 @@ function publicRankRow(row, playerId) {
     achievedAt: row.achieved_at,
     isMe: Boolean(playerId && row.player_id === playerId),
     isFriend: Boolean(row.is_friend),
-    level: Number(row.level) || 1,
     hot: Boolean(row.hot),
     rankDelta: row.rank_delta === null || row.rank_delta === undefined ? null : Number(row.rank_delta),
     isNew: Boolean(row.is_new),

@@ -535,12 +535,9 @@ class OingGame {
         ? '기존 토스 랭킹 보기'
         : 'Google Play 랭킹 보기';
     }
-    void this.oingOnline.bootstrap().then((result) => {
-      const jelly = document.querySelector('#oing-rank-jelly');
-      if (!jelly || !result?.ok) return;
-      jelly.textContent = Number(result.player?.jelly || 0).toLocaleString('ko-KR');
-      jelly.hidden = false;
-    });
+    // 젤리는 꾸미기 상점이 준비될 때까지 서버에서만 적립한다. 별사탕과
+    // 역할이 다른 재화를 숫자만 먼저 노출하면 신규 이용자가 헷갈린다.
+    void this.oingOnline.bootstrap();
   }
 
   // 플레이 상단의 랭킹: 시계부터 멈춘다. 일시정지 오버레이가 함께 열리므로
@@ -2945,12 +2942,6 @@ class OingGame {
   async refreshOingLeaderboard() {
     const result = await this.oingOnline.leaderboard(this.oingLeaderboardView.mode);
     this.oingLeaderboardView.render(result);
-    const player = this.oingOnline.getPlayer();
-    const jelly = document.querySelector('#oing-rank-jelly');
-    if (jelly && player) {
-      jelly.textContent = Number(player.jelly || 0).toLocaleString('ko-KR');
-      jelly.hidden = false;
-    }
   }
 
   async toggleOingFriend(entry) {
