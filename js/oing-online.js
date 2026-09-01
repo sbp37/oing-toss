@@ -402,23 +402,27 @@ export class OingLeaderboardView {
       const name = document.createElement('strong');
       name.textContent = entry.nickname;
       identity.append(name);
-      if (!entry.isMe) {
-        const friend = document.createElement('span');
-        friend.className = `oing-rank-friend${entry.isFriend ? ' is-saved' : ''}`;
-        friend.textContent = entry.isFriend ? '♥' : '♡';
-        friend.setAttribute('aria-hidden', 'true');
-        identity.append(friend);
-      }
       const changeData = rankChange(entry);
       const rankBadge = document.createElement('span');
       rankBadge.className = `oing-podium-rank-badge ${changeData.className}`;
       rankBadge.textContent = `${podiumRankLabel(entry.rank)}  ${changeData.text}`;
+      const scoreLine = document.createElement('div');
+      scoreLine.className = 'oing-podium-score-line';
+      if (entry.isFriend) {
+        const friend = document.createElement('span');
+        friend.className = 'oing-rank-friend is-saved';
+        friend.textContent = '♥';
+        friend.title = '저장한 친구';
+        friend.setAttribute('aria-hidden', 'true');
+        scoreLine.append(friend);
+      }
       const score = document.createElement('b');
       score.textContent = `${Number(entry.score).toLocaleString('ko-KR')}점`;
+      scoreLine.append(score);
       const base = document.createElement('span');
       base.className = 'oing-podium-base';
       base.textContent = rankMedal(entry.rank);
-      card.append(crown, avatar, rankBadge, identity, score, base);
+      card.append(crown, avatar, rankBadge, identity, scoreLine, base);
       this.bindFriendPress(card, entry);
       podium.append(card);
     });
@@ -441,14 +445,6 @@ export class OingLeaderboardView {
       name.className = 'oing-rank-name';
       name.textContent = entry.nickname;
       nameLine.append(name);
-      if (!entry.isMe) {
-        const friend = document.createElement('span');
-        friend.className = `oing-rank-friend${entry.isFriend ? ' is-saved' : ''}`;
-        friend.textContent = entry.isFriend ? '♥' : '♡';
-        friend.title = entry.isFriend ? '저장한 친구' : '꾹 눌러 친구 저장';
-        friend.setAttribute('aria-hidden', 'true');
-        nameLine.append(friend);
-      }
       if (entry.hot) {
         const hot = document.createElement('span');
         hot.className = 'oing-rank-hot';
@@ -459,6 +455,14 @@ export class OingLeaderboardView {
       identity.append(nameLine);
       const tail = document.createElement('div');
       tail.className = 'oing-rank-tail';
+      if (entry.isFriend) {
+        const friend = document.createElement('span');
+        friend.className = 'oing-rank-friend is-saved';
+        friend.textContent = '♥';
+        friend.title = '저장한 친구';
+        friend.setAttribute('aria-hidden', 'true');
+        tail.append(friend);
+      }
       const badge = tierBadge(entry.rank);
       if (badge) tail.append(badge);
       const score = document.createElement('strong');
