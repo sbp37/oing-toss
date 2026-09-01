@@ -95,6 +95,7 @@ import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
 import { gameLeaderboardAdapter } from './leaderboard.js';
+import { OingLeaderboardView, oingOnlineAdapter } from './oing-online.js';
 import { RunTelemetry, clearTelemetryRuns, getLocalTelemetrySummary, readTelemetryRuns } from './telemetry.js';
 import { preloadPlayAssets, preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import { installBackNavigation, pauseFamilyOpen } from './navigation.js';
@@ -219,6 +220,10 @@ class OingGame {
     this.startSequenceId = 0;
     this.runId = 0;
     this.activeRunId = 0;
+    this.activeOnlineRunId = '';
+    this.oingOnline = oingOnlineAdapter;
+    this.oingLeaderboardView = new OingLeaderboardView(document.querySelector('#online-ranking-overlay'));
+    this.oingLeaderboardView.onModeChange = () => this.refreshOingLeaderboard();
     this.startCountdownInProgress = false;
     this.resumeNeedsCountdown = false;
     this.activePauseOverlay = 'pause-overlay';
@@ -406,8 +411,8 @@ class OingGame {
     document.querySelector('#record-tab-stats')?.addEventListener('click', () => this.ui.setRecordTab('stats'));
     document.querySelector('#record-tab-cards')?.addEventListener('click', () => this.ui.setRecordTab('cards'));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
-    document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openGameLeaderboard());
-    document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openGameLeaderboard());
+    document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openOingLeaderboard());
+    document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openOingLeaderboard());
     document.querySelector('#result-invite-button')?.addEventListener('click', () => this.openContactsInviteReward());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
@@ -420,6 +425,11 @@ class OingGame {
       this.setResultTucked(false);
       this.start(1, { classic: true });
     });
+    document.querySelector('#online-ranking-close')?.addEventListener('click', () => {
+      this.ui.setOverlay('online-ranking-overlay', false);
+      this.setResultTucked(false);
+    });
+    document.querySelector('#oing-native-rank-button')?.addEventListener('click', () => this.openGameLeaderboard());
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
     document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
     document.querySelector('#chapter-viewer-close').addEventListener('click', () => this.ui.setOverlay('chapter-viewer', false));
@@ -512,23 +522,30 @@ class OingGame {
     this.leaderboardAvailable = gameLeaderboardAdapter.isSupportedEnvironment()
       ? await gameLeaderboardAdapter.isAvailable()
       : false;
+    const nativeButton = document.querySelector('#oing-native-rank-button');
+    if (nativeButton) {
+      nativeButton.hidden = !this.leaderboardAvailable;
+      const label = nativeButton.querySelector('span');
+      if (label) label.textContent = gameLeaderboardAdapter.isTossEnvironment()
+        ? '기존 토스 랭킹 보기'
+        : 'Google Play 랭킹 보기';
+    }
+    void this.oingOnline.bootstrap().then((result) => {
+      const jelly = document.querySelector('#oing-rank-jelly');
+      if (!jelly || !result?.ok) return;
+      jelly.textContent = Number(result.player?.jelly || 0).toLocaleString('ko-KR');
+      jelly.hidden = false;
+    });
   }
 
   // 플레이 상단의 랭킹: 시계부터 멈춘다. 일시정지 오버레이가 함께 열리므로
   // 네이티브 창에서 돌아와도 '계속하기'가 기다리고 있다.
   openLeaderboardFromPlay() {
-    // 랭킹이 없는 환경(웹·원스토어)에서는 안내만 띄운다. 예전에는 무조건
-    // 먼저 일시정지시켜서, 웹에서 랭킹을 누르면 일시정지 화면이 뜨고
-    // 토스트가 그 뒤에 깔렸다 - "랭킹이 일시정지 화면으로 연결된다"는
-    // 제보의 정체다. 게임은 그대로 굴러간다.
-    if (!this.leaderboardAvailable) {
-      this.openGameLeaderboard();
-      return;
-    }
-    // 토스에서는 네이티브 창이 뜨는 동안 시계가 돌면 안 되므로 먼저 멈춘다.
-    // 일시정지 화면이 함께 열려 돌아왔을 때 '계속하기'가 기다린다.
+    // The custom sheet is in-app, but reading it must not consume the clock.
+    // The existing pause flow remains underneath so closing the sheet leaves
+    // an explicit continue choice instead of silently restarting the timer.
     if (this.state.running && !this.state.paused) this.pause('leaderboard');
-    this.openGameLeaderboard();
+    this.openOingLeaderboard();
   }
 
   // Retry/restart keep whatever mode is on screen — a classic run retries
@@ -606,6 +623,7 @@ class OingGame {
     stopMusic();
     const sequenceId = ++this.startSequenceId;
     this.activeRunId = ++this.runId;
+    this.activeOnlineRunId = `${Date.now().toString(36)}-${this.activeRunId}-${Math.random().toString(36).slice(2, 8)}`;
     this.ui.cancelStartCountdown();
     this.startCountdownInProgress = false;
     this.resumeNeedsCountdown = false;
@@ -661,6 +679,7 @@ class OingGame {
         chapterLabel: '',
       }
       : null;
+    if (this.classic && !this.runtime.testMode) void this.oingOnline.startRun(this.activeOnlineRunId);
     if (!this.classic) this.ui.setChapter(null);
     this.state = this.freshState(
       this.classic ? classicRoundForBoard(this.classic.boardIndex) : startStage,
@@ -1304,6 +1323,7 @@ class OingGame {
     const { previousCombo, earnedDrop } = this.advanceCombo(comboGain);
     const comboMilestone = comboMilestoneCrossed(previousCombo, this.state.combo);
     this.state.successCount += 1;
+    if (!this.runtime.testMode) this.oingOnline.recordSuccess();
     this.state.consecutiveFailures = 0;
     this.state.maxClearCells = Math.max(this.state.maxClearCells, clearedCellCount);
     // 5칸 이상은 WOW와 같은 기준이다 - 도감의 "한 번에 크게 지우기" 카드가
@@ -2906,15 +2926,37 @@ class OingGame {
     this.ui.setOverlay('ranking-overlay', true);
   }
 
+  async openOingLeaderboard() {
+    if (document.querySelector('#result-screen')?.classList.contains('is-active')) {
+      this.setResultTucked(true);
+    }
+    this.oingLeaderboardView.setLoading();
+    const nativeButton = document.querySelector('#oing-native-rank-button');
+    if (nativeButton) nativeButton.hidden = !this.leaderboardAvailable;
+    this.ui.setOverlay('online-ranking-overlay', true);
+    await this.refreshOingLeaderboard();
+  }
+
+  async refreshOingLeaderboard() {
+    const result = await this.oingOnline.leaderboard(this.oingLeaderboardView.mode);
+    this.oingLeaderboardView.render(result);
+    const player = this.oingOnline.getPlayer();
+    const jelly = document.querySelector('#oing-rank-jelly');
+    if (jelly && player) {
+      jelly.textContent = Number(player.jelly || 0).toLocaleString('ko-KR');
+      jelly.hidden = false;
+    }
+  }
+
   async openGameLeaderboard() {
     if (!this.leaderboardAvailable) {
       this.ui.toast('랭킹은 토스나 Google Play 앱에서 열린다냥!');
       return;
     }
-    // 세 자리(홈·결과·플레이 상단) 어디서 눌렀든 중복 실행만 막으면 된다.
-    const buttons = ['#home-leaderboard-button', '#result-leaderboard-button', '#hud-leaderboard-button']
-      .map((selector) => document.querySelector(selector))
-      .filter(Boolean);
+    // 자체 오잉 랭킹 안의 보조 버튼만 네이티브 랭킹을 연다. 홈·결과·HUD의
+    // 주 버튼은 자체 랭킹 입구이므로 네이티브 창을 여는 동안 비활성화하면
+    // 사용자가 돌아온 뒤 엉뚱한 버튼까지 잠깐 잠기는 것처럼 보인다.
+    const buttons = [document.querySelector('#oing-native-rank-button')].filter(Boolean);
     if (this.leaderboardOpening) return;
     this.leaderboardOpening = true;
     buttons.forEach((button) => { button.disabled = true; });
@@ -3087,6 +3129,15 @@ class OingGame {
       void gameLeaderboardAdapter.submitClassicScoreOnce({
         runId: this.activeRunId,
         score: this.state.score,
+      });
+      // Keep the native board intact while the shared OING board records the
+      // same completed run. Neither network path may block the result sheet.
+      void this.oingOnline.finishRun({
+        clientRunId: this.activeOnlineRunId,
+        score: this.state.score,
+        successCount: this.state.successCount,
+        boards: this.classic.boardsPlayed,
+        maxCombo: this.state.maxCombo,
       });
     }
     this.refreshClassicRecordSurfaces();
