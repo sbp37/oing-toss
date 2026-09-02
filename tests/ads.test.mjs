@@ -232,7 +232,7 @@ test('ads.js exposes the guard the reload path needs', async () => {
   // 끝난 뒤에는 방금 쓴 자리와 미뤄 둔 것을 순차로 채운다.
   const fin = ads.slice(ads.indexOf('} finally {', ads.indexOf('export async function showAd')));
   assert.match(fin, /const pending = \[kind, \.\.\.deferredLoads\]/);
-  assert.match(fin, /for \(const next of pending\) \{[\s\S]{0,60}await preloadAd\(next\)/);
+  assert.match(fin, /for \(const next of pending\) \{[\s\S]{0,60}await preloadKind\(next\)/);
 });
 
 test('the two ad slots are filled one after the other at run start', async () => {

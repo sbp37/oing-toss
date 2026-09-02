@@ -1198,12 +1198,12 @@ export class GameUI {
   // TIME UP 이어하기 제안. 'watch' | 'decline'을 돌려준다. 제한 시간이
   // 지나면 자동으로 결과로 넘어간다 - 광고를 볼 생각이 없는 사람을 오래
   // 붙잡는 쪽이 더 나쁘다.
-  showContinueOffer(seconds = 30, timeoutMs = 5000) {
+  showContinueOffer(seconds = 30, timeoutMs = 5000, hints = 1) {
     const overlay = document.querySelector('#continue-overlay');
     if (!overlay) return Promise.resolve('decline');
     this.hydrateDeferredImages(overlay);
     const strong = overlay.querySelector('#continue-watch-button strong');
-    if (strong) strong.textContent = `+${Math.round(seconds)}초`;
+    if (strong) strong.textContent = `+${Math.round(seconds)}초 · 힌트 ${Math.max(0, Math.round(hints))}`;
     this.setOverlay('continue-overlay', true);
     return new Promise((resolve) => {
       const watch = overlay.querySelector('#continue-watch-button');

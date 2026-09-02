@@ -77,12 +77,23 @@ import {
   isNiceClear,
   AD_CONTINUE_OFFER_MS,
   AD_CONTINUE_SECONDS,
+  AD_CONTINUE_HINTS,
   AD_HELP_PACK,
   AD_HELP_PACK_MIN_SECONDS,
   candyForRun,
   CANDY_STARTER_MINIMUM,
 } from './data.js';
-import { adReady, adsAvailable, onAdReadyChange, preloadAd, showAd } from './ads.js';
+import {
+  adReady,
+  adsAvailable,
+  onAdReadyChange,
+  preloadAd,
+  preloadInterstitial,
+  showAd,
+  showInterstitial,
+} from './ads.js';
+import { INTERSTITIAL_RUN_INTERVAL, interstitialDecision } from './ad-pacing.js';
+import { recordPromotionRunAndGrant } from './promotions.js';
 import { installCandyFeeding } from './candy.js';
 import { SHARE_REWARD_MODULE_ID } from './data.js';
 import { challengeScore, clearChallengeIfWon, isFreshChallenge, markChallengeSeen, receiveChallenge } from './challenge.js';
@@ -235,9 +246,13 @@ class OingGame {
     this.adContinueOffering = false;
     this.adStampedTimeUp = false;
     this.adHelpPackUsed = false;
+    this.rewardedAdShownThisRun = false;
     this.adShowing = false;
     this.adFlowActive = false;
     this.adRefillShowing = false;
+    this.completedRunsSinceInterstitial = 0;
+    this.interstitialDueAfterLastRun = false;
+    this.interstitialTransitioning = false;
     this.pendingShareHints = 0;
     this.inviteOpening = false;
     // 친구 초대 버튼은 토스 안 + 모듈 ID가 있을 때만 존재한다.
@@ -381,10 +396,10 @@ class OingGame {
     // Classic is the only mode reachable from the UI now — every "play"
     // entry point launches it. The stage ladder stays in the codebase (test
     // harness, tests/) but nothing on screen starts it any more.
-    document.querySelector('#start-button').addEventListener('click', () => this.start(1, { classic: true }));
-    document.querySelector('#retry-button').addEventListener('click', () => this.startCurrentMode({ quickCountdown: true }));
+    document.querySelector('#start-button').addEventListener('click', () => this.startClassicFromEntry());
+    document.querySelector('#retry-button').addEventListener('click', () => this.startClassicFromEntry({ quickCountdown: true }));
     document.querySelector('#restart-button').addEventListener('click', () => this.requestRestart());
-    document.querySelector('#home-button').addEventListener('click', () => this.goHome());
+    document.querySelector('#home-button').addEventListener('click', () => this.leaveResultForHome());
     document.querySelector('#pause-button').addEventListener('click', () => this.pause());
     document.querySelector('#resume-button').addEventListener('click', () => this.resume());
     document.querySelector('#play-help-button').addEventListener('click', () => this.openHelp());
@@ -418,7 +433,7 @@ class OingGame {
     document.querySelector('#ranking-play-button').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
       this.setResultTucked(false);
-      this.start(1, { classic: true });
+      this.startClassicFromEntry();
     });
     document.querySelector('#home-garden-button').addEventListener('click', () => this.openGarden());
     document.querySelector('#garden-close').addEventListener('click', () => this.ui.setOverlay('garden-overlay', false));
@@ -426,7 +441,7 @@ class OingGame {
     document.querySelector('#chapter-viewer-share')?.addEventListener('click', () => this.shareChapter());
     document.querySelector('#garden-play-button').addEventListener('click', () => {
       this.ui.setOverlay('garden-overlay', false);
-      this.start(1, { classic: true });
+      this.startClassicFromEntry();
     });
     const toggleSound = () => {
       this.settings.sound = !this.settings.sound;
@@ -539,6 +554,67 @@ class OingGame {
       : options);
   }
 
+  async runInterstitialTransition(action) {
+    if (this.interstitialTransitioning) return false;
+    this.interstitialTransitioning = true;
+    try {
+      if (this.interstitialDueAfterLastRun && adsAvailable('interstitial')) {
+        this.adShowing = true;
+        pauseMusic();
+        try {
+          await showInterstitial();
+        } finally {
+          this.adShowing = false;
+          // 한 번 시도한 광고를 다음 전환까지 끌고 가지 않는다. 광고 재고나
+          // 네트워크 문제 때문에 홈/재시작 버튼을 누를 때마다 다시 붙잡히면
+          // 수익보다 이탈이 커진다.
+          this.completedRunsSinceInterstitial = 0;
+          this.interstitialDueAfterLastRun = false;
+        }
+      }
+      await action();
+      return true;
+    } finally {
+      this.interstitialTransitioning = false;
+    }
+  }
+
+  startClassicFromEntry(options = {}) {
+    return this.runInterstitialTransition(
+      () => this.start(1, { ...options, classic: true }),
+    );
+  }
+
+  leaveResultForHome() {
+    return this.runInterstitialTransition(() => this.goHome());
+  }
+
+  async showInterstitialAfterResult() {
+    // 결과 점수는 먼저 보인다. 3판 보상을 확인하기도 전에 광고가 덮으면
+    // 보상을 미끼로 가린 것처럼 느껴지므로 짧게 한 박자를 둔다.
+    await delay(1200);
+    if (!this.interstitialDueAfterLastRun) return false;
+    if (!document.querySelector('#result-screen')?.classList.contains('is-active')) return false;
+    return this.runInterstitialTransition(() => Promise.resolve());
+  }
+
+  markCompletedRunForInterstitial() {
+    this.completedRunsSinceInterstitial += 1;
+    const decision = interstitialDecision({
+      completedRuns: this.completedRunsSinceInterstitial,
+      rewardedShown: this.rewardedAdShownThisRun,
+    });
+    this.interstitialDueAfterLastRun = decision.due;
+    if (decision.reset) this.completedRunsSinceInterstitial = 0;
+
+    // 둘째 판 결과부터 미리 채워 두면 셋째 판 결과가 뜬 직후 기다리지 않고
+    // 보여줄 수 있다. 그룹이 없거나 토스 밖이면 조용히 false다.
+    if (
+      this.completedRunsSinceInterstitial === INTERSTITIAL_RUN_INTERVAL - 1
+      || this.interstitialDueAfterLastRun
+    ) void preloadInterstitial();
+  }
+
   // The scene behind the board for the board the run is on. Reaching it is
   // what unlocks it in the gallery, so the mark happens here — at the moment
   // the player actually sees it — not when a run ends.
@@ -621,6 +697,7 @@ class OingGame {
     this.adContinueOffering = false;
     this.adStampedTimeUp = false;
     this.adHelpPackUsed = false;
+    this.rewardedAdShownThisRun = false;
     // 순차로 불러온다. 공식 문서가 한 번에 하나씩 load -> show -> 다음 load를
     // 권하고, 여러 그룹을 연달아 부르면 이벤트가 누락되던 사례가 안드로이드
     // 특정 버전에 기록돼 있다. 병렬로 얻을 것도 없다 - 이어하기는 판 끝,
@@ -2534,7 +2611,11 @@ class OingGame {
     await this.ui.stampTimeUp(this.state.score);
     this.ui.clearTimeUpStamp();
 
-    const choice = await this.ui.showContinueOffer(AD_CONTINUE_SECONDS, AD_CONTINUE_OFFER_MS);
+    const choice = await this.ui.showContinueOffer(
+      AD_CONTINUE_SECONDS,
+      AD_CONTINUE_OFFER_MS,
+      AD_CONTINUE_HINTS,
+    );
     if (choice !== 'watch') {
       this.adContinueOffering = false;
       this.finishing = false;
@@ -2568,13 +2649,17 @@ class OingGame {
     // 광고가 알려준 콘솔 등록값을 우선한다 - 콘솔에서 바꾸면 그대로 반영.
     const seconds = amount > 0 ? amount : AD_CONTINUE_SECONDS;
     this.state.timeLeft = seconds;
+    this.grantItems({ hint: AD_CONTINUE_HINTS }, { source: 'ad-continue' });
     this.lowTimeSpoken = false;
     this.state.inputLocked = false;
     this.inputGuardUntil = performance.now() + 150;
     this.telemetry?.itemUsed('ad-continue');
     this.adStampedTimeUp = false;
     this.ui.showTimeNotice(`+${seconds}초!`);
-    this.ui.showCenterNotice(`+${seconds}초 이어간다냥!`, 1400);
+    this.ui.showCenterNotice(`+${seconds}초 이어간다냥!`, 1600, {
+      detail: `힌트 +${AD_CONTINUE_HINTS}도 챙겼다냥`,
+    });
+    this.ui.flashItemStock(['hint']);
     this.ui.setPlayCharacter('cheer', 1200);
     this.showCatMessage('adContinue', { force: true });
     roundHaptic();
@@ -2618,7 +2703,9 @@ class OingGame {
     this.adShowing = true;
     pauseMusic();
     try {
-      return await showAd(kind);
+      const result = await showAd(kind);
+      if (result.shown) this.rewardedAdShownThisRun = true;
+      return result;
     } finally {
       this.adShowing = false;
       if (this.settings.music && this.state.running && !this.state.paused) playMusic();
@@ -2775,6 +2862,12 @@ class OingGame {
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
     this.commitLifetimeTotals();
+    if (!this.runtime.testMode) {
+      this.markCompletedRunForInterstitial();
+      void recordPromotionRunAndGrant({
+        onGranted: (reward) => this.ui.toast(`토스포인트 ${reward.amount}원 받았다냥!`),
+      });
+    }
     const cardAward = this.cardsUnlockedThisRun();
     // The garden reveal is the run's second scoreboard. Capture the previous
     // best before saving so the result card can tell the player they beat it.
@@ -2806,6 +2899,7 @@ class OingGame {
     };
     this.retryStage = 1;
     this.ui.showResult(this.lastResultSummary);
+    void this.showInterstitialAfterResult();
     if (!this.runtime.testMode && recordEligible) {
       storageAdapter.saveRunScore(this.state.score);
       storageAdapter.rememberResultMessage(resultReaction.message);
@@ -3011,6 +3105,12 @@ class OingGame {
       ? this.state.catsCollected
       : storageAdapter.addCatsRescued(this.state.catsCollected);
     this.commitLifetimeTotals();
+    if (!this.runtime.testMode) {
+      this.markCompletedRunForInterstitial();
+      void recordPromotionRunAndGrant({
+        onGranted: (reward) => this.ui.toast(`토스포인트 ${reward.amount}원 받았다냥!`),
+      });
+    }
     // 도전장은 판이 끝난 값으로 판정한다. 이어하기로 늘어난 점수도 그대로
     // 포함된다 - 광고를 봐서 이겼든 한 번에 이겼든 이긴 건 이긴 거다.
     //
@@ -3112,6 +3212,7 @@ class OingGame {
       }
     }
     this.ui.showResult(this.lastResultSummary);
+    void this.showInterstitialAfterResult();
     this.finishing = false;
   }
 

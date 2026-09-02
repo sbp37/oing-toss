@@ -366,7 +366,18 @@ export const AD_GROUP_IDS = Object.freeze({
   // 함께 실기로 하면서 그룹을 나눌 이유가 없어졌다. 콘솔에서 이 그룹의
   // 보상 단위를 '도움팩 / 1'로 바꿔 두면 기록이 실제와 맞는다.
   helpPack: 'ait.v2.live.25b08bdac78f4af5',
+  // 전면 광고 그룹은 콘솔에서 새로 만든 뒤 채운다. 빈 값인 동안에는 3판
+  // 페이싱 코드가 있어도 광고를 요청하지 않으므로 기존 출시판과 똑같이 돈다.
+  interstitial: 'ait.v2.live.ac4b84cb53c84a7a',
 });
+
+// 토스 포인트 프로모션 코드는 콘솔 검토를 요청한 뒤 발급된다. 첫 판/3판
+// 완료를 각각 별도 프로모션으로 등록하고 받은 코드를 여기에 넣는다.
+// 빈 값은 기능 OFF다. 코드를 받기 전 빌드가 실수로 포인트 API를 부르지 않는다.
+export const PROMOTION_RUN_REWARDS = Object.freeze([
+  Object.freeze({ key: 'firstRun', runs: 1, amount: 1, promotionCode: '01M1HB4TQNX01M5KD2M2682WDJ' }),
+  Object.freeze({ key: 'threeRuns', runs: 3, amount: 3, promotionCode: '01M1HBBTSRE3MBWNDXVXNWCZQT' }),
+]);
 
 // 친구 공유 리워드(토스 콘솔 '공유 리워드'의 UUID). 친구에게 초대장을
 // 보낸 만큼 힌트를 받는다. 받은 힌트는 다음 판 시작에 지급된다 - 판 재고는
@@ -452,6 +463,10 @@ export function withChallengeParam(path = '', score = 0) {
 // 우선한다 - 콘솔에서 수량을 바꾸면 새 빌드 없이 그대로 반영된다.
 // 이 상수는 버튼 문구와, 수량이 안 내려온 경우의 기본값이다.
 export const AD_CONTINUE_SECONDS = 30;
+
+// 이어하기 광고는 시간뿐 아니라 다음 수를 찾을 힌트 하나도 준다. 긴 광고를
+// 보고 돌아온 직후 막혀서 끝나는 느낌을 줄이고, 버튼 문구와 실제 지급을 맞춘다.
+export const AD_CONTINUE_HINTS = 1;
 
 // 이어하기 제안을 보여주는 시간. 지나면 결과로 넘어간다 - 광고를 볼 생각이
 // 없는 사람을 오래 붙잡는 것이 더 나쁘다. 버튼에 남은 초를 세어 준다.
