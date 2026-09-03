@@ -147,6 +147,16 @@ test('go sound keeps the original rising fanfare and sparkle glide', () => {
   assert.deepEqual(oscillators.at(-1).frequency.events.map((event) => event.value), [2000, 3500]);
 });
 
+test('a growing classic board extends the normal clear chime by one step', () => {
+  const oscillators = newOscillators(() => audio.playBoardGrowSound());
+  assert.deepEqual(
+    oscillators.slice(0, 6).map((item) => item.frequency.events[0].value),
+    [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568],
+  );
+  assert.equal(oscillators.at(-1).type, 'triangle');
+  assert.deepEqual(oscillators.at(-1).frequency.events.map((event) => event.value), [1800, 3600]);
+});
+
 test('combo sound keeps two notes normally and reserves the original fanfare for multiples of seven', () => {
   const combo2 = newOscillators(() => audio.playComboSound(2));
   const combo5 = newOscillators(() => audio.playComboSound(5));

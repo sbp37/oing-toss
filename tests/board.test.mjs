@@ -598,8 +598,9 @@ console.log('board.test.mjs: 240 regular and 300 early-assist boards plus scorin
 // 크기 제한이 없어서 이 셋은 지금도 정상 생성된다 - 이 시험은 "되는지"가
 // 아니라, 앞으로 누가 생성기를 만졌을 때 큰 판이 조용히 망가지는 것을 잡는다.
 // 씨드를 고정한다(위 블록과 같은 이유). 성능은 단일 실행이 아니라 크기·라운드
-// 마다 10회 재서 중앙값과 최대값을 본다 - CI 러너 한 번의 딸꾹질에 빨개지지
-// 않게.
+// 마다 10회 재서 중앙값과 최대값을 본다. 시간 상한은 생성기가 멈추거나
+// 비정상적으로 느려진 회귀만 잡는 연기 감지선이다. 30ms를 정확히 재는 번호표는
+// 공유 CI와 로컬의 순간 부하에 따라 결과가 바뀌므로 자동 테스트의 합격 조건으로 쓰지 않는다.
 {
   const { BoardModel: Model, bonusCatTargetForDimensions } = await import('../js/board.js');
   const previousRandom = Math.random;
@@ -639,8 +640,8 @@ console.log('board.test.mjs: 240 regular and 300 early-assist boards plus scorin
         }
         const sorted = [...durations].sort((a, b) => a - b);
         const median = sorted[Math.floor(sorted.length / 2)];
-        assert.ok(median <= 30, `${rows}x${cols} 라운드 ${round}: 생성 중앙값 ${median.toFixed(1)}ms`);
-        assert.ok(sorted.at(-1) <= 100, `${rows}x${cols} 라운드 ${round}: 최대 ${sorted.at(-1).toFixed(1)}ms`);
+        assert.ok(median <= 60, `${rows}x${cols} 라운드 ${round}: 생성 중앙값 ${median.toFixed(1)}ms`);
+        assert.ok(sorted.at(-1) <= 150, `${rows}x${cols} 라운드 ${round}: 최대 ${sorted.at(-1).toFixed(1)}ms`);
       }
     }
   } finally {

@@ -570,7 +570,7 @@ export const CLASSIC_BOARD_LADDER = Object.freeze([
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the
-// player cleared, so the last stubborn corner of a 6×8 is worth real time
+// player cleared, so the last stubborn corner of a 10×7 is worth real time
 // and the difference between a tidy finish and a messy one is felt.
 // Past the ladder's last scene the night gets stingy: each further 판갈이
 // pays half a second less, and no board change ever pays under the floor.
