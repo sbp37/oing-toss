@@ -388,6 +388,11 @@ test('classic beginners get repeated auto-hints when they stall', async () => {
   assert.equal(shouldShowClassicAutoHint({
     ...base, bestScore: BEGINNER_AUTO_HINT_SCORE_CEILING, completedRuns: 5,
   }), false);
+  // A strong score earned in this very run counts immediately, including in
+  // storage-free preview/test mode.
+  assert.equal(shouldShowClassicAutoHint({
+    ...base, currentScore: BEGINNER_AUTO_HINT_SCORE_CEILING,
+  }), false);
   // 튜토리얼 중이거나 시간이 거의 없으면 방해하지 않는다.
   assert.equal(shouldShowClassicAutoHint({ ...base, tutorialActive: true }), false);
   assert.equal(shouldShowClassicAutoHint({ ...base, timeLeft: 5 }), false);
@@ -437,8 +442,9 @@ test('past the fatigue line the board stops dropping time-givers', async () => {
   };
   const normal = sample(false);
   const late = sample(true);
-  // 평시 후반 풀에는 시간 아이템이 존재한다.
-  assert.ok(normal.has('clock') || normal.has('freeze'));
+  // 평시 후반 풀에는 희귀 프리즈만 남고 즉시 시간 추가 시계는 없다.
+  assert.ok(normal.has('freeze'));
+  assert.ok(!normal.has('clock'));
   // 피로선 너머에서는 시간 아이템이 사라지고 보드 액션만 남는다.
   assert.ok(!late.has('clock'));
   assert.ok(!late.has('freeze'));
@@ -466,7 +472,7 @@ test('the idle clock is reset by real play, not only by hints', async () => {
 
   // 문턱 자체도 "진짜 막힘"으로 읽히는 길이여야 한다.
   const { CLASSIC_SPARSE_HINT_IDLE_MS, CLASSIC_SPARSE_HINT_REPEAT_MS } = await import('../js/data.js');
-  assert.ok(CLASSIC_SPARSE_HINT_IDLE_MS >= 6000, `힌트 대기가 너무 짧다: ${CLASSIC_SPARSE_HINT_IDLE_MS}ms`);
+  assert.ok(CLASSIC_SPARSE_HINT_IDLE_MS >= 15000, `힌트 대기가 너무 짧다: ${CLASSIC_SPARSE_HINT_IDLE_MS}ms`);
   assert.ok(CLASSIC_SPARSE_HINT_REPEAT_MS > CLASSIC_SPARSE_HINT_IDLE_MS);
 });
 

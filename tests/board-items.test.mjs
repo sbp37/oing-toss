@@ -222,19 +222,19 @@ test('the garden reveal percentage and its run-best both move only the right way
   assert.equal(nextGardenRevealBest(100, 0), 100);
 });
 
-test('board items appear only when a seven-combo boundary is crossed', () => {
+test('board items appear only when a nine-combo boundary is crossed', () => {
   assert.equal(boardDropReward(0, 1, 0), null);
   assert.equal(boardDropReward(1, 2, 0), null);
-  assert.equal(boardDropReward(6, 7, 1), 'milestone');
-  assert.equal(boardDropReward(6, 8, 1), 'milestone');
-  assert.equal(boardDropReward(7, 8, 2), null);
-  assert.equal(boardDropReward(13, 14, 2), 'milestone');
+  assert.equal(boardDropReward(8, 9, 1), 'milestone');
+  assert.equal(boardDropReward(8, 10, 1), 'milestone');
+  assert.equal(boardDropReward(9, 10, 2), null);
+  assert.equal(boardDropReward(17, 18, 2), 'milestone');
 });
 
 test('a classic WOW can reach the next item boundary through its three combo steps', () => {
-  const before = 4;
+  const before = 6;
   const after = before + classicComboGain(5);
-  assert.equal(after, 7);
+  assert.equal(after, 9);
   assert.equal(boardDropReward(before, after), 'milestone');
 });
 
@@ -262,46 +262,46 @@ function runPayouts(steps) {
   return payouts;
 }
 
-test('each seven-combo boundary pays once per run, however often it is re-crossed', () => {
+test('each nine-combo boundary pays once per run, however often it is re-crossed', () => {
   const climb = (from, to) => Array.from({ length: to - from }, (_, i) => ({ to: from + i + 1 }));
 
-  // 7 -> 5 -> 7 must pay exactly once.
+  // 9 -> 7 -> 9 must pay exactly once.
   assert.deepEqual(
-    runPayouts([...climb(0, 7), { fail: true, to: 5 }, ...climb(5, 7)]),
-    [7],
-    'rebuilding to seven after a failure must not re-earn the drop',
+    runPayouts([...climb(0, 9), { fail: true, to: 7 }, ...climb(7, 9)]),
+    [9],
+    'rebuilding to nine after a failure must not re-earn the drop',
   );
 
-  // 14 -> 10 -> 14 must pay for 14 exactly once (plus the earlier 7).
+  // 18 -> 14 -> 18 must pay for 18 exactly once (plus the earlier 9).
   assert.deepEqual(
-    runPayouts([...climb(0, 14), { fail: true, to: 10 }, ...climb(10, 14)]),
-    [7, 14],
-    'rebuilding to fourteen must not re-earn that boundary',
+    runPayouts([...climb(0, 18), { fail: true, to: 14 }, ...climb(14, 18)]),
+    [9, 18],
+    'rebuilding to eighteen must not re-earn that boundary',
   );
 
   // The pathological case from the field: oscillating across a boundary.
-  const oscillation = [...climb(0, 14)];
+  const oscillation = [...climb(0, 18)];
   for (let cycle = 0; cycle < 5; cycle += 1) {
-    oscillation.push({ fail: true, to: 9 }, ...climb(9, 14));
+    oscillation.push({ fail: true, to: 13 }, ...climb(13, 18));
   }
   assert.deepEqual(
     runPayouts(oscillation),
-    [7, 14],
+    [9, 18],
     'five rebuilds across the same boundary still pay only for the first crossing',
   );
 
   // A clean climb pays every new boundary.
-  assert.deepEqual(runPayouts(climb(0, 21)), [7, 14, 21]);
+  assert.deepEqual(runPayouts(climb(0, 27)), [9, 18, 27]);
 
   // A wide clear gains two combo and may step over a boundary; still once.
   assert.deepEqual(
-    runPayouts([{ to: 2 }, { to: 4 }, { to: 6 }, { to: 8 }, { to: 10 }, { to: 12 }, { to: 14 }]),
-    [8, 14],
+    runPayouts([{ to: 2 }, { to: 4 }, { to: 6 }, { to: 8 }, { to: 10 }, { to: 12 }, { to: 14 }, { to: 16 }, { to: 18 }]),
+    [10, 18],
     'jumping a boundary with a +2 gain pays exactly once for it',
   );
 
   // A fresh run starts from zero, so the same boundaries pay again.
-  assert.deepEqual(runPayouts(climb(0, 7)), [7], 'a new run re-arms every boundary');
+  assert.deepEqual(runPayouts(climb(0, 9)), [9], 'a new run re-arms every boundary');
 });
 
 test('stage four previews exactly one rare item without changing the recurring pool', () => {
@@ -313,31 +313,31 @@ test('stage four previews exactly one rare item without changing the recurring p
   assert.equal(stageShowcaseBoardDrop(5, () => 0), null);
 });
 
-test('the reward countdown makes the sixth combo an explicit one-more moment', () => {
+test('the reward countdown makes the eighth combo an explicit one-more moment', () => {
   assert.equal(itemRewardCountdown(6, 2), 0, 'tutorial stages do not tease locked rewards');
-  assert.equal(itemRewardCountdown(0, 3), 7);
-  assert.equal(itemRewardCountdown(1, 3), 6);
-  assert.equal(itemRewardCountdown(5, 3), 2);
-  assert.equal(itemRewardCountdown(6, 3), 1);
-  assert.equal(itemRewardCountdown(7, 3), 7);
-  assert.equal(itemRewardCountdown(13, 5), 1);
+  assert.equal(itemRewardCountdown(0, 3), 9);
+  assert.equal(itemRewardCountdown(1, 3), 8);
+  assert.equal(itemRewardCountdown(7, 3), 2);
+  assert.equal(itemRewardCountdown(8, 3), 1);
+  assert.equal(itemRewardCountdown(9, 3), 9);
+  assert.equal(itemRewardCountdown(17, 5), 1);
 });
 
 test('the reward gauge follows the next unpaid high-water boundary', () => {
-  assert.deepEqual(itemRewardStatus(6, 6, 3), {
+  assert.deepEqual(itemRewardStatus(8, 8, 3), {
     remaining: 1,
-    progress: 6 / 7,
-    target: 7,
+    progress: 8 / 9,
+    target: 9,
   });
-  assert.deepEqual(itemRewardStatus(7, 7, 3), {
-    remaining: 7,
-    progress: 0,
-    target: 14,
-  });
-  assert.deepEqual(itemRewardStatus(5, 8, 3), {
+  assert.deepEqual(itemRewardStatus(9, 9, 3), {
     remaining: 9,
     progress: 0,
-    target: 14,
+    target: 18,
+  });
+  assert.deepEqual(itemRewardStatus(5, 10, 3), {
+    remaining: 13,
+    progress: 0,
+    target: 18,
   });
   assert.deepEqual(itemRewardStatus(6, 6, 2), {
     remaining: 0,
@@ -402,20 +402,20 @@ test('a stage ends only on an empty board; a dry board takes a rescue instead', 
   }
 });
 
-test('combo-seven rewards unlock variety gradually while board actions stay dominant', () => {
-  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0, stage: 2 }), null);
-  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
-  // Stage 5 pool: 13 bombs, clock, then the two megabomb slots that now
-  // open here — 0.999 lands on megabomb, 0.845 on the clock slot.
-  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'megabomb');
-  assert.equal(chooseBoardDrop(7, () => 0.845, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'clock');
+test('combo rewards unlock variety gradually while board actions stay dominant', () => {
+  assert.equal(chooseBoardDrop(9, () => 0.999, { rewardIndex: 0, stage: 2 }), null);
+  assert.equal(chooseBoardDrop(9, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(9, () => 0, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(9, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
+  // Clock is retained only for old saved data. New stage-5 drops are bombs
+  // and megabombs, so a live reward never extends the clock directly.
+  assert.equal(chooseBoardDrop(9, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'megabomb');
+  assert.equal(chooseBoardDrop(9, () => 0.845, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'bomb');
   assert.notEqual(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 5 })?.id, 'clover');
   assert.notEqual(chooseBoardDrop(28, () => 0, {
     pity: { clover: 99 }, rewardIndex: 4, stage: 5,
   })?.id, 'clover', 'clover pity must stay locked before stage 6');
-  assert.equal(chooseBoardDrop(10, () => 0.999, { rewardIndex: 2, stage: 5 }).id, 'freeze');
+  assert.notEqual(chooseBoardDrop(10, () => 0.999, { rewardIndex: 2, stage: 5 }).id, 'freeze');
   assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 8 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 5, stage: 8, cloverGiven: true }).id, 'freeze');
@@ -429,13 +429,14 @@ test('combo-seven rewards unlock variety gradually while board actions stay domi
   const timeEffects = lateDrops.filter((id) => ['clock', 'freeze'].includes(id)).length;
   assert.ok(boardActions >= 145, 'late rewards must still strongly favor tactile board actions');
   assert.ok(timeEffects <= 22, 'clock and freeze rewards must not enable endless survival');
+  assert.ok(!lateDrops.includes('clock'), 'new live drops never grant a clock');
   assert.ok(lateDrops.includes('megabomb'));
   assert.ok(lateDrops.includes('clover'));
 });
 
 test('earned drops teach with a bomb without forcing a clock after it', () => {
-  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0, {
+  assert.equal(chooseBoardDrop(9, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(9, () => 0, {
     rewardIndex: 1,
     previousType: 'bomb',
     cloverGiven: true,
@@ -463,7 +464,7 @@ test('rare drop pity guarantees variety without chaining time effects', () => {
     pity: { megabomb: 2 }, previousType: 'bomb', rewardIndex: 3, stage: 8,
   }).id, 'megabomb', 'late stages use the longer megabomb pity limit');
   assert.equal(chooseBoardDrop(28, () => 0, {
-    pity: { megabomb: 0, freeze: 3 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
+    pity: { megabomb: 0, freeze: 5 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
   }).id, 'freeze');
   assert.equal(chooseBoardDrop(28, () => 0, {
     cloverGiven: false, pity: { megabomb: 0, clover: 3, freeze: 0 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
@@ -473,7 +474,7 @@ test('rare drop pity guarantees variety without chaining time effects', () => {
   }).id, 'clover');
   assert.equal(nextBoardDropPity({ clover: 2 }, 'bomb', { stage: 6, combo: 21 }).clover, 3);
   assert.notEqual(chooseBoardDrop(28, () => 0.999, {
-    pity: { megabomb: 0, freeze: 3 }, previousType: 'clock', rewardIndex: 5, stage: 8,
+    pity: { megabomb: 0, freeze: 5 }, previousType: 'clock', rewardIndex: 5, stage: 8,
   }).id, 'freeze', 'a clock must not be followed immediately by another time effect');
   assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 3 }, 'megabomb', { stage: 8, combo: 28 }), {
     megabomb: 0,
@@ -533,9 +534,30 @@ test('drops prefer empty cells next to playable numbers', () => {
   assert.deepEqual(ranked[0], { row: 1, col: 1 });
 });
 
+test('visible bombs avoid touching when another open cell is available', () => {
+  const field = new BoardItemField();
+  field.queue('bomb');
+  field.queue('bomb');
+  const placed = field.place([
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+  ]);
+  assert.equal(placed.length, 2);
+  assert.ok(
+    Math.max(
+      Math.abs(placed[0].row - placed[1].row),
+      Math.abs(placed[0].col - placed[1].col),
+    ) > 1,
+    'two bombs must not occupy touching cells',
+  );
+});
+
 test('unused visible drops carry into the next board and reappear after a clear', () => {
   const field = new BoardItemField();
-  field.queue('bomb', { earnedAtCombo: 7 });
+  field.queue('bomb', { earnedAtCombo: 9 });
   const first = field.place([
     [1, null],
     [2, 7],

@@ -2,11 +2,11 @@
 // real play, but the amount currently held never exceeds this cap.
 export const GAME_DURATION_SECONDS = 120;
 export const PRACTICE_DURATION_SECONDS = 240;
-export const ITEM_REWARD_INTERVAL = 7;
+export const ITEM_REWARD_INTERVAL = 9;
 export const TIME_FREEZE_SECONDS = 10;
 export const MAX_ITEM_TIME_BONUS_SECONDS = 15;
 export const TIME_ITEM_CAP_SCORE = 300;
-export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 7, clover: 3, freeze: 3 });
+export const BOARD_DROP_PITY_LIMITS = Object.freeze({ megabomb: 7, clover: 3, freeze: 5 });
 export const EARLY_MEGABOMB_PITY_LIMIT = 4;
 // 2026-08 토스 실기기 제보: "자꾸 자기가 먼저 알려주니까 김샌다."
 // 6초는 판을 한 번 훑는 시간이라, 아직 찾는 중인 사람에게 답을 들이밀었다.
@@ -118,20 +118,12 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   // 클로버는 게임당 1회 한정(!cloverGiven)이고 보너스가 커서 비중은 그대로 1.
   const bombWeight = streak >= 14 ? 12 : streak >= 7 ? 13 : 15;
   const pool = Array.from({ length: bombWeight }, () => 'bomb');
-  // Past the refund-fatigue line the run is supposed to be converging; a
-  // clock or a freeze there reopens the time economy the fatigue just
-  // closed (measured: they stretched a near-expert run past its simulated
-  // ceiling). Board-action items keep dropping - the reward beat stays -
-  // but the time-givers stop.
-  if (level >= 5 && !timeBonusCapped && !lateRun) pool.push('clock');
-  // Reachability pass: across three full instrumented runs (casual to
-  // near-perfect pace) freeze and clover never appeared once — the old
-  // level>=6 + streak 14/21 gates sat past where most runs end. Megabomb
-  // and freeze now open on STAGE 5 and clover's streak halves, so a decent
-  // run meets each rare item while the bomb-heavy weighting still keeps
-  // board actions dominant (see the late-drop distribution test).
+  // Clock stays in the data contract so old saved items remain usable, but
+  // it no longer enters the live drop pool. Stage refunds already reward a
+  // clear; another instant time extension made strong runs sprawl.
+  // Freeze remains the one rare time effect and opens later than clover.
   if (level >= 5 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 5 && streak >= 10 && !timeBonusCapped && !lateRun) pool.push('freeze');
+  if (level >= 6 && streak >= 14 && !timeBonusCapped && !lateRun) pool.push('freeze');
   if (level >= 6 && streak >= 14 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
@@ -176,7 +168,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
     && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
     return BOARD_DROP_ITEMS.clover;
   }
-  if (!timeBonusCapped && !lateRun && !previousWasTimeItem && level >= 5 && streak >= 10
+  if (!timeBonusCapped && !lateRun && !previousWasTimeItem && level >= 6 && streak >= 14
     && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
     return BOARD_DROP_ITEMS.freeze;
   }
@@ -209,7 +201,7 @@ export function nextBoardDropPity(pity = {}, dropType = '', { stage = 1, combo =
   return Object.freeze({
     megabomb: level >= 5 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
     clover: level >= 6 && streak >= 14 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
-    freeze: level >= 5 && streak >= 10 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
+    freeze: level >= 6 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
   });
 }
 
@@ -220,7 +212,7 @@ export function boardDropReward(previousCombo, nextCombo) {
   return null;
 }
 
-// Each seven-combo boundary pays once per run. boardDropReward alone compares
+// Each nine-combo boundary pays once per run. boardDropReward alone compares
 // the two ends of a single step, so a combo that falls back below a boundary
 // and climbs over it again re-earns the drop every time — a run that broke
 // and rebuilt around 14 could farm the same reward indefinitely.
@@ -1298,23 +1290,26 @@ export function shouldShowBeginnerAutoHint({
 // the game: whenever they stall, the cat points at an answer.
 export const CLASSIC_AUTO_HINT_LIMIT = 2;
 export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 30000;
-// 2026-08 실기기 피드백: "내가 찾을 수 있는데 알려줘서 김샌다."
-// 3.2초는 꼬리 판을 훑는 시간도 안 된다 - 아직 읽는 중인 사람에게 답을
-// 들이미는 길이였다. 진짜 막힌 순간(7초)으로 올린다. 같은 판 재발화도
-// 9초에서 14초로 늘려, 한 판에 두 번 이상 나오는 일이 드물어진다.
-// 짝을 이루는 수정이 game.js에 있다: 드래그를 시작하거나 답을 낼 때마다
-// lastInteractionAt을 갱신한다. 그 전에는 idleMs가 "마지막 힌트 이후
-// 시간"이라, 열심히 지우는 중에도 시계가 계속 흘러 힌트가 떴다.
-export const CLASSIC_SPARSE_HINT_IDLE_MS = 11000;
+// An 11-second tail hint still interrupted players who were actively reading
+// the larger boards, so sparse help now waits for 15 seconds of real idle.
+// The paired reset in game.js starts that wait only after a move has fully
+// resolved; animation time can no longer spend the idle budget.
+export const CLASSIC_SPARSE_HINT_IDLE_MS = 15000;
 
 export function shouldShowClassicAutoHint({
   running = false, inputLocked = false, tutorialActive = false,
   shownCount = 0, sinceLastMs = Infinity, timeLeft = 0, idleMs = 0,
-  bestScore = 0, completedRuns = 0,
+  bestScore = 0, currentScore = 0, completedRuns = 0,
   boardIndex = 0, lastShownBoard = -1,
 } = {}) {
-  const isBeginner = Math.max(0, completedRuns) < 3
-    || Math.max(0, Number(bestScore) || 0) < BEGINNER_AUTO_HINT_SCORE_CEILING;
+  const demonstratedSkill = Math.max(
+    Math.max(0, Number(bestScore) || 0),
+    Math.max(0, Number(currentScore) || 0),
+  ) >= BEGINNER_AUTO_HINT_SCORE_CEILING;
+  const isBeginner = !demonstratedSkill && (
+    Math.max(0, completedRuns) < 3
+    || Math.max(0, Number(bestScore) || 0) < BEGINNER_AUTO_HINT_SCORE_CEILING
+  );
   // 한 판에 한 번. 이게 유저와의 약속이다 - 이 판에서 이미 도왔으면
   // 아무리 오래 멈춰 있어도 다시 나서지 않는다.
   const firstOnThisBoard = Math.round(Number(boardIndex) || 0)

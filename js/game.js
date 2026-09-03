@@ -1132,7 +1132,7 @@ class OingGame {
     // Classic combos ride an uncapped-feeling ramp on a different clock —
     // they stay out of the stage mode's best-combo record.
     if (!this.runtime.testMode && !this.classic) storageAdapter.saveBestCombo(this.state.maxCombo);
-    // Each seven-combo boundary pays once per run; see boardDropRewardForRun
+    // Each nine-combo boundary pays once per run; see boardDropRewardForRun
     // for why the step is measured from the run's high-water mark. The rule
     // is covered by regression tests in tests/board-items.test.mjs.
     const reward = boardDropRewardForRun({
@@ -1283,6 +1283,10 @@ class OingGame {
       }
     } finally {
       this.activeResolution = false;
+      // A hint's idle clock starts when the player gets control back, not
+      // before the success/failure animation. Otherwise a long celebration
+      // can spend most of the wait and reveal the next answer immediately.
+      this.lastInteractionAt = performance.now();
       if (this.finishPending) this.finish();
     }
   }
@@ -2423,6 +2427,7 @@ class OingGame {
       lastShownBoard: this.classicAutoHintBoard,
       // Classic keeps its own record, so the beginner test has to read it.
       bestScore: storageAdapter.getClassicBestScore(),
+      currentScore: this.state.score,
       completedRuns: storageAdapter.getClassicRecentScores().length,
     })) return false;
     const answer = this.model.findHintAnswer();

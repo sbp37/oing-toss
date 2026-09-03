@@ -6161,6 +6161,14 @@
   aspect-ratio: auto;
 }
 
+/* Board six is the first seven-column step. Give its digits a small optical
+   lift without enlarging the final 10x7 board, where vertical density is at
+   the mobile limit. */
+.screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="9"]
+  .board-frame[data-cols="7"] .tile span {
+  font-size: clamp(24px, 6.7vw, 28px);
+}
+
 /* The board counter was visually heavier than the pause and timer controls.
    Reduce both the artwork and its row by ten percent; the status strip and
    board receive the released vertical space instead of leaving a blank gap. */

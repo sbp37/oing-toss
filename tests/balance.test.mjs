@@ -43,7 +43,7 @@ for (const profile of ['novice', 'regular', 'expert']) {
 }
 assert.ok(suite.expert.roundTimeBonusMean <= 90,
   'stage time stays bounded: small per-growth bonuses plus at most 4s per flat board');
-assert.ok(suite.expert.itemTimeBonusMean <= 20, 'rare clock and freeze rewards must not dominate survival time');
+assert.ok(suite.expert.itemTimeBonusMean <= 20, 'rare time effects must not dominate survival time');
 assert.equal(suite.novice.cappedRuns, 0);
 
 // The human-like agent never previews the post-clear board — real-play
