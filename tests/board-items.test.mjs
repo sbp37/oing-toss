@@ -555,6 +555,21 @@ test('visible bombs avoid touching when another open cell is available', () => {
   );
 });
 
+test('classic placement keeps one visible reward while later drops wait', () => {
+  const field = new BoardItemField();
+  field.queue('bomb');
+  field.queue('megabomb');
+  const grid = [
+    [null, null, null],
+    [null, null, null],
+    [null, null, null],
+  ];
+  assert.equal(field.place(grid, new Set(), { maxVisible: 1 }).length, 1);
+  assert.equal(field.items.size, 1);
+  assert.equal(field.pending.length, 1);
+  assert.equal(field.place(grid, new Set(), { maxVisible: 1 }).length, 0);
+});
+
 test('unused visible drops carry into the next board and reappear after a clear', () => {
   const field = new BoardItemField();
   field.queue('bomb', { earnedAtCombo: 9 });

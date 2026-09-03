@@ -920,11 +920,11 @@ class OingGame {
     // A fresh classic board has no empty cells except the cat seats, so an
     // item carried over a 판갈이 would sit invisible in the queue until the
     // first clear - which read as the bomb simply vanishing. Instead the
-    // carried item buys its seat from a cat: one reserved cat cell (max two)
+    // carried item buys its seat from a cat: one reserved cat cell
     // opens up and the item lands there immediately, exactly where a player
     // expects their saved bomb to be waiting.
     if (this.classic && this.boardItems.pending.length && this.model.bonusCats.size > 1) {
-      const yield_ = Math.min(2, this.boardItems.pending.length, this.model.bonusCats.size - 1);
+      const yield_ = Math.min(1, this.boardItems.pending.length, this.model.bonusCats.size - 1);
       const seats = [...this.model.bonusCats].slice(0, yield_);
       seats.forEach((key) => this.model.bonusCats.delete(key));
     }
@@ -1306,7 +1306,9 @@ class OingGame {
   // 아이템 배치는 여섯 군데에서 일어난다. 첫 등장 판정을 각 자리에 흩어놓으면
   // 한 곳을 빠뜨리고, 빠뜨린 경로로 처음 만난 사람은 영영 설명을 못 듣는다.
   placeBoardItems() {
-    return this.boardItems.place(this.model.grid, this.model.bonusCats);
+    return this.boardItems.place(this.model.grid, this.model.bonusCats, {
+      maxVisible: this.classic ? 1 : Infinity,
+    });
   }
 
   // 이번에 놓인 것 중 처음 보는 희귀 아이템 한 종류. 없으면 null.
