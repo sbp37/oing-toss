@@ -98,11 +98,11 @@ test('classic ladder grows without repeats and settles at 10x7', () => {
     CLASSIC_BOARD_LADDER.map((step) => [step.rows, step.cols]),
     [[5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [9, 7], [10, 7]],
   );
-  // 환급은 낮게. 토스용은 2~3분 안에 끝내고, 더 하고 싶으면 이어하기 광고를
-  // 쓰는 쪽이다. 자동 시간 보너스로 런을 늘리지 않는다.
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [1, 2, 2, 2, 2, 2, 2]);
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [6, 8, 9, 10, 10, 10, 10]);
-  CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
+  // 환급은 축하만 남긴다. 토스용은 2~3분 안에 끝내고, 더 하고 싶으면 이어하기
+  // 광고를 쓰는 쪽이다. 10x7 생존 구간은 자동 시간 보너스가 없다.
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [1, 1, 1, 1, 0, 0, 0]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [4, 4, 3, 2, 1, 1, 0]);
+  CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus >= step.timeFloor));
   // 열은 7을 넘지 않는다. 360px 폰 실측에서 8열은 칸이 38.8px로 손가락보다 작다.
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.cols <= 7, `${step.rows}x${step.cols}`));
   // 첫 판은 6열이어야 board.js의 초보 답 보장(cols === 6 && rows <= 6)이 켜진다.
@@ -121,9 +121,9 @@ test('classic ladder grows without repeats and settles at 10x7', () => {
       `${index}번째 계단: 행 +${dRows}, 열 +${dCols}`,
     );
   });
-  // 판갈이 상한은 판이 클수록 같거나 크다.
+  // 판갈이 상한은 판이 클수록 같거나 작다.
   CLASSIC_BOARD_LADDER.forEach((step, index) => {
-    if (index) assert.ok(step.timeBonus >= CLASSIC_BOARD_LADDER[index - 1].timeBonus);
+    if (index) assert.ok(step.timeBonus <= CLASSIC_BOARD_LADDER[index - 1].timeBonus);
   });
   assert.equal(classicBoardForIndex(0), CLASSIC_BOARD_LADDER[0]);
   assert.equal(classicBoardForIndex(6), CLASSIC_BOARD_LADDER[6]);
@@ -519,13 +519,10 @@ test('판갈이 pays in proportion to how much of the board was cleared', () => 
   // 범위를 벗어난 비율도 잘라서 처리한다.
   assert.equal(classicBoardChangeSeconds(big, -1), big.timeFloor);
   assert.equal(classicBoardChangeSeconds(big, 4), big.timeBonus);
-  // 완전 클리어는 대충 넘긴 판보다 확실히 많이 받아야 의미가 있다.
-  // 2026-09 사다리 v2에서 환급 폭(floor~bonus)이 11초에서 8초로 줄었다(토스용
-  // 2~3분 페이싱). 그래서 절대값 6초 대신 폭에 대한 비율로 지킨다 - 예전
-  // 값(16-9=7, 폭 11)도 새 값(12-7=5, 폭 8)도 같은 62%다. 원칙은 그대로다.
+  // 완전 클리어는 대충 넘긴 판보다 더 받는다. 환급 폭 자체가 1초까지 줄어든
+  // 후반부는 보상감보다 압축 페이싱을 우선한다.
   const gap = classicBoardChangeSeconds(big, 1) - classicBoardChangeSeconds(big, 0.4);
-  assert.ok(gap >= 4, `완전 클리어와 40% 사이가 ${gap}초뿐이다`);
-  assert.ok(gap >= (big.timeBonus - big.timeFloor) * 0.55);
+  assert.ok(gap >= 1, `완전 클리어와 40% 사이가 ${gap}초뿐이다`);
 });
 
 test('blast payouts share the clear scale, minus the WOW bonus', () => {

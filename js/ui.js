@@ -2971,12 +2971,10 @@ export class GameUI {
       ? 1
       : clamp(score / Math.max(1, previousBest), 0, 1);
     const recordPercent = Math.round(recordProgress * 100);
-    // The meter only earns its row when it says something the copy above it
-    // does not. A new record pins it at 100% and a practice run excludes it
-    // from records entirely, and in both cases the line under the score has
-    // already said so — so the meter is a chase bar, shown only while there
-    // is a record left to chase.
-    const meterIsInformative = recordEligible && !newRecord && previousBest > 0;
+    // The meter is part of the result rhythm: it makes the score feel like a
+    // run, not just a number. Keep it visible for record-eligible classic
+    // results, including first records and new records where it lands at 100%.
+    const meterIsInformative = recordEligible;
     this.elements.resultRecordMeter.hidden = !meterIsInformative;
     // Its own label repeated the comparison line verbatim ("최고기록 도전
     // 15%" over "최고 기록의 15%까지 왔다냥"), so the bar now carries the

@@ -547,16 +547,18 @@ export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
 // 8x6은 52px, 7x7은 44.6px다 - 폰은 세로로 길다.
 // 5x6 두 번 반복을 뺀 근거: 시뮬(40판)에서 반복을 빼도 초보 점수가 안 움직였다
 // (1827 -> 1812). 보호는 "첫 판이 5x6"에서 오지 "두 번"에서 오지 않았다.
-// 환급은 옛 값보다 낮다(상한 6~10초). 토스용은 2~3분 안에 긴장감 있게 끝내고,
-// 더 하고 싶으면 이어하기 광고를 쓰는 쪽으로 간다 - 자동 보너스로 늘리지 않는다.
+// 2026-09 토스용 압축 패스: 3~4판부터 런이 늘어지는 실기기 피드백에 따라
+// 판갈이 환급을 "축하"만 남기는 수준으로 줄인다. 앞 두 판은 +4초로 시작을
+// 받쳐 주고, 큰 판부터는 2/1/0초까지 닫는다. 보드가 커지는 재미는 남기되
+// 시간을 자동으로 불려서 이어하기 광고의 아쉬움을 죽이지 않는다.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 6, timeFloor: 1, timeBonus: 6 }),
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 2, timeBonus: 8 }),
-  Object.freeze({ rows: 7, cols: 6, timeFloor: 2, timeBonus: 9 }),
-  Object.freeze({ rows: 8, cols: 6, timeFloor: 2, timeBonus: 10 }),
-  Object.freeze({ rows: 9, cols: 6, timeFloor: 2, timeBonus: 10 }),
-  Object.freeze({ rows: 9, cols: 7, timeFloor: 2, timeBonus: 10 }),
-  Object.freeze({ rows: 10, cols: 7, timeFloor: 2, timeBonus: 10 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 1, timeBonus: 4 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 1, timeBonus: 4 }),
+  Object.freeze({ rows: 7, cols: 6, timeFloor: 1, timeBonus: 3 }),
+  Object.freeze({ rows: 8, cols: 6, timeFloor: 1, timeBonus: 2 }),
+  Object.freeze({ rows: 9, cols: 6, timeFloor: 0, timeBonus: 1 }),
+  Object.freeze({ rows: 9, cols: 7, timeFloor: 0, timeBonus: 1 }),
+  Object.freeze({ rows: 10, cols: 7, timeFloor: 0, timeBonus: 0 }),
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the
@@ -580,9 +582,9 @@ export const CLASSIC_BOARD_LADDER = Object.freeze([
 // 시뮬(30판): 숙련 4.5→4.1분(p90 4.3), 초보 2.5분·보통 3.4분은 그대로 —
 // 6판 이후에만 작용하는 기울기라 꼬리만 깎인다.
 export const CLASSIC_REFUND_FATIGUE = Object.freeze({
-  fromBoard: 5,   // boards 1..5 always pay in full
+  fromBoard: 6,   // boards 1..6 always pay in full
   perBoard: 1.5,  // seconds shaved per board past the line
-  floor: 2,       // the least any 판갈이 pays
+  floor: 0,       // 10x7 survival boards can pay nothing
 });
 
 export function classicRefundWithFatigue(seconds, finishedBoardNumber = 1) {
