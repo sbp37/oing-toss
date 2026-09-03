@@ -980,16 +980,17 @@ export class GameUI {
     this.clearSelection();
   }
 
-  // tone 'coach'는 판이 열릴 때의 출발 안내다. 같은 표시를 노란색으로 칠하고
-  // "합10 여기!" 대신 "슥 이어봐!"라고 말한다 - 답을 찍어주는 것이 아니라
-  // 조작을 가르치는 것이라, 잘하는 사람도 김새지 않는다. 초기 오잉의
-  // "슥 밀거나, 양끝을 톡톡!" 안내를 되살린 것이다.
+  // tone은 라벨 문구와 유지 시간만 바꾼다. 출발·자동·수동 힌트 모두
+  // 같은 민트 표시를 써야 하나의 규칙으로 읽힌다.
   showHint(rect, { tone = 'answer' } = {}) {
     const coaching = tone === 'coach';
     // 가르치는 표시는 조금 더 오래 둔다 - 읽고 따라 해봐야 하는 안내라서.
     const hold = coaching ? 3000 : 2200;
+    // A stale yellow selection under a mint hint reads as two hint systems.
+    // Every hint owns the board by itself and clears the selection first.
+    this.clearSelection();
     clearTimeout(this.hintTimer);
-    this.board.classList.remove('is-hinting', 'is-hint-coach');
+    this.board.classList.remove('is-hinting');
     const areaTiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
@@ -1000,7 +1001,6 @@ export class GameUI {
       tile.classList.add('is-hint');
     });
     this.board.classList.add('is-hinting');
-    if (coaching) this.board.classList.add('is-hint-coach');
     const bounds = this.selectionBounds(rect);
     if (bounds) {
       this.boardFrame.querySelector('.hint-region')?.remove();
@@ -1041,7 +1041,7 @@ export class GameUI {
       tile.style.removeProperty('--hint-index');
     });
     this.board.querySelectorAll('.tile.is-hint-area').forEach((tile) => tile.classList.remove('is-hint-area'));
-    this.board.classList.remove('is-hinting', 'is-hint-coach');
+    this.board.classList.remove('is-hinting');
     this.boardFrame.querySelector('.hint-region')?.remove();
   }
 

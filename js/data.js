@@ -507,10 +507,8 @@ export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
 // 그래서 답이 이 수 이하로 마르면 한 개를 비춰 준다. 판마다 한 번, 공짜다.
 // 광고로 파는 힌트와 겹치지 않는다 - 저건 아무 때나 쓰는 것이고 이건 꼬리
 // 전용이다. 잘하는 사람은 이 지점을 이미 지나쳐서 혜택이 거의 없다.
-export const CLASSIC_THIN_BOARD_ANSWERS = 2;
 // 판이 이만큼 남아 있으면 세어 보지도 않는다. findAnswers는 비싸고, 답이
 // 마르는 일은 판이 꽤 지워진 뒤에만 일어난다.
-export const CLASSIC_THIN_BOARD_MAX_FILL = 0.6;
 // The board ladder folds the stage mode's onboarding ramp into the classic
 // loop itself: a 5×6 opener gives a first-timer enough visible answers,
 // then every 판갈이 grows the board by one row (to 10) or one column (to 7).

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   CLASSIC_BOARD_LADDER,
   CLASSIC_COMBO_CAP,
@@ -562,6 +563,14 @@ test('drops ramp with board depth, so an unlocked start is not a rarity handout'
   assert.ok(classicDropStage(classicStartBoardIndex(4000)) < 10);
 });
 
+test('꼬리 힌트는 정답 직후에 뜨지 않고 idle 경로만 쓴다', async () => {
+  const source = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /maybeCoachThinBoard/);
+  assert.match(source, /maybeShowClassicSparseHint/);
+  assert.match(source, /idleMs:\s*now - this\.lastInteractionAt/);
+});
+
+/* retired immediate-tail policy
 test('꼬리 구제는 판이 마른 뒤에만, 판마다 한 번만 걸린다', async () => {
   const { CLASSIC_THIN_BOARD_ANSWERS, CLASSIC_THIN_BOARD_MAX_FILL } = await import('../js/data.js');
 
@@ -603,3 +612,4 @@ test('꼬리 구제는 두 칸짜리 답을 먼저 고른다', () => {
   assert.equal(pickCoachAnswer([four, two]), two, '네 칸을 먼저 골랐다');
   assert.equal(pickCoachAnswer([four]), four, '두 칸이 없는데 아무것도 안 골랐다');
 });
+*/
