@@ -6110,3 +6110,17 @@
   color: transparent;
 }
 
+/* 9x6 is the first height-limited classic board. Keeping the square-board
+   ratio made the whole frame narrow from the 8x6 step, so growth read as a
+   visual shrink. Preserve the established six-column width and absorb the
+   extra row vertically; 9x7 and 10x7 still use the compact square ladder. */
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"]
+  .board-frame[data-cols="6"] {
+  width: min(98cqw, 430px);
+  aspect-ratio: auto;
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"]
+  .board-frame[data-cols="6"] > .board {
+  aspect-ratio: auto;
+}
