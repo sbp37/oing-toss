@@ -52,6 +52,7 @@ const DISMISSIBLE = [
   { overlay: '#continue-overlay', button: '#continue-decline-button' },
   { overlay: '#chapter-viewer', button: '#chapter-viewer-close' },
   { overlay: '#garden-overlay', button: '#garden-close' },
+  { overlay: '#online-ranking-overlay', button: '#online-ranking-close' },
   { overlay: '#ranking-overlay', button: '#ranking-close' },
   { overlay: '#settings-overlay', button: '#settings-close' },
 ];
