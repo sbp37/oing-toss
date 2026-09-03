@@ -395,24 +395,24 @@
 
 /* Result actions stay full touch targets but lose the oversized vertical slab. */
 .screen-result.is-sheet .result-character-stage {
-  width: 69px;
-  height: 69px;
+  width: 54px;
+  height: 54px;
 }
 
 .screen-result.is-sheet .result-actions .btn {
-  min-height: 46px;
-  height: 46px;
+  min-height: 44px;
+  height: 44px;
   padding-block: 0;
 }
-.screen-result.is-sheet #retry-button { font-size: 20px; }
-.screen-result.is-sheet .result-ranking-button { font-size: 17px; }
+.screen-result.is-sheet #retry-button { font-size: 19px; }
+.screen-result.is-sheet .result-ranking-button { font-size: 16px; }
 .screen-result.is-sheet .result-actions {
-  row-gap: 10px;
+  row-gap: 5px;
 }
 .screen-result.is-sheet .result-actions .result-home-button {
-  min-height: 36px;
-  height: 36px;
-  margin-top: 2px;
+  min-height: 32px;
+  height: 32px;
+  margin-top: 0;
 }
 
 /* Keep the instruction and primary actions visually paired. The extra bottom
