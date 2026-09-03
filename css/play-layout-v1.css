@@ -6110,13 +6110,20 @@
   color: transparent;
 }
 
-/* 9x6 is the first height-limited classic board. Keeping the square-board
-   ratio made the whole frame narrow from the 8x6 step, so growth read as a
-   visual shrink. Preserve the established six-column width and absorb the
-   extra row vertically; 9x7 and 10x7 still use the compact square ladder. */
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"]
-  .board-frame[data-cols="6"] {
+/* Classic ladder width lock -------------------------------------------------
+   A growing board must never read as a smaller board. The old height-bound
+   formula varied the outside width at nearly every step (and narrowed the
+   10x7 board most on short phones). Keep one outside width for the whole
+   classic ladder. The two deepest shapes spend height, not width: their
+   cells may become slightly rectangular when the viewport is short. */
+.screen-play.play-ui-v4.is-classic-mode .board-frame,
+.screen-play.play-ui-v4.is-classic-mode .board-frame[data-round] {
   width: min(98cqw, 430px);
+  max-width: calc(100% - 12px);
+}
+
+.screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="9"]
+  .board-frame[data-cols="6"] {
   height: min(
     calc(147cqw - 24px),
     calc(100dvh - var(--board-chrome) - 24px)
@@ -6124,7 +6131,61 @@
   aspect-ratio: auto;
 }
 
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"]
+.screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="9"]
   .board-frame[data-cols="6"] > .board {
   aspect-ratio: auto;
+}
+
+.screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="9"]
+  .board-frame[data-cols="7"] {
+  height: min(
+    126cqw,
+    calc(100dvh - var(--board-chrome) - 24px)
+  );
+  aspect-ratio: auto;
+}
+
+.screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="10"]
+  .board-frame[data-cols="7"] {
+  height: min(
+    140cqw,
+    calc(100dvh - var(--board-chrome) - 24px)
+  );
+  aspect-ratio: auto;
+}
+
+.screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="9"]
+  .board-frame[data-cols="7"] > .board,
+.screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="10"]
+  .board-frame[data-cols="7"] > .board {
+  aspect-ratio: auto;
+}
+
+/* The board counter was visually heavier than the pause and timer controls.
+   Reduce both the artwork and its row by ten percent; the status strip and
+   board receive the released vertical space instead of leaving a blank gap. */
+.play-ui-v4 .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls {
+  height: clamp(67px, 9.18dvh, 77px);
+}
+
+.play-ui-v4.is-tall-board .play-top-controls,
+.screen-play.play-ui-v4[data-stage-band].is-tall-board .play-top-controls {
+  height: clamp(68px, 8.82dvh, 76px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini {
+  width: clamp(99px, 30.375%, 119px);
+}
+
+.play-ui-v4 .play-top-controls .round-mini strong,
+.screen-play.play-ui-v4[data-stage-band] .play-top-controls .round-mini strong {
+  font-size: clamp(24px, 7.11vw, 32px);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
+  --board-chrome: calc(238px + 8dvh);
 }
