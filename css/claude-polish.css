@@ -81,7 +81,8 @@
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   height: 42px;
 }
 
@@ -104,7 +105,8 @@
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
   --board-chrome: calc(250px + 8dvh);
 }
 

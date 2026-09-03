@@ -1965,7 +1965,12 @@ export class GameUI {
     this.elements.roundMini.classList.remove('is-advancing');
   }
 
-  showClassicBoardEntry(boardNumber = 1, timeBonus = 0, boardGrew = false) {
+  // size는 다음 판의 { rows, cols }다. 판이 커진 판갈이(boardGrew)에서만
+  // '9×7'처럼 새 크기를 한 칸 더 붙인다 - 실기 제보 "칸이 커지고 바뀌는 게
+  // 성취감"의 정체는 변화가 눈에 보이는 것이었는데, 여태 "커졌다"는 말만
+  // 있고 얼마나인지가 없었다. 표기는 언제나 행×열. 7판 이후 10×7이
+  // 반복되는 구간은 boardGrew가 거짓이라 아무것도 붙지 않는다.
+  showClassicBoardEntry(boardNumber = 1, timeBonus = 0, boardGrew = false, size = null) {
     this.boardFrame.querySelector('.board-entry')?.remove();
     const entry = document.createElement('div');
     entry.className = 'board-entry';
@@ -1978,6 +1983,14 @@ export class GameUI {
       const reward = document.createElement('small');
       reward.textContent = `+${bonus}초`;
       entry.appendChild(reward);
+    }
+    const rows = Math.round(Number(size?.rows) || 0);
+    const cols = Math.round(Number(size?.cols) || 0);
+    if (boardGrew && rows > 0 && cols > 0) {
+      const grown = document.createElement('small');
+      grown.className = 'board-entry-size';
+      grown.textContent = `${rows}×${cols}`;
+      entry.appendChild(grown);
     }
     entry.classList.toggle('is-reward', bonus > 0);
     entry.classList.toggle('is-growth', Boolean(boardGrew));

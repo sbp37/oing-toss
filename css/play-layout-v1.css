@@ -3194,7 +3194,8 @@
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
   --board-chrome: calc(244px + 8dvh);
 }
 
@@ -3323,12 +3324,14 @@
    and the painted dock gives up its outer margin - both are chrome, and the
    board is the game. */
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   height: clamp(34px, 4.6dvh, 42px);
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .play-footer {
   width: min(82%, 340px);
 }
 
@@ -3543,7 +3546,8 @@
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
   --board-chrome: calc(242px + 8dvh);
 }
 
@@ -3598,7 +3602,8 @@
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
   --board-chrome: calc(214px + 8dvh);
 }
 
@@ -3629,7 +3634,8 @@
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   height: 30px;
   /* 4dp of screen row-gap either side, plus 2dp here, is the 6dp asked for. */
   margin-block: 2px;
@@ -3689,7 +3695,8 @@
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
   --board-chrome: calc(208px + 8dvh);
 }
 
@@ -3821,7 +3828,8 @@
 }
 
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
   --board-chrome: calc(246px + 8dvh);
 }
 
@@ -3888,7 +3896,8 @@
    for no reason a player can see. One size now, the one boards 1-2 had. */
 .play-ui-v4.is-tall-board .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .play-footer {
   width: min(74%, 308px);
 }
 
@@ -3962,7 +3971,8 @@
 .play-ui-v4 .play-footer,
 .play-ui-v4.is-tall-board .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .play-footer {
   width: 100%;
   aspect-ratio: auto;
   height: clamp(62px, 9dvh, 73px);
@@ -4284,7 +4294,8 @@
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -4397,7 +4408,8 @@
 .play-ui-v4 .play-footer,
 .play-ui-v4.is-tall-board .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .play-footer {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -4408,7 +4420,8 @@
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   grid-area: auto;
   width: 100%;
   height: auto;
@@ -4446,7 +4459,8 @@
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   margin-block: 0 clamp(7px, 1.1dvh, 11px);
 }
 
@@ -4471,7 +4485,8 @@
 .play-ui-v4 .play-footer,
 .play-ui-v4.is-tall-board .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .play-footer {
   --cat-overhang: calc(clamp(62px, 17.5vw, 72px) * 1.163 - clamp(62px, 9dvh, 73px));
   display: block;
   height: clamp(62px, 9dvh, 73px);
@@ -4481,7 +4496,8 @@
 .play-ui-v4 .cat-coach,
 .play-ui-v4.is-tall-board .cat-coach,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   position: absolute;
   left: 0;
   right: 0;
@@ -4503,13 +4519,15 @@
    missing comes out of the board - about 4% of its width on the deepest step,
    which is the tier's own borrowing being partly handed back. */
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] {
   --board-chrome: calc(282px + 8dvh);
 }
 
 .screen-play.play-ui-v4.is-tall-board .play-character-stage,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-character-stage,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-character-stage {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-character-stage,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .play-character-stage {
   /* both axes stated: `width: auto` would fall back to the sprite's intrinsic
      430px and blow the lane apart, pushing shuffle off screen. Matching the
      dock's own height is what takes the overhang to zero. */
@@ -4519,7 +4537,8 @@
 
 .screen-play.play-ui-v4.is-tall-board .cat-coach,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .cat-coach {
   bottom: calc(100% + 8px);
 }
 
@@ -5224,7 +5243,8 @@
 .play-ui-v4 .play-footer,
 .play-ui-v4.is-tall-board .play-footer,
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .play-footer,
-.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer {
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .play-footer,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="10"] .play-footer {
   align-self: end;
   margin-bottom: clamp(18px, 2.8dvh, 26px);
 }

@@ -520,11 +520,11 @@ export const CLASSIC_THIN_BOARD_ANSWERS = 2;
 // 마르는 일은 판이 꽤 지워진 뒤에만 일어난다.
 export const CLASSIC_THIN_BOARD_MAX_FILL = 0.6;
 // The board ladder folds the stage mode's onboarding ramp into the classic
-// loop itself: two 6×6 learning boards give a first-timer enough visible
-// answers without changing the physical tile size after the first clear,
-// then one extra row per 판갈이 up to 6×8. Keeping six columns from the
-// first board holds the tile width steady while the scan field grows
-// downward. With a combo
+// loop itself: a 5×6 opener gives a first-timer enough visible answers,
+// then every 판갈이 grows the board by one row (to 10) or one column (to 7).
+// Keeping six columns through the first five boards holds the tile width
+// steady while the scan field grows downward; the seventh column arrives
+// only where the depth has been earned. With a combo
 // that never times out, the small boards are where the multiplier spools
 // up and the tall boards are where it pays out — the scan field a player
 // earns grows with how deep they got. Each step carries its own 판갈이
@@ -549,12 +549,24 @@ export const CLASSIC_THIN_BOARD_MAX_FILL = 0.6;
 // 첫 두 판을 5x6으로 낮추니 초보 점수 1521->1767(+16%), 도달 판 3->4,
 // 3판 이탈 57%->9%. 숙련은 15956->15638(-2%), 런 3.1->3.0분으로 거의 그대로다 -
 // 끝(8x6)이 같아서 잘하는 쪽은 계단 하나를 금방 통과하기 때문이다.
+// 2026-09 사다리 v2: 반복 없이 끝까지 자란다. 5x6 -> 6x6 -> 7x6 -> 8x6 -> 9x6
+// -> 9x7 -> 10x7(고정). 실기 제보 "칸이 커지고 바뀌는 게 성취감"의 정체는
+// 변화가 눈에 보이는 것이었는데, 옛 사다리는 5판부터 8x6이 그대로였다.
+// 열은 7에서 끊는다. 360px 폰 실측에서 8열은 칸이 38.8px로 손가락보다 작고,
+// 9행부터는 폭이 아니라 높이가 잡아서 8열은 의미가 없다. 같은 48~49칸이라도
+// 8x6은 52px, 7x7은 44.6px다 - 폰은 세로로 길다.
+// 5x6 두 번 반복을 뺀 근거: 시뮬(40판)에서 반복을 빼도 초보 점수가 안 움직였다
+// (1827 -> 1812). 보호는 "첫 판이 5x6"에서 오지 "두 번"에서 오지 않았다.
+// 환급은 옛 값보다 낮다(상한 8~12초). 토스용은 2~3분 안에 긴장감 있게 끝내고,
+// 더 하고 싶으면 이어하기 광고를 쓰는 쪽으로 간다 - 자동 보너스로 늘리지 않는다.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 6, timeFloor: 4, timeBonus: 10 }),
-  Object.freeze({ rows: 5, cols: 6, timeFloor: 5, timeBonus: 12 }),
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 5, timeBonus: 14 }),
-  Object.freeze({ rows: 7, cols: 6, timeFloor: 5, timeBonus: 16 }),
-  Object.freeze({ rows: 8, cols: 6, timeFloor: 5, timeBonus: 16 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 3, timeBonus: 8 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 4, timeBonus: 10 }),
+  Object.freeze({ rows: 7, cols: 6, timeFloor: 4, timeBonus: 11 }),
+  Object.freeze({ rows: 8, cols: 6, timeFloor: 4, timeBonus: 12 }),
+  Object.freeze({ rows: 9, cols: 6, timeFloor: 4, timeBonus: 12 }),
+  Object.freeze({ rows: 9, cols: 7, timeFloor: 4, timeBonus: 12 }),
+  Object.freeze({ rows: 10, cols: 7, timeFloor: 4, timeBonus: 12 }),
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the

@@ -847,8 +847,13 @@ export function bonusCatTargetForDimensions(rows, cols = rows) {
   const cells = Math.max(1, Math.round(rows)) * Math.max(1, Math.round(cols));
   if (cells <= 16) return 1;
   if (cells <= 25) return 2;
-  if (cells <= 36) return 4;
-  return 4;
+  // 54칸(9x6)까지는 4마리. 그 위 두 계단(9x7 63칸, 10x7 70칸)은 한 마리씩
+  // 더 준다. 4마리 그대로면 밀도가 36칸의 11%에서 6%로 떨어져 큰 판이
+  // 밋밋해지고, 그렇다고 11%를 지키면 큰 판은 답이 아주 많아(10x7에 27개)
+  // "고양이 판"이 특별하지 않아진다. 7~9% 사이로 잡았다.
+  if (cells <= 54) return 4;
+  if (cells <= 63) return 5;
+  return 6;
 }
 
 export function normalizeRect(a, b) {

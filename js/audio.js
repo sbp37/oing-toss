@@ -465,6 +465,29 @@ export function playRoundClearSound() {
   scheduleTone(ctx, 2093, now + 0.3, 0.2, 0.06, 'sine', 0.008);
 }
 
+// 판이 커지는 판갈이. 보통 판갈이(playRoundClearSound)보다 한 계단 더 올라간다 -
+// 같은 C장조 상행에 높은 E·G를 하나씩 더 얹고, 끝에 짧은 반짝임을 둔다.
+// 실기 제보 "칸이 커지고 바뀌는 게 성취감"을 귀로도 알리기 위해서다. 새로
+// 만든 것은 음 두 개와 반짝임뿐이라, 기존 판갈이 소리와 같은 계열로 들린다.
+export function playBoardGrowSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((frequency, index) => {
+    const last = index === 5;
+    scheduleTone(ctx, frequency, now + index * 0.065, last ? 0.34 : 0.24, last ? 0.2 : 0.13, 'sine', 0.014);
+  });
+  const sparkle = ctx.createOscillator();
+  const sparkleGain = ctx.createGain();
+  sparkle.type = 'triangle';
+  sparkle.frequency.setValueAtTime(1800, now + 0.36);
+  sparkle.frequency.exponentialRampToValueAtTime(3600, now + 0.58);
+  sparkleGain.gain.setValueAtTime(0.05, now + 0.36);
+  sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.62);
+  sparkle.connect(sparkleGain); sparkleGain.connect(getMixBus(ctx));
+  sparkle.start(now + 0.36); sparkle.stop(now + 0.64);
+}
+
 // Original OING playTimeWarnBeeps(): one burst at ten seconds and then
 // silence: three groups 0.56s apart, a high 1180Hz lead followed
 // by two softer 940Hz taps. Ours used to tick every second with a rising

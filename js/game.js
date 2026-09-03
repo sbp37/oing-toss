@@ -124,6 +124,7 @@ import {
 import {
   isSoundEnabled,
   playComboSound,
+  playBoardGrowSound,
   playCatBonusSound,
   playItemCollectSound,
   playItemDropSound,
@@ -1677,7 +1678,10 @@ class OingGame {
       this.lastCountdownSecond = null;
     }
     roundHaptic();
-    playRoundClearSound();
+    // 판이 커지는 판갈이는 한 계단 더 올라가는 소리를 낸다. 눈(크기 라벨)과
+    // 귀가 같은 말을 해야 "커졌다"가 사건으로 남는다.
+    if (boardGrew) playBoardGrowSound();
+    else playRoundClearSound();
     duckMusic(420, 0.6);
     // The reward belongs to the board that was emptied, even when the next
     // board has its own one-line rule and therefore owns the speech bubble.
@@ -1720,7 +1724,10 @@ class OingGame {
     if (enteredChapter) this.applyClassicChapter();
     this.queueStageShowcase(classicDropStage(this.classic.boardIndex));
     const placedItems = this.buildRound();
-    this.ui.showClassicBoardEntry(this.classic.boardsPlayed, gainedTime, boardGrew);
+    this.ui.showClassicBoardEntry(this.classic.boardsPlayed, gainedTime, boardGrew, {
+      rows: nextBoard.rows,
+      cols: nextBoard.cols,
+    });
     await this.ui.animateShuffleIn();
     if (placedItems.length) this.announceBoardItems(placedItems);
     else itemHaptic();

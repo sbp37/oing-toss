@@ -592,3 +592,58 @@ console.log('board.test.mjs: 240 regular and 300 early-assist boards plus scorin
   assert.equal(catTail.remainingPlayableCells(), 0,
     'the planned drain collects the bonus cats along with the numbers');
 }
+
+// ── 사다리 v2의 큰 판(9x6 / 9x7 / 10x7) ──────────────────────────────────
+// 클래식 사다리가 10x7까지 자란다(js/data.js CLASSIC_BOARD_LADDER). 생성기는
+// 크기 제한이 없어서 이 셋은 지금도 정상 생성된다 - 이 시험은 "되는지"가
+// 아니라, 앞으로 누가 생성기를 만졌을 때 큰 판이 조용히 망가지는 것을 잡는다.
+// 씨드를 고정한다(위 블록과 같은 이유). 성능은 단일 실행이 아니라 크기·라운드
+// 마다 10회 재서 중앙값과 최대값을 본다 - CI 러너 한 번의 딸꾹질에 빨개지지
+// 않게.
+{
+  const { BoardModel: Model, bonusCatTargetForDimensions } = await import('../js/board.js');
+  const previousRandom = Math.random;
+  let seedState = 0;
+  Math.random = () => {
+    seedState = (seedState + 0x6d2b79f5) | 0;
+    let t = seedState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  try {
+    assert.equal(bonusCatTargetForDimensions(9, 6), 4, '54칸은 4마리');
+    assert.equal(bonusCatTargetForDimensions(9, 7), 5, '63칸은 5마리');
+    assert.equal(bonusCatTargetForDimensions(10, 7), 6, '70칸은 6마리');
+    for (const [rows, cols] of [[9, 6], [9, 7], [10, 7]]) {
+      for (const round of [1, 5, 10]) {
+        seedState = (0x51a7e + rows * 1000 + cols * 100 + round) | 0;
+        const durations = [];
+        for (let run = 0; run < 10; run += 1) {
+          const model = new Model(cols);
+          const started = performance.now();
+          model.generateClassic(cols, rows, round);
+          durations.push(performance.now() - started);
+          assert.equal(model.rows, rows);
+          assert.equal(model.cols, cols);
+          assert.equal(model.grid.length, rows);
+          model.grid.forEach((row) => assert.equal(row.length, cols));
+          // 생성기의 wanted 하한. 큰 판은 실제로 20개를 넘긴다(측정: 9x6 21,
+          // 9x7 24, 10x7 27) - 4는 "생성기가 멈추지 않았다"의 바닥이다.
+          assert.ok(model.findAnswers().length >= 4, `${rows}x${cols} 라운드 ${round}: 답이 부족하다`);
+          assert.equal(model.bonusCats.size, bonusCatTargetForDimensions(rows, cols));
+          for (const key of model.bonusCats) {
+            const [r, c] = key.split(':').map(Number);
+            assert.ok(r >= 0 && r < rows && c >= 0 && c < cols, `고양이가 판 밖에 있다: ${key}`);
+          }
+        }
+        const sorted = [...durations].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        assert.ok(median <= 30, `${rows}x${cols} 라운드 ${round}: 생성 중앙값 ${median.toFixed(1)}ms`);
+        assert.ok(sorted.at(-1) <= 100, `${rows}x${cols} 라운드 ${round}: 최대 ${sorted.at(-1).toFixed(1)}ms`);
+      }
+    }
+  } finally {
+    Math.random = previousRandom;
+  }
+}
