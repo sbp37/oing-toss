@@ -549,16 +549,16 @@ export const CLASSIC_THIN_BOARD_MAX_FILL = 0.6;
 // 8x6은 52px, 7x7은 44.6px다 - 폰은 세로로 길다.
 // 5x6 두 번 반복을 뺀 근거: 시뮬(40판)에서 반복을 빼도 초보 점수가 안 움직였다
 // (1827 -> 1812). 보호는 "첫 판이 5x6"에서 오지 "두 번"에서 오지 않았다.
-// 환급은 옛 값보다 낮다(상한 8~12초). 토스용은 2~3분 안에 긴장감 있게 끝내고,
+// 환급은 옛 값보다 낮다(상한 6~10초). 토스용은 2~3분 안에 긴장감 있게 끝내고,
 // 더 하고 싶으면 이어하기 광고를 쓰는 쪽으로 간다 - 자동 보너스로 늘리지 않는다.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 6, timeFloor: 3, timeBonus: 8 }),
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 4, timeBonus: 10 }),
-  Object.freeze({ rows: 7, cols: 6, timeFloor: 4, timeBonus: 11 }),
-  Object.freeze({ rows: 8, cols: 6, timeFloor: 4, timeBonus: 12 }),
-  Object.freeze({ rows: 9, cols: 6, timeFloor: 4, timeBonus: 12 }),
-  Object.freeze({ rows: 9, cols: 7, timeFloor: 4, timeBonus: 12 }),
-  Object.freeze({ rows: 10, cols: 7, timeFloor: 4, timeBonus: 12 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 1, timeBonus: 6 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 2, timeBonus: 8 }),
+  Object.freeze({ rows: 7, cols: 6, timeFloor: 2, timeBonus: 9 }),
+  Object.freeze({ rows: 8, cols: 6, timeFloor: 2, timeBonus: 10 }),
+  Object.freeze({ rows: 9, cols: 6, timeFloor: 2, timeBonus: 10 }),
+  Object.freeze({ rows: 9, cols: 7, timeFloor: 2, timeBonus: 10 }),
+  Object.freeze({ rows: 10, cols: 7, timeFloor: 2, timeBonus: 10 }),
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the

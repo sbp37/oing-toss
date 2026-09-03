@@ -99,8 +99,8 @@ test('classic ladder grows without repeats and settles at 10x7', () => {
   );
   // 환급은 낮게. 토스용은 2~3분 안에 끝내고, 더 하고 싶으면 이어하기 광고를
   // 쓰는 쪽이다. 자동 시간 보너스로 런을 늘리지 않는다.
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [3, 4, 4, 4, 4, 4, 4]);
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [8, 10, 11, 12, 12, 12, 12]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [1, 2, 2, 2, 2, 2, 2]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [6, 8, 9, 10, 10, 10, 10]);
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
   // 열은 7을 넘지 않는다. 360px 폰 실측에서 8열은 칸이 38.8px로 손가락보다 작다.
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.cols <= 7, `${step.rows}x${step.cols}`));
