@@ -29,3 +29,44 @@ contains the inventory boundary needed to add those systems later.
 
 Paid inventory must never use localStorage as its source of truth. The in-memory
 ledger in this prototype is a gameplay boundary, not a payment database.
+
+## Banner ads: decided placement (2026-08)
+
+**Banners go on the home and result screens only. Never on the play screen.**
+
+The reason is not layout — it is mistaps. The play screen is a drag game, and
+the item dock sits directly above where a bottom banner would go. A drag that
+runs off the bottom, or a hurried item tap that misses, lands on the ad. That
+annoys players, and ad networks treat the resulting click pattern as invalid
+traffic, which puts the account at risk. Home and result screens are also
+better inventory: the player is stopped and looking at them, while a play
+screen impression lasts two or three minutes at most.
+
+For revenue during play, rewarded ads fit this game far better than a banner.
+The ledger already accepts `source: 'ad'` grants, so "watch to get one more
+hint" needs no new boundary.
+
+### If a banner is added later
+
+Do not adjust each screen. The layout already reserves the bottom edge through
+one variable, and every bottom-anchored element follows it:
+
+```css
+--ad-bottom: 0px;   /* set from the SDK's reported banner height */
+--safe-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--ad-bottom));
+```
+
+Measured headroom (real runs, board and dock geometry read at runtime):
+
+| Reserved bottom | 390x844 | 360x640 |
+| --- | --- | --- |
+| up to ~130px | board unchanged | board unchanged |
+| ~130px | speech bubble auto-collapses | collapses from ~60px |
+| ~170px | board unchanged | board starts shrinking |
+| ~210px | board starts shrinking | too tight to use |
+
+A standard AdMob banner is 50dp (about 60 CSS px) and a large one about 90px,
+so both sit well inside the safe range on either device. The dock keeps a fixed
+30px gap below it (16px on the small phone); that gap was sized for the home
+indicator, not for an ad, so a play-screen banner would need its own clearance
+on top of it — one more reason to keep banners off that screen.

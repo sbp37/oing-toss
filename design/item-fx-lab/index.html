@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#dff4ff">
+  <title>OING 아이템 효과 비교실</title>
+  <link rel="icon" href="../../assets/icons/items/clover.webp">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <span class="lab-kicker">OING EFFECT LAB</span>
+      <h1>아이템 연출 비교실</h1>
+      <p>실제 게임에는 아직 적용하지 않았어. 같은 아이템을 세 가지 버전으로 바로 비교해봐.</p>
+    </header>
+
+    <nav class="item-tabs" aria-label="비교할 아이템">
+      <button class="item-tab is-active" type="button" data-item="hint"><img src="../../assets/icons/items/hint.webp" alt="">힌트</button>
+      <button class="item-tab" type="button" data-item="shuffle"><img src="../../assets/icons/items/shuffle.webp" alt="">섞기</button>
+      <button class="item-tab" type="button" data-item="bomb"><img src="../../assets/icons/items/bomb.webp" alt="">폭탄</button>
+      <button class="item-tab" type="button" data-item="clock"><img src="../../assets/icons/hud/time.webp" alt="">시계</button>
+      <button class="item-tab" type="button" data-item="megabomb"><img src="../../assets/icons/items/megabomb.webp" alt="">메가폭탄</button>
+      <button class="item-tab" type="button" data-item="freeze"><img src="../../assets/icons/items/freeze.webp" alt="">프리즈</button>
+      <button class="item-tab" type="button" data-item="clover"><img src="../../assets/icons/items/clover.webp" alt="">클로버</button>
+    </nav>
+
+    <section class="compare-grid" aria-label="연출 비교">
+      <article class="variant-card" data-mode="current">
+        <div class="variant-heading">
+          <span class="variant-badge current">기존</span>
+          <div><h2>현재 게임 그대로</h2><p class="variant-summary">현재 연출과 실제 사운드</p></div>
+        </div>
+        <div class="demo-stage" aria-label="기존 효과 미리보기">
+          <div class="mini-hud"><span>판 4</span><strong class="mini-timer">00:38</strong></div>
+          <div class="mini-board" aria-hidden="true"></div>
+          <div class="fx-layer" aria-hidden="true"></div>
+          <button class="preview-button" type="button"><span>▶</span> 기존 듣고 보기</button>
+        </div>
+        <p class="variant-detail"></p>
+      </article>
+
+      <article class="variant-card is-recommended" data-mode="soft">
+        <div class="variant-heading">
+          <span class="variant-badge soft">A · 추천</span>
+          <div><h2>말랑한 프리미엄</h2><p class="variant-summary">낮고 부드러운 소리 · 시럽 질감</p></div>
+        </div>
+        <div class="demo-stage" aria-label="말랑한 프리미엄 효과 미리보기">
+          <div class="mini-hud"><span>판 4</span><strong class="mini-timer">00:38</strong></div>
+          <div class="mini-board" aria-hidden="true"></div>
+          <div class="fx-layer" aria-hidden="true"></div>
+          <button class="preview-button" type="button"><span>▶</span> A안 듣고 보기</button>
+        </div>
+        <p class="variant-detail"></p>
+      </article>
+
+      <article class="variant-card" data-mode="punchy">
+        <div class="variant-heading">
+          <span class="variant-badge punchy">B · 강하게</span>
+          <div><h2>도파민 강화</h2><p class="variant-summary">빠르고 선명한 타격 · 큰 보상감</p></div>
+        </div>
+        <div class="demo-stage" aria-label="도파민 강화 효과 미리보기">
+          <div class="mini-hud"><span>판 4</span><strong class="mini-timer">00:38</strong></div>
+          <div class="mini-board" aria-hidden="true"></div>
+          <div class="fx-layer" aria-hidden="true"></div>
+          <button class="preview-button" type="button"><span>▶</span> B안 듣고 보기</button>
+        </div>
+        <p class="variant-detail"></p>
+      </article>
+    </section>
+
+    <aside class="lab-note">
+      <strong>추천 방식</strong>
+      <p>아이템마다 따로 골라도 돼. 예: 폭탄은 B, 시계·프리즈는 A, 마음에 안 들면 전부 기존 유지.</p>
+    </aside>
+  </main>
+  <script type="module" src="lab.js"></script>
+</body>
+</html>

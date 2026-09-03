@@ -24,17 +24,63 @@ function getMixBus(ctx) {
   return mixBus;
 }
 
-function getContext() {
-  if (!enabled) return null;
+// A running AudioContext keeps the audio render thread awake whether or not
+// anything is playing: measured on the play screen with the music paused, two
+// idle-but-running contexts alone were costing ~11% CPU for the whole session,
+// which is what a phone turns into heat. The context goes back to sleep a few
+// seconds after the last sound and wakes on the next one - unless music is
+// holding it open, which is the one case something really is playing.
+const IDLE_SUSPEND_MS = 3000;
+let idleSuspendTimer = null;
+let contextHolds = 0;
+
+function ensureContext() {
   try {
     const Context = window.AudioContext || window.webkitAudioContext;
     if (!Context) return null;
     if (!context || context.state === 'closed') context = new Context();
-    if (context.state === 'suspended') context.resume().catch(() => {});
     return context;
   } catch {
     return null;
   }
+}
+
+function armIdleSuspend() {
+  clearTimeout(idleSuspendTimer);
+  idleSuspendTimer = null;
+  if (contextHolds > 0) return;
+  idleSuspendTimer = setTimeout(() => {
+    idleSuspendTimer = null;
+    // Cues are scheduled up to about a second ahead, so the window is well
+    // clear of anything still waiting to sound.
+    if (contextHolds <= 0 && context?.state === 'running') context.suspend().catch(() => {});
+  }, IDLE_SUSPEND_MS);
+}
+
+// Music routes through this same context rather than opening a second one, and
+// pins it while it plays.
+export function getSharedAudioContext() {
+  return ensureContext();
+}
+
+export function holdAudioContext(hold) {
+  contextHolds = Math.max(0, contextHolds + (hold ? 1 : -1));
+  if (contextHolds > 0) {
+    clearTimeout(idleSuspendTimer);
+    idleSuspendTimer = null;
+    if (context?.state === 'suspended') context.resume().catch(() => {});
+    return;
+  }
+  armIdleSuspend();
+}
+
+function getContext() {
+  if (!enabled) return null;
+  const ctx = ensureContext();
+  if (!ctx) return null;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  armIdleSuspend();
+  return ctx;
 }
 
 function scheduleTone(ctx, frequency, start, duration, volume = 0.1, type = 'sine', attack = 0.012) {
@@ -49,6 +95,41 @@ function scheduleTone(ctx, frequency, start, duration, volume = 0.1, type = 'sin
   gain.connect(getMixBus(ctx));
   oscillator.start(start);
   oscillator.stop(start + duration + 0.02);
+}
+
+function scheduleGlideTone(ctx, startFrequency, endFrequency, start, duration, volume, type = 'sine') {
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(startFrequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration * 0.72);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.linearRampToValueAtTime(volume, start + Math.min(0.018, duration * 0.18));
+  gain.gain.exponentialRampToValueAtTime(0.0008, start + duration);
+  oscillator.connect(gain);
+  gain.connect(getMixBus(ctx));
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.03);
+}
+
+function scheduleNoisePuff(ctx, start, duration, volume, cutoff) {
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < samples.length; index += 1) {
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * duration * 0.16));
+  }
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  source.buffer = buffer;
+  filter.type = 'lowpass';
+  filter.frequency.value = cutoff;
+  gain.gain.setValueAtTime(volume, start);
+  gain.gain.exponentialRampToValueAtTime(0.0008, start + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(getMixBus(ctx));
+  source.start(start);
 }
 
 function tone(frequency, startOffset, duration, volume = 0.1, type = 'sine') {
@@ -94,6 +175,10 @@ export function playStartSound() {
 }
 
 // Original OING playCountNum(): 3→2→1 rises 400→520→640Hz with a soft harmonic.
+// The countdown, GO!, combo and game-over voices are ports of the original
+// OING's own oscillator scripts — same frequencies, same envelopes, and now
+// the same gains. They had been mixed roughly a third as loud, which is why
+// the start of a run felt limp next to the original's.
 export function playReadyCountSound(number) {
   const ctx = getContext();
   if (!ctx) return;
@@ -107,12 +192,12 @@ export function playReadyCountSound(number) {
   voice.frequency.setValueAtTime(frequency, now);
   voice.frequency.exponentialRampToValueAtTime(frequency * 1.1, now + 0.08);
   voiceGain.gain.setValueAtTime(0.0001, now);
-  voiceGain.gain.linearRampToValueAtTime(0.16, now + 0.02);
+  voiceGain.gain.linearRampToValueAtTime(0.45, now + 0.02);
   voiceGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
   voice.connect(voiceGain); voiceGain.connect(getMixBus(ctx));
   voice.start(now); voice.stop(now + 0.24);
 
-  scheduleTone(ctx, frequency * 2, now, 0.18, 0.05, 'triangle', 0.006);
+  scheduleTone(ctx, frequency * 2, now, 0.18, 0.12, 'triangle', 0.006);
 }
 
 // Original OING playGo(): rising C5–C6 fanfare followed by a high sparkle.
@@ -121,14 +206,14 @@ export function playGoSound() {
   if (!ctx) return;
   const now = ctx.currentTime;
   [523, 659, 784, 1046].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.08, 0.25, index === 3 ? 0.13 : 0.12, index === 3 ? 'triangle' : 'sine', 0.02);
+    scheduleTone(ctx, frequency, now + index * 0.08, 0.25, 0.3, index === 3 ? 'triangle' : 'sine', 0.02);
   });
   const sparkle = ctx.createOscillator();
   const sparkleGain = ctx.createGain();
   sparkle.type = 'triangle';
   sparkle.frequency.setValueAtTime(2000, now + 0.24);
   sparkle.frequency.exponentialRampToValueAtTime(3500, now + 0.45);
-  sparkleGain.gain.setValueAtTime(0.045, now + 0.24);
+  sparkleGain.gain.setValueAtTime(0.12, now + 0.24);
   sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
   sparkle.connect(sparkleGain); sparkleGain.connect(getMixBus(ctx));
   sparkle.start(now + 0.24); sparkle.stop(now + 0.52);
@@ -254,13 +339,13 @@ export function playComboSound(combo) {
   const now = ctx.currentTime;
   if (combo > 0 && combo % 7 === 0) {
     [1046, 1318, 1568, 2093].forEach((frequency, index) => {
-      scheduleTone(ctx, frequency, now + index * 0.07, 0.2, index === 3 ? 0.095 : 0.085, 'sine', 0.01);
+      scheduleTone(ctx, frequency, now + index * 0.07, 0.2, 0.14, 'sine', 0.01);
     });
     return;
   }
   const base = 440 + Math.min(Math.max(combo, 2), 6) * 80;
   [base, base * 1.25].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, index === 1 ? 0.082 : 0.09, 'sine', 0.001);
+    scheduleTone(ctx, frequency, now + index * 0.05, 0.15, 0.12, 'sine', 0.001);
   });
 }
 
@@ -270,35 +355,23 @@ export function playFailSound() {
 }
 
 export function playHintSound() {
-  [600, 800, 1000, 1400].forEach((frequency, index) => tone(frequency, index * 0.06, 0.14, 0.15, 'triangle'));
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  [392, 523, 659].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.055, 0.24, 0.09 - index * 0.012, 'sine', 0.012);
+  });
 }
 
 export function playShuffleSound() {
   const ctx = getContext();
   if (!ctx) return;
-  for (let pass = 0; pass < 2; pass += 1) {
-    const duration = 0.11;
-    const start = ctx.currentTime + pass * 0.12;
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
-    const samples = buffer.getChannelData(0);
-    for (let index = 0; index < samples.length; index += 1) {
-      samples[index] = (Math.random() * 2 - 1) * (1 - index / samples.length);
-    }
-    const source = ctx.createBufferSource();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-    source.buffer = buffer;
-    filter.type = 'bandpass';
-    filter.frequency.value = 2500 + pass * 700;
-    filter.Q.value = 0.9;
-    gain.gain.setValueAtTime(0.09, start);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-    source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
-    source.start(start);
-  }
+  const now = ctx.currentTime;
+  scheduleNoisePuff(ctx, now, 0.2, 0.156, 760);
+  scheduleNoisePuff(ctx, now + 0.13, 0.18, 0.117, 980);
+  scheduleGlideTone(ctx, 440, 587, now + 0.24, 0.18, 0.078, 'triangle');
 }
 
-// Original OING playBomb(): low filtered impact noise plus three bright shards.
 export function playBombSound() {
   const ctx = getContext();
   if (!ctx) return;
@@ -316,14 +389,15 @@ export function playBombSound() {
   filter.frequency.value = 400;
   gain.gain.setValueAtTime(0.42, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-  source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(getMixBus(ctx));
   source.start(now);
   [800, 1200, 600].forEach((frequency, index) => {
     scheduleTone(ctx, frequency, now + index * 0.04, 0.12, 0.1, 'sine', 0.005);
   });
 }
 
-// Original OING playMegaBomb(): a longer impact with five layered shards.
 export function playMegaBombSound() {
   const ctx = getContext();
   if (!ctx) return;
@@ -341,7 +415,9 @@ export function playMegaBombSound() {
   filter.frequency.value = 420;
   gain.gain.setValueAtTime(0.62, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-  source.connect(filter); filter.connect(gain); gain.connect(getMixBus(ctx));
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(getMixBus(ctx));
   source.start(now);
   [800, 1200, 600, 400, 1600].forEach((frequency, index) => {
     scheduleTone(ctx, frequency, now + index * 0.035, 0.16, 0.12, 'sine', 0.005);
@@ -374,10 +450,9 @@ export function playCloverSound() {
   const ctx = getContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  [659.25, 880, 1046.5, 1318.5].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.065, 0.25, index === 3 ? 0.1 : 0.075, 'sine', 0.008);
+  [392, 523, 659, 784].forEach((frequency, index) => {
+    scheduleTone(ctx, frequency, now + index * 0.075, 0.3, 0.07 - index * 0.006, index === 3 ? 'triangle' : 'sine', 0.012);
   });
-  scheduleTone(ctx, 2637, now + 0.22, 0.28, 0.045, 'triangle', 0.006);
 }
 
 export function playRoundClearSound() {
@@ -388,6 +463,30 @@ export function playRoundClearSound() {
     scheduleTone(ctx, frequency, now + index * 0.07, 0.28, index === 3 ? 0.22 : 0.15, 'sine', 0.015);
   });
   scheduleTone(ctx, 2093, now + 0.3, 0.2, 0.06, 'sine', 0.008);
+}
+
+// Original OING playTimeWarnBeeps(): one burst at ten seconds and then
+// silence: three groups 0.56s apart, a high 1180Hz lead followed
+// by two softer 940Hz taps. Ours used to tick every second with a rising
+// pitch, which read as nagging rather than urgent.
+export function playTimeWarnBeeps() {
+  const ctx = getContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  for (let group = 0; group < 3; group += 1) {
+    const base = now + group * 0.56;
+    [0, 0.13, 0.26].forEach((offset, index) => {
+      scheduleTone(
+        ctx,
+        index === 0 ? 1180 : 940,
+        base + offset,
+        0.12,
+        index === 0 ? 0.05 : 0.035,
+        'sine',
+        0.025,
+      );
+    });
+  }
 }
 
 export function playCountdownTick(seconds) {
@@ -411,8 +510,8 @@ export function playGameOverSound(newRecord = false) {
     { frequency: 784, offset: 0.58, duration: 0.5 },
   ];
   fanfare.forEach(({ frequency, offset, duration }) => {
-    scheduleTone(ctx, frequency, now + offset, duration, 0.02, 'sawtooth', 0.02);
-    scheduleTone(ctx, frequency, now + offset, duration, 0.032, 'sine', 0.02);
+    scheduleTone(ctx, frequency, now + offset, duration, 0.045, 'sawtooth', 0.02);
+    scheduleTone(ctx, frequency, now + offset, duration, 0.06, 'sine', 0.02);
   });
 
   const sparkle = ctx.createOscillator();

@@ -4,3 +4,27 @@ node_modules/
 __pycache__/
 *.pyc
 .claude/settings.local.json
+
+# Android 서명 정보 - 절대 커밋 금지
+*.jks
+*.keystore
+*.p12
+android/keystore.properties
+android/local.properties
+pepk.jar
+*.zip
+
+# Android 빌드 산출물
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/capacitor-cordova-android-plugins/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+*.aab
+*.apk
+
+# 앱인토스 꾸러미 — 빌드 산출물이라 저장소에 두지 않는다
+*.ait

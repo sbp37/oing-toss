@@ -1,15 +1,32 @@
 import { cellsInRect } from './board.js';
 import {
   BOARD_DROP_ITEMS,
+  GARDEN_MILESTONES,
   buildScoreComparisons,
+  classicChapterArtUrl,
+  classicChapterThumbUrl,
+  oingCardArtUrl,
+  oingCardThumbUrl,
+  OING_CARD_BACK_READY,
+  gardenProgress,
+  isRecordInReach,
+  isWowClear,
+  isNiceClear,
   isItemUnlockedAtStage,
   pickMessage,
   resultRetryLabel,
   resultToneForScore,
+  ITEM_REWARD_INTERVAL,
+  RESULT_SCORE_THRESHOLDS,
 } from './data.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+// 칭찬 잡담(priority 1) 사이의 최소 간격. 빠른 연속 성공에서 말풍선이 쉬지
+// 않고 바뀌던 것이 "정신없다"의 정체였다. 규칙·판갈이·아이템 안내는 우선순위가
+// 높아 이 간격을 지키지 않는다 - 꼭 필요한 말은 여전히 즉시 나간다.
+const CHATTER_MIN_GAP_MS = 4200;
 
 // Every tile is the same tile. There is no colour to assign, so nothing here
 // assigns one — css/styles.css names the single art file.
@@ -49,33 +66,42 @@ const CHARACTER_ALT = Object.freeze({
   fail: '살짝 아쉬워하는 블루 고양이',
 });
 
-const ITEM_DROP_COPY = Object.freeze({
-  bomb: '톡 누르면 바로 펑!',
-  megabomb: '톡 누르면 크게 펑!',
-  clock: '톡 누르면 +5초!',
-  freeze: '톡 누르면 10초 정지!',
-  clover: '톡 누르면 정답 발견!',
-});
+// How much mist sits over the chapter art inside cleared cells: heavy while
+// the board is still full of numbers to read, light once it is nearly empty.
+const VEIL_FULL = 0.26;
+// The picture is atmosphere, not a second subject. At .10 a nearly-emptied
+// board handed it full contrast and saturation, and it started competing with
+// the dock's buttons for the eye - the loudest thing on screen was the
+// backdrop. Held soft to the end, it reads as depth behind the tiles instead.
+const VEIL_CLEAR = 0.10;
+
+// A url() inside a custom property is resolved against the stylesheet that
+// consumes it, not the document, so a document-relative path handed to CSS
+// from here would be looked up under css/. Resolve it to an absolute URL
+// first and CSS has nothing left to re-resolve.
+function cssUrl(path) {
+  return `url("${new URL(path, document.baseURI).href}")`;
+}
 
 export class GameUI {
   constructor() {
     this.screens = [...document.querySelectorAll('[data-screen]')];
     this.board = document.querySelector('#board');
     this.boardFrame = document.querySelector('#board-frame');
-    this.messageTimer = null;
-    this.messageToken = 0;
+    this.feedbackQueue = [];
+    this.activeFeedback = null;
+    this.feedbackTimer = null;
     this.characterTimer = null;
     this.selectionSnapTimer = null;
     this.selectionSnapAnimation = null;
-    this.comboCelebrationTimer = null;
     this.hintTimer = null;
     this.roundReadyTimer = null;
     this.countdownPulseTimer = null;
+    this.boardChangeFlashTimer = null;
     this.goalPulseTimer = null;
-    this.stageMissionPulseTimer = null;
     this.itemRewardPreviewTimer = null;
-    this.comboRewardTimer = null;
     this.comboLossTimer = null;
+    this.comboGainTimer = null;
     this.scoreBurstTimer = null;
     this.lastCountdownSecond = null;
     this.lastSelectionKey = '';
@@ -88,6 +114,7 @@ export class GameUI {
     this.startCountdownToken = 0;
     this.elements = {
       round: document.querySelector('#round-value'),
+      roundLabel: document.querySelector('#round-label'),
       score: document.querySelector('#score-value'),
       scoreReadout: document.querySelector('.score-readout'),
       time: document.querySelector('#time-value'),
@@ -96,31 +123,33 @@ export class GameUI {
       startCountdown: document.querySelector('#start-countdown'),
       startCountdownKicker: document.querySelector('#start-countdown-kicker'),
       startCountdownValue: document.querySelector('#start-countdown-value'),
+      startCountdownGoal: document.querySelector('#start-countdown-goal'),
       combo: document.querySelector('#combo-value'),
       comboChip: document.querySelector('#combo-chip'),
       comboTimerFill: document.querySelector('#combo-timer-fill'),
+      comboItemLabel: document.querySelector('#combo-item-label'),
+      comboItemTrack: document.querySelector('#combo-item-track'),
+      comboItemFill: document.querySelector('#combo-item-fill'),
+      boardTimeGauge: document.querySelector('#board-time-gauge'),
+      boardTimeFill: document.querySelector('#board-time-fill'),
       goal: document.querySelector('#goal-value'),
       goalLabel: document.querySelector('#goal-label'),
-      goalFill: document.querySelector('#goal-fill'),
-      goalTrack: document.querySelector('#goal-track'),
-      stageMission: document.querySelector('#stage-mission'),
-      stageMissionIcon: document.querySelector('#stage-mission-icon'),
-      stageMissionValue: document.querySelector('#stage-mission-value'),
       roundMini: document.querySelector('.round-mini'),
       sumBubble: document.querySelector('#sum-bubble'),
       sum: document.querySelector('#sum-value'),
       marquee: document.querySelector('#selection-marquee'),
       tutorial: document.querySelector('#tutorial-guide'),
       tutorialCallout: document.querySelector('#tutorial-callout'),
+      wowMoment: document.querySelector('#wow-moment'),
+      wowScore: document.querySelector('#wow-score'),
       catMessage: document.querySelector('#cat-message'),
       playCat: document.querySelector('#play-cat'),
       resultCat: document.querySelector('#result-cat'),
       resultDecor: document.querySelector('#result-decor'),
       roundClear: document.querySelector('#round-clear'),
+      playCenterNotice: document.querySelector('#play-center-notice'),
       timeUp: document.querySelector('#time-up'),
-      comboCelebration: document.querySelector('#combo-celebration'),
-      comboCelebrationKicker: document.querySelector('#combo-celebration-kicker'),
-      comboCelebrationValue: document.querySelector('#combo-celebration-value'),
+      timeUpScore: document.querySelector('#time-up-score'),
       scoreBurst: document.querySelector('#score-burst'),
       hintCount: document.querySelector('#hint-count'),
       shuffleCount: document.querySelector('#shuffle-count'),
@@ -131,7 +160,15 @@ export class GameUI {
       bombButton: document.querySelector('#bomb-button'),
       clockButton: document.querySelector('#clock-button'),
       homeBest: document.querySelector('#home-best-score'),
-      homeBestStage: document.querySelector('#home-best-stage'),
+      homeChallenge: document.querySelector('#home-challenge'),
+      homeChallengeScore: document.querySelector('#home-challenge-score'),
+      resultChallenge: document.querySelector('#result-challenge'),
+      resultNextGoal: document.querySelector('#result-next-goal'),
+      cardReveal: document.querySelector('#card-reveal'),
+      cardRevealFace: document.querySelector('#card-reveal-face'),
+      cardRevealName: document.querySelector('#card-reveal-name'),
+      cardRevealCount: document.querySelector('#card-reveal-count'),
+      cardRevealBurst: document.querySelector('#card-reveal-burst'),
       rankingBest: document.querySelector('#ranking-best-score'),
       rankingLast: document.querySelector('#ranking-last-score'),
       rankingAverage: document.querySelector('#ranking-average-score'),
@@ -139,10 +176,37 @@ export class GameUI {
       rankingTrend: document.querySelector('#ranking-trend'),
       rankingBars: document.querySelector('#ranking-bars'),
       rankingEmpty: document.querySelector('#ranking-empty'),
+      rankingCatsLine: document.querySelector('#ranking-cats-line'),
+      rankingCatsTotal: document.querySelector('#ranking-cats-total'),
+      rankingCandyLine: document.querySelector('#ranking-candy-line'),
+      rankingCandyTotal: document.querySelector('#ranking-candy-total'),
+      homeGardenCount: document.querySelector('#home-garden-count'),
+      gardenScene: document.querySelector('#garden-scene'),
+      gardenCatsTotal: document.querySelector('#garden-cats-total'),
+      gardenProgressLabel: document.querySelector('#garden-progress-label'),
+      gardenProgressFill: document.querySelector('#garden-progress-fill'),
+      gardenTiers: document.querySelector('#garden-tiers'),
+      chapterGallery: document.querySelector('#chapter-gallery'),
+      chapterGalleryNote: document.querySelector('#chapter-gallery-note'),
+      recordTabs: [...document.querySelectorAll('.record-tab')],
+      recordTabCount: document.querySelector('#record-tab-count'),
+      recordPanes: {
+        stats: document.querySelector('#record-pane-stats'),
+        cards: document.querySelector('#record-pane-cards'),
+      },
+      oingCardGallery: document.querySelector('#oing-card-gallery'),
+      oingCardNote: document.querySelector('#oing-card-note'),
+      chapterViewerTitle: document.querySelector('#chapter-viewer-title'),
+      chapterViewerArt: document.querySelector('#chapter-viewer-art'),
+      chapterViewerNote: document.querySelector('#chapter-viewer-note'),
+      resultChapterEarned: document.querySelector('#result-chapter-earned'),
+      resultCandyEarned: document.querySelector('#result-candy-earned'),
+      gardenRevealBest: document.querySelector('#garden-reveal-best'),
+      gardenRevealBestValue: document.querySelector('#garden-reveal-best-value'),
       finalScore: document.querySelector('#final-score'),
       finalCombo: document.querySelector('#final-combo'),
       finalRound: document.querySelector('#final-round'),
-      finalCats: document.querySelector('#final-cats'),
+      finalRoundLabel: document.querySelector('#final-round-label'),
       newRecord: document.querySelector('#new-record'),
       resultBestCompare: document.querySelector('#result-best-compare'),
       resultPreviousCompare: document.querySelector('#result-previous-compare'),
@@ -152,25 +216,83 @@ export class GameUI {
       resultKicker: document.querySelector('#result-kicker'),
       resultStageProgress: document.querySelector('#result-stage-progress'),
       retryButton: document.querySelector('#retry-button'),
+      cardAward: document.querySelector('#result-card-award'),
+      cardAwardFace: document.querySelector('#result-card-award-face'),
+      cardAwardName: document.querySelector('#result-card-award-name'),
+      cardAwardCount: document.querySelector('#result-card-award-count'),
+      cardAwardMore: document.querySelector('#result-card-award-more'),
+      cardAwardChapter: document.querySelector('#result-card-award-chapter'),
       toast: document.querySelector('#toast'),
     };
   }
 
-  showScreen(name) {
-    this.screens.forEach((screen) => {
-      const active = screen.dataset.screen === name;
-      screen.classList.toggle('is-active', active);
-      screen.setAttribute('aria-hidden', String(!active));
+  hydrateDeferredImages(root) {
+    if (!root) return;
+    root.querySelectorAll('img[data-src]').forEach((image) => {
+      const src = image.dataset.src;
+      if (!src) return;
+      // A state-specific pose may have been chosen before the screen opens.
+      // In that case keep the newer source instead of restoring the markup's
+      // default pose during hydration.
+      if (!image.getAttribute('src')) image.src = src;
+      image.removeAttribute('data-src');
     });
   }
 
-  async animateStartCountdown(steps, onStep = () => {}, { compact = false } = {}) {
+  showScreen(name, { behind = null } = {}) {
+    this.clearFeedbackQueue();
+    this.screens.forEach((screen) => {
+      const active = screen.dataset.screen === name;
+      const kept = behind && screen.dataset.screen === behind;
+      if (active || kept) this.hydrateDeferredImages(screen);
+      screen.classList.toggle('is-active', active || Boolean(kept));
+      screen.classList.toggle('is-behind-sheet', Boolean(kept));
+      screen.setAttribute('aria-hidden', String(!active));
+    });
+    document.querySelector('#result-screen')?.classList.toggle('is-sheet', name === 'result' && Boolean(behind));
+    // 판이 화면에 나타나는 순간에도 침범 검사를 한다 — renderBoard가 화면
+    // 전환보다 먼저 돌면 is-active 가드에 걸려 측정을 못 했을 수 있다.
+    if (name === 'play') this.scheduleLayoutFit();
+  }
+
+  primeStartCountdown(step = 3) {
+    const overlay = this.elements.startCountdown;
+    const isGo = step === 'GO!';
+    overlay.classList.remove('is-go', 'is-leaving');
+    overlay.classList.toggle('is-go', isGo);
+    overlay.classList.add('is-visible', 'is-primed');
+    overlay.dataset.step = String(step);
+    overlay.setAttribute('aria-hidden', 'false');
+    this.elements.startCountdownKicker.textContent = isGo ? '합이 10이면' : '준비!';
+    this.elements.startCountdownValue.textContent = isGo ? 'GO!' : String(step);
+    this.elements.startCountdownValue.classList.remove('is-popping');
+  }
+
+  // quick은 박자만 짧게 한다. 글씨·색·막은 첫 시작과 똑같다 - 시작 연출이
+  // 두 가지로 보이면 안 된다는 실기기 제보로 모양 차이는 걷어냈고, 남은
+  // 차이는 "재시작은 두 박"이라는 리듬뿐이다.
+  // 시작 카운트다운에 걸어두는 이번 판의 목표. 끝날 때의 목표는 "한 판 더 할
+  // 이유"지만, 시작할 때의 목표는 이 판을 어떻게 칠지의 기준이다 - 3·2·1을
+  // 보는 2초가 그 기준을 읽는 유일한 순간이라 여기가 자리다.
+  setStartCountdownGoal(goal = null) {
+    const line = this.elements.startCountdownGoal;
+    if (!line) return;
+    const text = goal?.startText || '';
+    line.hidden = !text;
+    line.textContent = text;
+  }
+
+  async animateStartCountdown(steps, onStep = () => {}, { quick = false } = {}) {
     const token = ++this.startCountdownToken;
     const overlay = this.elements.startCountdown;
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    const isPrimed = overlay.classList.contains('is-primed');
+    overlay.classList.remove('is-go', 'is-leaving');
+    if (!isPrimed) overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'false');
-    void overlay.offsetWidth;
-    overlay.classList.add('is-visible');
+    if (!isPrimed) {
+      void overlay.offsetWidth;
+      overlay.classList.add('is-visible');
+    }
 
     for (const step of steps) {
       if (token !== this.startCountdownToken) return false;
@@ -183,13 +305,17 @@ export class GameUI {
       void this.elements.startCountdownValue.offsetWidth;
       this.elements.startCountdownValue.classList.add('is-popping');
       onStep(step);
-      await delay(compact ? (isGo ? 320 : 240) : (isGo ? 500 : 420));
+      // 원조 오잉은 숫자를 650ms, GO!를 500ms 잡아 준다. 그 리듬을 그대로
+      // 옮겼는데 실기기에서 "살짝 느리다"는 제보가 왔다. 박은 그대로 두고
+      // 한 박씩만 당긴다 - 더 줄이면 숫자가 튀는 연출이 다 피기 전에 넘어가
+      // 뚝뚝 끊겨 보인다.
+      await delay(quick ? (isGo ? 340 : 370) : (isGo ? 430 : 545));
     }
 
     if (token !== this.startCountdownToken) return false;
     overlay.classList.add('is-leaving');
-    await delay(compact ? 110 : 170);
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    await delay(quick ? 110 : 150);
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-primed');
     overlay.setAttribute('aria-hidden', 'true');
     return true;
   }
@@ -197,11 +323,15 @@ export class GameUI {
   cancelStartCountdown() {
     this.startCountdownToken += 1;
     const overlay = this.elements.startCountdown;
-    overlay.classList.remove('is-visible', 'is-go', 'is-leaving');
+    overlay.classList.remove('is-visible', 'is-go', 'is-leaving', 'is-primed');
     overlay.setAttribute('aria-hidden', 'true');
   }
 
   renderBoard(model, boardItems = new Map(), { preserveScoreBurst = false } = {}) {
+    // A retry can begin while the result transition is still settling. Clear
+    // the previous board's answer markers before any new tiles are created so
+    // stale TIME UP guidance can never leak into the next run.
+    this.clearEndAnswers();
     if (!preserveScoreBurst) {
       clearTimeout(this.scoreBurstTimer);
       this.elements.scoreBurst.classList.remove('is-visible');
@@ -216,6 +346,9 @@ export class GameUI {
     this.boardFrame.dataset.cols = String(cols);
     this.boardFrame.dataset.rows = String(rows);
     this.elements.playScreen.classList.toggle('is-tall-board', rows > cols);
+    // The deepest ladder steps (8 and 9 rows) need more height than the tall
+    // board's chrome trim frees up, so they get their own tighter tier.
+    this.elements.playScreen.dataset.boardRows = String(rows);
     this.board.style.setProperty('--board-cols', cols);
     this.board.style.setProperty('--board-rows', rows);
     this.boardFrame.style.setProperty('--board-cols', cols);
@@ -223,6 +356,11 @@ export class GameUI {
     this.elements.playScreen.style.setProperty('--board-cols', cols);
     this.elements.playScreen.style.setProperty('--board-rows', rows);
     const fragment = document.createDocumentFragment();
+    // 칸 하나를 찾을 때마다 querySelector를 돌리면 드래그 중에 값이 나간다.
+    // 판을 만들 때 한 번 담아두고 그 뒤로는 이 지도만 본다.
+    this.tileByKey = new Map();
+    this.selectedTileKeys = new Set();
+    this.cachedGrid = null;
     for (let r = 0; r < rows; r += 1) {
       for (let c = 0; c < cols; c += 1) {
         const value = model.valueAt(r, c);
@@ -275,7 +413,9 @@ export class GameUI {
           badge.setAttribute('aria-hidden', 'true');
           tile.append(cat, badge);
         } else {
-          const specialLabel = special === 'clock' ? ', 시계 타일 +5초' : special === 'bomb' ? ', 폭탄 타일' : '';
+          // The bomb is the only special tile the board can produce; the
+          // clock version was retired with its stage chance and placement.
+          const specialLabel = special === 'bomb' ? ', 폭탄 타일' : '';
           tile.setAttribute('aria-label', value ? `${value}${specialLabel}` : '빈칸');
           if (value) {
             const number = document.createElement('span');
@@ -285,41 +425,187 @@ export class GameUI {
               tile.dataset.special = special;
               const badge = document.createElement('img');
               badge.className = 'special-tile-badge';
-              badge.src = special === 'clock'
-                ? 'assets/icons/hud/time.webp'
-                : 'assets/icons/items/bomb.webp';
+              badge.src = 'assets/icons/items/bomb.webp';
               badge.alt = '';
               const actionLabel = document.createElement('small');
               actionLabel.className = 'special-tile-label';
-              actionLabel.textContent = special === 'clock' ? '+5초' : '펑!';
+              actionLabel.textContent = '펑!';
               tile.append(badge, actionLabel);
             }
           }
         }
+        this.tileByKey.set(`${r}:${c}`, tile);
         fragment.appendChild(tile);
       }
     }
     this.board.replaceChildren(fragment);
     this.clearSelection();
+    requestAnimationFrame(() => this.syncChapterWindows());
+    // renderBoard는 성공할 때마다 돌지만, 강제 재배치를 부르는 침범 검사는
+    // 판의 모양이 실제로 바뀐 때만 다시 한다 (#24의 드래그 예산을 지킨다).
+    const dimsKey = `${cols}x${rows}`;
+    if (this.lastFitDims !== dimsKey) {
+      this.lastFitDims = dimsKey;
+      this.scheduleLayoutFit();
+    }
+    if (!this.chapterWindowResizeBound) {
+      this.chapterWindowResizeBound = true;
+      window.addEventListener('resize', () => {
+        // 화면이 바뀌면 재놓은 격자는 더 이상 맞지 않는다.
+        this.cachedGrid = null;
+        this.syncChapterWindows();
+        this.scheduleLayoutFit();
+      });
+      // iOS는 주소창·웹뷰 상단바가 접히고 펴질 때 window resize 없이
+      // visualViewport만 바뀌는 경우가 있다.
+      window.visualViewport?.addEventListener('resize', () => this.scheduleLayoutFit());
+    }
+  }
+
+  // 실기기마다 웹뷰 상단바와 안전영역이 달라, 보드가 하단 독과 말풍선을
+  // 침범하는지는 상수(미디어쿼리)로 예측하지 않고 실제 기하로 잰다.
+  // 판갈이 직후에는 셔플 연출이 돌고 있으므로 한 번은 바로, 한 번은
+  // 연출이 끝난 뒤에 다시 재서 transform이 섞인 측정을 걸러낸다.
+  scheduleLayoutFit() {
+    clearTimeout(this.layoutFitTimer);
+    requestAnimationFrame(() => this.fitPlayLayout());
+    this.layoutFitTimer = window.setTimeout(() => this.fitPlayLayout(), 640);
+  }
+
+  // 1) 보드가 아이템 독(버튼 줄)을 덮으면, 덮지 않을 때까지 보드를 줄인다.
+  //    버튼은 눌러야 하는 물건이라 보드보다 우선이다.
+  // 2) 그러고도 말풍선 자리가 안 나오면 말풍선을 접는다. 접힌 동안의
+  //    대사는 playNextFeedback이 토스트로 돌린다.
+  fitPlayLayout() {
+    const play = this.elements.playScreen;
+    const frame = this.boardFrame;
+    const footer = play?.querySelector('.play-footer');
+    const speech = play?.querySelector('.cat-speech');
+    if (!play || !frame || !footer || !play.classList.contains('is-active')) return;
+    frame.style.width = '';
+    const clearance = 6;
+    // 1fr/2fr 스페이서가 줄어든 높이를 다시 나눠 갖므로, 보드를 h만큼
+    // 줄여도 바닥은 h의 2/3만 올라온다. 여유 배율로 두세 번 안에 수렴.
+    for (let pass = 0; pass < 3; pass += 1) {
+      const board = frame.getBoundingClientRect();
+      const dock = footer.getBoundingClientRect();
+      if (!board.height || !dock.height) break;
+      const deficit = board.bottom - (dock.top - clearance);
+      if (deficit <= 0) break;
+      const nextHeight = board.height - deficit * 1.6 - 2;
+      if (nextHeight < 120) break;
+      const cols = Number(frame.dataset.cols) || 6;
+      const rows = Number(frame.dataset.rows) || 6;
+      frame.style.width = `${Math.floor((nextHeight * cols) / rows)}px`;
+    }
+    let collapsed = false;
+    if (speech) {
+      const style = getComputedStyle(speech);
+      if (style.display === 'none') collapsed = true;
+      else {
+        const board = frame.getBoundingClientRect();
+        const bubble = speech.getBoundingClientRect();
+        collapsed = bubble.top < board.bottom + 2;
+      }
+    }
+    play.classList.toggle('is-speech-collapsed', collapsed);
+    this.speechCollapsed = collapsed;
+  }
+
+  // Cleared cells paint the chapter art themselves: each tile gets the
+  // board-sized painting offset to its own cell, so adjacent cleared cells
+  // line up into one continuous picture while the sealed bed keeps it out of
+  // the gutters. Measured from offsetLeft/Top - layout coordinates - so the
+  // flip animations' transforms cannot skew the sample points. Every tile is
+  // measured up front because cells go empty later without a re-render.
+  syncChapterWindows() {
+    const board = this.board;
+    if (!board || !board.offsetWidth) return;
+    // Cover-fit at the painting's own 1086x1448 ratio. Stretching the image
+    // to the board box squashed every scene on boards that are not 3:4 -
+    // visibly so on the square openers.
+    const ART_W = 1086;
+    const ART_H = 1448;
+    const bw = board.offsetWidth;
+    const bh = board.offsetHeight;
+    const scale = Math.max(bw / ART_W, bh / ART_H);
+    const coverW = ART_W * scale;
+    const coverH = ART_H * scale;
+    const originX = (bw - coverW) / 2;
+    const originY = (bh - coverH) / 2;
+    board.style.setProperty('--win-size', `${coverW}px ${coverH}px`);
+    const tiles = board.querySelectorAll('.tile');
+    tiles.forEach((tile) => {
+      tile.style.setProperty('--win-pos', `${originX - tile.offsetLeft}px ${originY - tile.offsetTop}px`);
+    });
+    this.syncChapterVeil(tiles);
+  }
+
+  // The mist thins as the board empties, so a scene develops rather than
+  // arriving. Written as two variables on the board itself - one style write
+  // per render, inherited by the cells - rather than per-tile, and as plain
+  // gradient alpha rather than a filter, so nothing here adds a composited
+  // layer or a per-frame cost.
+  syncChapterVeil(tiles = this.board?.querySelectorAll('.tile')) {
+    const board = this.board;
+    if (!board || !tiles?.length) return;
+    let playable = 0;
+    let cleared = 0;
+    tiles.forEach((tile) => {
+      if (tile.classList.contains('is-board-item') || tile.classList.contains('is-bonus-cat')) return;
+      playable += 1;
+      if (tile.classList.contains('is-empty')) cleared += 1;
+    });
+    const ratio = playable ? cleared / playable : 0;
+    const veil = VEIL_FULL + (VEIL_CLEAR - VEIL_FULL) * ratio;
+    board.style.setProperty('--win-veil', veil.toFixed(3));
+    board.style.setProperty('--win-veil-b', (veil - 0.06).toFixed(3));
   }
 
   tileAt(r, c) {
-    return this.board.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+    return this.tileByKey?.get(`${r}:${c}`)
+      || this.board.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+  }
+
+  // 판의 격자는 한 판 동안 움직이지 않는다. 칸 하나하나의 좌표를 그때그때
+  // 읽는 대신, 첫 칸과 끝 칸을 한 번만 재서 칸 간격을 구해두고 그 뒤로는
+  // 계산으로 답한다. 읽기가 사라지면 브라우저가 배치를 다시 계산할 이유도
+  // 사라진다 - 드래그 중 버벅임의 가장 큰 몫이 이 읽기였다.
+  gridGeometry() {
+    if (this.cachedGrid) return this.cachedGrid;
+    const cols = Number(this.board.dataset.cols || this.board.dataset.size) || 0;
+    const rows = Number(this.board.dataset.rows || this.board.dataset.size) || 0;
+    const first = this.tileAt(0, 0)?.getBoundingClientRect();
+    const last = this.tileAt(rows - 1, cols - 1)?.getBoundingClientRect();
+    const frame = this.boardFrame.getBoundingClientRect();
+    if (!first || !last || !frame.width) return null;
+    this.cachedGrid = {
+      frame,
+      left: first.left,
+      top: first.top,
+      width: first.width,
+      height: first.height,
+      pitchX: cols > 1 ? (last.left - first.left) / (cols - 1) : first.width,
+      pitchY: rows > 1 ? (last.top - first.top) / (rows - 1) : first.height,
+    };
+    return this.cachedGrid;
   }
 
   selectionBounds(rect) {
-    const first = this.tileAt(rect.r1, rect.c1)?.getBoundingClientRect();
-    const last = this.tileAt(rect.r2, rect.c2)?.getBoundingClientRect();
-    const frame = this.boardFrame.getBoundingClientRect();
-    if (!first || !last || !frame.width) return null;
+    const grid = this.gridGeometry();
+    if (!grid) return null;
+    const left = grid.left + rect.c1 * grid.pitchX;
+    const top = grid.top + rect.r1 * grid.pitchY;
+    const right = grid.left + rect.c2 * grid.pitchX + grid.width;
+    const bottom = grid.top + rect.r2 * grid.pitchY + grid.height;
     return {
-      left: first.left - frame.left,
-      top: first.top - frame.top,
-      right: last.right - frame.left,
-      bottom: last.bottom - frame.top,
-      frameWidth: frame.width,
-      frameHeight: frame.height,
-      frame,
+      left: left - grid.frame.left,
+      top: top - grid.frame.top,
+      right: right - grid.frame.left,
+      bottom: bottom - grid.frame.top,
+      frameWidth: grid.frame.width,
+      frameHeight: grid.frame.height,
+      frame: grid.frame,
     };
   }
 
@@ -329,14 +615,29 @@ export class GameUI {
     const marquee = this.elements.marquee;
     let bounds = this.lastSelectionBounds;
     if (selectionChanged) {
-      const selected = new Set(cellsInRect(rect).map(({ r, c }) => `${r}:${c}`));
-      this.board.querySelectorAll('.tile').forEach((tile) => {
-        tile.classList.toggle(
-          'is-selected',
-          !tile.dataset.item && selected.has(`${tile.dataset.row}:${tile.dataset.col}`),
-        );
-      });
+      // 좌표를 먼저 읽고, 클래스는 그 다음에 쓴다. 순서를 바꾸면 (쓰기 -> 읽기)
+      // 브라우저가 그 자리에서 배치를 다시 계산해야 해서, 손가락이 한 칸
+      // 움직일 때마다 판 전체가 다시 계산된다.
       bounds = this.selectionBounds(rect);
+
+      // 바뀐 칸만 손댄다. 예전에는 한 칸 움직일 때마다 판의 모든 칸에
+      // classList.toggle을 걸었고, 클래스가 실제로 바뀌지 않아도 브라우저는
+      // 그 칸들의 모양을 다시 계산했다. 9x6 판이면 한 번 움직일 때 54칸.
+      // 실제로 상태가 바뀌는 것은 늘어나거나 줄어든 줄 하나뿐이라 6~9칸이면 된다.
+      const selected = new Set(cellsInRect(rect).map(({ r, c }) => `${r}:${c}`));
+      const previous = this.selectedTileKeys || new Set();
+      for (const key of previous) {
+        if (selected.has(key)) continue;
+        this.tileByKey?.get(key)?.classList.remove('is-selected');
+      }
+      for (const key of selected) {
+        if (previous.has(key)) continue;
+        const tile = this.tileByKey?.get(key);
+        if (tile && !tile.dataset.item) tile.classList.add('is-selected');
+      }
+      this.selectedTileKeys = new Set(
+        [...selected].filter((key) => !this.tileByKey?.get(key)?.dataset.item),
+      );
       this.lastSelectionKey = selectionKey;
       this.lastSelectionBounds = bounds;
       if (bounds) {
@@ -437,6 +738,7 @@ export class GameUI {
     this.lastSelectionKey = '';
     this.lastSelectionBounds = null;
     this.board.querySelectorAll('.tile.is-selected').forEach((tile) => tile.classList.remove('is-selected'));
+    this.selectedTileKeys = new Set();
     this.board.querySelectorAll('.tile.is-tap-anchor').forEach((tile) => tile.classList.remove('is-tap-anchor'));
     this.elements.marquee.classList.remove('is-visible', 'is-ten', 'is-snapping', 'is-perfect-snap');
     this.elements.marquee.classList.remove('is-repositioning');
@@ -539,14 +841,15 @@ export class GameUI {
   }
 
   pulseGoal(combo = 1) {
-    const track = this.elements.goalTrack;
+    const counter = this.elements.goal;
+    if (!counter) return;
     clearTimeout(this.goalPulseTimer);
-    track.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
-    track.classList.remove('is-rewarded');
-    void track.offsetWidth;
-    track.classList.add('is-rewarded');
+    counter.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
+    counter.classList.remove('is-rewarded');
+    void counter.offsetWidth;
+    counter.classList.add('is-rewarded');
     this.goalPulseTimer = window.setTimeout(() => {
-      track.classList.remove('is-rewarded');
+      counter.classList.remove('is-rewarded');
     }, 520);
   }
 
@@ -558,31 +861,6 @@ export class GameUI {
     this.itemRewardPreviewTimer = window.setTimeout(() => {
       this.boardFrame.classList.remove('is-item-reward-near');
     }, 760);
-  }
-
-  showComboReward(item, delayMs = 0) {
-    clearTimeout(this.comboRewardTimer);
-    this.elements.playScreen.querySelector('.combo-reward-pop')?.remove();
-    this.comboRewardTimer = window.setTimeout(() => {
-      const pop = document.createElement('div');
-      pop.className = `combo-reward-pop combo-reward-${item.id}`;
-      const icon = document.createElement('img');
-      icon.src = item.asset;
-      icon.alt = '';
-      const copy = document.createElement('span');
-      copy.textContent = `+${item.label}`;
-      pop.append(icon, copy, document.createElement('i'), document.createElement('i'));
-      this.elements.comboChip.appendChild(pop);
-      this.elements.comboChip.classList.add('is-inline-feedback');
-      this.elements.comboChip.classList.remove('is-reward-earned');
-      void this.elements.comboChip.offsetWidth;
-      this.elements.comboChip.classList.add('is-reward-earned');
-      window.setTimeout(() => {
-        pop.remove();
-        this.elements.comboChip.classList.remove('is-inline-feedback');
-        this.elements.comboChip.classList.remove('is-reward-earned');
-      }, 1050);
-    }, Math.max(0, delayMs));
   }
 
   showComboLoss(amount) {
@@ -600,21 +878,55 @@ export class GameUI {
     }, 720);
   }
 
+  showComboGain(amount) {
+    const gain = Math.max(1, Math.round(Number(amount) || 1));
+    if (gain <= 1) return;
+    clearTimeout(this.comboGainTimer);
+    this.elements.playScreen.querySelector('.combo-gain-pop')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'combo-gain-pop';
+    pop.textContent = `+${gain}`;
+    pop.setAttribute('aria-hidden', 'true');
+    this.elements.comboChip.appendChild(pop);
+    this.comboGainTimer = window.setTimeout(() => pop.remove(), 760);
+  }
+
+  revealClearedCells(rect, extraCells = [], { includeItems = false } = {}) {
+    this.clearSelection();
+    const cells = [...cellsInRect(rect), ...extraCells];
+    const seen = new Set();
+    cells.forEach(({ r, c }) => {
+      const key = `${r}:${c}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const tile = this.tileAt(r, c);
+      if (!tile || (!includeItems && tile.dataset.item)) return;
+      tile.classList.remove(
+        'is-selected', 'is-tap-anchor', 'is-hint', 'is-hint-area',
+        'is-tutorial', 'is-clover-hint',
+      );
+      tile.classList.add('is-cleared-reveal');
+    });
+  }
+
   async animateSuccess(rect, combo = 1) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--pop-delay', `${Math.min(index * 7, 42)}ms`);
-      tile.classList.add('is-success');
+      // The model is already empty when this animation starts. Reveal the
+      // chapter in the same paint instead of leaving the old tile face over
+      // the cleared cell while the success particles play.
+      tile.classList.add('is-success', 'is-cleared-reveal');
     });
-    this.elements.marquee.classList.add('is-ten');
-    this.elements.marquee.classList.add('is-bursting');
     this.boardFrame.classList.add('is-success-resolving');
     this.boardFrame.dataset.comboImpact = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
     this.spawnParticles(rect, combo);
     this.showScoreFlight(rect, combo);
-    await delay(270);
+    // Particles may finish independently; the cleared board itself must not
+    // wait for them because that makes quick consecutive clears feel sticky.
+    await delay(230);
     this.elements.marquee.classList.remove('is-bursting', 'is-visible');
     this.boardFrame.classList.remove('is-success-resolving');
     delete this.boardFrame.dataset.comboImpact;
@@ -653,18 +965,6 @@ export class GameUI {
       });
     const source = specialTiles[0]?.tile?.getBoundingClientRect();
     const frame = this.boardFrame.getBoundingClientRect();
-    const popType = specialTiles.some(({ type }) => type === 'bomb') ? 'bomb' : specialTiles[0]?.type;
-    // Clock already flies to the timer with a single +5 SEC label. Repeating
-    // another +5 on the board made one reward read like two separate gains.
-    if (source && popType !== 'clock') {
-      const pop = document.createElement('div');
-      pop.className = `special-trigger-pop special-trigger-${popType}`;
-      pop.style.left = `${source.left + source.width / 2 - frame.left}px`;
-      pop.style.top = `${source.top + source.height / 2 - frame.top}px`;
-      pop.textContent = 'POP!';
-      this.boardFrame.appendChild(pop);
-      setTimeout(() => pop.remove(), 520);
-    }
     await delay(300);
   }
 
@@ -680,17 +980,27 @@ export class GameUI {
     this.clearSelection();
   }
 
-  showHint(rect) {
+  // tone 'coach'는 판이 열릴 때의 출발 안내다. 같은 표시를 노란색으로 칠하고
+  // "합10 여기!" 대신 "슥 이어봐!"라고 말한다 - 답을 찍어주는 것이 아니라
+  // 조작을 가르치는 것이라, 잘하는 사람도 김새지 않는다. 초기 오잉의
+  // "슥 밀거나, 양끝을 톡톡!" 안내를 되살린 것이다.
+  showHint(rect, { tone = 'answer' } = {}) {
+    const coaching = tone === 'coach';
+    // 가르치는 표시는 조금 더 오래 둔다 - 읽고 따라 해봐야 하는 안내라서.
+    const hold = coaching ? 3000 : 2200;
     clearTimeout(this.hintTimer);
-    this.board.classList.remove('is-hinting');
-    const tiles = cellsInRect(rect)
+    this.board.classList.remove('is-hinting', 'is-hint-coach');
+    const areaTiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
+    const tiles = areaTiles.filter((tile) => !tile.classList.contains('is-empty'));
+    areaTiles.forEach((tile) => tile.classList.add('is-hint-area'));
     tiles.forEach((tile, index) => {
       tile.style.setProperty('--hint-index', index);
       tile.classList.add('is-hint');
     });
     this.board.classList.add('is-hinting');
+    if (coaching) this.board.classList.add('is-hint-coach');
     const bounds = this.selectionBounds(rect);
     if (bounds) {
       this.boardFrame.querySelector('.hint-region')?.remove();
@@ -701,25 +1011,38 @@ export class GameUI {
       region.style.top = `${bounds.top - pad}px`;
       region.style.width = `${bounds.right - bounds.left + pad * 2}px`;
       region.style.height = `${bounds.bottom - bounds.top + pad * 2}px`;
+      // 라벨은 기본적으로 영역 위에 뜬다(top: -19px). 답이 맨 윗줄이면 그
+      // 자리가 보드 밖이라 위쪽 점수판과 겹쳐 잘려 보인다. 머리 위 공간이
+      // 모자라면 아래로 뒤집는다.
+      if (bounds.top < 26) region.classList.add('is-label-below');
       const label = document.createElement('span');
       const icon = document.createElement('img');
       icon.src = 'assets/icons/items/hint.webp';
       icon.alt = '';
       const labelText = document.createElement('strong');
-      labelText.textContent = '합10 여기!';
+      labelText.textContent = coaching ? '이어서 10 만들기!' : '합10 여기!';
       label.append(icon, labelText);
       region.append(label);
       for (let index = 0; index < 4; index += 1) region.appendChild(document.createElement('i'));
       this.boardFrame.appendChild(region);
-      window.setTimeout(() => region.remove(), 2200);
+      window.setTimeout(() => region.remove(), hold);
     }
-    this.hintTimer = setTimeout(() => {
-      tiles.forEach((tile) => {
-        tile.classList.remove('is-hint');
-        tile.style.removeProperty('--hint-index');
-      });
-      this.board.classList.remove('is-hinting');
-    }, 2200);
+    this.hintTimer = setTimeout(() => this.clearHint(), hold);
+  }
+
+  // Once the hinted answer is actually played the hint has done its job, so
+  // the board must come back instantly. Waiting out the 2.2s display timer
+  // left the veil and the region sitting over the next move.
+  clearHint() {
+    clearTimeout(this.hintTimer);
+    this.hintTimer = null;
+    this.board.querySelectorAll('.tile.is-hint').forEach((tile) => {
+      tile.classList.remove('is-hint');
+      tile.style.removeProperty('--hint-index');
+    });
+    this.board.querySelectorAll('.tile.is-hint-area').forEach((tile) => tile.classList.remove('is-hint-area'));
+    this.board.classList.remove('is-hinting', 'is-hint-coach');
+    this.boardFrame.querySelector('.hint-region')?.remove();
   }
 
   previewBombTarget(rect) {
@@ -739,7 +1062,6 @@ export class GameUI {
     region.style.top = `${bounds.top - 3}px`;
     region.style.width = `${bounds.right - bounds.left + 6}px`;
     region.style.height = `${bounds.bottom - bounds.top + 6}px`;
-    region.textContent = 'POP!';
     this.boardFrame.appendChild(region);
   }
 
@@ -784,9 +1106,14 @@ export class GameUI {
   clearTransientBoardFeedback() {
     clearTimeout(this.hintTimer);
     this.hintTimer = null;
+    clearTimeout(this.comboGainTimer);
+    this.comboGainTimer = null;
     this.clearSelection();
     this.hideTutorial();
     this.board.classList.remove('is-hinting', 'is-shuffling-out', 'is-shuffling-in');
+    this.board.querySelectorAll('.tile.is-cleared-reveal, .tile.is-hint-area').forEach((tile) => {
+      tile.classList.remove('is-cleared-reveal', 'is-hint-area');
+    });
     this.board.querySelectorAll('.tile.is-bomb-target').forEach((tile) => {
       tile.classList.remove('is-bomb-target');
       tile.style.removeProperty('--bomb-preview-delay');
@@ -808,6 +1135,7 @@ export class GameUI {
       '.megabomb-fx',
       '.item-impact-fx',
       '.game-end-sweep',
+      '.end-answer-region',
       '.end-score-summary',
       '.item-drop-fx',
       '.item-tease',
@@ -816,6 +1144,7 @@ export class GameUI {
       '.match-confirmation',
       '.final-second-pop',
       '.stage-entry',
+      '.board-entry',
       '.stage-growth-confetti',
     ].join(',')).forEach((element) => element.remove());
     this.clearEndAnswers();
@@ -823,7 +1152,7 @@ export class GameUI {
     this.elements.playScreen.querySelector('.final-second-pop')?.remove();
     this.elements.playScreen.querySelector('.time-rescue-label')?.remove();
     this.elements.playScreen.querySelector('.low-time-alert')?.remove();
-    this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop').forEach((element) => element.remove());
+    this.elements.playScreen.querySelectorAll('.combo-reward-pop, .combo-loss-pop, .combo-gain-pop').forEach((element) => element.remove());
     this.elements.comboChip.classList.remove('is-inline-feedback');
     this.elements.playScreen.classList.remove('is-board-growth-clear', 'is-time-rescued', 'is-low-time-alerting');
   }
@@ -842,6 +1171,108 @@ export class GameUI {
     });
   }
 
+  // Transition cleanup: when a stage ends with tiles left (the tens ran
+  // out), the leftovers pop away as part of the stage transition — a
+  // different rhythm from the success animation on purpose.
+  async animateSweep(cells = []) {
+    const tiles = cells
+      .map(({ r, c }) => this.tileAt(r, c))
+      .filter(Boolean);
+    tiles.forEach((tile, index) => {
+      tile.style.setProperty('--sweep-delay', `${index * 30}ms`);
+      tile.classList.add('is-sweeping');
+    });
+    await delay(240 + cells.length * 30);
+  }
+
+  // The full-clear payoff: the board is empty, so the garden art beneath it
+  // is completely visible for the first time. Hold on it briefly — long
+  // enough to register as a reward, short enough not to stall the run.
+  async celebrateFullGarden({ perfect = false } = {}) {
+    this.boardFrame.classList.add('is-garden-complete');
+    this.boardFrame.classList.toggle('is-garden-perfect', perfect);
+    await delay(perfect ? 780 : 620);
+    this.boardFrame.classList.remove('is-garden-complete', 'is-garden-perfect');
+  }
+
+  // TIME UP 이어하기 제안. 'watch' | 'decline'을 돌려준다. 제한 시간이
+  // 지나면 자동으로 결과로 넘어간다 - 광고를 볼 생각이 없는 사람을 오래
+  // 붙잡는 쪽이 더 나쁘다.
+  showContinueOffer(seconds = 30, timeoutMs = 5000) {
+    const overlay = document.querySelector('#continue-overlay');
+    if (!overlay) return Promise.resolve('decline');
+    this.hydrateDeferredImages(overlay);
+    const strong = overlay.querySelector('#continue-watch-button strong');
+    if (strong) strong.textContent = `+${Math.round(seconds)}초`;
+    this.setOverlay('continue-overlay', true);
+    return new Promise((resolve) => {
+      const watch = overlay.querySelector('#continue-watch-button');
+      const decline = overlay.querySelector('#continue-decline-button');
+      let timer = 0;
+      let ticker = 0;
+      // 갑자기 결과로 넘어가면 툭 끊긴 느낌이 든다(실기기 제보). 남은 초를
+      // '결과 보기' 버튼에 세어 줘서, 곧 넘어간다는 것을 미리 알린다.
+      const deadline = performance.now() + timeoutMs;
+      const renderCountdown = () => {
+        const left = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+        if (decline) decline.textContent = `결과 보기 (${left})`;
+      };
+      const settle = (choice) => {
+        clearTimeout(timer);
+        clearInterval(ticker);
+        watch?.removeEventListener('click', onWatch);
+        decline?.removeEventListener('click', onDecline);
+        if (decline) decline.textContent = '결과 보기';
+        this.setOverlay('continue-overlay', false);
+        resolve(choice);
+      };
+      const onWatch = () => settle('watch');
+      const onDecline = () => settle('decline');
+      watch?.addEventListener('click', onWatch);
+      decline?.addEventListener('click', onDecline);
+      renderCountdown();
+      ticker = window.setInterval(renderCountdown, 250);
+      timer = window.setTimeout(() => settle('decline'), timeoutMs);
+    });
+  }
+
+  // 도움팩 제안. 이어하기와 달리 자동으로 닫지 않는다 - TIME UP은 흐름이
+  // 끝나는 지점이라 재촉이 필요하지만, 여기서는 유저가 스스로 부른 창이고
+  // 시계도 멈춰 있어 서두를 이유가 없다.
+  showHelpPackOffer(contents = '') {
+    const overlay = document.querySelector('#help-pack-overlay');
+    if (!overlay) return Promise.resolve('decline');
+    this.hydrateDeferredImages(overlay);
+    const line = overlay.querySelector('.help-pack-contents');
+    if (line && contents) line.textContent = contents;
+    this.setOverlay('help-pack-overlay', true);
+    return new Promise((resolve) => {
+      const watch = overlay.querySelector('#help-pack-watch-button');
+      const decline = overlay.querySelector('#help-pack-decline-button');
+      const settle = (choice) => {
+        watch?.removeEventListener('click', onWatch);
+        decline?.removeEventListener('click', onDecline);
+        this.setOverlay('help-pack-overlay', false);
+        resolve(choice);
+      };
+      const onWatch = () => settle('watch');
+      const onDecline = () => settle('decline');
+      watch?.addEventListener('click', onWatch);
+      decline?.addEventListener('click', onDecline);
+    });
+  }
+
+  // 손가락이 닿는 즉시 도구 버튼이 눌린 티를 낸다. 합성 전용(투명도·변형)
+  // 이라 발열이 없고, 실제 동작이 끝나기를 기다리지 않는다.
+  flashItemPress(type) {
+    const button = this.itemButton(type);
+    if (!button) return;
+    button.classList.remove('is-item-tapped');
+    void button.offsetWidth;
+    button.classList.add('is-item-tapped');
+    window.setTimeout(() => button.classList.remove('is-item-tapped'), 260);
+  }
+
   async animateShuffleOut() {
     this.setShuffleVectors();
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
@@ -849,14 +1280,14 @@ export class GameUI {
     effect.className = 'shuffle-fx';
     this.boardFrame.appendChild(effect);
     this.board.classList.add('is-shuffling-out');
-    await delay(400);
+    await delay(240);
     this.board.classList.remove('is-shuffling-out');
   }
 
   async animateShuffleIn() {
     this.setShuffleVectors();
     this.board.classList.add('is-shuffling-in');
-    await delay(480);
+    await delay(300);
     this.board.classList.remove('is-shuffling-in');
     this.boardFrame.classList.remove('is-shuffle-settled');
     void this.boardFrame.offsetWidth;
@@ -866,6 +1297,20 @@ export class GameUI {
     });
     this.boardFrame.querySelector('.shuffle-fx')?.remove();
     window.setTimeout(() => this.boardFrame.classList.remove('is-shuffle-settled'), 260);
+    // The board may have morphed to a new ladder size during the swap; the
+    // windows resample once the layout has settled.
+    this.syncChapterWindows();
+  }
+
+  // 터진 칸이 제자리에서 작아지기만 하면 "지워졌다"로만 읽힌다. 폭심에서
+  // 바깥으로 밀려나는 방향을 칸마다 심어줘서 파편처럼 흩어지게 한다.
+  // 방향은 폭심 기준 좌표라 항상 바깥쪽이고, 회전은 좌우로 갈라 준다.
+  setBlastVector(tile, dx, dy, index, strength = 1) {
+    const distance = Math.hypot(dx, dy) || 1;
+    const push = (16 + distance * 9) * strength;
+    tile.style.setProperty('--blast-x', `${((dx / distance) * push).toFixed(1)}px`);
+    tile.style.setProperty('--blast-y', `${((dy / distance) * push - 6).toFixed(1)}px`);
+    tile.style.setProperty('--blast-rot', `${(index % 2 ? 1 : -1) * (10 + (index % 3) * 7)}deg`);
   }
 
   async animateBomb(rect) {
@@ -874,10 +1319,14 @@ export class GameUI {
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
     this.boardFrame.querySelector('.bomb-target-region')?.remove();
-    tiles.forEach((tile, index) => {
+    const center = { r: (rect.r1 + rect.r2) / 2, c: (rect.c1 + rect.c2) / 2 };
+    cellsInRect(rect).forEach(({ r, c }, index) => {
+      const tile = this.tileAt(r, c);
+      if (!tile || tile.dataset.item) return;
       tile.classList.remove('is-bomb-target');
       tile.style.removeProperty('--bomb-preview-delay');
       tile.style.setProperty('--blast-delay', `${Math.min(index * 22, 120)}ms`);
+      this.setBlastVector(tile, c - center.c, r - center.r, index);
       tile.classList.add('is-bombed');
     });
     if (bounds) {
@@ -885,29 +1334,32 @@ export class GameUI {
       effect.className = 'bomb-fx';
       effect.style.left = `${(bounds.left + bounds.right) / 2}px`;
       effect.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
-      const icon = document.createElement('img');
-      icon.src = 'assets/icons/items/bomb.webp';
-      icon.alt = '';
-      const label = document.createElement('strong');
-      label.textContent = 'POP!';
-      effect.append(icon, label, document.createElement('i'), document.createElement('i'), document.createElement('i'));
+      // The bomb is already visible in its board cell (or has flown in from
+      // the inventory button). Repeating the same bomb picture at impact
+      // looked like a duplicate item landing on top of it, so impact is now
+      // rings, shards and syrup drops only.
+      effect.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
       for (let index = 0; index < 5; index += 1) {
         const drop = document.createElement('b');
         drop.style.setProperty('--bomb-drop-index', String(index));
         effect.appendChild(drop);
       }
       this.boardFrame.appendChild(effect);
-      setTimeout(() => effect.remove(), 720);
+      setTimeout(() => effect.remove(), 520);
     }
-    await delay(470);
+    // 파편이 흩어지는 걸 끝까지 보여주되, 다음 수를 막는 시간은 줄인다.
+    await delay(330);
   }
 
   async animateMegaBomb(cells, origin) {
     const tiles = cells
       .map(({ r, c }) => this.tileAt(r, c))
       .filter((tile) => tile && !tile.dataset.item);
-    tiles.forEach((tile, index) => {
+    cells.forEach(({ r, c }, index) => {
+      const tile = this.tileAt(r, c);
+      if (!tile || tile.dataset.item) return;
       tile.style.setProperty('--mega-delay', `${Math.min(index * 18, 126)}ms`);
+      this.setBlastVector(tile, c - origin.col, r - origin.row, index, 1.35);
       tile.classList.add('is-megabombed');
     });
     const source = this.tileAt(origin.row, origin.col)?.getBoundingClientRect();
@@ -959,53 +1411,11 @@ export class GameUI {
       flightIcon.alt = '';
       flight.append(flightIcon, document.createElement('i'), document.createElement('i'), document.createElement('i'));
       this.elements.playScreen.appendChild(flight);
-      const effect = document.createElement('div');
-      effect.className = `item-drop-fx item-drop-${type}`;
-      effect.style.left = `${tileRect.left + tileRect.width / 2 - frameRect.left}px`;
-      effect.style.top = `${tileRect.top + tileRect.height / 2 - frameRect.top}px`;
-      effect.style.setProperty('--item-landing-delay', `${landingDelay}ms`);
-      const icon = document.createElement('img');
-      icon.src = definition?.asset || '';
-      icon.alt = '';
-      const label = document.createElement('span');
-      label.textContent = showcase
-        ? `첫 등장! ${definition?.label || '희귀 아이템'}`
-        : ITEM_DROP_COPY[type] || `${definition?.label || '아이템'} 등장!`;
-      effect.append(icon, label);
-      for (let sparkle = 0; sparkle < 4; sparkle += 1) effect.appendChild(document.createElement('i'));
-      for (let pawIndex = 0; pawIndex < 2; pawIndex += 1) {
-        const paw = document.createElement('b');
-        paw.className = 'item-drop-paw';
-        effect.appendChild(paw);
-      }
-      this.boardFrame.appendChild(effect);
       setTimeout(() => {
         tile.classList.remove('is-item-spawning');
-        effect.remove();
         flight.remove();
       }, 1420 + index * 80);
     });
-  }
-
-  showItemTease(type = 'bomb') {
-    this.boardFrame.querySelector('.item-tease')?.remove();
-    const definition = BOARD_DROP_ITEMS[type] || BOARD_DROP_ITEMS.bomb;
-    const tease = document.createElement('div');
-    tease.className = `item-tease item-tease-${definition.id}`;
-    const icon = document.createElement('img');
-    icon.src = definition.asset || '';
-    icon.width = 286;
-    icon.height = 312;
-    icon.alt = '';
-    const copy = document.createElement('div');
-    const kicker = document.createElement('span');
-    kicker.textContent = 'NEXT BONUS';
-    const title = document.createElement('strong');
-    title.textContent = `다음 합10에 ${definition.label}!`;
-    copy.append(kicker, title);
-    tease.append(icon, copy, document.createElement('i'), document.createElement('i'));
-    this.boardFrame.appendChild(tease);
-    setTimeout(() => tease.remove(), 1150);
   }
 
   pressBoardItem(row, col, pressed) {
@@ -1055,6 +1465,20 @@ export class GameUI {
     setTimeout(() => targetElement.classList.remove('is-stocked'), 520);
   }
 
+  // 받은 아이템 칸을 잠깐 반짝인다. 중앙 안내가 "무엇을 받았는지"를 말하고,
+  // 이쪽은 "그게 어디로 갔는지"를 가리킨다 - 숫자가 오른 자리를 눈이 한 번
+  // 따라가야 광고를 본 값이 실제로 손에 들어왔다는 것이 읽힌다.
+  flashItemStock(types = []) {
+    for (const type of types) {
+      const button = this.itemButton(type);
+      if (!button) continue;
+      button.classList.remove('is-stocked');
+      void button.offsetWidth;
+      button.classList.add('is-stocked');
+      window.setTimeout(() => button.classList.remove('is-stocked'), 520);
+    }
+  }
+
   async animateItemCast(type, targetElement = this.boardFrame) {
     const sourceElement = this.itemButton(type);
     if (!sourceElement || !targetElement) return;
@@ -1099,12 +1523,11 @@ export class GameUI {
     flight.style.top = `${start.top + start.height / 2 - frame.top}px`;
     flight.style.setProperty('--clock-x', `${target.left + target.width / 2 - start.left - start.width / 2}px`);
     flight.style.setProperty('--clock-y', `${target.top + target.height / 2 - start.top - start.height / 2}px`);
-    const icon = document.createElement('img');
-    icon.src = 'assets/icons/hud/time.webp';
-    icon.alt = '';
+    // Text only: the icon asset has an opaque square background, which is
+    // what flew across the screen as a clipped box.
     const label = document.createElement('strong');
-    label.textContent = `+${seconds} SEC`;
-    flight.append(icon, label);
+    label.textContent = `+${seconds}초`;
+    flight.append(label);
     sourceElement?.classList.add('is-casting');
     this.elements.playScreen.classList.toggle('is-time-rescued', urgent);
     screen.appendChild(flight);
@@ -1115,15 +1538,6 @@ export class GameUI {
     for (let index = 0; index < 6; index += 1) impact.appendChild(document.createElement('i'));
     await delay(350);
     screen.appendChild(impact);
-    if (urgent) {
-      const rescue = document.createElement('div');
-      rescue.className = 'time-rescue-label';
-      rescue.textContent = '시간 살렸다!';
-      rescue.style.left = `${target.left + target.width / 2 - frame.left}px`;
-      rescue.style.top = `${target.bottom - frame.top + 5}px`;
-      screen.appendChild(rescue);
-      window.setTimeout(() => rescue.remove(), 760);
-    }
     this.elements.timePill.classList.remove('is-time-added');
     void this.elements.timePill.offsetWidth;
     this.elements.timePill.classList.add('is-time-added');
@@ -1161,7 +1575,7 @@ export class GameUI {
     this.boardFrame.appendChild(impact);
     await delay(255);
     flight.remove();
-    window.setTimeout(() => impact.remove(), 560);
+    window.setTimeout(() => impact.remove(), 620);
   }
 
   setFreezeActive(active) {
@@ -1203,7 +1617,7 @@ export class GameUI {
   showCloverHint(rect) {
     const tiles = cellsInRect(rect)
       .map(({ r, c }) => this.tileAt(r, c))
-      .filter((tile) => tile && !tile.dataset.item);
+      .filter((tile) => tile && !tile.dataset.item && !tile.classList.contains('is-empty'));
     tiles.forEach((tile) => tile.classList.add('is-clover-hint'));
     setTimeout(() => tiles.forEach((tile) => tile.classList.remove('is-clover-hint')), 4500);
   }
@@ -1213,16 +1627,15 @@ export class GameUI {
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
     primary.textContent = `+${points}`;
-    const detail = document.createElement('span');
-    detail.textContent = kind === 'megabomb'
-      ? '메가폭탄 보너스'
-      : kind === 'bomb' ? '폭탄 보너스' : '아이템 보너스';
-    burst.replaceChildren(primary, detail);
+    // No label: the blast that just played said "bomb" far louder than a
+    // caption can, and the caption sat right on top of the bomb tile.
+    burst.replaceChildren(primary);
     burst.dataset.level = '1';
     burst.dataset.item = kind;
     if (bounds) {
       burst.style.left = `${(bounds.left + bounds.right) / 2}px`;
-      burst.style.top = `${(bounds.top + bounds.bottom) / 2}px`;
+      // Lifted above the blast so the number and the bomb never overlap.
+      burst.style.top = `${Math.max(18, (bounds.top + bounds.bottom) / 2 - 42)}px`;
     }
     clearTimeout(this.scoreBurstTimer);
     burst.classList.remove('is-visible');
@@ -1234,28 +1647,35 @@ export class GameUI {
     }, 660);
   }
 
-  showScoreBurst(points, rect, dimensions, combo, cellCount, bonus = {}) {
+  showScoreBurst(points, rect, dimensions, combo, cellCount, { nice = false } = {}) {
+    // Wide clears already present their points inside the centred WOW reward,
+    // so do not split the eye with a second number over the cleared cells.
+    if (isWowClear(cellCount)) return;
     const bounds = this.selectionBounds(rect);
     const burst = this.elements.scoreBurst;
     const primary = document.createElement('strong');
-    const isWide = bonus.comboGain > 1;
-    primary.textContent = isWide ? `WOW! +${points}` : `+${points}`;
-    const detail = document.createElement('span');
-    const rewardLabels = [];
-    if (bonus.challengeBonusPoints > 0) rewardLabels.push(`미션 +${bonus.challengeBonusPoints}`);
-    if (bonus.cloverBonusPoints > 0) rewardLabels.push(`클로버 +${bonus.cloverBonusPoints}`);
-    if (bonus.clutchBonusPoints > 0) rewardLabels.push(`막판 +${bonus.clutchBonusPoints}`);
-    if (bonus.catBonusPoints > 0) rewardLabels.push(`고양이 +${bonus.catBonusPoints}`);
-    if (bonus.specialBonusPoints > 0) rewardLabels.push(`폭탄 +${bonus.specialBonusPoints}`);
-    if (bonus.wideBonusPoints > 0) rewardLabels.push(`큰 조합 +${bonus.wideBonusPoints}`);
-    // The total is the only information needed on every clear. Show at most
-    // one exceptional reward label; cell counts and multipliers remain in the
-    // underlying score calculation instead of racing past as transient copy.
-    detail.textContent = rewardLabels[0] || (isWide ? '큰 조합!' : '');
-    detail.hidden = !detail.textContent;
-    burst.replaceChildren(primary, detail);
+    primary.textContent = `+${points}`;
+    // The original OING's entire score readout is "+48 ×7", and that is all a
+    // clear needs to say: the total already contains every bonus, and each
+    // bonus announces itself elsewhere (the cat pop, the bomb blast, the
+    // mission chip, the cat's line). Naming them here as well stacked up to
+    // seven different labels onto one pop and turned a reward into homework.
+    // Just the number. The combo already lives in the HUD, one glance away.
+    // NICE rides on the score pop rather than owning the screen: a four-cell
+    // clear gets a small tag next to its own number, right where the clear
+    // happened. WOW keeps the centred card and the fanfare to itself.
+    const showNice = nice && isNiceClear(cellCount);
+    if (showNice) {
+      const tag = document.createElement('em');
+      tag.textContent = 'NICE!';
+      burst.replaceChildren(primary, tag);
+    } else {
+      burst.replaceChildren(primary);
+    }
     burst.dataset.level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '1';
-    burst.dataset.wide = String(isWide);
+    burst.dataset.wide = String(isWowClear(cellCount));
+    if (showNice) burst.dataset.nice = 'true';
+    else delete burst.dataset.nice;
     if (bounds) {
       burst.style.left = `${clamp((bounds.left + bounds.right) / 2, 82, bounds.frameWidth - 82)}px`;
       burst.style.top = `${clamp((bounds.top + bounds.bottom) / 2, 52, bounds.frameHeight - 34)}px`;
@@ -1272,6 +1692,7 @@ export class GameUI {
     this.scoreBurstTimer = window.setTimeout(() => {
       burst.classList.remove('is-visible');
       delete burst.dataset.wide;
+      delete burst.dataset.nice;
     }, 900);
   }
 
@@ -1309,97 +1730,137 @@ export class GameUI {
     setTimeout(() => pop.remove(), 900);
   }
 
-  showComboMoment(combo) {
-    const level = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
+  // `milestone` is whatever comboMilestoneCrossed(previousCombo, combo)
+  // returned for this success — the caller decides whether one was crossed,
+  // this method only ever renders that answer. It used to recompute its own
+  // "did combo land exactly on 3/5/8/multiple-of-8" check, which disagreed
+  // with the rank calculation's crossing check (e.g. 15 -> 17 skips 16 by
+  // landing but still crosses it), so a banner could fire at the same time
+  // successFeedbackLevel had already decided this was a plain clear.
+  // Five-plus cells in one clear. The original stops the screen for this and
+  // nothing else, which is exactly what makes hunting a big rectangle worth
+  // the extra seconds of looking.
+  showWowMoment(points = 0) {
+    const wow = this.elements.wowMoment;
+    if (!wow) return;
+    if (this.elements.wowScore) {
+      const score = Math.max(0, Math.round(Number(points) || 0));
+      this.elements.wowScore.textContent = score ? `+${score}` : '';
+    }
+    clearTimeout(this.wowMomentTimer);
+    wow.classList.remove('is-visible');
+    void wow.offsetWidth;
+    wow.classList.add('is-visible');
+    this.wowMomentTimer = window.setTimeout(() => wow.classList.remove('is-visible'), 940);
+  }
+
+  showComboMoment(combo, { allowCelebration = true, milestone = 0 } = {}) {
+    // The chip carries every step of the climb — it punches on each combo and
+    // its band keeps rising past 8, so the escalation lives in the HUD rather
+    // than in another card over the board.
+    const level = combo >= 16 ? '16' : combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = level;
     this.elements.comboChip.classList.remove('is-punching');
     void this.elements.comboChip.offsetWidth;
     this.elements.comboChip.classList.add('is-punching');
     setTimeout(() => this.elements.comboChip.classList.remove('is-punching'), 520);
 
-    const milestone = combo === 3 || combo === 5 || combo === 8 || (combo > 8 && combo % 3 === 0);
-    if (!milestone) return;
+    if (!milestone || !allowCelebration) return;
 
-    const celebration = this.elements.comboCelebration;
-    clearTimeout(this.comboCelebrationTimer);
-    celebration.dataset.level = level;
-    this.elements.comboCelebrationValue.textContent = String(combo);
-    const callout = level === '8'
-      ? 'OING FEVER!'
-      : level === '5'
-        ? 'SWEET!'
-        : 'NICE!';
-    this.elements.comboCelebrationKicker.textContent = callout;
-    this.elements.comboChip.dataset.callout = callout;
-    celebration.classList.remove('is-visible');
-    void celebration.offsetWidth;
-    celebration.setAttribute('aria-hidden', 'false');
-    celebration.classList.add('is-visible');
-    this.elements.playScreen.classList.add('is-combo-celebrating');
-    this.boardFrame.classList.remove('combo-celebrating');
-    this.boardFrame.dataset.comboCelebration = level;
-    this.boardFrame.classList.add('combo-celebrating');
-    if (level) this.spawnComboConfetti(Number(level));
-    const duration = level === '8' ? 820 : level === '5' ? 760 : 700;
-    this.comboCelebrationTimer = window.setTimeout(() => {
-      this.dismissComboCelebration();
-    }, duration);
+    // The original's entire milestone celebration is one small line of
+    // floating text over the board — no card, no confetti, nothing that has
+    // to be dismissed or that can double up with the HUD chip.
+    this.elements.playScreen.querySelector('.combo-text-pop')?.remove();
+    const pop = document.createElement('div');
+    pop.className = 'combo-text-pop';
+    pop.dataset.level = milestone >= 8 ? 'high' : milestone >= 5 ? 'mid' : 'start';
+    const label = document.createElement('strong');
+    label.textContent = `${combo} COMBO!`;
+    pop.appendChild(label);
+    for (let index = 0; index < 3; index += 1) pop.appendChild(document.createElement('i'));
+    this.elements.playScreen.appendChild(pop);
+    setTimeout(() => pop.remove(), 1200);
   }
 
-  showLowTimeAlert(seconds = 10) {
-    this.elements.playScreen.querySelector('.low-time-alert')?.remove();
-    this.dismissComboCelebration();
-    this.elements.playScreen.classList.add('is-low-time-alerting');
-    const alert = document.createElement('div');
-    alert.className = 'low-time-alert';
-    const value = document.createElement('strong');
-    value.textContent = `딱 ${Math.max(1, Math.round(Number(seconds) || 10))}초 남았다냥!`;
-    alert.append(value);
-    const boardZone = this.elements.playScreen.querySelector('.board-zone');
-    if (boardZone) boardZone.before(alert);
-    else this.elements.playScreen.appendChild(alert);
-    window.setTimeout(() => {
-      alert.remove();
-      this.elements.playScreen.classList.remove('is-low-time-alerting');
-    }, 980);
+  // 시간 게이지 위의 +N초 자리를 글자 알림으로도 쓴다 - 프리즈처럼 숫자가
+  // 아닌 시간 사건("10초 멈춤!")을 같은 자리, 같은 결로 보여주기 위해서다.
+  // 마지막 5초의 가장자리 맥박. 클래스 토글뿐이라 tick(100ms)에서 불러도
+  // 같은 상태면 아무 일도 하지 않는다.
+  setFinalRush(active) {
+    const on = Boolean(active);
+    if (this.finalRushActive === on) return;
+    this.finalRushActive = on;
+    this.elements.playScreen?.classList.toggle('is-final-rush', on);
   }
 
-  spawnComboConfetti(level) {
-    this.boardFrame.querySelectorAll('.combo-confetti').forEach((particle) => particle.remove());
-    const count = level >= 8 ? 10 : level >= 5 ? 7 : 4;
-    const sources = [
-      'assets/decor/star.webp',
-      'assets/decor/sparkle.webp',
-      'assets/decor/heart.webp',
-      'assets/decor/paw.webp',
-    ];
-    for (let index = 0; index < count; index += 1) {
-      const particle = document.createElement('img');
-      const angle = -156 + (312 / Math.max(1, count - 1)) * index;
-      const distance = 74 + (index % 3) * 18 + level * 2;
-      const radians = (angle * Math.PI) / 180;
-      particle.className = 'combo-confetti';
-      particle.src = sources[index % sources.length];
-      particle.alt = '';
-      particle.style.setProperty('--combo-x', `${Math.cos(radians) * distance}px`);
-      particle.style.setProperty('--combo-y', `${Math.sin(radians) * distance}px`);
-      particle.style.setProperty('--combo-rotate', `${(index % 2 ? 1 : -1) * (35 + index * 11)}deg`);
-      particle.style.setProperty('--combo-delay', `${(index % 5) * 18}ms`);
-      particle.style.setProperty('--combo-size', `${level >= 8 ? 18 + (index % 3) * 3 : 15 + (index % 3) * 2}px`);
-      this.boardFrame.appendChild(particle);
-      setTimeout(() => particle.remove(), level >= 8 ? 980 : 860);
+  // 보드 한가운데에 잠깐 서는 알림.
+  //
+  // 프리즈가 이것을 위해 생겼다. 시간이 멈추는 것은 판의 흐름을 통째로
+  // 바꾸는 사건인데, 지금까지는 시계 아이콘이 얼음으로 바뀌고 얇은 시간
+  // 게이지에 글자가 스치는 것이 전부라 실기기에서 아무도 못 알아봤다
+  // ("프리즈 발동될 때 안내가 안 뜬다"). 눈이 이미 가 있는 자리는 보드다.
+  // detail은 둘째 줄이다. 광고로 무엇을 받았는지처럼, 한 마디만으로는
+  // 확인이 안 되는 것을 적는다. 안 주면 예전과 똑같은 한 줄짜리 안내다.
+  showCenterNotice(label = '', duration = 1400, { detail = '' } = {}) {
+    const el = this.elements.playCenterNotice;
+    const text = String(label || '').trim();
+    if (!el || !text) return;
+    const strong = el.querySelector('strong') || el;
+    strong.textContent = text;
+    const note = el.querySelector('small');
+    if (note) {
+      const extra = String(detail || '').trim();
+      note.textContent = extra;
+      note.hidden = !extra;
     }
+    el.setAttribute('aria-hidden', 'false');
+    clearTimeout(this.centerNoticeTimer);
+    el.classList.remove('is-visible');
+    void el.offsetWidth;
+    el.classList.add('is-visible');
+    this.centerNoticeTimer = window.setTimeout(() => {
+      el.classList.remove('is-visible');
+      el.setAttribute('aria-hidden', 'true');
+    }, Math.max(500, Number(duration) || 1400));
   }
 
-  dismissComboCelebration() {
-    clearTimeout(this.comboCelebrationTimer);
-    this.comboCelebrationTimer = null;
-    this.elements.comboCelebration.classList.remove('is-visible');
-    this.elements.comboCelebration.setAttribute('aria-hidden', 'true');
-    this.elements.playScreen.classList.remove('is-combo-celebrating');
-    delete this.elements.comboChip.dataset.callout;
-    this.boardFrame.classList.remove('combo-celebrating');
-    delete this.boardFrame.dataset.comboCelebration;
+  // 기다림을 알리던 알림을 곧바로 치운다. 광고가 순식간에 실패하면
+  // "광고 준비 중..."이 결과로 넘어가는 내내 남아 있다.
+  hideCenterNotice() {
+    const el = this.elements.playCenterNotice;
+    if (!el) return;
+    clearTimeout(this.centerNoticeTimer);
+    el.classList.remove('is-visible');
+    el.setAttribute('aria-hidden', 'true');
+  }
+
+  showTimeNotice(label = '') {
+    const text = String(label || '').trim();
+    if (!text || !this.elements.boardTimeGauge) return;
+    const gauge = this.elements.boardTimeGauge;
+    clearTimeout(this.timeBonusTimer);
+    gauge.dataset.bonus = text;
+    gauge.classList.remove('is-bonus');
+    void gauge.offsetWidth;
+    gauge.classList.add('is-bonus');
+    this.timeBonusTimer = window.setTimeout(() => gauge.classList.remove('is-bonus'), 1500);
+  }
+
+  showStageTimeBonus(seconds = 0) {
+    const amount = Math.max(0, Math.round(Number(seconds) || 0));
+    if (!amount || !this.elements.boardTimeGauge) return;
+    // The gain shows on the surface that represents time, rather than as a
+    // pill floating over the HUD where it covered the clock and the tally.
+    const gauge = this.elements.boardTimeGauge;
+    clearTimeout(this.timeBonusTimer);
+    gauge.dataset.bonus = `+${amount}초`;
+    gauge.classList.remove('is-bonus');
+    void gauge.offsetWidth;
+    gauge.classList.add('is-bonus');
+    this.timeBonusTimer = window.setTimeout(() => {
+      gauge.classList.remove('is-bonus');
+      delete gauge.dataset.bonus;
+    }, 1100);
   }
 
   showRoundClear({
@@ -1409,17 +1870,16 @@ export class GameUI {
     nextStage = stage + 1,
     rows = 0,
     cols = 0,
+    perfect = false,
     boardGrew = false,
   } = {}) {
-    this.dismissComboCelebration();
     const clear = this.elements.roundClear;
     const label = clear.querySelector('strong');
-    const reward = clear.querySelector('#round-clear-reward');
-    if (label) label.textContent = `STAGE ${stage} CLEAR!`;
-    const details = [];
-    if (boardGrew && rows > 0 && cols > 0) details.push(`${cols}×${rows} OPEN`);
-    if (timeBonus > 0) details.push(`+${timeBonus}초`);
-    if (reward) reward.textContent = details.slice(0, 2).join(' · ') || `STAGE ${nextStage} GO!`;
+    // One line of text is the whole card, like the original's board-change
+    // pop. PERFECT — a board emptied without one rescue shuffle — earns the
+    // word itself; everything else stays the plain clear.
+    if (label) label.textContent = perfect ? `STAGE ${stage} PERFECT!` : `STAGE ${stage} CLEAR!`;
+    clear.dataset.perfect = perfect ? '1' : '0';
     clear.dataset.stage = String(stage);
     clear.dataset.nextStage = String(nextStage);
     clear.classList.toggle('is-milestone', timeBonus > 0 || boardGrew);
@@ -1463,54 +1923,66 @@ export class GameUI {
     });
   }
 
-  showStageTimeBonus(seconds = 0) {
-    const amount = Math.max(0, Math.round(Number(seconds) || 0));
-    if (!amount || !this.elements.timePill) return;
-    this.elements.playScreen.querySelector('.stage-time-bonus')?.remove();
-    const pill = this.elements.timePill.getBoundingClientRect();
-    const screen = this.elements.playScreen.getBoundingClientRect();
-    const pop = document.createElement('div');
-    pop.className = 'stage-time-bonus';
-    pop.textContent = `+${amount} SEC`;
-    pop.style.left = `${pill.left + pill.width / 2 - screen.left}px`;
-    pop.style.top = `${pill.bottom - screen.top + 4}px`;
-    this.elements.playScreen.appendChild(pop);
-    this.elements.timePill.classList.remove('is-bonus-awarded');
-    void this.elements.timePill.offsetWidth;
-    this.elements.timePill.classList.add('is-bonus-awarded');
-    window.setTimeout(() => {
-      pop.remove();
-      this.elements.timePill.classList.remove('is-bonus-awarded');
-    }, 820);
-  }
-
   async animateRoundTransition(nextRound, swapBoard, intro = {}) {
     this.clearTransientBoardFeedback();
+    const previousTileWidth = this.board.querySelector('.tile')?.getBoundingClientRect().width || 0;
     this.boardFrame.classList.add('is-round-leaving');
     await delay(140);
     swapBoard();
     this.boardFrame.classList.remove('is-round-leaving');
+    // When the ladder grows an axis the tiles drop a size in one frame,
+    // which read as the board being replaced rather than growing. Arriving
+    // scaled so the new tiles start at the old tile size, then settling to
+    // 1, keeps it one continuous board. Measured from real widths so the
+    // same code handles every step (and does nothing when size is equal).
+    const nextTileWidth = this.board.querySelector('.tile')?.getBoundingClientRect().width || 0;
+    clearTimeout(this.sizeMorphTimer);
+    this.boardFrame.classList.remove('is-size-morphing');
+    if (previousTileWidth && nextTileWidth && Math.abs(previousTileWidth - nextTileWidth) > 1.5) {
+      const scale = clamp(previousTileWidth / nextTileWidth, 0.6, 1.6);
+      this.boardFrame.style.setProperty('--arrive-scale', String(Math.round(scale * 1000) / 1000));
+      void this.boardFrame.offsetWidth;
+      this.boardFrame.classList.add('is-size-morphing');
+      this.sizeMorphTimer = window.setTimeout(() => {
+        this.boardFrame.classList.remove('is-size-morphing');
+      }, 680);
+    }
     this.elements.roundMini.classList.remove('is-advancing');
     void this.elements.roundMini.offsetWidth;
     this.elements.roundMini.classList.add('is-advancing');
     this.boardFrame.classList.add('is-round-arriving');
+    // One line of plain glowing text, like the original's board-change pop.
     const entry = document.createElement('div');
     entry.className = 'stage-entry';
-    const kicker = document.createElement('small');
-    kicker.textContent = intro.kicker || 'LEVEL UP';
     const title = document.createElement('strong');
     title.textContent = intro.title || `STAGE ${nextRound}`;
-    const detail = document.createElement('span');
-    detail.textContent = intro.detail || '새 보드 시작';
-    const goal = document.createElement('b');
-    goal.textContent = `목표 ${Math.max(1, Math.round(Number(intro.target) || 1))}`;
     entry.classList.toggle('is-milestone', Boolean(intro.boardGrew));
-    entry.append(kicker, title, detail, goal, document.createElement('i'), document.createElement('i'));
+    entry.append(title);
     this.boardFrame.appendChild(entry);
     await delay(460);
     entry.remove();
     this.boardFrame.classList.remove('is-round-arriving');
     this.elements.roundMini.classList.remove('is-advancing');
+  }
+
+  showClassicBoardEntry(boardNumber = 1, timeBonus = 0, boardGrew = false) {
+    this.boardFrame.querySelector('.board-entry')?.remove();
+    const entry = document.createElement('div');
+    entry.className = 'board-entry';
+    const board = Math.max(1, Math.round(Number(boardNumber) || 1));
+    const bonus = Math.max(0, Math.round(Number(timeBonus) || 0));
+    const title = document.createElement('strong');
+    title.textContent = `${board}판`;
+    entry.appendChild(title);
+    if (bonus > 0) {
+      const reward = document.createElement('small');
+      reward.textContent = `+${bonus}초`;
+      entry.appendChild(reward);
+    }
+    entry.classList.toggle('is-reward', bonus > 0);
+    entry.classList.toggle('is-growth', Boolean(boardGrew));
+    this.boardFrame.appendChild(entry);
+    window.setTimeout(() => entry.remove(), 760);
   }
 
   showRoundReady(duration = 420) {
@@ -1537,11 +2009,11 @@ export class GameUI {
   }
 
   showEndAnswers(answers = []) {
-    this.board.querySelectorAll('.tile.is-end-answer').forEach((tile) => {
-      tile.classList.remove('is-end-answer');
-      tile.style.removeProperty('--answer-group');
-    });
-    answers.slice(0, 4).forEach((answer, group) => {
+    this.clearEndAnswers();
+    // One readable answer is more useful than several overlapping rectangles.
+    // Highlight only the live tiles that form the first answer; empty cells
+    // remain transparent and no connected area overlay is drawn.
+    answers.slice(0, 1).forEach((answer, group) => {
       cellsInRect(answer).forEach(({ r, c }) => {
         const tile = this.tileAt(r, c);
         if (!tile || tile.classList.contains('is-empty')) return;
@@ -1552,14 +2024,55 @@ export class GameUI {
   }
 
   clearEndAnswers() {
+    this.boardFrame.querySelectorAll('.end-answer-region').forEach((region) => region.remove());
     this.board.querySelectorAll('.tile.is-end-answer').forEach((tile) => {
       tile.classList.remove('is-end-answer');
       tile.style.removeProperty('--answer-group');
     });
   }
 
-  async animateGameEnd({ score = 0, maxCombo = 0, newRecord = false, answers = [] } = {}) {
-    this.dismissComboCelebration();
+  // 판이 끝났다는 도장. 판을 얼리고 TIME UP과 이번 판 점수를 한 번 세운다.
+  //
+  // 왜 따로 떼어냈나. 클래식은 시간이 0이 되는 순간 곧바로 광고 이어하기
+  // 제안을 띄웠다. 게임이 끝났다는 신호가 하나도 없이 광고 창부터 뜨니까
+  // 실기기에서 "툭 끊기고 김샌다, 광고 본 것도 아닌데 아 광고 하는 느낌"
+  // 이라는 말이 나왔다. 끝을 먼저 보여주고 나서 제안해야 한다.
+  //
+  // 점수를 같이 세우는 것이 핵심이다. 그게 이 판의 결말이고, 결말을 본
+  // 뒤에 오는 제안은 방해가 아니라 덤으로 읽힌다.
+  async stampTimeUp(score = null) {
+    this.clearSelection();
+    clearTimeout(this.scoreBurstTimer);
+    this.scoreBurstTimer = null;
+    this.elements.scoreBurst.classList.remove('is-visible');
+    const timeUp = this.elements.timeUp;
+    const scoreLine = this.elements.timeUpScore;
+    this.boardFrame.classList.remove('is-game-ending');
+    timeUp.classList.remove('is-visible');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-game-ending');
+    if (scoreLine) {
+      const points = Math.max(0, Math.round(Number(score) || 0));
+      scoreLine.textContent = score === null ? '' : `${points.toLocaleString('ko-KR')}점`;
+      scoreLine.hidden = score === null;
+    }
+    await delay(160);
+    timeUp.classList.add('is-visible');
+    // 1초는 점수를 읽기 전에 사라졌다는 제보를 받았다. 도장이 뜨고, 눈이
+    // 점수로 내려가고, 숫자를 읽는 데 걸리는 시간을 준다.
+    // 1.75초로도 "점수 보기 전에 넘어간다"는 제보가 또 왔다. 여기는 판이
+    // 끝난 자리라 서두를 이유가 없다 - 다음에 오는 것도 광고 제안뿐이다.
+    await delay(2400);
+  }
+
+  // 도장을 지우고 판을 원래대로. 제안 창이 뜨기 전에 부른다.
+  clearTimeUpStamp() {
+    this.elements.timeUp.classList.remove('is-visible');
+    this.boardFrame.classList.remove('is-game-ending');
+    if (this.elements.timeUpScore) this.elements.timeUpScore.hidden = true;
+  }
+
+  async animateGameEnd({ answers = [], stamped = false } = {}) {
     this.clearSelection();
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
@@ -1570,32 +2083,29 @@ export class GameUI {
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-game-ending');
     this.showEndAnswers(answers);
-    await delay(520);
+    // 이어하기 제안 전에 이미 끝을 보여줬다면 여기서는 아무것도 다시 하지
+    // 않는다. '결과 보기'를 누른 사람은 이미 결정을 내린 것이고, 거기서
+    // TIME UP과 쓸어내는 연출을 한 번 더 보면 끝이 두 번 나는 것처럼
+    // 어색하다는 제보를 받았다. 곧바로 결과 시트를 올린다.
+    if (stamped) {
+      this.boardFrame.classList.remove('is-game-ending');
+      return;
+    }
+    // Show the stop cue almost immediately. A half-second frozen board before
+    // TIME UP read as a dropped frame even though the end sequence was live.
+    await delay(180);
     const sweep = document.createElement('div');
     sweep.className = 'game-end-sweep';
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
     timeUp.classList.add('is-visible');
-    await delay(620);
+    await delay(900);
     timeUp.classList.remove('is-visible');
-    const summary = document.createElement('div');
-    summary.className = 'end-score-summary';
-    const label = document.createElement('small');
-    label.textContent = newRecord ? 'NEW RECORD!' : 'FINAL SCORE';
-    const value = document.createElement('strong');
-    value.textContent = Math.max(0, Math.round(score)).toLocaleString('ko-KR');
-    const combo = document.createElement('span');
-    combo.textContent = maxCombo > 1 ? `최고 콤보 ${maxCombo}` : '끝까지 잘했다냥!';
-    summary.append(label, value, combo, document.createElement('i'), document.createElement('i'));
-    summary.classList.toggle('is-record', newRecord);
-    this.boardFrame.appendChild(summary);
-    await delay(620);
-    summary.remove();
     sweep.remove();
-    this.clearEndAnswers();
+    // The score is about to be the sheet's headline, so it is not announced
+    // twice; the missed answers stay lit underneath it.
     this.boardFrame.classList.remove('is-game-ending');
-    this.elements.playScreen.classList.add('is-ending-to-result');
-    await delay(170);
+    await delay(180);
   }
 
   setPlayCharacter(pose, duration = 0) {
@@ -1659,8 +2169,91 @@ export class GameUI {
   }
 
   showMessage(message, duration = 1500, tone = '') {
-    const token = ++this.messageToken;
-    clearTimeout(this.messageTimer);
+    this.enqueueFeedback({ kind: 'message', message, duration, tone });
+  }
+
+  feedbackPriority(kind, tone = '') {
+    if (kind === 'toast') return 4;
+    if (['firstSuccess', 'openingGift', 'itemDrop', 'lowTime', 'freeze', 'clover', 'classicRule', 'classicChapter', 'classicBoard'].includes(tone)) return 3;
+    if (['hint', 'shuffle', 'rescue', 'wow', 'perfect', 'classicClear'].includes(tone)) return 2;
+    return 1;
+  }
+
+  enqueueFeedback({ kind, message, duration = 1500, tone = '' }) {
+    const text = String(message || '').trim();
+    if (!text) return;
+    const entry = {
+      kind,
+      message: text,
+      duration: Math.max(400, Number(duration) || 1500),
+      tone,
+      priority: this.feedbackPriority(kind, tone),
+      queuedAt: performance.now(),
+    };
+    if (this.activeFeedback?.kind === kind && this.activeFeedback.message === text) return;
+    if (this.feedbackQueue.some((queued) => queued.kind === kind && queued.message === text)) return;
+    if (this.activeFeedback?.priority === 1 && entry.priority >= 3) {
+      clearTimeout(this.feedbackTimer);
+      if (this.activeFeedback.kind === 'toast') this.elements.toast.classList.remove('is-visible');
+      else this.elements.catMessage.classList.remove('is-changing');
+      this.activeFeedback = null;
+    }
+    this.feedbackQueue.push(entry);
+    this.feedbackQueue.sort((a, b) => b.priority - a.priority || a.queuedAt - b.queuedAt);
+    if (this.feedbackQueue.length > 4) this.feedbackQueue.length = 4;
+    this.playNextFeedback();
+  }
+
+  playNextFeedback() {
+    if (this.activeFeedback) return;
+    const now = performance.now();
+    while (this.feedbackQueue.length) {
+      const next = this.feedbackQueue.shift();
+      if (next.priority === 1 && now - next.queuedAt > 2200) continue;
+      // 말풍선이 접힌 판에서는 대사가 조용히 사라지고 있었다. 놓치면 안
+      // 되는 줄(판갈이·규칙·아이템, priority 2 이상)만 토스트로 옮기고,
+      // 잡담(priority 1)은 버린다 — 토스트 소나기를 만들지 않기 위해서다.
+      if (next.kind === 'message' && this.speechCollapsed && next.priority < 2) continue;
+      // 실기기 피드백: 말풍선이 귀엽지만 정신없다. 가림은 fitPlayLayout이
+      // 구조적으로 막았고 남은 문제는 빈도였다. 칭찬 잡담(priority 1)은
+      // 연달아 나오지 않게 사이를 띄운다 - 규칙·판갈이·아이템 안내는
+      // 이 문에 걸리지 않으므로 필요한 말은 그대로 다 나간다.
+      if (next.kind === 'message' && next.priority === 1
+        && now - (this.lastChatterAt || 0) < CHATTER_MIN_GAP_MS) continue;
+      if (next.kind === 'message' && next.priority === 1) this.lastChatterAt = now;
+      this.activeFeedback = next;
+      const asToast = next.kind === 'toast' || this.speechCollapsed;
+      next.renderedAs = asToast ? 'toast' : 'message';
+      if (asToast) this.renderToast(next);
+      else this.renderMessage(next);
+      clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = window.setTimeout(() => this.finishFeedback(), next.duration);
+      return;
+    }
+  }
+
+  finishFeedback() {
+    const active = this.activeFeedback;
+    if (!active) return;
+    if ((active.renderedAs || active.kind) === 'toast') this.elements.toast.classList.remove('is-visible');
+    else this.elements.catMessage.classList.remove('is-changing');
+    this.activeFeedback = null;
+    clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = window.setTimeout(() => this.playNextFeedback(), 80);
+  }
+
+  clearFeedbackQueue() {
+    // 새 판은 잡담 간격도 새로 센다 - 판 시작 첫 칭찬이 지난 판 때문에
+    // 막히면 안 된다.
+    this.lastChatterAt = 0;
+    clearTimeout(this.feedbackTimer);
+    this.feedbackQueue.length = 0;
+    this.activeFeedback = null;
+    this.elements.toast.classList.remove('is-visible');
+    this.elements.catMessage.classList.remove('is-changing');
+  }
+
+  renderMessage({ message, tone }) {
     const bubble = this.elements.catMessage;
     bubble.dataset.tone = tone;
     bubble.classList.remove('is-changing', 'is-long');
@@ -1678,13 +2271,20 @@ export class GameUI {
     });
     bubble.replaceChildren(...nodes);
     bubble.classList.add('is-changing');
-    this.messageTimer = setTimeout(() => {
-      if (token === this.messageToken) bubble.classList.remove('is-changing');
-    }, duration);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, progress, target, stageMission = null, stageMissionBonus = 0 }) {
+  renderToast({ message }) {
+    const toast = this.elements.toast;
+    toast.textContent = message;
+    toast.classList.remove('is-visible');
+    void toast.offsetWidth;
+    toast.classList.add('is-visible');
+  }
+
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
+    this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
     this.elements.round.textContent = String(round);
+    if (this.elements.roundLabel) this.elements.roundLabel.textContent = classicMode ? '판' : 'STAGE';
     const scoreText = score.toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수
@@ -1702,13 +2302,34 @@ export class GameUI {
       : '';
     this.elements.timePill.style.setProperty('--time-progress', String(timed ? clamp(timeLeft / Math.max(1, duration), 0, 1) : 1));
     const isFrozen = freezeRemaining > 0;
+    // The gauge above the numbers: remaining time as a shrinking bar in the
+    // original's green-to-lemon-to-orange language, readable in peripheral
+    // vision while the eyes stay on the board. The original switched on
+    // remaining *percentage* (40% and 15%), not absolute seconds, so a time
+    // bonus widens the green stretch instead of skipping past a band.
+    if (this.elements.boardTimeGauge) {
+      this.elements.boardTimeGauge.hidden = !timed;
+      if (timed) {
+        const remaining = clamp(timeLeft / Math.max(1, duration), 0, 1);
+        this.elements.boardTimeFill.style.transform = `scaleX(${remaining})`;
+        this.elements.boardTimeGauge.dataset.band = isFrozen ? 'frozen'
+          : remaining <= 0.15 ? 'low'
+            : remaining <= 0.4 ? 'mid'
+              : 'high';
+      }
+    }
     this.elements.timePill.classList.toggle('is-low-time', timed && !isFrozen && time > 10 && time <= 30);
     this.elements.timePill.classList.toggle('is-warning', timed && !isFrozen && time <= 10);
     this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
     const isFinalCountdown = timed && !isFrozen && time > 0 && time <= 10;
     this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
     this.elements.playScreen.dataset.round = String(round);
-    this.elements.playScreen.dataset.stageBand = round >= 8 ? 'fever' : round >= 5 ? 'wide' : round >= 3 ? 'rising' : 'warmup';
+    // The warmup band hides the hidden-garden art; classic runs skip it so
+    // the picture peeks through from the very first cleared cell.
+    this.elements.playScreen.dataset.stageBand = round >= 8 ? 'fever'
+      : round >= 5 ? 'wide'
+        : round >= 3 || gardenFromStart ? 'rising'
+          : 'warmup';
     this.boardFrame.dataset.round = String(round);
     this.elements.timePill.dataset.urgency = time <= 3 ? 'high' : time <= 5 ? 'medium' : 'low';
     if (isFinalCountdown && time !== this.lastCountdownSecond) {
@@ -1731,8 +2352,28 @@ export class GameUI {
     this.elements.combo.textContent = String(combo);
     const comboStep = combo % 7;
     const rewardUnlocked = rewardRemaining > 0;
-    const rewardProgress = !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
-    this.elements.comboTimerFill.style.transform = `scaleX(${rewardProgress})`;
+    const normalizedRewardProgress = Number.isFinite(rewardProgress)
+      ? clamp(rewardProgress, 0, 1)
+      : !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
+    this.elements.comboTimerFill.style.transform = `scaleX(${normalizedRewardProgress})`;
+    // The centre compartment's gauge. The track is always on screen — it is
+    // half of what makes the compartment look furnished, and hiding it for
+    // the first two stages left an empty box exactly where new players
+    // look first. Only the "아이템까지 N" caption waits for stage 3, when
+    // item drops actually unlock and the number means something.
+    if (this.elements.comboItemTrack) {
+      this.elements.comboItemFill.style.width = `${Math.round(normalizedRewardProgress * 100)}%`;
+      // 보상 경계는 콤보 최고점 기준이라, 콤보가 크게 깨진 직후에는 남은
+      // 수가 7을 훌쩍 넘는다(실기기에서 '아이템까지 31'까지 관찰). 그 큰
+      // 숫자는 정보가 아니라 절망이므로, 한 게이지 안(7 이하)으로 돌아온
+      // 뒤에만 숫자를 붙이고 그 전에는 게이지만 조용히 다시 차오르게 둔다.
+      const rewardVisible = rewardUnlocked && combo > 0 && rewardRemaining <= ITEM_REWARD_INTERVAL;
+      this.elements.comboItemTrack.hidden = false;
+      this.elements.comboItemLabel.hidden = !rewardVisible;
+      if (rewardVisible) {
+        this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
+      }
+    }
     this.elements.comboChip.classList.toggle('is-active', combo > 0);
     const comboUrgency = combo > 0 ? clamp(comboRemainingMs / Math.max(1, comboWindowMs), 0, 1) : 1;
     const comboExpiring = combo >= 3 && comboUrgency > 0 && comboUrgency <= 0.24;
@@ -1747,58 +2388,46 @@ export class GameUI {
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
     this.elements.comboChip.dataset.level = comboLevel;
     this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
+    // Classic multipliers keep climbing long after the fever band tops out,
+    // so the board carries a second, coarser tier keyed to the figures that
+    // actually matter there: the score cap and the two steps past it.
+    this.boardFrame.dataset.comboTier = combo >= 60 ? '60' : combo >= 40 ? '40' : combo >= 25 ? '25' : '';
     this.boardFrame.classList.toggle('is-fever', combo >= 8);
-    this.elements.goalLabel.textContent = '성공';
-    this.elements.goal.textContent = `${progress} / ${target}`;
-    this.elements.goal.closest('.goal-status')?.classList.toggle('is-complete', progress >= target);
-    this.elements.goalFill.style.width = `${Math.min(100, (progress / Math.max(1, target)) * 100)}%`;
-    const mission = this.elements.stageMission;
-    if (mission) {
-      const wasCompleted = mission.dataset.completed === '1';
-      mission.hidden = !stageMission;
-      mission.classList.toggle('is-complete', Boolean(stageMission?.completed));
-      mission.dataset.kind = stageMission?.kind || '';
-      mission.dataset.completed = stageMission?.completed ? '1' : '0';
-      if (stageMission) {
-        const iconByKind = {
-          wide: 'assets/decor/sparkle.webp',
-          cat: 'assets/decor/paw.webp',
-          chain: 'assets/decor/star.webp',
-        };
-        this.elements.stageMissionIcon.src = iconByKind[stageMission.kind] || iconByKind.wide;
-        const activeCopy = stageMission.kind === 'wide'
-          ? `${stageMission.requirement}칸 묶기`
-          : stageMission.kind === 'cat'
-            ? '고양이 찾기'
-            : `${stageMission.label} ${stageMission.progress}/${stageMission.target}`;
-        this.elements.stageMissionValue.textContent = stageMission.completed
-          ? `${stageMission.label} 완료`
-          : activeCopy;
-        mission.setAttribute('aria-label', stageMission.completed
-          ? `${stageMission.label} 미션 완료, ${Math.max(0, Math.round(stageMissionBonus)).toLocaleString('ko-KR')}점 보너스`
-          : stageMission.kind === 'wide'
-            ? `${stageMission.requirement}칸을 한 번에 묶는 미션`
-            : stageMission.kind === 'cat'
-              ? '고양이를 한 마리 찾는 미션'
-              : `${stageMission.label} 미션, ${stageMission.progress}/${stageMission.target}`);
-        if (!wasCompleted && stageMission.completed) {
-          clearTimeout(this.stageMissionPulseTimer);
-          mission.classList.remove('is-rewarded');
-          void mission.offsetWidth;
-          mission.classList.add('is-rewarded');
-          this.stageMissionPulseTimer = setTimeout(() => mission.classList.remove('is-rewarded'), 760);
-        }
-      }
+    // The third compartment used to count answers found, which never changed
+    // a decision — it only ever went up. In a score attack the figure worth
+    // carrying there is the record being chased, and once the run passes it
+    // the slot flips into a live "you are ahead" readout.
+    const best = Math.max(0, Math.round(Number(bestScore) || 0));
+    // 기록이 없을 때의 '최고 -'는 아무 행동도 만들지 않는 칸이었다(검수 4곳
+    // 공통 지적). 클래식의 첫 기록 전에는 결과 등급의 첫 눈금을 목표로 걸어,
+    // 신규 유저에게도 이 칸이 쫓을 숫자가 되게 한다. 기록이 생기면 원래대로.
+    // 눈금이 클래식 점수 규모라, 스테이지 모드는 기존 '-' 표기를 지킨다.
+    const chase = best > 0 ? best : classicMode ? RESULT_SCORE_THRESHOLDS.normal : 0;
+    const ahead = chase > 0 && score > chase;
+    const goalText = chase > 0 ? (ahead ? score : chase).toLocaleString('ko-KR') : '-';
+    this.elements.goal.textContent = goalText;
+    if (this.elements.goalLabel) {
+      this.elements.goalLabel.textContent = best > 0 ? (ahead ? '신기록' : '최고') : (ahead ? '달성!' : '목표');
     }
+    this.elements.goal.closest('.goal-status')?.classList.toggle('is-ahead', ahead);
+    // Same length-band pattern as the score figure: the counter box is narrow
+    // and the text is nowrap-centred, so long values shrink one step.
+    this.elements.goal.dataset.digits = goalText.length > 3 ? 'l' : 'm';
   }
 
-  updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true }) {
-    this.elements.hintCount.textContent = String(hint);
-    this.elements.shuffleCount.textContent = String(shuffle);
+  updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true, adRefill = {} }) {
+    // 0개인데 광고 리필이 남아 있으면 버튼을 죽이지 않는다. 숫자 배지가
+    // 광고 배지로 바뀌고, 누르면 광고를 거쳐 +1을 받는다.
+    const hintAd = hint <= 0 && Boolean(adRefill.pack);
+    const shuffleAd = shuffle <= 0 && Boolean(adRefill.pack);
+    this.elements.hintCount.textContent = hintAd ? 'AD' : String(hint);
+    this.elements.shuffleCount.textContent = shuffleAd ? 'AD' : String(shuffle);
     this.elements.bombCount.textContent = String(bomb);
     this.elements.clockCount.textContent = String(clock);
-    this.elements.hintButton.disabled = hint <= 0;
-    this.elements.shuffleButton.disabled = shuffle <= 0;
+    this.elements.hintButton.disabled = hint <= 0 && !hintAd;
+    this.elements.shuffleButton.disabled = shuffle <= 0 && !shuffleAd;
+    this.elements.hintButton.classList.toggle('is-ad-refill', hintAd);
+    this.elements.shuffleButton.classList.toggle('is-ad-refill', shuffleAd);
     this.elements.bombButton.disabled = bomb <= 0;
     this.elements.clockButton.disabled = clock <= 0 || !clockAvailable;
     // 0개일 때 무조건 "소진"을 붙이면, 아직 한 번도 얻은 적 없는 아이템까지
@@ -1816,14 +2445,17 @@ export class GameUI {
       button.dataset.state = stageLocked ? 'locked' : depleted ? 'depleted' : 'available';
       button.dataset.lockCopy = lockCopy;
     };
-    markItem(this.elements.hintButton, hint, false, '잠금', true);
-    markItem(this.elements.shuffleButton, shuffle, false, '잠금', true);
+    markItem(this.elements.hintButton, hintAd ? 1 : hint, false, '잠금', true);
+    markItem(this.elements.shuffleButton, shuffleAd ? 1 : shuffle, false, '잠금', true);
     const bombUnlocked = isItemUnlockedAtStage('bomb', stage);
     const clockUnlocked = isItemUnlockedAtStage('clock', stage) && clockAvailable;
     markItem(this.elements.bombButton, bomb, !bombUnlocked, '', bombUnlocked);
     markItem(this.elements.clockButton, clock, !clockUnlocked, '', clockUnlocked);
-    this.elements.hintButton.dataset.count = String(hint);
-    this.elements.shuffleButton.dataset.count = String(shuffle);
+    // 광고 리필 상태에서는 data-count를 "ad"로 둔다. "0"이면 기존 규칙이
+    // 배지를 숨기고 버튼을 흐리게 만들어, 실기기에서 AD 표시가 통째로
+    // 사라졌다("빨간 숫자만 없어진다"는 제보).
+    this.elements.hintButton.dataset.count = hintAd ? 'ad' : String(hint);
+    this.elements.shuffleButton.dataset.count = shuffleAd ? 'ad' : String(shuffle);
     this.elements.bombButton.dataset.count = String(bomb);
     this.elements.clockButton.dataset.count = String(clock);
     this.elements.hintButton.setAttribute('aria-label', `힌트, ${hint}회 남음`);
@@ -1851,10 +2483,318 @@ export class GameUI {
     this.elements.rankingBest.textContent = text;
   }
 
-  updateHighestStage(stage) {
-    if (this.elements.homeBestStage) {
-      this.elements.homeBestStage.textContent = `STAGE ${Math.max(1, Math.round(Number(stage) || 1))}`;
+  // 홈의 도전장 띠. 친구가 보낸 링크로 들어왔을 때만 뜬다. 넘을 점수가
+  // 시작 버튼 바로 위에 있어야 "이걸 하러 왔다"가 첫 화면에서 읽힌다.
+  updateHomeChallenge(target = 0) {
+    const banner = this.elements.homeChallenge;
+    if (!banner) return;
+    const value = Math.max(0, Math.round(Number(target) || 0));
+    banner.hidden = value <= 0;
+    if (value > 0) this.elements.homeChallengeScore.textContent = value.toLocaleString('ko-KR');
+  }
+
+  // 결과창의 도전장 한 줄. 이겼으면 축하, 못 넘었으면 남은 점수를 알려준다.
+  // 남은 점수를 굳이 숫자로 보여주는 이유는, "조금만 더"가 막연한 응원보다
+  // 다음 한 판을 부르기 때문이다.
+  updateResultChallenge(verdict = null, { suppressPending = false } = {}) {
+    const line = this.elements.resultChallenge;
+    if (!line) return;
+    // 못 넘은 도전장은 '다음 목표' 줄이 대신 말하는 경우가 있다. 같은 숫자를
+    // 한 화면에 두 번 쓰면 둘 다 안 읽힌다.
+    if (!verdict || (suppressPending && !verdict.won)) {
+      line.hidden = true;
+      line.textContent = '';
+      delete line.dataset.won;
+      return;
     }
+    line.hidden = false;
+    line.dataset.won = verdict.won ? 'yes' : 'no';
+    line.textContent = verdict.won
+      ? `친구 기록 ${verdict.target.toLocaleString('ko-KR')}점을 넘었다냥!`
+      : `친구 기록까지 ${verdict.diff.toLocaleString('ko-KR')}점 남았다냥`;
+  }
+
+  // 다음 목표 한 줄. 고르는 일은 data.js가 하고, 여기서는 있으면 켜고 없으면
+  // 끈다 - 목표가 없는 판(전부 멀거나 전부 이미 달성)에서는 줄 자체가 사라져야
+  // 버튼이 원래 자리로 돌아온다.
+  updateResultNextGoal(goal = null) {
+    const line = this.elements.resultNextGoal;
+    if (!line) return;
+    if (!goal?.text) {
+      line.hidden = true;
+      line.textContent = '';
+      delete line.dataset.kind;
+      return;
+    }
+    line.hidden = false;
+    line.dataset.kind = goal.kind;
+    line.textContent = goal.text;
+  }
+
+  // Which scene of 고양이의 모험 is painted behind the board. The art itself
+  // lives in CSS (one rule per chapter) so a missing file falls back to the
+  // original garden painting instead of leaving a blank frame.
+  setChapter(key, artUrl = null) {
+    const screen = this.elements.playScreen;
+    if (key) screen.dataset.chapter = key;
+    else delete screen.dataset.chapter;
+    if (artUrl) screen.style.setProperty('--chapter-art', cssUrl(artUrl));
+    else screen.style.removeProperty('--chapter-art');
+  }
+
+  updateCatsRescued(total = 0) {
+    const count = Math.max(0, Math.round(Number(total) || 0));
+    const formatted = count.toLocaleString('ko-KR');
+    if (this.elements.rankingCatsLine && this.elements.rankingCatsTotal) {
+      this.elements.rankingCatsTotal.textContent = formatted;
+      this.elements.rankingCatsLine.hidden = count <= 0;
+    }
+    if (this.elements.homeGardenCount) {
+      this.elements.homeGardenCount.textContent = `고양이 ${formatted}마리`;
+    }
+  }
+
+  // 고양이에게 간식을 준 횟수. 홈이 아니라 기록 시트에 둔다.
+  //
+  // 사탕을 줘서 얻는 것이 하나도 없으면 "이걸 왜 하지"가 남는다. 그렇다고
+  // 홈에 숫자를 하나 더 붙이면 사탕 개수와 최고점수 옆에 세 번째 숫자가
+  // 생겨 첫 화면이 시끄러워진다. 누적은 원래 기록 시트의 몫이고, 거기에는
+  // '구조한 고양이' 줄이 이미 같은 틀로 서 있다 - 그 옆이 제자리다.
+  //
+  // 한 번도 안 준 사람에게는 뜨지 않는다. 0인 줄은 알려주는 것이 없다.
+  updateCandyFed(total = 0) {
+    const count = Math.max(0, Math.round(Number(total) || 0));
+    if (!this.elements.rankingCandyLine || !this.elements.rankingCandyTotal) return;
+    this.elements.rankingCandyTotal.textContent = count.toLocaleString('ko-KR');
+    this.elements.rankingCandyLine.hidden = count <= 0;
+  }
+
+  renderGarden(total = 0, cleanClears = 0) {
+    const cleared = Math.max(0, Math.round(Number(cleanClears) || 0));
+    if (this.elements.gardenRevealBest && this.elements.gardenRevealBestValue) {
+      this.elements.gardenRevealBestValue.textContent = cleared.toLocaleString('ko-KR');
+      this.elements.gardenRevealBest.hidden = cleared <= 0;
+    }
+    const state = gardenProgress(total);
+    if (this.elements.gardenCatsTotal) {
+      this.elements.gardenCatsTotal.textContent = state.cats.toLocaleString('ko-KR');
+    }
+    if (this.elements.gardenProgressLabel) {
+      this.elements.gardenProgressLabel.textContent = state.complete
+        ? '정원을 모두 채웠다냥!'
+        : `${state.next.label}까지 ${state.remaining.toLocaleString('ko-KR')}마리`;
+    }
+    if (this.elements.gardenProgressFill) {
+      this.elements.gardenProgressFill.style.width = `${Math.round(state.progress * 100)}%`;
+    }
+    if (this.elements.gardenScene) {
+      // Unlocked decorations are the garden itself filling in. Positions are
+      // fixed per tier so a returning player finds the same garden, with the
+      // newest friend arriving in an empty spot rather than reshuffling.
+      this.elements.gardenScene.querySelectorAll('.garden-decor').forEach((decor) => decor.remove());
+      GARDEN_MILESTONES.forEach((milestone, index) => {
+        if (!state.unlocked.includes(milestone.id)) return;
+        const decor = document.createElement('img');
+        decor.className = `garden-decor garden-decor-${milestone.id}`;
+        decor.dataset.slot = String(index);
+        decor.src = milestone.asset;
+        decor.alt = '';
+        this.elements.gardenScene.appendChild(decor);
+      });
+      this.elements.gardenScene.dataset.tier = String(state.unlocked.length);
+    }
+    if (this.elements.gardenTiers) {
+      const tiers = GARDEN_MILESTONES.map((milestone) => {
+        const unlocked = state.unlocked.includes(milestone.id);
+        const item = document.createElement('li');
+        item.className = 'garden-tier';
+        item.classList.toggle('is-unlocked', unlocked);
+        const icon = document.createElement('img');
+        icon.src = milestone.asset;
+        icon.alt = '';
+        const label = document.createElement('span');
+        label.textContent = milestone.label;
+        const requirement = document.createElement('b');
+        requirement.textContent = unlocked ? '완료' : `${milestone.cats}마리`;
+        item.append(icon, label, requirement);
+        item.setAttribute('aria-label', unlocked
+          ? `${milestone.label} 해금 완료`
+          : `${milestone.label} 잠김, 고양이 ${milestone.cats}마리 필요`);
+        return item;
+      });
+      this.elements.gardenTiers.replaceChildren(...tiers);
+    }
+  }
+
+  // The adventure gallery: every scene the run can travel to, with the ones
+  // still ahead shown as silhouettes so there is something to aim at. Art is
+  // applied by CSS class, so scenes without a file yet render as a plain
+  // locked card rather than a broken image.
+  // Held between the old board fading out and the new one landing: the
+  // tiles are already gone, so the chapter art behind them is briefly the
+  // whole screen. One card names the scene, then play resumes.
+  // 판갈이 is the loop's only lifeline, so it gets a real beat: the frame
+  // flashes and kicks once as the seconds land.
+  flashBoardChange() {
+    this.boardFrame.classList.remove('is-board-change');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('is-board-change');
+    clearTimeout(this.boardChangeFlashTimer);
+    this.boardChangeFlashTimer = window.setTimeout(() => {
+      this.boardFrame.classList.remove('is-board-change');
+    }, 620);
+  }
+
+  renderChapterGallery(chapters = []) {
+    if (!this.elements.chapterGallery) return;
+    const list = Array.isArray(chapters) ? chapters : [];
+    const cards = list.map((chapter) => {
+      const item = document.createElement('li');
+      item.className = 'chapter-card';
+      item.dataset.chapter = chapter.key;
+      item.classList.toggle('is-unlocked', Boolean(chapter.unlocked));
+      item.classList.toggle('is-secret', Boolean(chapter.secret));
+      // A locked card still paints its scene, blurred and drained by CSS, so
+      // the album reads as pictures waiting to be earned rather than a list of
+      // empty slots. Chapters whose art has not shipped get no thumb at all
+      // and fall back to the placeholder wash.
+      const thumb = classicChapterThumbUrl(chapter);
+      item.classList.toggle('has-art', Boolean(thumb));
+      if (thumb) item.style.setProperty('--chapter-thumb', cssUrl(thumb));
+      const label = document.createElement('strong');
+      label.textContent = chapter.unlocked ? chapter.label : '???';
+      const requirement = document.createElement('span');
+      requirement.textContent = chapter.unlocked ? '수집 완료' : chapter.requirement;
+      item.append(label, requirement);
+      item.setAttribute('aria-label', chapter.unlocked
+        ? `${chapter.label} 수집 완료`
+        : `잠긴 장면, ${chapter.requirement} 필요`);
+      if (chapter.unlocked && classicChapterArtUrl(chapter)) {
+        item.setAttribute('role', 'button');
+        item.tabIndex = 0;
+        item.addEventListener('click', () => this.openChapterViewer(chapter));
+        item.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.openChapterViewer(chapter);
+          }
+        });
+      }
+      return item;
+    });
+    this.elements.chapterGallery.replaceChildren(...cards);
+    if (this.elements.chapterGalleryNote) {
+      const found = list.filter((chapter) => chapter.unlocked).length;
+      this.elements.chapterGalleryNote.textContent = list.length
+        ? `장면 ${found}/${list.length} 수집`
+        : '';
+    }
+  }
+
+  // 오잉 카드. 장면과 같은 칸 모양을 쓰되, 잠긴 칸에 진행도를 함께 보여준다.
+  // 잠긴 칸이 그냥 회색이면 목표가 아니라 벽으로 읽힌다 - 얼마나 남았는지가
+  // 보여야 다음 한 장이 손에 닿는 것처럼 느껴진다.
+  // 기록 / 수집 전환.
+  //
+  // 어느 탭을 봤는지는 기억하지 않는다. 창을 열 때마다 기록으로 돌아오는
+  // 편이 낫다 - 이 창을 여는 흔한 이유는 여전히 점수 확인이고, 수집을 보러
+  // 온 사람에게는 탭이 바로 옆에 있다.
+  setRecordTab(name = 'stats') {
+    const key = name === 'cards' ? 'cards' : 'stats';
+    for (const tab of this.elements.recordTabs || []) {
+      const active = tab.id === `record-tab-${key}`;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    }
+    for (const [paneKey, pane] of Object.entries(this.elements.recordPanes || {})) {
+      if (pane) pane.hidden = paneKey !== key;
+    }
+    return key;
+  }
+
+  renderOingCards(cards = []) {
+    if (!this.elements.oingCardGallery) return;
+    const list = Array.isArray(cards) ? cards : [];
+    const items = list.map((card) => {
+      const item = document.createElement('li');
+      item.className = 'chapter-card oing-card';
+      item.dataset.card = card.key;
+      item.classList.toggle('is-unlocked', Boolean(card.unlocked));
+      item.classList.toggle('has-back', !card.unlocked && OING_CARD_BACK_READY);
+      // 격자에는 썸네일만. 얻은 카드는 자기 그림을, 아직 못 얻은 카드는
+      // 공용 뒷면을 깐다.
+      const thumb = card.unlocked ? oingCardThumbUrl(card) : null;
+      item.classList.toggle('has-art', Boolean(thumb));
+      if (thumb) item.style.setProperty('--chapter-thumb', cssUrl(thumb));
+
+      const label = document.createElement('strong');
+      label.textContent = card.unlocked ? card.label : '???';
+      const requirement = document.createElement('span');
+      // 실기기 피드백: 열린 카드가 '수집 완료'만 남기면 무엇으로 열었는지
+      // 알 수 없다. 조건 문구는 해금 후에도 그대로 남긴다.
+      requirement.textContent = card.unlocked
+        ? card.requirement
+        : `${card.requirement} (${card.current.toLocaleString('ko-KR')}/${card.goal.toLocaleString('ko-KR')})`;
+      item.append(label, requirement);
+
+      if (!card.unlocked) {
+        const meter = document.createElement('i');
+        meter.className = 'oing-card-meter';
+        meter.style.setProperty('--fill', `${Math.round(card.progress * 100)}%`);
+        item.append(meter);
+      }
+      item.setAttribute('aria-label', card.unlocked
+        ? `${card.label} 수집 완료, ${card.requirement}`
+        : `잠긴 카드, ${card.requirement}, ${card.current} / ${card.goal}`);
+      // 얻은 카드는 눌러서 크게 본다. 장면과 같은 창을 쓰므로 공유도 그대로
+      // 따라온다 - 수집은 자랑까지 가야 끝난다.
+      if (card.unlocked && oingCardArtUrl(card)) {
+        item.setAttribute('role', 'button');
+        item.tabIndex = 0;
+        const open = () => this.openChapterViewer(
+          { label: card.label, requirement: card.requirement },
+          oingCardArtUrl(card),
+        );
+        item.addEventListener('click', open);
+        item.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            open();
+          }
+        });
+      }
+      return item;
+    });
+    this.elements.oingCardGallery.replaceChildren(...items);
+    // 탭 배지. 창을 안 열어봐도 "수집 2/9"가 보여야 여기 뭔가 있다는 것이
+    // 읽힌다 - 제보의 "갤러리 있는 줄 몰랐다"가 바로 이 자리에서 갈린다.
+    if (this.elements.recordTabCount) {
+      const unlocked = list.filter((card) => card.unlocked).length;
+      this.elements.recordTabCount.textContent = `${unlocked}/${list.length}`;
+    }
+    if (this.elements.oingCardNote) {
+      const found = list.filter((card) => card.unlocked).length;
+      this.elements.oingCardNote.textContent = list.length ? `카드 ${found}/${list.length}` : '';
+    }
+  }
+
+  // The album card is a thumbnail; tapping an earned scene opens the real
+  // painting. Locked cards stay inert - the blur is the tease.
+  // artUrl을 따로 받는 이유: 장면은 assets/backgrounds에, 카드는 assets/cards에
+  // 있다. 창은 하나로 쓰되 그림이 어디서 오는지는 부르는 쪽이 정한다.
+  openChapterViewer(chapter, artUrl = null) {
+    const art = artUrl || classicChapterArtUrl(chapter);
+    if (!art) return;
+    // 공유 버튼이 어느 장면을 말하는지 알아야 하므로 지금 연 장면을 들고 있는다.
+    // 그림 주소도 함께 - 공유에 그림을 실어 보내는 데 쓴다.
+    this.openedChapter = chapter;
+    this.openedChapterArt = art;
+    if (this.elements.chapterViewerTitle) this.elements.chapterViewerTitle.textContent = chapter.label;
+    if (this.elements.chapterViewerArt) this.elements.chapterViewerArt.src = art;
+    if (this.elements.chapterViewerNote) {
+      this.elements.chapterViewerNote.textContent = chapter.requirement || '';
+    }
+    this.setOverlay('chapter-viewer', true);
   }
 
   renderRanking({ summary } = {}) {
@@ -1902,7 +2842,7 @@ export class GameUI {
     void output.offsetWidth;
     output.classList.add('is-counting');
     const startedAt = performance.now();
-    const duration = 680;
+    const duration = 950;
     const step = (now) => {
       const progress = clamp((now - startedAt) / duration, 0, 1);
       const eased = 1 - ((1 - progress) ** 4);
@@ -1912,6 +2852,9 @@ export class GameUI {
       } else {
         output.textContent = target.toLocaleString('ko-KR');
         output.classList.remove('is-counting');
+        output.classList.remove('is-settled');
+        void output.offsetWidth;
+        output.classList.add('is-settled');
         this.finalScoreAnimationFrame = 0;
       }
     };
@@ -1919,15 +2862,58 @@ export class GameUI {
   }
 
   showResult({
-    score, maxCombo, round, progress = 0, target = 1, catsCollected = 0,
+    score, maxCombo, round, successCount = 0, catsCollected = 0,
+    catsRescuedTotal = 0, cleanClears = 0, cleanClearsTotal = 0,
     newRecord, previousBest, previousScore, recordEligible = true, resultMessage = '',
+    classic = null, cardAward = null, candy = null, challenge = null, nextGoal = null,
   }) {
     this.elements.playScreen.classList.remove('is-ending-to-result');
+    // 지난 판의 연출이 남아 있으면 새 판의 첫 프레임에 그것이 먼저 보인다.
+    this.resetCardAward();
+    // 카드 패널이 서는 판에서는 장면 소식을 패널이 대신 전한다. 같은 말을
+    // 두 줄에 나눠 쓰면 무엇이 이번 판의 수확인지 흐려진다.
+    this.updateResultChallenge(challenge, { suppressPending: nextGoal?.kind === 'challenge' });
+    this.updateResultNextGoal(nextGoal);
+    const cardAwardActive = Boolean(cardAward?.fresh?.length);
     this.elements.finalCombo.textContent = String(maxCombo);
     this.elements.finalRound.textContent = String(round);
+    // Classic reads its own sheet: the round figure is boards survived, and
+    // the kicker names the mode so the score's smaller scale isn't read
+    // against stage-mode records.
+    if (this.elements.finalRoundLabel) {
+      this.elements.finalRoundLabel.textContent = classic ? '진행한 판' : '도달 스테이지';
+    }
+    this.elements.finalRound.textContent = classic ? `${round}판` : String(round);
     this.elements.resultKicker.textContent = '이번 판 기록';
-    this.elements.resultStageProgress.textContent = `STAGE ${round} 도달 · 목표 ${progress} / ${target}`;
-    this.elements.retryButton.textContent = resultRetryLabel({
+    // A scene earned this run is the retry hook, so it reads here rather
+    // than only inside the records sheet.
+    const collected = classic?.collectedLabels || [];
+    this.elements.resultStageProgress.textContent = classic
+      ? `${classic.boards}판 진행 · 성공 ${successCount}회`
+      : `STAGE ${round} 도달 · 성공 ${successCount}회`;
+    if (this.elements.resultChapterEarned) {
+      const collectionCount = Math.min(
+        Math.max(0, Number(classic?.collectionCount) || 0),
+        Math.max(0, Number(classic?.collectionTotal) || 0),
+      );
+      const collectionTotal = Math.max(0, Number(classic?.collectionTotal) || 0);
+      this.elements.resultChapterEarned.hidden = !classic || collected.length === 0 || cardAwardActive;
+      this.elements.resultChapterEarned.textContent = collected.length
+        ? `새 그림 획득! ${collectionCount}/${collectionTotal}`
+        : '';
+    }
+    // 이 판에서 번 별사탕. 사탕이 어디서 났는지 알려주는 유일한 자리라
+    // 카드 패널이 서는 판에도 숨기지 않는다 - 숨기면 하필 제일 잘한 판에서
+    // 사탕의 출처가 사라진다.
+    if (this.elements.resultCandyEarned) {
+      const earned = Math.max(0, Math.round(Number(candy?.earned) || 0));
+      const total = Math.max(0, Math.round(Number(candy?.total) || 0));
+      this.elements.resultCandyEarned.hidden = earned <= 0;
+      this.elements.resultCandyEarned.textContent = earned > 0
+        ? `별사탕 +${earned} · 모은 사탕 ${total}개`
+        : '';
+    }
+    this.elements.retryButton.textContent = classic ? '한 판 더!' : resultRetryLabel({
       score,
       previousBest,
       newRecord,
@@ -1935,7 +2921,8 @@ export class GameUI {
       maxCombo,
       round,
     });
-    this.elements.finalCats.textContent = String(catsCollected);
+    // Rescued-cat counts live in the garden screen, which is where they
+    // actually accumulate; the sheet keeps to the run's own headline.
     this.elements.newRecord.hidden = !newRecord;
     this.elements.resultDecor.classList.toggle('is-record', newRecord);
 
@@ -1944,35 +2931,62 @@ export class GameUI {
     else if (maxCombo >= 5 || round >= 5) this.setResultCharacter('cheer');
     else this.setResultCharacter('wave');
 
+    // One comparison, not two stacked. The card used to print the best-score
+    // line and the last-run line together, so an ordinary result said two
+    // similar things at once and neither led. This picks the single most
+    // meaningful reading of the run and shows only that.
     const comparison = buildScoreComparisons(score, previousScore, previousBest);
-    this.elements.resultBestCompare.textContent = recordEligible
-      ? comparison.bestText
-      : '연습 플레이 기록';
-    this.elements.resultBestCompare.dataset.tone = recordEligible ? comparison.bestTone : 'neutral';
-    this.elements.resultPreviousCompare.textContent = recordEligible
-      ? comparison.previousText
-      : '정식 기록은 STAGE 1부터 시작해';
-    this.elements.resultPreviousCompare.dataset.tone = recordEligible ? comparison.previousTone : 'neutral';
-    this.elements.resultPreviousCompare.hidden = recordEligible ? !comparison.hasPrevious : false;
+    const chasingRecord = recordEligible && !newRecord && isRecordInReach(score, previousBest);
+    const beatLastRun = recordEligible && comparison.hasPrevious && comparison.previousTone === 'up';
+    const headline = !recordEligible
+      ? { text: '연습 플레이 기록 · 최고기록에는 반영되지 않아', tone: 'neutral' }
+      : newRecord || chasingRecord || !beatLastRun
+        ? { text: comparison.bestText, tone: comparison.bestTone }
+        : { text: comparison.previousText, tone: comparison.previousTone };
+    this.elements.resultBestCompare.textContent = headline.text;
+    this.elements.resultBestCompare.dataset.tone = headline.tone;
+    // The freed second line celebrates clean clears — boards emptied without
+    // a rescue — which replaced the reveal-percentage record now that every
+    // stage ends fully revealed.
+    const clean = Math.max(0, Math.round(Number(cleanClears) || 0));
+    this.elements.resultPreviousCompare.hidden = clean <= 0;
+    this.elements.resultPreviousCompare.textContent = clean > 0 ? `CLEAN CLEAR ×${clean}!` : '';
+    if (clean > 0) this.elements.resultPreviousCompare.dataset.tone = 'up';
     const recordProgress = !recordEligible
       ? 0
       : newRecord || previousBest <= 0
       ? 1
       : clamp(score / Math.max(1, previousBest), 0, 1);
     const recordPercent = Math.round(recordProgress * 100);
-    this.elements.resultRecordMeterLabel.textContent = !recordEligible
-      ? '연습 기록 · 최고기록 제외'
-      : newRecord
-      ? '새 최고기록 달성!'
-      : `최고기록 도전 ${recordPercent}%`;
+    // The meter only earns its row when it says something the copy above it
+    // does not. A new record pins it at 100% and a practice run excludes it
+    // from records entirely, and in both cases the line under the score has
+    // already said so — so the meter is a chase bar, shown only while there
+    // is a record left to chase.
+    const meterIsInformative = recordEligible && !newRecord && previousBest > 0;
+    this.elements.resultRecordMeter.hidden = !meterIsInformative;
+    // Its own label repeated the comparison line verbatim ("최고기록 도전
+    // 15%" over "최고 기록의 15%까지 왔다냥"), so the bar now carries the
+    // figure for assistive tech instead of printing it twice.
+    this.elements.resultRecordMeterLabel.textContent = `최고기록 도전 ${recordPercent}%`;
+    this.elements.resultRecordMeter.setAttribute('aria-label', `최고기록 도전 진행도 ${recordPercent}%`);
     this.elements.resultRecordMeter.style.setProperty('--record-progress', String(recordProgress));
     this.elements.resultRecordMeter.classList.remove('is-animating');
 
     const message = resultMessage || pickMessage(newRecord ? 'record' : 'resultNormal', this.lastResultMessage);
     this.lastResultMessage = message;
     this.elements.resultMessage.textContent = message;
-    this.showScreen('result');
+    // The board stays on screen behind the sheet, with its remaining answers
+    // still lit — seeing what you missed is what makes the retry button worth
+    // pressing, and it is how the original ends a run.
+    this.showScreen('result', { behind: 'play' });
     if (newRecord) this.launchRecordCelebration();
+    // 신기록 콘페티가 세 번에 나눠 터지는 동안 카드까지 같이 나오면 둘 다
+    // 배경이 된다. 콘페티가 있는 판에서는 카드를 0.4초 뒤로 물린다.
+    this.playCardAward(cardAward, {
+      chapterLabel: cardAwardActive ? (collected.at(-1) || '') : '',
+      holdBack: Boolean(newRecord),
+    });
     void this.elements.resultRecordMeter.offsetWidth;
     this.elements.resultRecordMeter.classList.add('is-animating');
     this.animateFinalScore(score);
@@ -1984,31 +2998,226 @@ export class GameUI {
     setTimeout(() => screen.classList.remove('is-entering'), 680);
   }
 
+  resetCardAward() {
+    const panel = this.elements.cardAward;
+    if (!panel) return;
+    this.cardAwardTimers?.forEach(clearTimeout);
+    this.cardAwardTimers = [];
+    panel.hidden = true;
+    panel.classList.remove('is-shown', 'is-revealed', 'is-tucked');
+    // 그림을 남겨두면, 그림 없는 카드가 하나라도 생기는 날 지난 판의 앞면이
+    // 그대로 뒤집혀 나온다.
+    this.elements.cardAwardFace?.style.removeProperty('background-image');
+  }
+
+  // 이번 판에 처음 열린 카드를 한 장 세운다.
+  //
+  // 여러 장이 한꺼번에 열려도 크게 서는 것은 한 장뿐이다 - 카드가 줄지어
+  // 나오면 넘기는 화면이 되고, 그러면 한 장 한 장이 가벼워진다. 크게 서는
+  // 한 장은 목록의 마지막, 즉 조건이 가장 무거운 카드다.
+  //
+  // 그림은 격자에 깔던 썸네일(300x400)을 그대로 쓴다. 원본은 눌러서 크게 볼
+  // 때만 받는 물건이고, 결과 화면에서 1.4MB를 새로 받을 이유가 없다.
+  playCardAward(award, { chapterLabel = '', holdBack = false } = {}) {
+    const panel = this.elements.cardAward;
+    const hero = award?.fresh?.at(-1);
+    if (!panel || !hero) return false;
+    // 실기기 피드백: 방금 얻은 카드를 눌러 크게 보고 싶다. 갤러리와 같은
+    // 크게 보기 창을 연다 - 공유 버튼도 그대로 따라온다.
+    this.cardAwardHero = hero;
+    panel.setAttribute('role', 'button');
+    panel.tabIndex = 0;
+    if (!this.cardAwardClickBound) {
+      this.cardAwardClickBound = true;
+      const open = () => {
+        const card = this.cardAwardHero;
+        if (!card || panel.hidden) return;
+        this.openChapterViewer({ label: card.label, requirement: card.requirement }, oingCardArtUrl(card));
+      };
+      panel.addEventListener('click', open);
+      panel.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          open();
+        }
+      });
+    }
+    const others = award.fresh.length - 1;
+    const thumb = oingCardThumbUrl(hero);
+    if (this.elements.cardAwardFace && thumb) {
+      this.elements.cardAwardFace.style.backgroundImage = cssUrl(thumb);
+    }
+    this.elements.cardAwardName.textContent = hero.label;
+    this.elements.cardAwardCount.textContent = `${award.unlockedCount} / ${award.total}`;
+    // 화면에는 "3 / 9"가 맞지만, 읽어주는 기계에게 슬래시는 말이 되지 않는다.
+    this.elements.cardAwardCount.setAttribute(
+      'aria-label',
+      `오잉 카드 ${award.total}장 중 ${award.unlockedCount}장 수집`,
+    );
+    this.elements.cardAwardMore.hidden = others <= 0;
+    this.elements.cardAwardMore.textContent = others > 0 ? `외 ${others}장` : '';
+    const chapter = typeof chapterLabel === 'string' ? chapterLabel.trim() : '';
+    this.elements.cardAwardChapter.hidden = !chapter;
+    this.elements.cardAwardChapter.textContent = chapter ? `새 장면도 열렸어 · ${chapter}` : '';
+
+    // 자리는 지금 잡아둔다. 0.3초 뒤에 자리까지 같이 생기면 아래 내용이
+    // 통째로 밀려 내려가고, 그 움직임이 카드보다 크게 읽힌다.
+    panel.hidden = false;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      panel.classList.add('is-shown', 'is-revealed');
+      return true;
+    }
+    // 뒷면이 서고(0.3초) 곧 뒤집힌다(0.76초 시작). 뒤집기는 520ms인데 앞면은
+    // 90도를 넘는 순간 보이므로, 그림이 실제로 드러나는 시점은 1초 언저리다.
+    const enterAt = holdBack ? 700 : 300;
+    this.cardAwardTimers = [
+      window.setTimeout(() => panel.classList.add('is-shown'), enterAt),
+      window.setTimeout(() => panel.classList.add('is-revealed'), enterAt + 460),
+    ];
+    return true;
+  }
+
+  // 카드 개봉. 화면을 잠깐 독점하고, 끝나면 promise가 풀린다.
+  //
+  // 결과 시트 안의 작은 패널은 "무엇을 받았는지"를 적어두는 자리로 그대로
+  // 남는다. 이 창은 "받는 순간"만 맡는다 - 둘을 한 자리에 합치면 개봉이
+  // 정보가 되고, 정보가 된 개봉은 아무도 기억하지 않는다.
+  //
+  // 연출 길이는 2.6초다. 그보다 짧으면 뒤집기가 급해 보이고, 길면 결과를
+  // 보러 온 사람을 붙잡아두는 것이 된다. 아무 데나 누르면 바로 넘어간다.
+  playCardReveal(card, { unlockedCount = 0, total = 0 } = {}) {
+    const layer = this.elements.cardReveal;
+    if (!layer || !card) return Promise.resolve(false);
+    const art = oingCardThumbUrl(card);
+    if (art) this.elements.cardRevealFace.style.backgroundImage = cssUrl(art);
+    this.elements.cardRevealName.textContent = card.label || '';
+    this.elements.cardRevealCount.textContent = total > 0 ? `${unlockedCount} / ${total}` : '';
+    this.elements.cardRevealCount.setAttribute(
+      'aria-label',
+      `오잉 카드 ${total}장 중 ${unlockedCount}장 수집`,
+    );
+
+    // 반짝임은 매번 새로 뿌린다. 같은 자리에서 터지면 두 번째부터 연출로
+    // 안 읽히고 그림의 일부처럼 보인다.
+    const burst = this.elements.cardRevealBurst;
+    if (burst) {
+      burst.replaceChildren();
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reduced) {
+        const COLORS = ['#ffe9a8', '#ffd0dc', '#cdf3e9', '#fff6dd'];
+        for (let i = 0; i < 18; i += 1) {
+          const spark = document.createElement('i');
+          const angle = (i / 18) * Math.PI * 2 + (i % 3) * 0.22;
+          const distance = 92 + (i % 5) * 26;
+          spark.style.setProperty('--spark-x', `${Math.cos(angle) * distance}px`);
+          spark.style.setProperty('--spark-y', `${Math.sin(angle) * distance}px`);
+          spark.style.setProperty('--spark-delay', `${(i % 6) * 40}ms`);
+          spark.style.setProperty('--spark', COLORS[i % COLORS.length]);
+          burst.appendChild(spark);
+        }
+      }
+    }
+
+    layer.hidden = false;
+    layer.setAttribute('aria-hidden', 'false');
+    layer.classList.remove('is-closing');
+    // 애니메이션을 처음부터 다시 돌린다. 연속으로 두 장이 열릴 때 두 번째가
+    // 이미 끝난 상태로 떠 있으면 개봉이 아니라 결과 화면이 된다.
+    void layer.offsetWidth;
+
+    // 화면을 독점하는 창이라 포커스를 데려온다. 안 그러면 스크린리더는 뒤에
+    // 깔린 결과 화면을 계속 읽고, 방금 받은 카드는 지나가버린다.
+    // (외부 검수 지적. role/aria-modal은 마크업에 있다.)
+    const focusBefore = document.activeElement;
+    try { layer.focus({ preventScroll: true }); } catch {}
+
+    return new Promise((resolve) => {
+      let done = false;
+      const close = () => {
+        if (done) return;
+        done = true;
+        window.clearTimeout(autoTimer);
+        layer.removeEventListener('pointerdown', close);
+        window.removeEventListener('keydown', onKey, true);
+        layer.classList.add('is-closing');
+        window.setTimeout(() => {
+          layer.hidden = true;
+          layer.setAttribute('aria-hidden', 'true');
+          layer.classList.remove('is-closing');
+          // 포커스를 원래 자리로 돌려준다. 안 돌려주면 키보드/스위치 이용자가
+          // 문서 맨 위로 튕긴다.
+          try { focusBefore?.focus?.({ preventScroll: true }); } catch {}
+          resolve(true);
+        }, 220);
+      };
+      // 손가락이 없는 사람도 닫을 수 있어야 한다. 창 밖으로 새지 않게
+      // 캡처 단계에서 받는다.
+      const onKey = (event) => {
+        if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          close();
+        }
+      };
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // 자동으로 닫히는 시간. 스크린리더는 읽는 데 시간이 걸리므로, 화면을
+      // 읽어주는 설정이 켜져 있을 때를 대신해 모션 축소 설정에서는 오히려
+      // 넉넉하게 준다 - 짧게 두면 카드 이름을 다 읽기 전에 사라진다.
+      const autoTimer = window.setTimeout(close, reduced ? 4000 : 2600);
+      layer.addEventListener('pointerdown', close);
+      window.addEventListener('keydown', onKey, true);
+    });
+  }
+
+  // 개봉이 도중에 어그러졌을 때 화면을 걷어낸다. 이게 없으면 어두운 막이
+  // 남아 결과 화면을 덮는다.
+  hideCardReveal() {
+    const layer = this.elements.cardReveal;
+    if (!layer) return;
+    layer.hidden = true;
+    layer.setAttribute('aria-hidden', 'true');
+    layer.classList.remove('is-closing');
+  }
+
+  // The original's record moment pops from several places at once, not one
+  // curtain from the top - so the celebration is three staggered bursts,
+  // each seeded to a different band of the screen.
   launchRecordCelebration() {
     const screen = document.querySelector('#result-screen');
     if (!screen) return;
-    screen.querySelector('.record-confetti')?.remove();
-    const confetti = document.createElement('div');
-    confetti.className = 'record-confetti';
+    screen.querySelectorAll('.record-confetti').forEach((el) => el.remove());
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const count = reducedMotion ? 12 : 54;
-    for (let index = 0; index < count; index += 1) {
-      const piece = document.createElement('i');
-      piece.style.setProperty('--confetti-x', `${6 + ((index * 37) % 89)}%`);
-      piece.style.setProperty('--confetti-delay', `${(index % 12) * 34}ms`);
-      piece.style.setProperty('--confetti-drift', `${((index * 29) % 100) - 50}px`);
-      piece.style.setProperty('--confetti-spin', `${120 + (index % 7) * 55}deg`);
-      piece.style.setProperty('--confetti-hue', String((index * 47) % 360));
-      piece.dataset.shape = index % 6 === 0 ? 'star' : 'paper';
-      confetti.appendChild(piece);
+    const spawnWave = (seed, count) => {
+      const confetti = document.createElement('div');
+      confetti.className = 'record-confetti';
+      for (let index = 0; index < count; index += 1) {
+        const piece = document.createElement('i');
+        piece.style.setProperty('--confetti-x', `${(seed * 31 + 6 + ((index * 37) % 89)) % 94}%`);
+        piece.style.setProperty('--confetti-delay', `${(index % 12) * 34}ms`);
+        piece.style.setProperty('--confetti-drift', `${((index * 29 + seed * 13) % 100) - 50}px`);
+        piece.style.setProperty('--confetti-spin', `${120 + (index % 7) * 55}deg`);
+        piece.style.setProperty('--confetti-hue', String((index * 47 + seed * 90) % 360));
+        piece.dataset.shape = index % 6 === 0 ? 'star' : 'paper';
+        confetti.appendChild(piece);
+      }
+      screen.appendChild(confetti);
+      window.setTimeout(() => confetti.remove(), reducedMotion ? 1100 : 3200);
+    };
+    if (reducedMotion) {
+      spawnWave(0, 12);
+      return;
     }
-    screen.appendChild(confetti);
-    window.setTimeout(() => confetti.remove(), reducedMotion ? 1100 : 3200);
+    spawnWave(0, 40);
+    this.confettiWaveTimers?.forEach(clearTimeout);
+    this.confettiWaveTimers = [
+      window.setTimeout(() => spawnWave(1, 34), 420),
+      window.setTimeout(() => spawnWave(2, 30), 860),
+    ];
   }
 
   setOverlay(id, visible) {
     const overlay = document.querySelector(`#${id}`);
     if (!overlay) return;
+    if (visible) this.hydrateDeferredImages(overlay);
     overlay.hidden = !visible;
   }
 
@@ -2039,9 +3248,10 @@ export class GameUI {
     const active = Boolean(enabled);
     const percent = Math.round(clamp(Number(volume) || 0, 0, 1) * 100);
     const settingsToggle = document.querySelector('#music-toggle');
+    // 상단 HUD의 음악 버튼은 랭킹에 자리를 내줬다(일시정지 안에 음악·효과음이
+    // 다 있다). 남은 토글은 일시정지의 것 하나다.
     const quickToggles = [
       document.querySelector('#music-button'),
-      document.querySelector('#hud-music-button'),
     ];
     const slider = document.querySelector('#music-volume');
     const label = document.querySelector('#music-volume-label');
@@ -2068,12 +3278,9 @@ export class GameUI {
     }
   }
 
-  toast(message) {
-    const toast = this.elements.toast;
-    toast.textContent = message;
-    toast.classList.remove('is-visible');
-    void toast.offsetWidth;
-    toast.classList.add('is-visible');
-    setTimeout(() => toast.classList.remove('is-visible'), 1800);
+  // duration은 부르는 쪽이 정할 수 있게 열어둔다. 기본값은 기존 그대로라
+  // 이미 있는 토스트들의 길이는 하나도 바뀌지 않는다.
+  toast(message, duration = 1800) {
+    this.enqueueFeedback({ kind: 'toast', message, duration });
   }
 }

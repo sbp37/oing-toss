@@ -1,0 +1,1924 @@
+/* ============================================================
+   claude-polish.css - home/play finishing pass, loaded last so
+   everything here wins on source order.
+   Comments are in English on purpose: tests/fonts.test.mjs treats
+   any Korean glyph in html/css/js as shipped UI text and fails if
+   the font subset is missing it, and glyphs that only ever appear
+   in a comment would bloat the subset without rendering anywhere.
+   ============================================================ */
+
+/* -- Home ------------------------------------------------------------- */
+
+/* The logo sat flush against the top edge. */
+.home-brand {
+  margin-top: calc(var(--safe-top) + clamp(16px, 3.2dvh, 30px));
+}
+
+/* The wordmark's ink sits right of the file's geometric centre - measured
+   alpha centroid x = 542/1000, so +4.20% - which makes a geometrically
+   centred logo read as pushed right. Shift the box back by that much.
+   Done with position, not transform: home-logo-breathe animates transform
+   and would overwrite it. */
+.oing-logo {
+  position: relative;
+  left: -4.5%;
+}
+
+/* Same correction for the cat, whose ink centroid is 2.96% left of centre
+   (198.5/422). The ground shadow is a pseudo-element, so it rides along. */
+.home-character-stage {
+  transform: translateX(8px);
+}
+
+/* -- Play ------------------------------------------------------------- */
+
+/* Time is the only number in a two minute score attack that changes what
+   you do next, so it should not be the smallest figure in the HUD. This
+   brings the digits from 19.5 to 21.1px at 390x844 against a 21.8px score,
+   inside the pill art rather than growing the box past it. */
+.play-ui-v4 .time-readout {
+  padding-right: 7% !important;
+}
+
+.play-ui-v4 .time-readout strong {
+  font-size: clamp(18px, 5.4vw, 23px) !important;
+}
+
+/* Numerals on translucent syrup tiles read soft, and Jua has one weight
+   with no bolder cut to reach for. A deeper navy plus a hairline stroke
+   does the work a heavier weight would. (The board's saturate(.72) filter
+   applies only while the hint or tutorial veil is up, not in normal play,
+   so this is straight contrast rather than filter compensation.) */
+.play-ui-v4 .tile span {
+  color: #514d4e;
+  -webkit-text-stroke: 0.35px currentColor;
+  text-shadow:
+    0 1.5px 0 rgba(255, 255, 255, 0.98),
+    0 0 3px rgba(255, 255, 255, 0.55),
+    0 2px 2px rgba(57, 51, 45, 0.07);
+}
+
+.play-ui-v4 #round-value,
+.play-ui-v4 #score-value,
+.play-ui-v4 .time-readout:not(.is-low-time):not(.is-warning) #time-value {
+  color: #514d4e;
+  -webkit-text-stroke: 0.18px currentColor;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .94), 0 2px 1px rgba(70, 61, 60, .10);
+}
+
+/* The drag tutorial chip overlapped the time gauge. */
+.play-ui-v4 .tutorial-callout {
+  margin-top: 10px;
+}
+
+/* Speech bubble: the 30dp lane read as a thin strip rather than a bubble,
+   so the lane grows to 42dp. The width stays put, though - a percentage
+   side padding would cut the 271dp bubble's text column to 206dp, and
+   that is exactly the width that put 7 of the 131 possible messages onto
+   three lines at 390x844 and 12 at 360x740. Fixed padding keeps the
+   column, and the audit is back to zero clipped and two lines worst case
+   at both sizes, with the type a touch larger than before at 360. */
+.play-ui-v4 .cat-coach,
+.play-ui-v4.is-tall-board .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"] .cat-coach,
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] .cat-coach {
+  height: 42px;
+}
+
+.play-ui-v4 .cat-speech {
+  min-height: 42px;
+}
+
+.play-ui-v4 .cat-message,
+.play-ui-v4.is-tall-board .cat-message {
+  padding: 5px 13px;
+  font-size: 14.2px;
+  line-height: 1.22;
+}
+
+/* The lane took 12dp, so the board's budget gives it back. Only the deep
+   boards pay: 5x5 and 6x6 are width-limited, so their surplus comes out of
+   the grid spacers instead. */
+.screen-play.play-ui-v4.is-tall-board {
+  --board-chrome: calc(256px + 8dvh);
+}
+
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="8"],
+.screen-play.play-ui-v4.is-tall-board[data-board-rows="9"] {
+  --board-chrome: calc(250px + 8dvh);
+}
+
+/* 새 오잉 카드 획득 연출 -----------------------------------------------------
+   결과 화면에서 이번 판에 처음 열린 카드 한 장을 짧게 세운다. 뒷면이 먼저
+   서고, 곧 뒤집혀 그림이 나온다 - 뒤집히는 동작 자체가 "뭔가 얻었다"는 신호라
+   따로 문구를 붙이지 않아도 읽힌다.
+
+   위계는 결과 화면의 기존 순서를 건드리지 않는다: 점수와 신기록이 먼저 서고,
+   이 패널은 그 아래 한 칸을 빌린다. 카드가 없는 판에서는 hidden 그대로라
+   화면이 지금과 완전히 같다.
+
+   전환은 transform과 opacity만 쓴다. 그림은 원본(1086x1448)이 아니라 격자에
+   깔던 썸네일(300x400, 11~13KB)이라, 결과 화면에 도달해서야 처음 한 장을
+   받는다 - 시작 화면 preload에는 아무것도 더하지 않는다. */
+.result-card-award {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  box-sizing: border-box;
+  width: min(100%, 350px);
+  margin: 9px auto 0;
+  padding: 11px 14px;
+  border: 1.5px solid rgba(226, 198, 145, .7);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 250, .97), rgba(255, 247, 225, .95));
+  box-shadow:
+    0 4px 0 rgba(185, 132, 65, .1),
+    0 12px 22px rgba(71, 99, 98, .11),
+    inset 0 2px 0 #fff;
+  text-align: left;
+  opacity: 0;
+  transform: translateY(10px) scale(.94);
+  transition: opacity 300ms ease, transform 380ms cubic-bezier(.2, .8, .3, 1.02);
+}
+
+.result-card-award[hidden] { display: none; }
+.result-card-award.is-shown { opacity: 1; transform: none; }
+
+.result-card-award-frame {
+  position: relative;
+  flex: 0 0 auto;
+  width: 84px;
+  height: 112px;
+  perspective: 760px;
+}
+
+.result-card-award-frame > i {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow:
+    0 3px 8px rgba(80, 92, 120, .24),
+    inset 0 0 0 1.5px rgba(255, 255, 255, .7);
+  transition: transform 520ms cubic-bezier(.3, .72, .28, 1);
+}
+
+/* 두 면이 같은 방향으로 돈다. 앞면을 0도에서 시작시키면 뒤집힐 때 반대로
+   돌아 카드가 접히는 것처럼 보인다. */
+.result-card-award-back {
+  background-image: url("../assets/cards/thumbs/card-back-v1.webp");
+  transform: rotateY(0deg);
+}
+
+.result-card-award-face { transform: rotateY(180deg); }
+.result-card-award.is-revealed .result-card-award-back { transform: rotateY(180deg); }
+.result-card-award.is-revealed .result-card-award-face { transform: rotateY(360deg); }
+
+.result-card-award-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.result-card-award-tag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8fae, #f4577f);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.result-card-award-lead {
+  margin: 4px 0 0;
+  color: #8a6a3c;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.result-card-award-name {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #3f4f74;
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1.16;
+}
+
+.result-card-award-count {
+  margin: 1px 0 0;
+  color: #7d8aa6;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.result-card-award-more {
+  margin: 2px 0 0;
+  color: #98a3bb;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* 장면은 보너스다. 카드 이름이 21px 제목 글꼴인 자리에서 11px 알약 하나로
+   붙어, 눈이 카드를 먼저 읽고 나서야 여기에 닿는다. */
+.result-card-award-chapter {
+  align-self: flex-start;
+  margin: 5px 0 0;
+  padding: 3px 9px;
+  border: 1px solid rgba(92, 185, 157, .28);
+  border-radius: 999px;
+  background: rgba(226, 250, 239, .82);
+  color: #347d69;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.result-card-award-more[hidden],
+.result-card-award-chapter[hidden] { display: none; }
+
+/* 기록 창이 열리면 결과 카드와 같이 물러난다. is-shown보다 뒤에 서야 이긴다. */
+.result-card-award.is-tucked {
+  opacity: 0;
+  transform: translateY(118%);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-card-award,
+  .result-card-award-frame > i { transition: none; }
+}
+
+/* -- Final play/readability alignment pass ----------------------------- */
+
+/* One physical pixel less ink and one pixel lower optical centring. */
+.play-ui-v4 .tile span {
+  font-size: clamp(17px, calc((62vw / var(--board-cols)) - 1px), 42px);
+  transform: translateY(1px);
+}
+
+/* The three live score figures now belong to the same pink value family. */
+.play-ui-v4 #score-value,
+.screen-play.play-ui-v4[data-stage-band] #score-value {
+  color: #ef5477 !important;
+}
+
+/* The help affordance sits directly above pause without stealing its edge. */
+.play-ui-v4 .play-help-button {
+  left: 22px;
+  top: -15px;
+}
+
+.play-ui-v4 .hud-controls { overflow: visible; }
+
+/* The timer artwork's optical baseline is a touch low and right of the text. */
+.play-ui-v4 .play-top-controls .time-pill-chrome {
+  transform: translate(-1.5px, -1px);
+}
+
+/* Keep the guide readable while removing the heavy double rail. */
+#play-screen.play-ui-v4 .hint-region {
+  border-width: 1.75px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, .76),
+    0 0 0 2.5px rgba(43, 154, 126, .10),
+    inset 0 0 8px rgba(255, 255, 255, .34);
+}
+
+/* The rules card owns the foreground; the HUD becomes quiet underneath. */
+.help-overlay {
+  z-index: 90;
+  place-items: start center;
+  padding-top: max(calc(var(--safe-top) + 12px), 18px);
+  background: rgba(30, 51, 72, .64);
+  backdrop-filter: blur(6px) saturate(.74);
+  -webkit-backdrop-filter: blur(6px) saturate(.74);
+}
+
+.help-panel {
+  z-index: 1;
+  max-height: calc(100dvh - var(--safe-top) - 28px);
+}
+
+.help-cat-tip {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0 7px;
+  padding: 5px 10px 5px 7px;
+  border: 1px solid rgba(238, 158, 175, .34);
+  border-radius: 15px;
+  background: linear-gradient(90deg, rgba(255, 226, 232, .82), rgba(255, 248, 226, .76));
+  color: #655b58;
+  font-family: var(--font-body);
+  font-size: clamp(13px, 3.65vw, 15px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.help-cat-tip img {
+  width: 36px;
+  height: 31px;
+  object-fit: contain;
+}
+
+.help-cat-tip span { display: grid; gap: 1px; }
+.help-cat-tip strong { color: #e85d7d; }
+
+/* On taller devices the coach can return on deep boards without covering it. */
+@media (min-height: 820px) {
+  .screen-play.play-ui-v4[data-board-rows="8"] .cat-speech,
+  .screen-play.play-ui-v4[data-board-rows="9"] .cat-speech,
+  .screen-play.play-ui-v4[data-board-rows="10"] .cat-speech {
+    display: grid;
+    max-width: min(74%, 250px);
+  }
+}
+
+/* The old floating 3/2/1 is retired; the clock itself still pulses and warns. */
+.screen-play.play-ui-v4 .final-second-pop { display: none !important; }
+
+/* Remaining answers are shown as connected rectangles, not green digits only. */
+.play-ui-v4 .end-answer-region {
+  position: absolute;
+  z-index: 4;
+  box-sizing: border-box;
+  border: 2px solid rgba(40, 157, 127, .88);
+  border-radius: clamp(12px, 3.8vw, 18px);
+  background: rgba(111, 222, 190, .16);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .72),
+    inset 0 0 12px rgba(220, 255, 244, .34);
+  pointer-events: none;
+  animation: end-answer-region-in 540ms ease-out both;
+}
+
+@keyframes end-answer-region-in {
+  0% { opacity: 0; transform: scale(.97); }
+  38%, 100% { opacity: 1; transform: none; }
+}
+
+/* Slightly larger coach, with the two tools lifted but still on their edges. */
+.play-ui-v4 .play-character-stage,
+.play-ui-v4.is-tall-board .play-character-stage {
+  width: clamp(82px, 23.5vw, 96px);
+  translate: 0 -1px;
+}
+
+/* Keep the larger coach visually separate from its speech bubble. */
+.play-ui-v4 .cat-speech {
+  translate: 0 -24px;
+}
+
+.play-ui-v4 .hint-button,
+.play-ui-v4 .hint-button[data-state],
+.play-ui-v4 .shuffle-button,
+.play-ui-v4 .shuffle-button[data-state] {
+  translate: 0 -4px;
+}
+
+/* Result actions stay full touch targets but lose the oversized vertical slab. */
+.screen-result.is-sheet .result-character-stage {
+  width: 69px;
+  height: 69px;
+}
+
+.screen-result.is-sheet .result-actions .btn {
+  min-height: 46px;
+  height: 46px;
+  padding-block: 0;
+}
+.screen-result.is-sheet #retry-button { font-size: 20px; }
+.screen-result.is-sheet .result-ranking-button { font-size: 17px; }
+.screen-result.is-sheet .result-actions {
+  row-gap: 10px;
+}
+.screen-result.is-sheet .result-actions .result-home-button {
+  min-height: 36px;
+  height: 36px;
+  margin-top: 2px;
+}
+
+/* Keep the instruction and primary actions visually paired. The extra bottom
+   reserve lifts the action card away from Settings instead of overlapping it. */
+.screen-home {
+  padding-bottom: calc(100px + var(--safe-bottom));
+}
+.screen-home .home-howto { margin-top: auto; }
+.screen-home .home-actions { margin-top: 3px; }
+
+/* Bomb particles continue above the board, but consumed faces become chapter
+   windows in the same paint as the score update. */
+#play-screen.play-ui-v4 .tile.is-bombed.is-cleared-reveal,
+#play-screen.play-ui-v4 .tile.is-megabombed.is-cleared-reveal {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@media (max-height: 720px) {
+  .help-cat-tip { margin-block: 3px 5px; padding-block: 3px; }
+  .help-panel { max-height: calc(100dvh - var(--safe-top) - 18px); }
+  .screen-result.is-sheet .result-character-stage { width: 62px; height: 62px; }
+  .play-ui-v4 .cat-speech { translate: 0 -18px; }
+  .screen-home { padding-bottom: calc(88px + var(--safe-bottom)); }
+  .screen-home .home-actions { margin-top: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .end-answer-region { animation-duration: 1ms; }
+}
+
+/* -- Reward and result finishing pass ----------------------------------- */
+
+/* A wide clear is one reward: title and points share a foreground badge. */
+#play-screen.play-ui-v4 .wow-moment {
+  z-index: 24;
+  top: 43%;
+  display: grid;
+  justify-items: center;
+  min-width: 138px;
+  padding: 9px 22px 8px;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 252, 225, .98), rgba(255, 224, 132, .96));
+  box-shadow:
+    0 7px 0 rgba(210, 132, 48, .17),
+    0 13px 28px rgba(104, 76, 43, .22),
+    inset 0 2px 0 #fff;
+  color: #f08058;
+  text-shadow: 0 2px 0 #fff, 0 4px 10px rgba(218, 111, 63, .22);
+}
+
+#play-screen.play-ui-v4 .wow-moment strong {
+  font-size: clamp(38px, 12vw, 54px);
+  line-height: .9;
+}
+
+#play-screen.play-ui-v4 .wow-moment span {
+  margin-top: 5px;
+  color: #df5a70;
+  font-family: var(--font-sans);
+  font-size: clamp(16px, 4.5vw, 20px);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 0 #fff;
+}
+
+/* A multi-step combo delta sits beside the value, never on top of it. */
+.play-ui-v4 .combo-readout .combo-gain-pop {
+  left: 78%;
+  top: 58%;
+}
+
+/* The result is one continuous sheet. Its sections no longer expose strips
+   of the board between separate cream backgrounds. */
+.screen-result.is-sheet > .result-sheet-surface {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  width: 100%;
+  max-width: 430px;
+  margin-top: auto;
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(180deg, rgba(255, 254, 250, .99), rgba(255, 250, 239, .99));
+  box-shadow: 0 -10px 28px rgba(28, 78, 120, .2);
+  animation: result-sheet-rise .46s cubic-bezier(.2, .84, .28, 1) both;
+}
+
+.screen-result.is-sheet .result-sheet-surface > .result-card,
+.screen-result.is-sheet .result-sheet-surface > .result-card-award,
+.screen-result.is-sheet .result-sheet-surface > .result-cat-row,
+.screen-result.is-sheet .result-sheet-surface > .result-actions {
+  flex-shrink: 0;
+}
+
+.screen-result.is-sheet .result-sheet-surface > .result-card {
+  width: 100%;
+  max-width: none;
+  margin-top: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.screen-result.is-sheet #retry-button {
+  min-height: 46px;
+  height: 46px;
+}
+
+.screen-result.is-sheet .result-sheet-surface > .result-cat-row,
+.screen-result.is-sheet .result-sheet-surface > .result-actions {
+  width: 100%;
+  max-width: none;
+  background: transparent;
+  animation: none;
+}
+
+/* Inline emphasis must not insert a visual gap inside Korean particles. */
+.screen-home .home-instruction { gap: 0; }
+.screen-home .home-instruction img:first-child { margin-right: 4px; }
+.screen-home .home-instruction img:last-child { margin-left: 4px; }
+
+/* Korean card requirements wrap at word boundaries instead of mid-word. */
+.chapter-gallery span,
+.oing-card span {
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* ==========================================================================
+   홈 마무리 (실기기 피드백)
+   1) 규칙 카드의 4·6 타일이 실기기에서 너무 작고 흐려 "저게 뭐지"로 지나간다.
+      이 카드는 첫 3초에 규칙을 가르치는 유일한 자리라 가장 잘 보여야 한다.
+      타일을 26px에서 34px로 키우고, 옅은 민트 바탕 대신 실제 판과 같은 크림
+      타일에 진한 남색 숫자로 바꿔 대비를 올린다. 드래그 점과 선택 테두리도
+      같이 키워 "쓸어서 묶는다"는 동작이 읽히게 한다.
+   2) 고양이와 아래 두 박스가 너무 떨어져 있었다. margin-top:auto가 남는
+      세로 공간을 전부 고양이 아래에 몰아줬기 때문이다. 남는 공간을 위아래로
+      나눠 규칙 카드가 고양이를 따라 올라오게 한다.
+   ========================================================================== */
+.screen-home .home-howto {
+  margin-top: clamp(8px, 2vh, 18px);
+}
+
+.screen-home .home-actions {
+  margin-top: 6px;
+  margin-bottom: auto;
+}
+
+.home-rule-demo {
+  gap: 9px;
+  min-height: 62px;
+}
+
+.home-mini-board-pair {
+  grid-template-columns: repeat(2, 34px);
+  grid-template-rows: 34px;
+  gap: 3px;
+}
+
+.home-mini-board-pair > span,
+.home-mini-board-pair > span:nth-child(2) {
+  border: 1.5px solid rgba(120, 96, 72, .3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fffaf0, #ffeecd);
+  box-shadow: inset 0 2px 0 #fff, 0 2px 3px rgba(120, 96, 72, .16);
+  color: #2f4a63;
+  font-size: 22px;
+}
+
+.home-mini-board-pair .home-mini-selection {
+  border-width: 3px;
+  border-radius: 13px;
+}
+
+.home-mini-board-pair .home-mini-drag {
+  left: 3px;
+  top: 9px;
+  width: 11px;
+  height: 11px;
+}
+
+.home-mini-board-pair .home-mini-drag { animation-name: home-drag-dot-pair-lg; }
+
+@keyframes home-drag-dot-pair-lg {
+  0%, 13% { opacity: 1; transform: translate(0, 5px) scale(.9); }
+  34%, 70% { opacity: 1; transform: translate(60px, 6px) scale(1); }
+  82%, 100% { opacity: 0; transform: translate(60px, 6px) scale(.65); }
+}
+
+.home-rule-demo > em { font-size: 17px; }
+.home-rule-demo > b { font-size: 20px; }
+
+.home-rule-demo > strong {
+  min-width: 46px;
+  padding: 5px 10px 4px;
+  font-size: 25px;
+}
+
+.home-rule-demo > i { font-size: 15px; }
+
+@media (max-height: 720px) {
+  .home-mini-board-pair {
+    grid-template-columns: repeat(2, 30px);
+    grid-template-rows: 30px;
+  }
+  .home-mini-board-pair > span,
+  .home-mini-board-pair > span:nth-child(2) { font-size: 19px; }
+  .home-rule-demo { min-height: 54px; }
+  .home-rule-demo > strong { font-size: 22px; }
+}
+
+/* 규칙 카드 타일이 카드 바탕(크림)과 같은 색이라 오히려 덜 보였다. 아래
+   최고점수 카드에 쓰는 민트로 바꿔 카드 위에서 또렷하게 떠오르게 한다. */
+.home-mini-board-pair > span,
+.home-mini-board-pair > span:nth-child(2) {
+  border-color: rgba(99, 192, 171, .62);
+  background: linear-gradient(180deg, #eefffa, #d3f6ed);
+  box-shadow: inset 0 2px 0 #fff, 0 2px 3px rgba(54, 120, 107, .16);
+  color: #1f6f60;
+}
+
+/* i(도움말) 버튼은 자리와 크기를 그대로 둔다 - 처음 하는 사람이 규칙을 찾는
+   단추라 일시정지 메뉴 안으로 숨기면 정작 필요한 사람이 못 찾는다. 다만
+   상단으로 -15px 끌어올린 탓에 좁은 화면에서 화면 맨 위 4px까지 붙어,
+   노치나 토스 상단 컨트롤과 겹칠 위험이 있었다(검수 실측). 안전영역 안쪽으로
+   내려오는 하한만 둔다. 눌리는 면적은 이미 44x44라 그대로 둔다. */
+.play-ui-v4 .play-help-button {
+  top: max(-15px, calc(var(--safe-top, 0px) - 8px));
+}
+
+/* ==========================================================================
+   랭킹 자리 세 곳 (토스 게임센터가 있을 때만 보인다)
+   판 도중에 열 수 있는 자리는 일시정지뿐이다 - 거기서는 시계가 멈춰 있고,
+   플레이 화면에 두면 드래그 중 오터치가 난다. 일시정지의 도구 줄은 3칸
+   격자라, 랭킹이 켜지면 4칸으로 늘려 한 줄을 유지한다.
+   ========================================================================== */
+.pause-quick-actions:has(> .pause-leaderboard-button:not([hidden])) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pause-quick-actions:has(> .pause-leaderboard-button:not([hidden])) .pause-tool-button {
+  font-size: 12.5px;
+  padding-inline: 2px;
+}
+
+.pause-tool-button.pause-leaderboard-button i {
+  left: 50%;
+  top: 11px;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px 3px 6px 6px;
+  background: linear-gradient(180deg, #ffd75e, #f0a52c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+  transform: translateX(-50%);
+}
+
+.pause-tool-button.pause-leaderboard-button i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 11px;
+  height: 4px;
+  border-radius: 2px;
+  background: #e07a52;
+  transform: translateX(-50%);
+}
+
+/* 결과 화면: 방금 낸 점수를 바로 견주는 자리. 내 기록과 나란히 둔다. */
+.result-actions:has(> .result-leaderboard-button:not([hidden])) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.result-actions:has(> .result-leaderboard-button:not([hidden])) #retry-button,
+.result-actions:has(> .result-leaderboard-button:not([hidden])) .result-home-button {
+  grid-column: 1 / -1;
+}
+
+/* ==========================================================================
+   WOW 배너 다이어트 (실기기 피드백: 화면을 너무 가린다)
+   WOW는 판 한가운데 큰 카드로 서 있어서, 연속으로 지우는 중에 다음 답을
+   찾는 시선을 정확히 막았다. 축하는 남기되 자리를 양보한다:
+   - 판 중앙(43%)이 아니라 위쪽 1/4로 올린다. 다음 답을 훑는 시선은
+     대개 판의 가운데~아래쪽이다.
+   - 카드 크기와 글자를 한 단계 줄인다.
+   - 배경을 살짝 투명하게 둬서 뒤 칸이 완전히 사라지지는 않게 한다.
+   같은 이유로 아이템 안내(터치 라벨 위 리본 등)가 아니라 판을 덮는 다른
+   중앙 카드(TIME UP 제외)도 이 위치 규칙을 따른다.
+   ========================================================================== */
+#play-screen.play-ui-v4 .wow-moment {
+  top: 24%;
+  min-width: 112px;
+  padding: 6px 16px 6px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 252, 225, .93), rgba(255, 224, 132, .9));
+}
+
+#play-screen.play-ui-v4 .wow-moment strong {
+  font-size: clamp(30px, 9vw, 42px);
+}
+
+#play-screen.play-ui-v4 .wow-moment span {
+  margin-top: 3px;
+  font-size: clamp(14px, 3.8vw, 17px);
+}
+
+/* 콤보 마일스톤 텍스트도 같은 높이대로 - 배너 두 개가 서로 다른 높이에서
+   번갈아 뜨면 시선이 널뛴다. */
+#play-screen.play-ui-v4 .combo-text-pop {
+  top: 24%;
+}
+
+/* ==========================================================================
+   결과 화면 버튼 배치 (실기기 피드백)
+   랭킹은 내 기록 바로 옆, 한 판 더와 아래 줄 사이는 숨 쉴 간격을 둔다.
+   ========================================================================== */
+.result-actions #retry-button { margin-bottom: 7px; }
+/* is-sheet 쪽의 옛 grid-column 지정(내 기록을 2열에 고정)이 이기지 않게
+   같은 특이도로 자리를 준다. */
+.result-actions .result-ranking-button,
+.screen-result.is-sheet .result-ranking-button { grid-column: 1; grid-row: 2; }
+.result-actions .result-leaderboard-button,
+.screen-result.is-sheet .result-leaderboard-button { grid-column: 2; grid-row: 2; font-size: 13px; }
+.result-actions .result-home-button,
+.screen-result.is-sheet .result-home-button { grid-row: 3; margin-top: 3px; }
+
+/* ==========================================================================
+   오버레이 닫기 버튼을 왼쪽 위로 (토스 웹앱 대응)
+   앱인토스는 오른쪽 위에 자체 컨트롤(X·더보기)을 띄운다. 우리 닫기 X가
+   같은 구석에 있으면 눌리지 않는다. 모든 오버레이의 닫기를 왼쪽 위로
+   옮긴다 - 안드로이드 뒤로가기(installBackNavigation)는 원래대로 닫는다.
+   ========================================================================== */
+.overlay-close {
+  left: 12px;
+  right: auto;
+}
+
+/* ==========================================================================
+   상단 HUD 랭킹 버튼 — 일시정지와 같은 크기, 트로피는 원 정중앙
+   트로피만 있으면 허공에 떠 보여 크림 디스크를 깔았는데, 이번엔 일시정지
+   보다 커 보이고 트로피가 중앙에서 벗어나 보인다는 피드백이 왔다. 눈대중
+   대신 아트를 재서 맞춘다: 일시정지 그림은 제 상자의 91.6% x 92.0%만
+   채우고 나머지는 투명 여백이다. 그래서 CSS로 그리는 원판도 상자의 92%로
+   그리고(inset 4%), 버튼 자신에는 배경·테두리를 두지 않는다 - 버튼에 직접
+   그리면 100% + 테두리가 되어 다시 커진다. 트로피는 그 원판 한가운데에
+   절대 배치한다.
+   ========================================================================== */
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button {
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button::before {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #fffdf4, #ffedc4 62%, #f7d795);
+  box-shadow:
+    0 3px 0 rgba(190, 145, 78, .28),
+    0 6px 12px rgba(120, 96, 52, .18),
+    inset 0 2px 0 rgba(255, 255, 255, .9);
+}
+
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56%;
+  height: 56%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+
+.play-ui-v4 .hud-mini-button.hud-leaderboard-button:active {
+  transform: translateY(1px) scale(.96);
+}
+
+/* i 버튼: 안전영역 하한은 유지하되 기본 위치를 3px 되올린다 - 일시정지와
+   붙어 보인다는 피드백. */
+.play-ui-v4 .play-help-button {
+  top: max(-15px, calc(var(--safe-top, 0px) - 12px));
+}
+
+/* ==========================================================================
+   마지막 5초 (이번 판의 클라이맥스)
+   carry cap 이후 모든 런이 0초 근처에서 끝난다. 가장자리가 심장박동처럼
+   붉게 맥동한다. 베일은 상시 DOM에 있지만 opacity 0으로 잠들어 있고,
+   is-final-rush가 붙은 5초 동안만 opacity 애니메이션(합성 전용)이 돈다 -
+   레이아웃·페인트 비용이 없어 발열 걱정이 없는 구조다.
+   ========================================================================== */
+.play-ui-v4 .final-rush-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 92, 92, .55),
+    inset 0 0 42px 14px rgba(232, 56, 66, .34),
+    inset 0 0 110px 34px rgba(214, 40, 60, .18);
+}
+
+.play-ui-v4.is-final-rush .final-rush-veil {
+  animation: final-rush-beat 1s ease-in-out infinite;
+}
+
+@keyframes final-rush-beat {
+  0%, 100% { opacity: .25; }
+  16% { opacity: .95; }
+  32% { opacity: .4; }
+  46% { opacity: .8; }
+  70% { opacity: .3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4.is-final-rush .final-rush-veil {
+    animation: none;
+    opacity: .45;
+  }
+}
+
+/* ==========================================================================
+   End-of-run answers: paint the whole cell, not just the digits
+   Player feedback: after TIME UP only the numbers turned green, so the
+   remaining answers were unreadable - "면적으로 보여줘야 알지".
+   The tile art is painted by a stage-band rule whose specificity (0,6,0)
+   outranked the earlier attempt, and the syrup image sat on top of any
+   background-color anyway. This sheet loads last, and the second selector
+   matches that specificity, so the mint face finally wins. The plain-tile
+   rule in play-layout-v1.css also learned to skip is-end-answer, the same
+   way it already skips is-hint and is-success.
+   ========================================================================== */
+.screen-play.play-ui-v4 .tile.is-end-answer,
+.screen-play.play-ui-v4[data-stage-band] .tile.is-end-answer[class*="value-"],
+.screen-play.play-ui-v4[data-stage-band] .tile.is-end-answer.is-bonus-cat {
+  z-index: 6;
+  border: 0;
+  outline: 2px solid rgba(28, 148, 120, .95);
+  outline-offset: 0;
+  background-color: #63dcb6;
+  background-image: linear-gradient(180deg, #8bedcc, #45cba3);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, .8),
+    0 3px 0 rgba(20, 112, 90, .32),
+    0 6px 14px rgba(26, 126, 102, .3);
+  filter: none;
+}
+
+.screen-play.play-ui-v4 .tile.is-end-answer span,
+.screen-play.play-ui-v4[data-stage-band] .tile.is-end-answer[class*="value-"] span {
+  color: #0d4f41;
+  -webkit-text-stroke: 0.4px #0d4f41;
+  text-shadow: 0 1.5px 0 rgba(255, 255, 255, .9);
+}
+
+/* ==========================================================================
+   출발 안내 힌트 (노란색)
+   판이 열릴 때 한 번 뜨는 코치 표시다. 평소 힌트는 민트인데, 그 색으로
+   시작하자마자 뜨면 "정답은 여기"로 읽혀 김샌다는 실기기 제보가 있었다.
+   노란색은 정답이 아니라 안내의 색으로 읽히고, 민트 타일 위에서 확실히
+   구분된다.
+
+   특정도를 아래 스테이지 밴드 규칙과 같은 (0,6,0)으로 맞춰 뒀다. 이 파일이
+   마지막에 로드되므로 같은 값이면 이쪽이 이긴다.
+   ========================================================================== */
+.screen-play.play-ui-v4 .board.is-hint-coach .tile.is-hint,
+.screen-play.play-ui-v4[data-stage-band] .board.is-hint-coach .tile[class*="value-"].is-hint {
+  outline: 2px solid rgba(214, 152, 18, .95);
+  outline-offset: -1px;
+  background-color: #ffd96b;
+  background-image: linear-gradient(180deg, #ffe89a, #f7c53f);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .9),
+    0 0 0 3px rgba(247, 197, 63, .3),
+    0 6px 18px rgba(198, 146, 20, .28);
+}
+
+.screen-play.play-ui-v4 .board.is-hint-coach .tile.is-hint-area {
+  background-color: rgba(255, 232, 154, .5);
+}
+
+/* 라벨 알약과 테두리도 같은 색으로. 초록 테두리에 노란 타일이면 따로 논다.
+   #play-screen을 붙이는 이유: 이 영역의 기존 규칙이
+   `#play-screen.play-ui-v4 .hint-region` 이라 ID를 쓴다. 클래스를 아무리
+   쌓아도 ID 하나를 못 이기므로, 같은 ID를 달아야 색이 넘어온다. */
+#play-screen.play-ui-v4 .board-frame:has(.board.is-hint-coach) .hint-region > span {
+  background: linear-gradient(180deg, #ffe89a, #f7c53f);
+}
+
+/* 글자색은 span이 아니라 안쪽 strong에 직접 박혀 있다(styles.css의
+   .hint-region span strong { color: white }). span에만 칠하고 strong을
+   빼먹으면 흰 글씨가 노란 배경 위에 그대로 남아 거의 안 보인다 - 처음
+   버전이 그 실수였다. strong까지 같은 특정도로 짚어야 이긴다. */
+#play-screen.play-ui-v4 .board-frame:has(.board.is-hint-coach) .hint-region > span strong {
+  color: #6b4c04;
+}
+
+#play-screen.play-ui-v4 .board-frame:has(.board.is-hint-coach) .hint-region {
+  border-color: rgba(214, 152, 18, .92);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, .78),
+    0 0 0 4px rgba(198, 146, 20, .16),
+    inset 0 0 10px rgba(255, 255, 255, .4);
+}
+
+/* ==========================================================================
+   게임 방법(i)을 일시정지 안으로
+   플레이 화면에서 i는 일시정지 버튼 바로 위 같은 세로줄에 4px 간격으로
+   놓여 있어, 실기기에서 두 개가 한 덩어리로 보인다는 제보를 받았다.
+   판 도중에 규칙을 확인하는 일은 급하지 않고, 일시정지는 한 번만 누르면
+   되므로 도구 줄의 네 번째 자리로 옮겼다. 플레이 화면도 그만큼 비었다.
+   ========================================================================== */
+.pause-quick-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pause-tool-button.help-tool-button i {
+  left: 50%;
+  top: 9px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+/* 동그라미 안의 i. 점과 획을 따로 그린다. */
+.pause-tool-button.help-tool-button i::before,
+.pause-tool-button.help-tool-button i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.pause-tool-button.help-tool-button i::before {
+  top: 2.5px;
+  height: 2px;
+  border-radius: 50%;
+}
+
+.pause-tool-button.help-tool-button i::after {
+  top: 6.5px;
+  height: 7px;
+  border-radius: 1px;
+}
+
+/* 힌트 라벨 뒤집기: 답이 맨 윗줄이라 머리 위 공간이 없을 때. 위에 그대로
+   두면 보드 밖으로 나가 점수판에 가려진다. */
+.hint-region.is-label-below > span {
+  top: auto;
+  bottom: -19px;
+}
+
+/* ==========================================================================
+   홈: 설정 버튼이 랭킹 버튼을 덮던 문제
+   설정은 왼쪽 아래에 절대 위치로 떠 있고, 랭킹·최고기록이 담긴 액션 줄은
+   화면이 짧을수록 아래로 내려온다. 360x640에서 둘이 46x14px 겹쳐서,
+   랭킹 버튼의 왼쪽 아래 모서리가 설정에 가려 안 눌렸다(실측).
+   "나는 안 그런데 다른 폰에서" 라는 제보가 이것이다.
+
+   짧은 화면에서는 설정을 한 단계 작게 만들고 더 왼쪽 아래로 붙여, 액션
+   줄이 내려와도 서로 닿지 않게 한다. 눌리는 면적은 44px을 지킨다.
+   ========================================================================== */
+@media (max-height: 700px) {
+  .screen-home .home-settings {
+    left: 8px;
+    bottom: calc(6px + var(--safe-bottom));
+    width: 46px;
+    min-height: 56px;
+    grid-template-rows: 34px 14px;
+    font-size: 11px;
+  }
+
+  .screen-home .home-settings img { width: 34px; height: 34px; }
+
+  /* 액션 줄도 설정 폭만큼 안쪽으로 들여 겹칠 여지를 없앤다. */
+  .screen-home .home-actions { padding-left: 46px; }
+}
+
+/* ==========================================================================
+   도구 버튼: 눌린 티와 셔플 속도
+   "힌트나 셔플 누르고 반응이 더 빨라야 할 듯. 누르는 느낌도 잘 안 남."
+   손이 닿는 순간 버튼이 먼저 대답하고, 실제 동작은 그 뒤를 따른다.
+   합성 전용(투명도·변형)이라 발열이 없다.
+   ========================================================================== */
+.play-ui-v4 .item-button.is-item-tapped,
+.play-ui-v4 .dock-button.is-item-tapped,
+.play-ui-v4 button.is-item-tapped {
+  animation: item-tap-press 220ms cubic-bezier(.22, .9, .32, 1.2) both;
+}
+
+@keyframes item-tap-press {
+  0% { transform: scale(1); }
+  38% { transform: scale(.9); }
+  100% { transform: scale(1); }
+}
+
+.play-ui-v4 button.is-item-tapped::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 255, 255, .9);
+  opacity: 0;
+  pointer-events: none;
+  animation: item-tap-ring 240ms ease-out both;
+}
+
+@keyframes item-tap-ring {
+  0% { opacity: .95; transform: scale(.86); }
+  100% { opacity: 0; transform: scale(1.16); }
+}
+
+/* 셔플 타일 애니메이션을 JS 대기 시간(240/300ms)에 맞춘다. 길이만 줄이고
+   가감속 곡선은 그대로 둬 리듬이 흐트러지지 않게 했다. */
+.play-ui-v4 .board.is-shuffling-out .tile { animation-duration: 240ms; }
+.play-ui-v4 .board.is-shuffling-in .tile { animation-duration: 300ms; }
+.play-ui-v4 .shuffle-fx { animation-duration: 520ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 button.is-item-tapped,
+  .play-ui-v4 button.is-item-tapped::after { animation-duration: 1ms; }
+}
+
+/* 폭탄: 아이콘이 길게 남아 느리게 느껴진다는 제보. 흩어지는 모습은 남기되
+   길이만 줄여 다음 수로 빨리 넘어가게 한다(JS 대기 330ms와 맞춤). */
+.play-ui-v4 .tile.is-bombed { animation-duration: 330ms !important; }
+.play-ui-v4 .bomb-fx i,
+.play-ui-v4 .bomb-fx b { animation-duration: 420ms; }
+
+/* ==========================================================================
+   보상형 광고
+   두 자리뿐이다: TIME UP 이어하기 제안, 그리고 0개가 된 힌트·셔플 버튼의
+   광고 배지. 토스 밖이거나 광고그룹 ID가 없으면 이 스타일이 붙을 일 자체가
+   없다 - 게임은 광고 없던 때와 똑같이 돈다.
+   ========================================================================== */
+.continue-panel {
+  text-align: center;
+  padding-top: 64px;
+}
+
+.continue-character {
+  position: absolute;
+  top: -58px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 132px;
+  pointer-events: none;
+}
+
+.continue-character img {
+  width: 100%;
+  height: auto;
+}
+
+/* 제안 패널의 글자 크기.
+   실기기 제보: "글씨가 다 작다." 이 창은 판이 멈춘 상태에서 한 번 읽고
+   한 번 누르는 창이라, 화면을 아끼는 것보다 한눈에 읽히는 것이 낫다.
+   위계는 지킨다 - 무엇을 받는지(버튼)가 가장 크고, 왜 떴는지(제목)가
+   그다음, 조건("한 판당 1회만")이 가장 작다. */
+#play-screen .continue-panel h2 {
+  font-size: clamp(24px, 6.8vw, 29px);
+}
+
+#play-screen .continue-copy {
+  margin: 8px 0 16px;
+  color: #7d6c58;
+  font-size: clamp(15px, 4.4vw, 17px);
+}
+
+/* 이 줄이 제일 크다. 이 창의 목적은 "광고를 보면 무엇을 받는가"이고,
+   나머지는 그 문장을 거드는 말이다. 길어져도 줄이 나뉘지 않게 폭에 맞춰
+   글자를 줄인다 - 두 줄이 되면 버튼이 문장 상자처럼 보인다. */
+#play-screen .continue-watch-button {
+  width: 100%;
+  min-height: 62px;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: clamp(17px, 5.4vw, 22px);
+  white-space: nowrap;
+}
+
+#play-screen .continue-watch-button strong {
+  color: #fff26b;
+  font-size: 1.16em;
+}
+
+#play-screen .continue-decline-button {
+  margin-top: 12px;
+  color: #8d7c69;
+  font-size: clamp(15px, 4.4vw, 17px);
+}
+
+/* 아이템 광고 배지: 숫자 자리가 AD 알약으로 바뀌고, 버튼에 금색 링이
+   둘러져 "광고 보면 충전"으로 읽힌다. 합성 전용(투명도)이라 발열이 없다.
+   data-count가 "ad"라 기존 [data-count="0"] 숨김·흐림 규칙을 타지 않는다. */
+.play-ui-v4 .item-button.is-ad-refill {
+  opacity: 1;
+  filter: none;
+  box-shadow:
+    0 0 0 2.5px rgba(247, 165, 63, .85),
+    0 0 14px rgba(247, 197, 63, .38),
+    0 4px 10px rgba(120, 86, 20, .22);
+}
+
+.play-ui-v4 .item-button.is-ad-refill b {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #ffd96b, #f7a53f);
+  color: #6b4c04;
+  font-size: 10px;
+  letter-spacing: .4px;
+  animation: ad-badge-breathe 1.6s ease-in-out infinite;
+}
+
+/* 아이콘도 산 상태 그대로: 소진 회색 처리를 되돌린다. */
+.play-ui-v4 .item-button.is-ad-refill .item-icon {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+@keyframes ad-badge-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+
+.play-ui-v4 .item-button.is-ad-refill .item-icon {
+  filter: none;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-ui-v4 .item-button.is-ad-refill b { animation: none; }
+}
+
+/* 친구 초대 리워드(토스 안 + 모듈 ID 있을 때만 나타난다). 결과 시트의
+   버튼 무리 아래에 조용히 한 줄 - 주 동작(한 판 더)과 경쟁하지 않는다. */
+.result-invite-button {
+  display: block;
+  /* 화면 맨 아래 가장자리에 딱 붙어 홈 인디케이터와 겹치던 것을 띄운다.
+     결과 시트 안의 마지막 줄이라 아래 여백을 스스로 챙겨야 한다(실측). */
+  margin: 12px auto calc(14px + var(--safe-bottom));
+  padding: 10px 16px;
+  min-height: 44px;
+  color: #7c6a54;
+  font-size: 14px;
+}
+
+/* 제안 패널의 작은 단서들. "한 판당 1회만"은 약속을 미리 밝혀 두는 줄이라
+   작고 조용해야 하고, 도움팩 내용은 광고 전에 반드시 보여야 한다. */
+#play-screen .continue-panel .offer-note {
+  margin: 10px 0 0;
+  color: #9c8b76;
+  font-size: 13px;
+}
+
+/* 받는 내용은 광고 전에 반드시 읽혀야 한다(정책이자 예의). 버튼 바로
+   아래에서 한 줄로 - 여기서 줄이 나뉘면 '+2'와 '+1'이 갈라져 무엇이
+   몇 개인지 순간적으로 헷갈린다. */
+#play-screen .continue-panel .help-pack-contents {
+  margin: 10px 0 2px;
+  color: #6b4c04;
+  font-family: var(--font-display);
+  font-size: clamp(16px, 4.8vw, 19px);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   별사탕 먹이기
+   판이 끝나면 쌓이는 사탕을 홈에서 고양이에게 끌어다 준다. 성장 단계도,
+   배고픔도, 시간 계산도 없다 - 주면 좋아하고 안 주면 그대로다.
+   움직임은 전부 합성 전용(투명도·변형)이라 발열이 없다.
+   ========================================================================== */
+.home-character-stage { position: relative; }
+
+.candy-tray {
+  position: absolute;
+  right: 4%;
+  bottom: 8%;
+  z-index: 6;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  touch-action: none;
+}
+
+.candy-piece {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #fff6d8, #ffd96b 62%, #f7a53f);
+  box-shadow: 0 3px 8px rgba(150, 106, 22, .28), inset 0 1px 0 rgba(255, 255, 255, .9);
+  cursor: grab;
+  transform: translate(var(--drag-x, 0), var(--drag-y, 0));
+  animation: candy-bob 2.4s ease-in-out infinite;
+}
+
+.candy-piece img {
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.candy-piece.is-dragging {
+  z-index: 8;
+  cursor: grabbing;
+  animation: none;
+  transform: translate(var(--drag-x, 0), var(--drag-y, 0)) scale(1.18);
+  box-shadow: 0 8px 18px rgba(150, 106, 22, .36);
+}
+
+@keyframes candy-bob {
+  0%, 100% { transform: translate(var(--drag-x, 0), var(--drag-y, 0)); }
+  50% { transform: translate(var(--drag-x, 0), calc(var(--drag-y, 0px) - 4px)); }
+}
+
+.candy-count {
+  min-width: 26px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 250, 238, .95);
+  box-shadow: 0 1px 3px rgba(120, 90, 40, .2);
+  color: #7c5a10;
+  font-family: var(--font-display);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 끌기 시작하면 고양이가 "여기 놓아도 돼"라고 알려 준다. */
+.home-character-stage.is-feed-target .home-cat { transform: scale(1.02); }
+
+.home-character-stage.is-feed-hover .home-cat {
+  filter: drop-shadow(0 0 12px rgba(255, 214, 107, .85));
+  transform: scale(1.06);
+}
+
+/* 먹은 순간. 두 박으로 통통 튀고 하트가 하나 올라간다. 한 박이면 그냥
+   흔들린 것처럼 보이고, 세 박이면 방정맞다. */
+.home-character-stage.is-munching .home-cat { animation: candy-munch 880ms ease-out; }
+
+/* 먹은 직후 떠오르는 하트.
+   두 번 고쳤다. 처음엔 무대의 ::after를 빌려 그렸는데, 그 자리는 이미
+   고양이의 바닥 그림자다(styles.css, z-index:-1). 그래서
+   하트가 고양이 뒤로 깔려 한 번도 보인 적이 없고, 대신 1.2초 동안 그림자가
+   사라졌다. 그리고 내용이 이모지였다 - 우리 폰트는 서브셋이라 그 글자가
+   없어서, 설령 앞에 왔더라도 빈자리로 떴을 것이다.
+   지금은 제 요소에 게임이 쓰는 하트 그림으로 그린다. */
+.candy-heart {
+  position: absolute;
+  /* 고양이 오른쪽 볼 옆. 말풍선은 머리 위로 갔으므로 겹치지 않는다. */
+  left: 72%;
+  top: 42%;
+  z-index: 7;
+  width: 30px;
+  height: 27px;
+  background: url("../assets/decor/heart.webp") center / contain no-repeat;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.candy-heart.is-flying { animation: candy-heart 1200ms ease-out both; }
+
+@keyframes candy-munch {
+  0% { transform: scale(1); }
+  18% { transform: scale(1.09) rotate(-2deg); }
+  40% { transform: scale(1); }
+  58% { transform: scale(1.05) rotate(1.5deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes candy-heart {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.7); }
+  30% { opacity: 1; transform: translate(-50%, -6px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1); }
+}
+
+/* 실기기 제보: "고양이 귀가 가려짐. 맨 앞으로 오게."
+   말풍선(z-index 4)이 무대 위쪽에 뜨는데, 두 줄짜리 대사가 되면 아래로
+   자라 귀 끝에 걸쳤다. 비쳐 보이게 해 두긴 했지만 겹치는 건 그대로다.
+   말풍선을 더 올리면 로고와 겹치므로, 순서를 뒤집는다 - 고양이가 앞이고
+   말풍선이 뒤다. 귀가 말풍선을 뚫고 나오는 그림이 되어 오히려 자연스럽다.
+   위로 올라간 김에 사탕 접시(6)·하트(7)·끌리는 사탕(8)도 한 칸씩 올려
+   고양이에게 가려지지 않게 했다. */
+.home-cat {
+  z-index: 5;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+/* 아직 한 번도 안 줘 본 사람에게만. 사탕이 고양이 쪽으로 스윽 갔다 돌아오며
+   "끌어서 주는 것"임을 손에 알려 준다. 한 번 먹이면 이 동작은 사라진다.
+   말풍선 안내와 짝이다 - 글만으로는 조작이 안 읽히고, 동작만으로는 왜
+   해야 하는지가 안 읽힌다. */
+.candy-piece.is-nudge {
+  animation: candy-nudge 2.6s ease-in-out infinite;
+}
+
+@keyframes candy-nudge {
+  0%, 62%, 100% { transform: translate(0, 0) scale(1); }
+  70% { transform: translate(-16px, -12px) scale(1.12); }
+  78% { transform: translate(-24px, -18px) scale(1.12); }
+  88% { transform: translate(0, 0) scale(1); }
+}
+
+/* 홈 말풍선.
+   평소엔 없다. 사탕을 먹였을 때와 첫 안내 때만 잠깐 떴다 사라지므로
+   "말풍선이 떴다 = 방금 뭔가 있었다"는 신호가 된다. 상시로 띄우면 첫
+   화면이 시끄럽고, 홈 하단은 이미 버튼과 고양이로 빡빡하다. */
+.home-bubble {
+  position: absolute;
+  /* 고양이 머리 위, 로고 아래.
+     처음에는 무대 왼쪽 위 모서리에 붙여 두었는데, 그림의 귀가 프레임 위
+     8.3%에서 시작해서 두 줄짜리 대사만 돼도 귀 끝을 덮었다(390x844 실측:
+     귀와 겹치는 넓이 3,537px²).
+     지금은 세 가지로 푼다. 하나, 무대 폭(186px)이 아니라 화면 폭을 쓰므로
+     스무 자 넘는 대사도 한 줄에 들어간다 - 줄 수가 안 늘면 아래로 자라
+     귀를 덮을 일도 없다. 둘, 글자 길이에 맞춰 줄었다 늘었다 하며 화면
+     한가운데에 선다(무대 자체가 8px 오른쪽으로 밀려 있어 그만큼 되민다).
+     셋, 살짝 비쳐서 어쩌다 귀에 걸리더라도 뒤가 비쳐 답답하지 않다. */
+  left: 50%;
+  bottom: 90%;
+  z-index: 4;
+  width: max-content;
+  max-width: min(88vw, 340px);
+  margin: 0;
+  padding: 7px 14px;
+  border-radius: 16px;
+  background: rgba(255, 253, 246, .82);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: 0 4px 14px rgba(120, 90, 40, .18);
+  color: #4a3a1c;
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  line-height: 1.42;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(calc(-50% - 8px)) translateY(6px) scale(.94);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.home-bubble.is-visible {
+  opacity: 1;
+  transform: translateX(calc(-50% - 8px)) translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .candy-piece,
+  .candy-piece.is-nudge,
+  .home-character-stage.is-munching .home-cat,
+  .candy-heart.is-flying { animation: none; }
+  .home-bubble { transition: none; }
+}
+
+/* 접시 감추기: hidden 속성만으로는 display:grid를 못 이긴다. */
+.candy-tray.is-hidden { display: none; }
+
+/* 결과창의 별사탕 줄. 사탕이 어디서 났는지 알려주는 유일한 자리다.
+   실기기 제보: "왜 사탕이 생긴 건지 모르겠다." 홈에서 숫자만 늘어나면
+   그것이 판의 대가라는 걸 알 길이 없었다. */
+.result-candy-earned {
+  margin: 4px 0 0;
+  color: #8a6a1c;
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   보드 한가운데 알림 + 판 갈이 안내 색
+   ========================================================================== */
+
+/* 프리즈처럼 판의 흐름이 바뀌는 사건을 보드 위에 세운다. 지금까지 프리즈는
+   시계 아이콘이 얼음으로 바뀌고 얇은 시간 게이지에 글자가 1.5초 스치는 것이
+   전부라, 실기기에서 발동한 줄도 모른다는 제보를 받았다. 눈이 이미 가 있는
+   자리는 보드 한가운데다. */
+#play-screen .play-center-notice {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 14;
+  display: flex;
+  /* 받은 내용을 한 줄 아래 붙일 수 있게 세로로 쌓는다. 둘째 줄이 없는
+     보통의 안내는 예전과 똑같이 한 줄로 가운데 선다. */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  border-radius: 16px;
+  border: 2px solid rgba(99, 192, 171, .72);
+  background: linear-gradient(180deg, #eefffa, #cdf3e9);
+  box-shadow: 0 5px 14px rgba(54, 120, 107, .22), inset 0 2px 0 #fff;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.86);
+}
+
+#play-screen .play-center-notice strong {
+  color: #1f6f60;
+  font-family: var(--font-display);
+  font-size: clamp(17px, 5vw, 22px);
+  font-weight: 400;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+/* 광고로 받은 것을 적는 둘째 줄. 무엇을 받았는지가 여기 있어야 "광고를
+   봤는데 뭘 받았는지 모르겠다"가 안 생긴다. 주인공은 위의 한 마디라
+   작고 조용하게 둔다. */
+#play-screen .play-center-notice small {
+  margin-top: 1px;
+  color: #2f8271;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 3.6vw, 15px);
+  font-weight: 400;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+#play-screen .play-center-notice small[hidden] { display: none; }
+
+/* 1.5초는 판 위에 오래 앉아 있었다("겜 해야 하는데 화면을 길게 가리는
+   느낌"). 눈에 걸리기에 충분한 만큼만 두고 빨리 비켜준다. */
+#play-screen .play-center-notice.is-visible {
+  animation: center-notice-pop 1050ms cubic-bezier(.2, .9, .25, 1.15) both;
+}
+
+@keyframes center-notice-pop {
+  0% { opacity: 0; transform: translate(-50%, -42%) scale(.82); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  26%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -58%) scale(.96); }
+}
+
+/* 판이 바뀔 때 보드 한가운데 서는 '2판' 알약.
+   크림색 알약이 크림색 보드 위에 뜨니 실기기에서 안 보인다는 제보를 받았다
+   ("판 넘어갈 때 중앙에 뜨는 거 노란색이라 안 보임"). 판 번호는 이 게임의
+   진행도 그 자체라 놓치면 안 되는 정보다. 프리즈 배너와 같은 민트로 맞춰,
+   보드 위에 서는 알림은 전부 한 가족으로 읽히게 한다. */
+#play-screen .board-entry {
+  border-color: rgba(99, 192, 171, .72);
+  background: linear-gradient(180deg, #eefffa, #cdf3e9);
+  box-shadow: 0 4px 0 rgba(54, 120, 107, .3), 0 8px 16px rgba(53, 83, 102, .16);
+  color: #1f6f60;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+#play-screen .board-entry small {
+  border-left-color: rgba(99, 192, 171, .5);
+  color: #2f8f7c;
+}
+
+/* 아래 말풍선은 손대지 않는다.
+   한때 판 갈이 안내만 민트 단색으로 칠했는데, 플레이 화면의 말풍선은
+   글자에 배경이 없고 뒤에 깔린 그림(speech-bubble-wide-v4.webp)이 모양을
+   만든다. 그래서 배경색을 주는 순간 둥근 말풍선 위에 각진 민트 사각형이
+   덧그려졌다 - 실기기 화면에서 그렇게 보였다.
+   판 갈이가 눈에 걸려야 한다는 문제는 보드 한가운데 알약이 이미 맡고 있다.
+   말풍선까지 물들일 필요가 없다. */
+
+@media (prefers-reduced-motion: reduce) {
+  #play-screen .play-center-notice.is-visible { animation: none; opacity: 1; }
+}
+
+/* TIME UP 도장에 이번 판 점수 한 줄.
+   광고 이어하기 제안 전에 이 도장을 먼저 세운다. 점수까지 같이 보여줘야
+   "판이 끝났다"가 완결되고, 그 다음에 오는 제안이 방해가 아니라 덤으로
+   읽힌다. 제안 없이 끝나는 판에서는 결과 시트가 점수를 크게 다시 세우므로
+   여기서는 한 박자 짚고 넘어가는 정도의 크기만 쓴다. */
+#play-screen .time-up {
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* 점수는 TIME UP과 같은 글씨였다. 그러면 "시간이 다 됐다"와 "이번 판
+   결과"가 같은 무게로 읽혀서, 정작 중요한 쪽이 눈에 안 남는다는 제보를
+   받았다. 노란 알약을 깔아 한 덩어리로 떼어 놓는다 - 점수는 이 게임의
+   결과이므로 자기 배경을 가질 자격이 있다. */
+#play-screen .time-up-score {
+  margin-top: 5px;
+  padding: 5px 18px;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe89a, #f7c53f);
+  box-shadow: 0 4px 0 rgba(198, 146, 20, .34), 0 8px 16px rgba(120, 86, 20, .22);
+  color: #6b4c04;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 6.8vw, 29px);
+  font-weight: 400;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .72);
+  white-space: nowrap;
+}
+
+#play-screen .time-up-score[hidden] { display: none; }
+
+/* ==========================================================================
+   도전장
+   친구가 보낸 링크에 점수가 실려 온다. 그 점수가 시작 버튼 바로 위에 서야
+   "이걸 하러 왔다"가 첫 화면에서 읽힌다. 홈에서 이 띠가 뜨는 경우는 링크로
+   들어왔을 때뿐이라, 평소 홈의 밀도는 그대로다.
+   ========================================================================== */
+.home-challenge {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 2px;
+  padding: 7px 12px;
+  border: 1.5px solid rgba(235, 164, 164, .62);
+  border-radius: 15px;
+  background: linear-gradient(180deg, #fffdf8, #ffeef0);
+  box-shadow: inset 0 1px 0 #fff;
+  color: #a4515f;
+  font-family: var(--font-display);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.home-challenge span { font-size: 14px; opacity: .82; }
+.home-challenge strong { font-size: 21px; letter-spacing: -.01em; }
+.home-challenge b { font-size: 14px; font-weight: 400; opacity: .82; }
+
+/* 결과창의 도전장 한 줄. 이겼을 때와 못 넘었을 때의 색을 나눈다 - 같은
+   자리에 같은 톤으로 두면 이겼는지가 글자를 읽어야만 알게 된다. */
+.result-challenge {
+  margin: 5px 0 0;
+  padding: 5px 11px;
+  justify-self: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-align: center;
+}
+
+.result-challenge[data-won="yes"] {
+  border: 1.5px solid rgba(99, 192, 171, .7);
+  background: linear-gradient(180deg, #eefffa, #cdf3e9);
+  color: #1f6f60;
+}
+
+.result-challenge[data-won="no"] {
+  border: 1.5px solid rgba(235, 164, 164, .6);
+  background: linear-gradient(180deg, #fffdf8, #ffeef0);
+  color: #a4515f;
+}
+
+/* 다음 목표 한 줄.
+   결과 화면의 다른 줄들은 전부 끝난 판의 이야기라, 다 읽고 나면 판이 닫힌다.
+   이 한 줄만 다음 판의 이야기여서 '한 판 더!' 바로 위에 붙인다 - 읽은 눈이
+   그대로 버튼으로 떨어지는 거리다.
+   숫자가 주인공이므로 배경은 옅게 깔고, 테두리 대신 은은한 노란 바탕으로
+   눌러야 할 버튼과 다투지 않게 했다. */
+.result-next-goal {
+  margin: 0 0 7px;
+  padding: 7px 14px;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff7dd, #ffeec2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 2px 6px rgba(196, 145, 40, .14);
+  color: #8a5a12;
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 1.25;
+  text-align: center;
+  animation: result-next-goal-in .38s cubic-bezier(.2, .84, .28, 1) both;
+  animation-delay: .5s;
+}
+
+.result-next-goal[data-kind="challenge"] {
+  background: linear-gradient(180deg, #fff2f4, #ffe0e6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 2px 6px rgba(190, 96, 116, .14);
+  color: #a4415a;
+}
+
+@keyframes result-next-goal-in {
+  from { opacity: 0; transform: translateY(6px) scale(.94); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-next-goal { animation: none; }
+}
+
+/* ==========================================================================
+   오잉 카드 개봉
+   실기기 제보: "이미지 카드를 받으면 츄ㅏ! 하고 화려한 모션이 있어야 할 것
+   같아요. 지금은 받았으? 싶은 느낌." 맞는 말이다. 수집형의 쾌감은 전부
+   뜯는 순간에 있는데, 그 순간이 결과 시트 안의 84px 패널에서 지나갔다.
+   카드도 판정도 그림도 다 있는데 연출만 없어서 만들어둔 걸 못 쓰고 있었다.
+
+   순서를 이렇게 짰다. 뒷면이 튀어나오고(기대) - 잠깐 떨고(긴장) - 뒤집히고
+   (공개) - 터진다(보상). 세 번째와 네 번째 사이의 0.1초가 이 연출의 전부라,
+   뒤집기가 90도를 넘는 순간에 정확히 반짝임이 터지게 맞췄다.
+   ========================================================================== */
+.card-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+  padding: 24px;
+  animation: card-reveal-in 260ms ease-out both;
+}
+
+/* 블러를 이 요소가 아니라 그 뒤에 깐 층에 건다.
+   backdrop-filter는 filter와 마찬가지로 자손의 3D를 납작하게 만든다. 여기에
+   걸었더니 카드의 preserve-3d가 죽어서 뒤집혀도 뒷면이 그대로 보였다 -
+   실측으로 잡았다(180도에서도 뒷면 그림). 조상이 아니라 형제로 두면 3D가
+   산다. */
+.card-reveal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(24, 30, 46, .72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@keyframes card-reveal-in { from { opacity: 0; } }
+
+/* 뒤에서 번지는 빛. 카드가 무대 위에 있다는 느낌을 만드는 값싼 방법이다. */
+.card-reveal-glow {
+  position: absolute;
+  width: min(96vw, 460px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 233, 176, .5), rgba(255, 210, 150, 0) 62%);
+  animation: card-reveal-glow 2400ms ease-out both;
+}
+
+@keyframes card-reveal-glow {
+  0% { opacity: 0; transform: scale(.4); }
+  38% { opacity: 0; transform: scale(.6); }
+  56% { opacity: 1; transform: scale(1); }
+  100% { opacity: .55; transform: scale(1.06); }
+}
+
+/* 뒤집히는 순간에만 뻗는 광선. 계속 돌면 어지럽다. */
+.card-reveal-rays {
+  position: absolute;
+  width: min(92vw, 420px);
+  aspect-ratio: 1;
+  opacity: 0;
+  animation: card-reveal-rays 1500ms 900ms ease-out both;
+}
+
+.card-reveal-rays i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 46%;
+  margin-left: -1.5px;
+  background: linear-gradient(to top, rgba(255, 236, 180, 0), rgba(255, 240, 200, .85));
+  transform-origin: 50% 100%;
+}
+
+.card-reveal-rays i:nth-child(1) { transform: rotate(0deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(2) { transform: rotate(45deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(3) { transform: rotate(90deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(4) { transform: rotate(135deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(5) { transform: rotate(180deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(6) { transform: rotate(225deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(7) { transform: rotate(270deg) translateY(-100%); }
+.card-reveal-rays i:nth-child(8) { transform: rotate(315deg) translateY(-100%); }
+
+@keyframes card-reveal-rays {
+  0% { opacity: 0; transform: scale(.5) rotate(0deg); }
+  22% { opacity: .9; transform: scale(1) rotate(14deg); }
+  100% { opacity: 0; transform: scale(1.3) rotate(40deg); }
+}
+
+.card-reveal-kicker {
+  position: relative;
+  margin: 0 0 14px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe89a, #f7c53f);
+  color: #6b4c04;
+  font-family: var(--font-display);
+  font-size: clamp(15px, 4.4vw, 18px);
+  animation: card-reveal-pop 420ms 120ms cubic-bezier(.2, .9, .3, 1.4) both;
+}
+
+@keyframes card-reveal-pop {
+  from { opacity: 0; transform: translateY(10px) scale(.8); }
+}
+
+/* 무대. 원근을 여기 두어야 카드가 실제로 돌아 보인다. */
+.card-reveal-stage {
+  position: relative;
+  width: min(62vw, 250px);
+  aspect-ratio: 3 / 4;
+  perspective: 1100px;
+}
+
+.card-reveal-card {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  /* 등장(튀어나옴) → 떨림 → 뒤집기를 한 흐름으로 잇는다. */
+  /* 뒤집기는 forwards다. both로 두면 900ms 지연 동안 뒤집기가 자기 시작
+     상태(rotateY 0)를 계속 덮어써서, 앞의 등장·떨림이 통째로 사라진다.
+     실측으로 잡았다 - 0.84초까지 transform이 identity로 굳어 있었다. */
+  animation: card-reveal-enter 900ms cubic-bezier(.2, .9, .3, 1.5) both,
+             card-reveal-flip 620ms 900ms cubic-bezier(.45, .05, .2, 1) forwards;
+}
+
+/* opacity를 여기서 건드리면 안 된다.
+   불투명도가 애니메이션되는 요소는 크로미움이 합성 층으로 올리면서
+   preserve-3d를 납작하게 만든다. 그러면 backface-visibility가 죽어서,
+   180도로 뒤집혀도 뒷면이 앞면 위에 그대로 남는다 - 실측으로 잡았다
+   (matrix3d는 -1인데 화면에는 계속 뒷면 그림). 등장은 scale만으로 낸다. */
+@keyframes card-reveal-enter {
+  0% { transform: scale(.34) translateY(50px); }
+  46% { transform: scale(1.06) translateY(0); }
+  60% { transform: scale(1) rotate(-2.5deg); }
+  72% { transform: scale(1) rotate(2.5deg); }
+  84% { transform: scale(1) rotate(-1.6deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes card-reveal-flip {
+  0% { transform: rotateY(0deg) scale(1); }
+  50% { transform: rotateY(90deg) scale(1.09); }
+  100% { transform: rotateY(180deg) scale(1); }
+}
+
+.card-reveal-card > i {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 14px 36px rgba(10, 16, 30, .5), inset 0 0 0 2.5px rgba(255, 255, 255, .82);
+}
+
+.card-reveal-back { background-image: url("../assets/cards/card-back-v1.webp"); }
+
+/* 앞면은 180도에서 시작한다. 0도에 두면 뒤집힐 때 반대로 돌아 접혀 보인다. */
+.card-reveal-face { transform: rotateY(180deg); }
+
+/* 공개 순간의 반짝임. 뒤집기가 90도를 넘는 시점(0.9s + 0.31s)에 터진다. */
+.card-reveal-burst {
+  position: absolute;
+  width: min(80vw, 340px);
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.card-reveal-burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--spark, #ffe9a8);
+  opacity: 0;
+  animation: card-reveal-spark 900ms 1180ms cubic-bezier(.15, .7, .3, 1) both;
+  animation-delay: calc(1180ms + var(--spark-delay, 0ms));
+}
+
+@keyframes card-reveal-spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--spark-x, 0), var(--spark-y, 0)) scale(.5); }
+}
+
+.card-reveal-name {
+  margin: 18px 0 0;
+  color: #fffdf6;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 5.8vw, 25px);
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+  animation: card-reveal-rise 460ms 1280ms cubic-bezier(.2, .9, .3, 1.3) both;
+}
+
+.card-reveal-count {
+  margin: 5px 0 0;
+  color: rgba(255, 253, 246, .78);
+  font-family: var(--font-display);
+  font-size: clamp(13px, 4vw, 15px);
+  animation: card-reveal-rise 460ms 1400ms cubic-bezier(.2, .9, .3, 1.3) both;
+}
+
+.card-reveal-hint {
+  margin: 22px 0 0;
+  color: rgba(255, 253, 246, .5);
+  font-family: var(--font-display);
+  font-size: 13px;
+  animation: card-reveal-rise 500ms 1900ms ease-out both;
+}
+
+@keyframes card-reveal-rise {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+.card-reveal.is-closing { animation: card-reveal-out 220ms ease-in both; }
+
+@keyframes card-reveal-out { to { opacity: 0; } }
+
+/* 움직임을 줄여 달라고 한 사람에게는 결과만 보여준다. 개봉은 연출이지
+   정보가 아니라서, 빼도 무엇을 받았는지는 그대로 읽힌다. */
+@media (prefers-reduced-motion: reduce) {
+  .card-reveal,
+  .card-reveal-glow,
+  .card-reveal-rays,
+  .card-reveal-kicker,
+  .card-reveal-card,
+  .card-reveal-burst i,
+  .card-reveal-name,
+  .card-reveal-count,
+  .card-reveal-hint { animation: none; opacity: 1; }
+  .card-reveal-card { transform: rotateY(180deg); }
+  .card-reveal-rays { opacity: 0; }
+}
+
+/* ==========================================================================
+   내 오잉 - 기록 / 수집 탭
+   실기기 제보 두 줄이 같은 것을 가리켰다. "갤러리 있어요? 확인 안 해봤네"와
+   "내기록이 아냐 그건, 내 수집품이야!" - 게임을 한참 하고 카드까지 받은
+   사람이 갤러리가 있는 줄도 몰랐다. 기록과 수집을 한 상자에 세로로 쌓아
+   두니 수집이 스크롤 밑으로 묻힌 것이다.
+
+   메뉴를 늘리지 않고 창 안에서 가른다. 홈에 버튼이 하나 더 붙으면 첫 화면이
+   빡빡해지는데, 정작 문제는 개수가 아니라 "안 보인다"였다.
+   ========================================================================== */
+.record-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 12px 0 13px;
+  padding: 0;
+}
+
+/* 실기기 제보: "수집 너무 안 보여. 상단이 버튼으로 되어 있고 더 잘 보여야
+   할 듯. 글씨도 키워주고."
+   맞는 말이었다. 꺼진 탭이 배경 없는 글씨라, 띠 위에 얹힌 회색 글자로 보여서
+   누를 수 있다는 것 자체가 안 읽혔다. 이제 두 탭 다 제 판을 갖는다 - 꺼진
+   쪽도 테두리와 바탕이 있어 버튼으로 보이고, 켜진 쪽은 하얗게 떠오른다. */
+.record-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1.5px solid rgba(222, 206, 176, .85);
+  border-radius: 14px;
+  background: rgba(252, 246, 233, .9);
+  color: #96866f;
+  font-family: var(--font-display);
+  font-size: 17px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.record-tab.is-active {
+  border-color: rgba(224, 168, 92, .8);
+  background: linear-gradient(180deg, #fffdf6, #fff4dd);
+  box-shadow: 0 3px 0 rgba(197, 146, 72, .12), inset 0 1px 0 #fff;
+  color: #6d5a44;
+}
+
+/* 개수는 안 눌러도 읽혀야 한다. 이 배지가 "여기 뭔가 있다"를 말하는
+   유일한 자리라, 탭이 꺼져 있을 때도 색을 죽이지 않는다. */
+.record-tab b {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(99, 192, 171, .26);
+  color: #2f7a6b;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.record-tab.is-active b { background: rgba(99, 192, 171, .36); }
+
+.record-pane[hidden] { display: none; }

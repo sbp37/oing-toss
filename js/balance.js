@@ -7,6 +7,7 @@ import {
 } from './board.js';
 import {
   GAME_DURATION_SECONDS,
+  normalClearThresholdForStage,
   TIME_FREEZE_SECONDS,
   TIME_ITEM_CAP_SCORE,
   availableItemTimeBonus,
@@ -17,7 +18,6 @@ import {
   comboAfterFailure,
   comboGainForClear,
   comboWindowMsForStage,
-  completesStageChallenge,
   getRoundConfig,
   nextBoardDropPity,
   roundTimeBonusSeconds,
@@ -28,9 +28,6 @@ import {
   scoreForCloverBonus,
   scoreForMegaBomb,
   scoreForWideClear,
-  stageChallengeBonus,
-  stageChallengeForStage,
-  stageProgressGainForClear,
   stageShowcaseBoardDrop,
 } from './data.js';
 
@@ -55,17 +52,62 @@ function randomBetween(random, minimum, maximum) {
   return minimum + (maximum - minimum) * random();
 }
 
-function chooseAnswer(answers, profile, random) {
+function chooseAnswer(answers, profile, random, model = null) {
   const rich = answers.filter((answer) => answer.count >= 3);
   const simple = answers.filter((answer) => answer.count === 2);
   const useRich = rich.length && (!simple.length || random() < profile.richBias);
-  const pool = useRich ? rich : (simple.length ? simple : answers);
+  let pool = useRich ? rich : (simple.length ? simple : answers);
+  // One step of strand-avoidance, modelling what any human does by eye:
+  // given a choice, don't take the clear that kills every remaining answer.
+  // Sampled small so the sim stays honest about imperfect play — this is
+  // "don't leave an orphan 7", not a solver.
+  if (model && answers.length > 1) {
+    const sample = pool.slice(0, 4);
+    const keeps = sample.filter((answer) => {
+      const removed = [];
+      for (let r = answer.r1; r <= answer.r2; r += 1) {
+        for (let c = answer.c1; c <= answer.c2; c += 1) {
+          if (model.grid[r][c] > 0) { removed.push({ r, c, v: model.grid[r][c] }); model.grid[r][c] = null; }
+        }
+      }
+      const alive = Boolean(model.findAnswer());
+      removed.forEach(({ r, c, v }) => { model.grid[r][c] = v; });
+      return alive;
+    });
+    if (keeps.length) pool = keeps;
+  }
   if (profile.id === 'expert') {
     const maximum = Math.max(...pool.map((answer) => answer.count));
     const best = pool.filter((answer) => answer.count === maximum);
     return best[Math.floor(random() * best.length)];
   }
   return pool[Math.floor(random() * pool.length)];
+}
+
+// The human-like agent: no lookahead of any kind — it never previews what
+// the board looks like after a clear. It picks among the answers currently
+// visible, weighted by how quickly each shape catches a human eye:
+// adjacent pairs first, one-line runs next, 2D boxes last (novices barely
+// spot those). Real-play feel is judged against this agent, not the
+// strategic one.
+function chooseAnswerHumanlike(answers, profile, random) {
+  const weightFor = (answer) => {
+    const height = answer.r2 - answer.r1 + 1;
+    const width = answer.c2 - answer.c1 + 1;
+    const adjacentPair = answer.count === 2 && height * width === 2;
+    const box = height >= 2 && width >= 2;
+    if (profile.id === 'novice') return adjacentPair ? 4 : box ? 0.5 : answer.count === 2 ? 2 : 1;
+    if (profile.id === 'regular') return adjacentPair ? 2.4 : box ? 0.9 : answer.count === 2 ? 1.6 : 1.1;
+    return adjacentPair ? 1.6 : box ? 1.1 : 1.2;
+  };
+  const weights = answers.map(weightFor);
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  let roll = random() * total;
+  for (let index = 0; index < answers.length; index += 1) {
+    roll -= weights[index];
+    if (roll <= 0) return answers[index];
+  }
+  return answers.at(-1);
 }
 
 function bestMegaBombTarget(model) {
@@ -98,6 +140,8 @@ export function simulateRun({
   maximumElapsedSeconds = 300,
   showcaseEligible = false,
   showcaseIndex = 0,
+  agent = 'strategic',
+  normalClearThreshold = null,
 } = {}) {
   const settings = typeof profile === 'string' ? PLAYER_PROFILES[profile] : profile;
   if (!settings) throw new Error(`Unknown player profile: ${profile}`);
@@ -114,7 +158,6 @@ export function simulateRun({
       combo: 0,
       maxCombo: 0,
       round: 1,
-      progress: 0,
       clears: 0,
       errors: 0,
       simpleClears: 0,
@@ -122,11 +165,18 @@ export function simulateRun({
       catBonuses: 0,
       boards: 0,
       perfectClears: 0,
+      rescueShuffles: 0,
+      normalClears: 0,
+      stageNormalClears: 0,
+      repeatRescueStages: 0,
+      normalClearProgress: [],
+      normalClearRemaining: [],
+      boardsCleared: 0,
+      cleanClears: 0,
+      stageRescues: 0,
+      timeUpRemainingCells: 0,
       roundTimeBonus: 0,
       itemTimeBonus: 0,
-      stageChallengeComplete: false,
-      stageChallengeStreak: 0,
-      stageChallengeScore: 0,
       cloverBonusScore: 0,
       clutchBonusScore: 0,
       itemClearedCells: 0,
@@ -141,6 +191,7 @@ export function simulateRun({
       capped: false,
     };
     let model;
+    let initialPlayable = 0;
     let clearsOnBoard = 0;
     let previousDropType = null;
     let dropsEarned = 0;
@@ -195,25 +246,24 @@ export function simulateRun({
       state.initialShapePatternCounts.push(diversity.shapePatterns);
       state.initialValuePatternCounts.push(diversity.valuePatterns);
       state.initialOrientationCounts.push(diversity.orientations);
+      initialPlayable = model.remainingPlayableCells();
       clearsOnBoard = 0;
     };
     const closeBoard = () => {
       state.boardClearCounts.push(clearsOnBoard);
       if (model.remainingPlayableCells() === 0) state.perfectClears += 1;
     };
-    const replaceBoard = () => {
-      closeBoard();
-      buildBoard();
-    };
     const completeStage = () => {
       closeBoard();
+      state.boardsCleared += 1;
+      if (state.stageRescues === 0 && state.stageNormalClears === 0) state.cleanClears += 1;
+      if (state.stageRescues >= 2) state.repeatRescueStages += 1;
+      state.stageRescues = 0;
+      state.stageNormalClears = 0;
       const bonus = roundTimeBonusSeconds(state.round);
       state.roundTimeBonus += bonus;
       state.timeLeft = cappedSessionTime(state.timeLeft, bonus);
       state.round += 1;
-      state.progress = 0;
-      state.stageChallengeComplete = false;
-      state.stageChallengeStreak = 0;
       refreshComboDeadline();
       buildBoard();
       const showcaseDrop = showcaseEligible
@@ -274,36 +324,52 @@ export function simulateRun({
 
       const answers = model.findAnswers();
       if (!answers.length) {
-        replaceBoard();
+        const remaining = model.remainingPlayableCells();
+        if (remaining === 0) {
+          completeStage();
+          continue;
+        }
+        // Out of tens: the stage ends normally once enough of the board is
+        // gone, or once its single rescue is already spent. Rescue fires
+        // at most once per stage, only while the board is still young.
+        const cleared = initialPlayable > 0 ? 1 - remaining / initialPlayable : 1;
+        const threshold = normalClearThreshold ?? normalClearThresholdForStage(state.round);
+        if (cleared >= threshold || state.stageRescues >= 1) {
+          state.normalClears += 1;
+          state.stageNormalClears += 1;
+          state.normalClearProgress.push(cleared);
+          state.normalClearRemaining.push(remaining);
+          spendTime(randomBetween(random, 0.4, 0.7));
+          model.sweepRemaining();
+          completeStage();
+          continue;
+        }
+        state.rescueShuffles += 1;
+        state.stageRescues += 1;
+        spendTime(randomBetween(random, 0.7, 1.2));
+        const outcome = model.rescueRemaining();
+        if (!outcome) {
+          model.sweepRemaining();
+          completeStage();
+        }
         continue;
       }
       if (random() < settings.errorRate) {
         state.errors += 1;
         state.combo = comboAfterFailure(state.combo);
-        state.stageChallengeStreak = 0;
         refreshComboDeadline();
         continue;
       }
 
-      const answer = chooseAnswer(answers, settings, random);
+      const answer = agent === 'humanlike'
+        ? chooseAnswerHumanlike(answers, settings, random)
+        : chooseAnswer(answers, settings, random, model);
       const stats = model.stats(answer);
       const clearedCells = stats.count + stats.catCount;
       const previousCombo = state.combo;
       state.combo += comboGainForClear(clearedCells);
       refreshComboDeadline();
       state.maxCombo = Math.max(state.maxCombo, state.combo);
-      state.stageChallengeStreak += 1;
-      const challenge = stageChallengeForStage(state.round);
-      const challengeCompleted = !state.stageChallengeComplete && completesStageChallenge(challenge, {
-        cellCount: clearedCells,
-        catCount: stats.catCount,
-        stageStreak: state.stageChallengeStreak,
-      });
-      const challengePoints = challengeCompleted ? stageChallengeBonus(state.round) : 0;
-      if (challengeCompleted) {
-        state.stageChallengeComplete = true;
-        state.stageChallengeScore += challengePoints;
-      }
       const clearPoints = scoreForClear(clearedCells, state.combo);
       const widePoints = scoreForWideClear(clearedCells, state.combo);
       const catPoints = scoreForCatBonus(stats.catCount, state.combo);
@@ -312,9 +378,8 @@ export function simulateRun({
       cloverBoost = false;
       state.cloverBonusScore += cloverPoints;
       state.clutchBonusScore += clutchPoints;
-      state.score += clearPoints + widePoints + catPoints + challengePoints + cloverPoints + clutchPoints;
+      state.score += clearPoints + widePoints + catPoints + cloverPoints + clutchPoints;
       state.clears += 1;
-      state.progress += stageProgressGainForClear(clearedCells);
       clearsOnBoard += 1;
       state.catBonuses += stats.catCount;
       if (answer.count >= 3) state.richClears += 1;
@@ -339,10 +404,11 @@ export function simulateRun({
           useDrop(drop);
         }
       }
-      const config = getRoundConfig(state.round);
-      if (state.progress >= config.target) completeStage();
-      else if (!model.findAnswers().length) replaceBoard();
+      // A stage ends only on a completely empty board; a dry board with
+      // cells still on it takes a rescue shuffle on the next loop pass.
+      if (model.remainingPlayableCells() === 0) completeStage();
     }
+    state.timeUpRemainingCells = model.remainingPlayableCells();
     state.capped = state.elapsedSeconds >= maximumElapsedSeconds || actions >= 600;
     state.elapsedSeconds = Math.round(state.elapsedSeconds * 10) / 10;
     state.timeLeft = Math.max(0, Math.round(state.timeLeft * 10) / 10);
@@ -366,6 +432,15 @@ export function summarizeRuns(runs) {
     elapsedMean: Math.round(mean(runs.map((run) => run.elapsedSeconds)) * 10) / 10,
     roundMean: Math.round(mean(runs.map((run) => run.round)) * 10) / 10,
     clearsMean: Math.round(mean(runs.map((run) => run.clears)) * 10) / 10,
+    boardsClearedMean: Math.round(mean(runs.map((run) => run.boardsCleared)) * 10) / 10,
+    rescueMean: Math.round(mean(runs.map((run) => run.rescueShuffles)) * 100) / 100,
+    normalClearMean: Math.round(mean(runs.map((run) => run.normalClears || 0)) * 100) / 100,
+    normalClearProgressMean: Math.round(mean(runs.flatMap((run) => run.normalClearProgress || [])) * 1000) / 1000,
+    normalClearRemainingMean: Math.round(mean(runs.flatMap((run) => run.normalClearRemaining || [])) * 10) / 10,
+    repeatRescueStages: runs.reduce((sum, run) => sum + (run.repeatRescueStages || 0), 0),
+    cleanClearRate: Math.round(mean(runs.map((run) => (run.boardsCleared ? run.cleanClears / run.boardsCleared : 0))) * 100) / 100,
+    timeUpRemainingCellsMean: Math.round(mean(runs.map((run) => run.timeUpRemainingCells)) * 10) / 10,
+    itemDropsMean: Math.round(mean(runs.map((run) => Object.values(run.itemsEarned).reduce((a, b) => a + b, 0))) * 100) / 100,
     maxComboMean: Math.round(mean(runs.map((run) => run.maxCombo)) * 10) / 10,
     errorsMean: Math.round(mean(runs.map((run) => run.errors)) * 10) / 10,
     initialAnswersMean: Math.round(mean(runs.flatMap((run) => run.answerCounts)) * 10) / 10,
@@ -376,7 +451,6 @@ export function summarizeRuns(runs) {
     clearsPerBoardMean: Math.round(mean(runs.flatMap((run) => run.boardClearCounts)) * 10) / 10,
     richClearRatio: Math.round(1000 * runs.reduce((sum, run) => sum + run.richClears, 0)
       / Math.max(1, runs.reduce((sum, run) => sum + run.clears, 0))) / 10,
-    challengeBonusMean: Math.round(mean(runs.map((run) => run.stageChallengeScore))),
     cloverBonusMean: Math.round(mean(runs.map((run) => run.cloverBonusScore))),
     clutchBonusMean: Math.round(mean(runs.map((run) => run.clutchBonusScore))),
     itemClearedCellsMean: Math.round(mean(runs.map((run) => run.itemClearedCells)) * 10) / 10,
@@ -388,13 +462,14 @@ export function summarizeRuns(runs) {
   };
 }
 
-export function simulateBalanceSuite({ runsPerProfile = 40, seed = 20260808 } = {}) {
+export function simulateBalanceSuite({ runsPerProfile = 40, seed = 20260808, agent = 'strategic' } = {}) {
   return Object.fromEntries(Object.keys(PLAYER_PROFILES).map((profile, profileIndex) => {
     const runs = Array.from({ length: runsPerProfile }, (_, index) => simulateRun({
       profile,
       seed: seed + profileIndex * 100000 + index,
       showcaseEligible: index < 3,
       showcaseIndex: index,
+      agent,
     }));
     return [profile, summarizeRuns(runs)];
   }));

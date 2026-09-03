@@ -116,7 +116,15 @@ img {
 
 .screen.is-active {
   display: flex;
-  animation: screen-in 220ms ease both;
+  /* No fill mode. The keyframes end on opacity: 1 / transform: none, which is
+     the element's own resting state, so `both` preserved nothing - but it did
+     keep a finished transform+opacity animation attached to the element, and
+     Chromium holds a full-viewport compositor layer for as long as one is
+     there. The play screen stayed promoted for the entire session: a ~10
+     megapixel texture recomposited forever, which costs GPU and battery while
+     the main thread reads as idle. Without the fill the layer is released
+     220ms in. There is no delay, so `backwards` had nothing to do either. */
+  animation: screen-in 220ms ease;
 }
 
 @keyframes screen-in {
@@ -470,6 +478,52 @@ img {
   min-height: 49px;
 }
 
+.home-actions.has-online-leaderboard {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-leaderboard-button {
+  min-width: 0;
+  min-height: 49px;
+  border-color: rgba(235, 164, 164, 0.62);
+  background: linear-gradient(180deg, #fffdf8 0%, #fff1e5 100%);
+  color: #755349;
+}
+
+.home-leaderboard-button .button-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.home-actions.has-online-leaderboard .home-ranking-button,
+.home-actions.has-online-leaderboard .home-leaderboard-button {
+  gap: 3px;
+  padding-inline: 5px;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.home-actions.has-online-leaderboard .best-record-card {
+  grid-template-columns: 23px minmax(0, 1fr);
+  column-gap: 4px;
+  padding-inline: 6px;
+}
+
+.home-actions.has-online-leaderboard .best-record-card img {
+  width: 23px;
+  height: 23px;
+}
+
+.home-actions.has-online-leaderboard .best-record-card span em,
+.home-actions.has-online-leaderboard .best-record-card strong::after {
+  font-size: 9px;
+}
+
+.home-actions.has-online-leaderboard .best-record-card strong {
+  font-size: clamp(14px, 4vw, 18px);
+}
+
 .best-record-card {
   min-width: 0;
   min-height: 49px;
@@ -712,24 +766,35 @@ img {
   pointer-events: none;
 }
 
+/* 화면 테두리의 두 경고(마지막 30초, 시간 정지)는 원래 box-shadow를
+   직접 애니메이션했다. 그런데 이 요소는 화면 전체(inset: 0)라, 프레임마다
+   390x780 전체를 다시 그리고 그때마다 그림자 blur를 다시 계산했다.
+   실측(CPU 6배 스로틀): 이 하나가 +6.7%p였다.
+
+   그림자는 제일 센 값으로 고정해두고 투명도만 오르내리게 바꿨다. 알파가
+   0.03->0.12로 네 배 오르내리던 것을 opacity 0.25->1로 옮긴 것이라 보이는
+   결과는 사실상 같은데, 투명도는 합성기가 처리해서 다시 그리는 일이 없다.
+   같은 측정에서 opacity 애니메이션의 비용은 0.0%p였다. */
 .screen-play.is-final-countdown::before {
+  box-shadow: inset 0 0 28px 2px rgba(255, 111, 139, 0.12);
   opacity: 1;
-  animation: final-countdown-edge 940ms ease-in-out infinite alternate;
+  animation: play-edge-alarm 940ms ease-in-out infinite alternate;
 }
 
 .screen-play.is-time-frozen::before {
+  box-shadow: inset 0 0 31px 4px rgba(127, 215, 239, 0.25), inset 0 0 0 3px rgba(242, 255, 255, 0.34);
   opacity: 1;
-  animation: frozen-edge 1.6s ease-in-out infinite alternate;
+  animation: play-edge-frozen 1.6s ease-in-out infinite alternate;
 }
 
-@keyframes frozen-edge {
-  from { box-shadow: inset 0 0 20px 1px rgba(146, 231, 246, 0.12), inset 0 0 0 2px rgba(236, 255, 255, 0.18); }
-  to { box-shadow: inset 0 0 31px 4px rgba(127, 215, 239, 0.25), inset 0 0 0 3px rgba(242, 255, 255, 0.34); }
+@keyframes play-edge-alarm {
+  from { opacity: .25; }
+  to { opacity: 1; }
 }
 
-@keyframes final-countdown-edge {
-  from { box-shadow: inset 0 0 22px 0 rgba(255, 111, 139, 0.03); }
-  to { box-shadow: inset 0 0 28px 2px rgba(255, 111, 139, 0.12); }
+@keyframes play-edge-frozen {
+  from { opacity: .5; }
+  to { opacity: 1; }
 }
 
 .play-hud {
@@ -1251,40 +1316,26 @@ img {
   100% { opacity: 0; transform: translate(-100%, 5px) scale(0.96); }
 }
 
-.combo-readout.is-punching::before {
-  content: attr(data-callout);
-  position: absolute;
-  z-index: 4;
-  right: 4px;
-  top: -17px;
-  padding: 3px 7px 2px;
-  border: 1px solid rgba(255,255,255,0.9);
-  border-radius: 99px;
-  background: rgba(255,248,225,0.97);
-  box-shadow: 0 3px 8px rgba(198,123,70,0.15);
-  color: #df785d;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1;
-  white-space: nowrap;
-  pointer-events: none;
-  animation: combo-hud-callout 500ms cubic-bezier(.16,.82,.24,1.12) both;
-}
+/* The combo chip's floating callout is retired along with the milestone
+   banner it echoed. Its content came from data-callout, which is no longer
+   set — leaving a pseudo-element that still painted its cream pill with
+   nothing in it, flashing at the chip's top-right on every combo pulse. */
 
 .combo-readout[data-level="3"] strong { color: #e38b42; }
 .combo-readout[data-level="5"] strong { color: #ea6280; text-shadow: 0 0 7px rgba(255, 193, 79, 0.2); }
 .combo-readout[data-level="8"] strong { color: var(--coral-deep); text-shadow: 0 0 8px rgba(255,113,136,0.25); }
+/* Past sixteen the banner has stepped aside, so the chip keeps the climb
+   going on its own: a hotter figure with a steady glow behind it. */
+.combo-readout[data-level="16"] strong {
+  color: #e0325f;
+  text-shadow: 0 0 10px rgba(255,86,120,0.42), 0 0 20px rgba(255,140,120,0.24);
+}
 
 @keyframes combo-punch {
   32% { transform: translateY(-1px) scale(1.13); }
   68% { transform: scale(0.98); }
 }
 
-@keyframes combo-hud-callout {
-  0% { opacity: 0; transform: translateY(5px) scale(0.74); }
-  26%, 72% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-4px) scale(0.94); }
 }
 
 .goal-status {
@@ -1494,9 +1545,9 @@ img {
   animation: board-countdown-breath 340ms ease-out both;
 }
 
-.board-frame.is-fever {
-  animation: board-fever-glow 760ms ease-in-out infinite alternate;
-}
+/* 피버의 분홍 후광은 play-layout-v1.css로 옮겼다. 여기 두면 나중에 로드되는
+   .play-ui-v4 .board-frame 규칙에 밀린다 - 예전에는 애니메이션이라서 이기고
+   있었을 뿐이고, 애니메이션을 걷어내는 순간 후광이 통째로 사라진다. */
 
 .board-frame.is-fever .board {
   border-color: rgba(255,143,168,.62);
@@ -1512,8 +1563,10 @@ img {
   animation-duration: 1.3s;
 }
 
-.board-frame.is-fever-expiring {
-  animation: fever-expiring 340ms ease-in-out infinite alternate;
+/* 피버 종료 직전의 후광도 같은 이유로 play-layout-v1.css에 있다. 다급함은
+   .board의 filter를 같은 박자로 몰아서 낸다 - 그쪽은 공짜다. */
+.board-frame.is-fever-expiring .board {
+  animation-duration: 340ms;
 }
 
 .score-flight {
@@ -1577,19 +1630,9 @@ img {
   100% { filter: none; }
 }
 
-@keyframes board-fever-glow {
-  from { box-shadow: 0 5px 0 rgba(190,131,69,0.14), 0 11px 22px rgba(65,125,149,0.12), inset 0 2px 0 #fff, 0 0 0 rgba(255,113,136,0); }
-  to { box-shadow: 0 5px 0 rgba(190,131,69,0.14), 0 11px 22px rgba(65,125,149,0.12), inset 0 2px 0 #fff, 0 0 19px rgba(255,113,136,0.25); }
-}
-
 @keyframes fever-board-breathe {
   from { filter: saturate(1); }
   to { filter: saturate(1.035) brightness(1.012); }
-}
-
-@keyframes fever-expiring {
-  from { box-shadow: 0 5px 0 rgba(190,131,69,.14),0 11px 22px rgba(65,125,149,.12),inset 0 2px 0 #fff,0 0 12px rgba(255,113,136,.16); }
-  to { box-shadow: 0 5px 0 rgba(190,131,69,.14),0 11px 22px rgba(65,125,149,.12),inset 0 2px 0 #fff,0 0 24px rgba(255,101,132,.34); }
 }
 
 .board {
@@ -1698,7 +1741,7 @@ img {
    `--tile-art` stays a variable because the bonus cat layers a glow over the
    same art; composing against the variable keeps that rule from re-naming the
    file. */
-.tile { --tile-art: url("../assets/ui/tiles-syrup-v4/tile-mint.webp"); }
+.tile { --tile-art: url("../assets/ui/tiles-syrup-v5/tile-cream.webp"); }
 .tile.value-1, .tile.value-2, .tile.value-3, .tile.value-4, .tile.value-5,
 .tile.value-6, .tile.value-7, .tile.value-8, .tile.value-9 {
   background-image: var(--tile-art);
@@ -1729,38 +1772,15 @@ img {
   opacity: 1;
 }
 
-/* The cat cell is the one place a second tile earns its keep. It is the peach
-   from the same syrup set, and it works here for the reason a colour system
-   across the whole board did not: there are only two or three of these on a
-   board, so its chroma never accumulates.
-
-   It sits at L* 90.3 against the board's 90.1 — the same lightness, so it does
-   not punch out of the field — while ΔE 14.1 of hue separation makes it read as
-   a different cell at a glance. Numeral contrast is 6.02:1, marginally better
-   than the board tile.
-
-   This replaced a flat #ffd98c, which was a fixed yellow owing nothing to the
-   tile set and read as a sticker. An earlier pass added a white radial glow
-   here to lift the cat character, and that claimed not to dilute the peach
-   underneath — that claim was wrong. Blending white at 0.72 alpha over the
-   raw peach (C* 17.3) collapses it to C* 4.7, and the gradient does not fall
-   below 0.40 until 42% of the radius, so nearly the whole tile was reading as
-   washed cream rather than peach. The cat art has its own drop-shadow filter
-   (`.bonus-cat-art`) and does not need the tile under it lightened for
-   contrast, so the glow here is now small and faint — a glass highlight, not
-   a wash. Even at these opacities the corner of the tile is close to the raw
-   webp's C* 17.3, since the gradient reaches transparent by 60% of the
-   radius. */
+/* The bonus cat uses one brighter strawberry-milk syrup tile. Its contrast is
+   carried by the artwork itself, so the character needs no extra white wash. */
 .tile.is-bonus-cat {
-  --tile-art: url("../assets/ui/tiles-syrup-v4/tile-peach.webp");
+  --tile-art: url("../assets/ui/tiles-syrup-v5/tile-cat-pink.webp");
   z-index: 2;
   overflow: visible;
   border: 0;
   background-color: transparent;
-  background-image:
-    radial-gradient(circle at 50% 55%, rgba(255,255,255,0.22) 0 18%, rgba(255,255,255,0.10) 36%, transparent 60%),
-    var(--tile-art);
-  background-blend-mode: normal, normal;
+  background-image: var(--tile-art);
   background-position: center;
   background-size: 100% 100%;
   background-repeat: no-repeat;
@@ -1773,13 +1793,14 @@ img {
   position: absolute;
   z-index: 3;
   left: 50%;
-  bottom: 18%;
-  width: 58%;
-  height: 58%;
+  top: 50%;
+  bottom: auto;
+  width: 82%;
+  height: 82%;
   object-fit: contain;
-  object-position: center bottom;
+  object-position: center;
   pointer-events: none;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   filter: saturate(1.07) drop-shadow(0 2px 2px rgba(55, 78, 104, 0.22));
   animation: bonus-cat-peek 1.8s ease-in-out infinite alternate;
 }
@@ -1874,8 +1895,10 @@ img {
 .board-item-icon {
   position: relative;
   z-index: 3;
-  width: clamp(27px, 58%, 49px);
-  height: clamp(27px, 58%, 49px);
+  /* The item should read like the cat art does — filling its cell. At 58%
+     the bomb looked like a misrendered thumbnail next to full-bleed cats. */
+  width: clamp(36px, 78%, 62px);
+  height: clamp(36px, 78%, 62px);
   object-fit: contain;
   pointer-events: none;
   filter: drop-shadow(0 3px 4px rgba(128,76,61,0.18));
@@ -2135,7 +2158,7 @@ img {
   position: absolute;
   z-index: 5;
   left: 0;
-  top: 28px;
+  top: 36px;
   padding: 4px 8px;
   border: 1px solid rgba(255,255,255,0.94);
   border-radius: 999px;
@@ -2176,6 +2199,13 @@ img {
   width: 48px;
   height: 48px;
   filter: drop-shadow(0 4px 7px rgba(170,65,50,0.3));
+}
+
+/* The bigger megabomb icon reaches further past the default label offset
+   above, so it needs its own clearance to keep the label from sitting under
+   the art during the landing bounce. */
+.item-drop-fx.item-drop-megabomb > span {
+  top: 46px;
 }
 
 .item-drop-fx i {
@@ -2236,9 +2266,13 @@ img {
   filter: brightness(1.045) saturate(1.035);
 }
 
-.board.is-dragging .tile.is-selected::before {
-  animation: syrup-selection-sheen 220ms cubic-bezier(.2,.75,.3,1) both;
-}
+/* 선택된 칸마다 따로 돌던 반짝임을 지웠다.
+   드래그 한 번에 칸이 최대 54개까지 선택되는데, 그 칸마다 움직임이 하나씩
+   붙었다. both로 잡혀 있어 끝난 뒤에도 남고, 손가락이 도는 내내 브라우저가
+   그 칸들의 모양을 매 프레임 다시 계산하고 다시 그렸다. 실제로 재보니 드래그
+   중 살아 있는 움직임이 66개였고 그중 58개가 이것이었다.
+   반짝임은 선택 상자(.selection-marquee)가 syrup-marquee-flow로 이미 지나간다.
+   하나면 되는 연출을 판 전체에 두고 있었다. */
 
 .board.is-perfect .tile.is-selected {
   box-shadow:
@@ -2248,10 +2282,6 @@ img {
   filter: brightness(1.065) saturate(1.06);
 }
 
-@keyframes syrup-selection-sheen {
-  0% { opacity: 0; transform: translateX(-54%) skewX(-10deg); }
-  28% { opacity: 0.46; }
-  100% { opacity: 0; transform: translateX(54%) skewX(-10deg); }
 }
 
 .board.is-dragging .tile.is-selected span {
@@ -3399,6 +3429,45 @@ img {
   text-shadow: 0 2px white, 0 0 12px rgba(255, 104, 140, 0.32);
 }
 
+/* NICE ------------------------------------------------------------------
+   The four-cell step below WOW. It stays inside the score pop's own footprint
+   — a small tag under the number, at the clear, with a short punch — so the
+   five-cell WOW keeps the only screen-stopping card and fanfare. */
+.score-burst em {
+  display: block;
+  margin: 3px auto 0;
+  width: fit-content;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(90, 178, 160, .3);
+  background: rgba(240, 255, 250, .95);
+  color: #2f9c8a;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: .04em;
+  text-shadow: none;
+}
+
+.score-burst[data-nice="true"] strong {
+  color: #2f9c8a;
+  font-size: clamp(20px, 6vw, 25px);
+  text-shadow: 0 2px white, 0 0 10px rgba(89, 205, 184, .34);
+}
+
+.score-burst[data-nice="true"].is-visible em { animation: nice-tag-pop 420ms cubic-bezier(.2, .8, .3, 1.05) both; }
+
+@keyframes nice-tag-pop {
+  0% { opacity: 0; transform: scale(.72); }
+  45% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score-burst[data-nice="true"].is-visible em { animation: none; }
+}
+
 .score-burst[data-wide="true"] strong {
   color: #e57a38;
   font-size: clamp(23px, 7vw, 30px);
@@ -3737,11 +3806,30 @@ img {
   z-index: 8;
   inset: 0;
   opacity: 0;
+  /* opacity: 0 still leaves a rendered box, and the compositor kept a layer
+     for it all session. visibility takes the subtree out of rendering
+     entirely; it flips after the fade so the fade still plays. */
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 120ms ease;
+  transition: opacity 120ms ease, visibility 0s linear 120ms;
 }
 
-.tutorial-guide.is-visible { opacity: 1; }
+.tutorial-guide.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 120ms ease, visibility 0s linear 0s;
+}
+
+/* The guide is hidden by opacity alone so it can fade, but an opacity-0
+   subtree still animates: every frame of the run, long after the tutorial was
+   over, these kept ticking. Nothing here has anything to show while the guide
+   is hidden, so the animations come off entirely and go back on with the
+   class - the fade is untouched. */
+.tutorial-guide:not(.is-visible) .tutorial-focus,
+.tutorial-guide:not(.is-visible) .tutorial-focus i,
+.tutorial-guide:not(.is-visible) .tutorial-sparkle-trail i {
+  animation: none;
+}
 
 .tutorial-focus {
   position: absolute;
@@ -3778,6 +3866,10 @@ img {
   z-index: 2;
   height: 1px;
   transform-origin: left center;
+  /* so the sparkles can travel the trail's width from a transform: 100cqw is
+     this box's inline size. Animating `left` instead put a full layout on
+     every frame the trail existed. */
+  container-type: inline-size;
 }
 
 .tutorial-sparkle-trail i {
@@ -3805,10 +3897,10 @@ img {
 }
 
 @keyframes tutorial-sparkle-swipe {
-  0%, 10% { left: 0; opacity: 0; transform: translate(-50%, -50%) rotate(-18deg) scale(0.3); }
+  0%, 10% { opacity: 0; transform: translate(-50%, -50%) rotate(-18deg) scale(0.3); }
   28% { opacity: 1; }
   76% { opacity: 0.94; }
-  100% { left: 100%; opacity: 0; transform: translate(-50%, -50%) rotate(72deg) scale(0.92); }
+  100% { opacity: 0; transform: translate(calc(100cqw - 50%), -50%) rotate(72deg) scale(0.92); }
 }
 
 .tutorial-guide > span {
@@ -4780,6 +4872,184 @@ img {
 }
 .record-stats span { color: #97887a; font-size: 11px; font-weight: 850; white-space: nowrap; }
 .record-stats strong { overflow: hidden; color: #52627c; font-family: var(--font-sans); font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; text-overflow: ellipsis; }
+
+.record-cats-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 7px 0 0;
+  color: #97887a;
+  font-size: 12px;
+  font-weight: 850;
+}
+.record-cats-line img { width: 15px; height: 15px; object-fit: contain; }
+.record-cats-line strong {
+  color: #d96474;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Secret garden collection ------------------------------------------------
+   The garden panel reuses the records panel's chrome; only the scene, the
+   step meter and the tier list are new. */
+.home-garden-button {
+  grid-column: 1 / -1;
+  min-height: 46px;
+  gap: 7px;
+}
+.home-garden-button b {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255,236,224,0.9);
+  color: #cf7565;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.garden-scene {
+  position: relative;
+  overflow: hidden;
+  height: 132px;
+  margin: 4px 0 9px;
+  border: 1.5px solid rgba(190,214,178,0.6);
+  border-radius: 18px;
+  /* Framed on the flower beds at the bottom of the artwork, not its middle:
+     the middle holds the illustration's own cat, which sat beside the
+     cheering cat below and read as two different cats in one garden. */
+  background:
+    linear-gradient(rgba(255,252,250,0.14), rgba(255,250,248,0.14)),
+    url("../assets/backgrounds/board-secret-garden-v1.webp") center bottom / 150% auto no-repeat;
+  box-shadow: inset 0 2px 6px rgba(120,150,110,0.12);
+}
+
+.garden-scene-cat {
+  position: absolute;
+  left: 8px;
+  bottom: -6px;
+  width: 74px;
+  height: 82px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(120,110,90,0.2));
+}
+
+/* Fixed slots keep a returning player's garden recognisable: each unlocked
+   friend always lands in the same spot, and the next one fills a gap. */
+.garden-decor {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(140,110,80,0.22));
+  animation: garden-decor-in 420ms cubic-bezier(.18,.82,.24,1.14) both;
+}
+.garden-decor[data-slot="0"] { right: 20%; bottom: 16%; }
+.garden-decor[data-slot="1"] { right: 8%; bottom: 34%; width: 26px; height: 26px; }
+.garden-decor[data-slot="2"] { right: 33%; top: 18%; }
+.garden-decor[data-slot="3"] { left: 40%; top: 10%; }
+.garden-decor[data-slot="4"] { right: 15%; top: 44%; width: 18px; height: 18px; }
+.garden-decor[data-slot="5"] { left: 27%; top: 30%; width: 30px; height: 26px; }
+
+@keyframes garden-decor-in {
+  0% { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+  60% { opacity: 1; transform: scale(1.12) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.garden-count {
+  margin: 0 0 7px;
+  color: #7d8a76;
+  font-size: 13px;
+  font-weight: 850;
+  text-align: center;
+}
+.garden-count strong {
+  color: #d96474;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.garden-reveal-best {
+  margin: -3px 0 8px;
+  color: #8b9a84;
+  font-size: 11.5px;
+  font-weight: 850;
+  text-align: center;
+}
+.garden-reveal-best strong {
+  color: #58a273;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.garden-progress { display: grid; gap: 4px; margin-bottom: 10px; }
+.garden-progress span {
+  color: #97887a;
+  font-size: 11.5px;
+  font-weight: 850;
+  text-align: center;
+}
+.garden-progress i {
+  display: block;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(214,226,205,0.75);
+  box-shadow: inset 0 1px 2px rgba(109,123,95,0.16);
+}
+.garden-progress b {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8fd9a8, #64c58b);
+  transition: width 320ms cubic-bezier(.2,.72,.25,1);
+}
+
+.garden-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.garden-tier {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 3px 6px;
+  border: 1px solid rgba(222,210,186,0.7);
+  border-radius: 13px;
+  background: rgba(248,247,241,0.8);
+}
+.garden-tier img { width: 20px; height: 20px; object-fit: contain; opacity: 0.32; filter: grayscale(1); }
+.garden-tier span { color: #a2988c; font-size: 10.5px; font-weight: 850; white-space: nowrap; }
+.garden-tier b {
+  color: #b0a496;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.garden-tier.is-unlocked {
+  border-color: rgba(139,201,157,0.7);
+  background: linear-gradient(180deg, rgba(240,255,244,0.95), rgba(216,244,225,0.85));
+}
+.garden-tier.is-unlocked img { opacity: 1; filter: none; }
+.garden-tier.is-unlocked span { color: #4f8362; }
+.garden-tier.is-unlocked b { color: #58a273; }
 
 .record-history {
   position: relative;
@@ -5816,6 +6086,114 @@ img {
 }
 @keyframes start-button-shine { 0%,72%{transform:translateX(0) skewX(-17deg)} 91%,100%{transform:translateX(710%) skewX(-17deg)} }
 
+/* Home rule demo -----------------------------------------------------------
+   The old 2 + 8 row taught a two-tile game. The live rule is a rectangle,
+   so the smallest honest example is a 2x2 board whose three numbers total
+   ten. The outline and dot rehearse the same corner-to-corner gesture used
+   on the real board without adding another tutorial panel. */
+.home-rule-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 54px;
+  color: #786253;
+  font-family: var(--font-display);
+}
+
+.home-rule-demo > em {
+  color: #685b55;
+  font-size: 14px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.home-rule-demo > b { font-size: 17px; font-weight: 400; }
+
+.home-rule-demo > strong {
+  min-width: 38px;
+  padding: 4px 8px 3px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ff91a7, #ff6685);
+  box-shadow: 0 3px 0 #d94e6b, inset 0 1px 0 rgba(255,255,255,.7);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.1;
+  text-shadow: 0 1px 0 rgba(177,53,82,.24);
+}
+
+.home-rule-demo > i {
+  color: #e85a78;
+  font-size: 13px;
+  font-style: normal;
+}
+
+.home-mini-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, 23px);
+  grid-template-rows: repeat(2, 23px);
+  gap: 2px;
+  padding: 2px;
+}
+
+.home-mini-board > span {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(111,137,151,.28);
+  border-radius: 7px;
+  background: rgba(239,250,247,.92);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(73,93,103,.1);
+  color: #315b78;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.home-mini-board > span:nth-child(2),
+.home-mini-board > span:nth-child(4) { background: rgba(255,244,207,.94); }
+
+.home-mini-selection {
+  position: absolute;
+  inset: -1px;
+  border: 2px solid #ffbd45;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.82), 0 0 9px rgba(255,190,64,.38);
+  transform-origin: 4px 4px;
+  animation: home-rectangle-demo 3.2s ease-in-out infinite;
+}
+
+.home-mini-drag {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #ff718f;
+  box-shadow: 0 2px 4px rgba(184,73,97,.25);
+  animation: home-drag-dot 3.2s ease-in-out infinite;
+}
+
+@keyframes home-rectangle-demo {
+  0%, 13% { opacity: .25; transform: scale(.24); }
+  34%, 70% { opacity: 1; transform: scale(1); }
+  82%, 100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes home-drag-dot {
+  0%, 13% { opacity: 1; transform: translate(0,0) scale(.9); }
+  34%, 70% { opacity: 1; transform: translate(42px,42px) scale(1); }
+  82%, 100% { opacity: 0; transform: translate(42px,42px) scale(.65); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-mini-selection,
+  .home-mini-drag { animation: none; }
+  .home-mini-drag { opacity: 0; }
+}
+
 .home-ranking-button {
   box-shadow:0 3px 0 rgba(197,155,90,.14),0 7px 12px rgba(94,73,47,.07),inset 0 2px 0 rgba(255,255,255,.94);
 }
@@ -6391,7 +6769,6 @@ img {
   box-shadow: 0 2px 4px rgba(77,86,87,.13), inset 0 1px 0 #fff;
   pointer-events: none;
 }
-.tile.special-clock { box-shadow: 0 0 0 1.5px rgba(74,185,205,.32), 0 3px 7px rgba(53,155,177,.12); }
 .tile.special-bomb { box-shadow: 0 0 0 1.5px rgba(241,112,132,.3), 0 3px 7px rgba(188,75,96,.12); }
 .tile.is-special-triggered .special-tile-badge { animation: special-badge-pop 300ms cubic-bezier(.18,.82,.24,1.2) both; }
 .tile.is-special-blast { animation: special-blast-tile 290ms var(--blast-delay,0ms) cubic-bezier(.2,.72,.25,1) both; }
@@ -7716,11 +8093,6 @@ img {
   box-shadow: 0 0 0 2px var(--special-ring, rgba(92,190,185,.3)), 0 5px 11px var(--special-shadow, rgba(71,155,166,.14));
 }
 
-.tile.special-clock {
-  --special-ring: rgba(65,190,190,.4);
-  --special-shadow: rgba(47,164,177,.18);
-}
-
 .tile.special-bomb {
   --special-ring: rgba(241,101,128,.38);
   --special-shadow: rgba(199,69,98,.17);
@@ -7915,19 +8287,6 @@ img {
   100% { opacity:0; transform:translate(calc(-50% + var(--growth-x) * 3.2),calc(-50% + var(--growth-y) * 3.1)) scale(.92) rotate(110deg); }
 }
 
-.stage-entry b {
-  margin-top: 5px;
-  padding: 3px 9px 2px;
-  border: 1px solid rgba(255,255,255,.92);
-  border-radius: 999px;
-  background: rgba(255,255,249,.84);
-  box-shadow: 0 2px 5px rgba(117,88,59,.08);
-  color: #9a7862;
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1;
-}
 
 .stage-entry.is-milestone {
   background: linear-gradient(180deg, rgba(248,255,251,.98), rgba(211,247,236,.97));
@@ -7936,12 +8295,10 @@ img {
 
 .stage-entry.is-milestone small,
 .stage-entry.is-milestone strong { color: #369b87; }
-.stage-entry.is-milestone b { color: #437d72; }
 
 @media (max-width: 340px) {
   .low-time-alert { top: calc(40px + var(--safe-top)); min-width: 122px; min-height: 32px; }
   .low-time-alert strong { font-size: 16px; }
-  .stage-entry b { margin-top: 4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -8978,4 +9335,781 @@ img {
   .play-ui-v4 .pause-button,
   .play-ui-v4 .hud-mini-button,
   .play-ui-v4 .item-button { transition: none; }
+}
+
+/* WOW! ------------------------------------------------------------------
+   The original OING's signature moment: five or more cells in one sum-ten
+   clear stops the screen with a big lemon-gold "WOW!" over the board. It
+   deliberately borrows the original's colour and Jua face; the fanfare that
+   goes with it is playWideClearSound(), itself a port of the original's
+   rising three-chord arpeggio. */
+.wow-moment {
+  position: absolute;
+  z-index: 15;
+  left: 50%;
+  top: 42%;
+  font-family: var(--font-display), 'Jua', sans-serif;
+  font-size: clamp(38px, 13vw, 56px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .01em;
+  color: #f7b23c;
+  text-shadow:
+    0 0 14px rgba(247, 178, 60, .85),
+    0 0 34px rgba(214, 128, 32, .5),
+    0 3px 0 rgba(255, 255, 255, .92);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(.6);
+}
+
+.wow-moment.is-visible { animation: wow-pop 900ms cubic-bezier(.16, .84, .26, 1.1) both; }
+
+@keyframes wow-pop {
+  0% { opacity: 0; transform: translate(-50%, -42%) scale(.55) rotate(-7deg); }
+  22% { opacity: 1; transform: translate(-50%, -52%) scale(1.16) rotate(2deg); }
+  42% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -76%) scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wow-moment.is-visible { animation: wow-fade 700ms ease both; }
+  @keyframes wow-fade {
+    0% { opacity: 0; }
+    25% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}
+
+/* Adventure gallery (정원 오버레이) ---------------------------------------
+   Scenes already travelled to read as collected cards; the ones ahead stay
+   silhouettes so the list is a goal rather than a checklist. */
+.chapter-collection {
+  margin: 12px 0 10px;
+  padding: 10px 11px 9px;
+  border: 1px solid rgba(255,255,255,0.72);
+  border-radius: 16px;
+  background: rgba(255,251,240,0.62);
+}
+
+.chapter-collection-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chapter-collection-title span {
+  color: #7b6353;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+}
+
+.chapter-collection-title b {
+  color: #a2988c;
+  font-size: 10.5px;
+  font-weight: 850;
+}
+
+.chapter-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter-card {
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 7px 8px;
+  border: 1px solid rgba(214,196,166,0.5);
+  border-radius: 12px;
+  background: rgba(246,242,232,0.9);
+}
+
+.chapter-card strong {
+  color: #a2988c;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+.chapter-card span {
+  color: #b3a798;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.chapter-card.is-unlocked {
+  border-color: rgba(102,185,167,0.5);
+  background: linear-gradient(#f2fffb, #dcf7ef);
+}
+
+.chapter-card.is-unlocked strong { color: #3d8578; }
+.chapter-card.is-unlocked span { color: #67a99c; }
+
+/* The score-gated scene is the one nobody reaches by simply playing on, so
+   it gets its own warm accent instead of the mint the ladder scenes share. */
+.chapter-card.is-secret {
+  border-style: dashed;
+  border-color: rgba(224,168,92,0.55);
+}
+
+.chapter-card.is-secret.is-unlocked {
+  border-style: solid;
+  border-color: rgba(224,168,92,0.7);
+  background: linear-gradient(#fffaef, #ffefcf);
+}
+
+.chapter-card.is-secret.is-unlocked strong { color: #a9762a; }
+.chapter-card.is-secret.is-unlocked span { color: #bd8f45; }
+
+.chapter-collection-hint {
+  margin: 8px 0 0;
+  color: #a99d90;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* TODO: 정원 기능 재작업 시 복구 --------------------------------------------
+   The garden is parked, not removed: the markup stays in place, the rescued
+   cat count keeps accumulating, and renderGarden / renderChapterGallery are
+   untouched, so turning it back on is deleting this block and the `hidden`
+   attributes in index.html. The CSS is here as well as the attributes
+   because setOverlay() clears `hidden` when an overlay opens - an id rule
+   keeps the panel down even if something calls openGarden(). */
+#home-garden-button,
+#garden-overlay,
+#ranking-cats-line {
+  display: none;
+}
+
+/* ==========================================================================
+   Result speech bubble: a tail that is actually attached
+   The old tail was a rotate(35deg) skew(8deg,8deg) square sitting at the
+   bubble's upper left. Three things made it read as a torn-off flag rather
+   than a tail: the skew left its edges out of line with the body, the
+   body's own left border ran straight through the join, and the flat fill
+   did not match the body's gradient at that height.
+
+   It is now the standard two-triangle tail - an outer triangle in the
+   border colour with an inner triangle of body fill laid over it, offset by
+   the border width. The inner triangle's base lands 3px inside the bubble,
+   so it covers the body's left border and the join disappears; the outer
+   one shows through as a ~1.7px outline that continues the body's border
+   around the point. Sitting at top:50% it points at the cat and stays
+   centred whether the message runs to one line or two.
+
+   The play screen's own .cat-message bubble is a different element and is
+   deliberately untouched.
+   ========================================================================== */
+.result-message {
+  /* The old 10px bottom-left corner existed to meet the old tail position. */
+  border-radius: 18px;
+}
+
+.result-message::before,
+.result-message::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  background: none;
+  border-radius: 0;
+  transform: translateY(-50%);
+}
+
+/* Outline, matching the body's border colour. */
+.result-message::before {
+  left: -12px;
+  border: 7px solid transparent;
+  border-right-color: rgba(222, 181, 116, .7);
+}
+
+/* Fill, sampled from the body gradient at the tail's own height so the two
+   are the same colour where they meet. */
+.result-message::after {
+  left: -9px;
+  border: 6px solid transparent;
+  border-right-color: rgba(255, 252, 238, .98);
+}
+
+/* 2026-08 home logo swap ---------------------------------------------------
+   The new wordmark is a wide lockup (OING over a GAME pill) instead of the
+   old square-ish OING, so it needs a lot more width to read at the same
+   optical weight. These win over the height/width media blocks above purely
+   by source order, which keeps the responsive rules there untouched. */
+.oing-logo {
+  width: clamp(268px, 84vw, 330px);
+}
+
+@media (max-width: 340px) {
+  .oing-logo { width: 88vw; }
+}
+
+/* 2026-08 home layout pass -------------------------------------------------
+   Two things were off. The stage box was sized independently of the cat art,
+   so the painted image spilled past the box by a different amount at every
+   viewport (23px below at 390x844, 14px at 360x740) and the ground shadow --
+   anchored to the box -- floated up around the cat's hips instead of sitting
+   under its paws. Giving the stage the art's own aspect ratio puts the box
+   and the image in one coordinate space, so a single percentage lands the
+   shadow correctly at every size.
+
+   The cat art is 422x480 with the silhouette ending at y=440, so the paw line
+   is a flat 8.33% up from the bottom of the box. The contact patch spans
+   x 69..300, centred at 43.7% rather than 50% -- the tail swings right while
+   the weight sits left, which is the other half of the misalignment. */
+.home-character-stage {
+  width: auto;
+  /* Keep the hero at one optical size across a browser viewport and the
+     taller Apps-in-Toss WebView. The old `100dvh - 520px` rule expanded the
+     same cat from about 180px to 304px solely because browser chrome was
+     absent, making the packaged app look like a different home screen. */
+  height: clamp(178px, 25dvh, 224px);
+  aspect-ratio: 422 / 480;
+  margin-top: clamp(4px, 2.6vh, 26px);
+}
+/* The 496px is the rest of the screen measured: padding, brand row, tagline,
+   howto card, action card and the settings reserve. Sizing the cat from what
+   is left rather than from a share of the viewport is what keeps every size
+   from 320x568 up clear of the settings button -- a plain vh share fits one
+   height and overflows the other, because the chrome around the cat costs
+   the same absolute pixels on a short screen as on a tall one. */
+
+/* Grass glow and cast shadow, both centred on the paw line. */
+.home-character-stage::before {
+  left: 43.7%;
+  bottom: -0.7%;
+  width: 100%;
+  height: 18%;
+}
+
+.home-character-stage::after {
+  left: 43.7%;
+  bottom: 4.3%;
+  width: 56%;
+  height: 8%;
+}
+
+/* The cat and the button stack ride down into the slack the old layout left
+   sitting empty above the settings button. The reserve keeps the action card
+   clear of that button, and the two auto margins split whatever is left over
+   so tall screens breathe and short ones collapse to zero instead of
+   overflowing. */
+.screen-home {
+  padding-bottom: calc(80px + var(--safe-bottom));
+}
+
+.home-howto,
+.home-actions {
+  margin-top: auto;
+}
+
+/* 2026-08 home best-score card ---------------------------------------------
+   The card was a three-column grid -- star, label stack, score -- squeezed
+   into half of a 360dp row, so the caption clipped to "최..." and the STAGE
+   line ran underneath the number. The stage line is gone and what is left
+   stacks in a single column: a small caption over the figure the card is
+   actually about, set in the display face. */
+.best-record-card {
+  grid-template-columns: 26px minmax(0, 1fr);
+  column-gap: 7px;
+  padding: 5px 9px 5px 8px;
+}
+
+.best-record-card span {
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  min-width: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.best-record-card span em {
+  overflow: visible;
+  color: #4f8b80;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .01em;
+}
+
+.best-record-card strong {
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
+  color: var(--coral-deep);
+  font-family: var(--font-display);
+  font-size: clamp(17px, 5.4vw, 22px);
+  font-weight: 400;
+  letter-spacing: .005em;
+  line-height: 1.08;
+  text-align: left;
+  text-overflow: clip;
+}
+
+.best-record-card strong::after {
+  margin-left: 1px;
+  font-size: 10.5px;
+}
+
+/* 2026-08 start button stars ------------------------------------------------
+   The two marks flanking 시작하기 were a four-point sparkle on the left and a
+   five-point star on the right, at 20 and 18dp. Same art, same size on both
+   sides now, so the button reads as one symmetrical piece. */
+.start-button-sparkle,
+.start-button-sparkle:last-child {
+  width: 19px;
+  height: 19px;
+}
+
+/* 2026-08 chapter album ----------------------------------------------------
+   The album moved out of the parked garden into the records sheet, and the
+   cards stopped being name chips. Each one is now the scene itself at 3:4,
+   the same ratio the paintings ship in, so the reward is the picture rather
+   than a checklist row. A locked card still paints its scene -- blurred,
+   drained and darkened -- because "there is something there you have not
+   reached" is a better hook than an empty slot. */
+.chapter-gallery {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.chapter-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+  display: grid;
+  align-content: end;
+  gap: 0;
+  overflow: hidden;
+  padding: 3px;
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, rgba(206,226,236,.55), rgba(232,224,206,.55));
+  isolation: isolate;
+}
+
+/* The painting sits on its own layer so the lock treatment can blur it
+   without touching the label on top. */
+.chapter-card.has-art::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  background: var(--chapter-thumb) center / cover no-repeat;
+}
+
+/* Legibility scrim under the name, and the lock veil in one element. */
+.chapter-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(38,52,74,.42) 0%, rgba(38,52,74,.06) 42%, transparent 62%),
+    linear-gradient(0deg, rgba(30,44,66,.62), transparent 52%);
+}
+
+.chapter-card:not(.is-unlocked).has-art::before {
+  filter: blur(3.5px) saturate(.35) brightness(.86);
+  transform: scale(1.12);
+}
+
+.chapter-card:not(.is-unlocked)::after {
+  background: linear-gradient(0deg, rgba(30,44,66,.66), rgba(30,44,66,.34));
+}
+
+.chapter-card strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 2px rgba(24,36,56,.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-card span {
+  color: rgba(255,255,255,.86);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 2px rgba(24,36,56,.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-card.is-unlocked {
+  border-color: rgba(102,185,167,.75);
+  background: none;
+}
+
+.chapter-card.is-unlocked strong,
+.chapter-card.is-unlocked span { color: #fff; }
+
+/* The score-gated scene keeps its warm frame so it reads as a different
+   kind of goal from the ones the ladder hands out. */
+.chapter-card.is-secret { border-color: rgba(224,168,92,.6); border-style: dashed; }
+.chapter-card.is-secret.is-unlocked { border-style: solid; border-color: rgba(240,186,102,.9); }
+.chapter-card.is-secret.is-unlocked strong { color: #fff; }
+.chapter-card.is-secret.is-unlocked span { color: rgba(255,240,214,.94); }
+
+/* The sheet grew a picture grid, so it needs to be able to scroll on short
+   screens instead of clipping. */
+.ranking-panel {
+  max-height: calc(100dvh - 44px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 2026-08 result sheet: bigger cat, bigger line ----------------------------
+   Both were sized for a busier sheet. The cat grows ~17% and the message
+   with it, capped where the longest line still fits on two rows. */
+.result-character-stage { width: 172px; height: 180px; }
+
+.result-message {
+  min-width: 196px;
+  max-width: 248px;
+  font-size: 16px;
+}
+
+.result-stage-progress { font-size: 17.5px; }
+
+.result-chapter-earned {
+  justify-self: center;
+  width: fit-content;
+  margin: 5px auto 0;
+  padding: 5px 11px;
+  border: 1px solid rgba(92, 185, 157, .28);
+  border-radius: 999px;
+  background: rgba(226, 250, 239, .82);
+  color: #347d69;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.result-chapter-earned[hidden] { display: none; }
+.result-kicker { font-size: 14px; }
+
+/* Ranking opened from the result screen: the sheet bows out downward so
+   the panel owns the screen, and slides back when the overlay closes. */
+.result-card {
+  transition: transform 340ms cubic-bezier(.3,.7,.3,1), opacity 280ms ease;
+}
+
+.result-card.is-tucked {
+  transform: translateY(118%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+#ranking-overlay { z-index: 60; }
+
+/* 그림 크게 보기 창은 기록 창보다 위에 선다.
+   장면 모음이 기록 창(z-index 60) 안에 들어 있어서, 카드를 눌러도 그림이 그
+   뒤에서 열렸다. 화면에는 아무 일도 없는 것처럼 보이니 눌러도 안 열린다는
+   말이 나온 것이다. 이 창은 장면 모음에서만 열리므로 늘 위여야 한다. */
+#chapter-viewer { z-index: 70; }
+
+@media (max-width: 340px) {
+  .result-character-stage { width: 142px; height: 150px; }
+  .result-message { max-width: 214px; font-size: 15px; }
+}
+
+/* Chapter viewer: one painting, full width of the panel, its own 3:4. */
+.chapter-viewer-panel { width: min(100%, 330px); padding: 20px 16px 16px; }
+.chapter-viewer-panel h2 { margin: 0 0 10px; color: #44516a; font-size: 19px; }
+.chapter-viewer-panel img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(60, 74, 110, .22), inset 0 0 0 1px rgba(255,255,255,.4);
+}
+
+/* 2026-08 play backdrop calmed ---------------------------------------------
+   The surround was the most saturated thing on screen while the board a
+   player has to read was pale pastel - the value hierarchy ran backwards,
+   so the eye kept drifting to the frame and re-focusing on the numbers.
+   The wash over the sky comes up so the board becomes the brightest, most
+   defined object. The photograph underneath is untouched: sky and meadow
+   still read as sky and meadow, only softer. */
+.screen-play.play-ui-v4,
+.screen-play.play-ui-v4[data-stage-band] {
+  background:
+    linear-gradient(180deg, rgba(232,247,253,.56) 0%, rgba(247,252,247,.47) 44%, rgba(255,251,238,.41) 78%, rgba(255,249,232,.40) 100%),
+    #9fd4f5 url("../assets/backgrounds/play-bg-spring-path-v2.webp") center bottom / cover no-repeat;
+}
+
+/* Privacy cover: swapped in when the tab goes background so the app
+   switcher's snapshot shows the logo, not the board. */
+#privacy-cover {
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #dff3fb, #fff7e6);
+}
+
+#privacy-cover[hidden] { display: none; }
+
+#privacy-cover img {
+  width: min(64vw, 300px);
+  height: auto;
+}
+
+/* Result sheet, elder-readable pass ----------------------------------------
+   Everything a step larger, the score in the display face, and the two
+   primary actions given real presence. */
+.final-score {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(60px, 17vw, 72px);
+  letter-spacing: -0.01em;
+}
+
+.result-grid span { font-size: 13.5px; }
+.result-grid b { font-size: 25px; }
+.result-grid img { width: 22px; height: 22px; }
+.result-kicker { font-size: 15px; }
+
+.result-share-chip {
+  min-height: 46px;
+  padding: 8px 14px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+#retry-button {
+  min-height: 60px;
+  font-size: 22px;
+  animation: retry-breathe 1.7s ease-in-out infinite;
+}
+
+/* 결과 화면은 사람이 오래 머무는 자리인데, 이 버튼이 그동안 내내 돌았다.
+   원래 keyframes에 box-shadow가 같이 있어서 프레임마다 버튼을 다시 그렸다.
+   그림자는 빼고 크기 변화만 남긴다 - 숨쉬는 느낌은 그쪽에서 나오고,
+   transform은 합성기가 처리한다. */
+@keyframes retry-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
+}
+
+#retry-button::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: -28%;
+  top: -35%;
+  width: 20%;
+  height: 170%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+  transform: skewX(-17deg);
+  animation: start-button-shine 3.6s 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+#retry-button { position: relative; overflow: hidden; }
+
+.result-home-button {
+  margin-top: 12px;
+  min-height: 46px;
+  padding: 9px 20px;
+  border: 1.5px solid rgba(190, 156, 96, .55);
+  border-radius: 999px;
+  background: linear-gradient(#fffdf6, #ffefcd);
+  box-shadow: 0 3px 0 rgba(178,132,67,.16), 0 6px 12px rgba(94,73,47,.1);
+  color: #6d5545;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #retry-button { animation: none; }
+  #retry-button::after { animation: none; }
+}
+
+/* Score settle pop at the end of the count-up. */
+.final-score.is-settled {
+  animation: final-score-settle 360ms cubic-bezier(.2,.85,.3,1.25);
+}
+
+@keyframes final-score-settle {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+/* 설정 패널 맨 아래 처리방침 링크.
+   스토어 심사에서 게임 안에서도 찾을 수 있어야 해서 달았고,
+   설정 항목들과 섞이지 않도록 작고 조용하게 둔다. */
+.settings-legal {
+  margin: 12px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid rgba(226,202,161,.45);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-align: center;
+}
+.settings-legal a { color: #8b8079; text-decoration: underline; text-underline-offset: 2px; }
+
+/* 장면 한 장을 크게 볼 때 붙는 것들.
+   조건 한 줄과 공유 버튼. 참고한 수집형 게임들처럼, 크게 본 김에
+   자랑까지 이어지는 것이 수집의 마무리다. */
+.chapter-viewer-note {
+  margin: 10px 0 0;
+  color: #7b8598;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  text-align: center;
+}
+.chapter-viewer-share {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 14px;
+  font-size: 15px;
+}
+.chapter-viewer-share .button-icon { width: 20px; height: 20px; }
+
+/* 오잉 카드 칸.
+   장면 칸과 같은 모양을 쓰되, 아직 못 얻은 칸에는 진행도 막대를 깐다.
+   회색 칸만 있으면 목표가 아니라 벽으로 읽힌다 - 얼마나 왔는지가 보여야
+   다음 한 장이 손에 닿는 것처럼 느껴진다. */
+.oing-card { position: relative; }
+.oing-card-meter {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  left: 8px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(72, 84, 112, .22);
+  overflow: hidden;
+}
+.oing-card-meter::after {
+  content: "";
+  display: block;
+  width: var(--fill, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8fdccb, #62cdb6);
+}
+.oing-card-collection { margin-top: 12px; }
+
+/* 카드 칸은 장면 칸보다 넓다.
+   해금 조건이 "5칸 이상 한 번에 300번 (96/300)"처럼 길어서, 장면과 같은 네 칸
+   격자에 넣으면 글자가 잘려서 조건이 읽히지 않는다. 참고한 수집형
+   게임들도 세 칸으로 둔다. */
+.oing-card-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.oing-card {
+  min-height: 96px;
+  align-content: end;
+  padding-bottom: 14px;
+}
+/* 조건은 두 줄까지 보여준다. 한 줄로 자르면 진행도만 남고 목표가 사라진다. */
+.oing-card span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 9.5px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+/* 아직 못 얻은 카드의 뒷면.
+   아홉 칸이 같은 그림 한 장을 쓰므로 요청은 한 번뿐이고, 그 다음부터는
+   브라우저가 받아둔 것을 다시 쓴다. 그림이 저장소에 들어오기 전에는
+   has-back이 붙지 않아서 예전처럼 회색으로만 남는다. */
+.oing-card.has-back {
+  background-image: url("../assets/cards/thumbs/card-back-v1.webp");
+  background-size: cover;
+  background-position: center;
+}
+
+/* Home rule headline -----------------------------------------------------
+   The separate pill repeated the rule and pushed every useful action down.
+   The real rectangle instruction now owns that hierarchy in the existing
+   how-to panel, while the removed row becomes breathing room above Settings. */
+.screen-home .home-howto {
+  margin-top: -2px;
+}
+
+/* Reserve a visible gap above the fixed Settings control on short phones. */
+.screen-home {
+  padding-bottom: calc(88px + var(--safe-bottom));
+}
+
+.screen-home .home-instruction {
+  gap: 4px;
+  min-height: 24px;
+  margin: 0 0 2px;
+  color: #665249;
+  font-family: var(--font-display);
+  font-size: clamp(14px, 4vw, 16px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+  white-space: nowrap;
+}
+
+.screen-home .home-instruction img {
+  width: 14px;
+  height: 14px;
+}
+
+.screen-home .home-instruction em {
+  color: var(--coral-deep);
+  font: inherit;
+}
+
+@media (max-width: 340px), (max-height: 720px) {
+  .screen-home .home-instruction {
+    gap: 3px;
+    font-size: 13.5px;
+  }
+
+  .screen-home .home-instruction img {
+    width: 13px;
+    height: 13px;
+  }
+}
+
+/* 홈 데모 단순화 (2026-08 검수 합의) --------------------------------------
+   3숫자+빈칸 2×2 예제는 첫 3초 안에 "세 숫자? 빈칸도? 네모?"를 한꺼번에
+   읽어야 했다. 인접 두 칸도 결국 1×2 직사각형이므로, 가장 단순한 예(4+6)로
+   같은 드래그 규칙을 가르친다. 큰 묶음은 첫 판의 드래그 튜토리얼이 맡는다. */
+.home-mini-board-pair {
+  grid-template-columns: repeat(2, 26px);
+  grid-template-rows: 26px;
+}
+
+.home-mini-board-pair > span { font-size: 15px; }
+
+.home-mini-board-pair > span:nth-child(2) { background: rgba(255,244,207,.94); }
+
+.home-mini-board-pair .home-mini-drag { animation-name: home-drag-dot-pair; }
+
+@keyframes home-drag-dot-pair {
+  0%, 13% { opacity: 1; transform: translate(0, 5px) scale(.9); }
+  34%, 70% { opacity: 1; transform: translate(48px, 11px) scale(1); }
+  82%, 100% { opacity: 0; transform: translate(48px, 11px) scale(.65); }
 }

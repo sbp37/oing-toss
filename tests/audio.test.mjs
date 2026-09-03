@@ -182,14 +182,14 @@ test('a new record adds a restrained four-note victory tail', () => {
   assert.deepEqual(oscillators.slice(-4).map((item) => item.frequency.events[0].value), [523.25, 659.25, 783.99, 1046.5]);
 });
 
-test('bomb sound keeps the original OING impact shards', () => {
+test('bomb sound keeps the previous OING impact', () => {
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playBombSound());
   assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600]);
   assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
 });
 
-test('mega bomb sound keeps the original OING five-layer impact', () => {
+test('mega bomb sound keeps the previous OING impact', () => {
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playMegaBombSound());
   assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600, 400, 1600]);
@@ -214,7 +214,18 @@ test('time freeze keeps the original OING ice shards and closing bells', () => {
   }
 });
 
-test('clover sound is a bright five-note lucky flourish', () => {
+test('clover sound uses the chosen warm four-note flourish', () => {
   const oscillators = newOscillators(() => audio.playCloverSound());
-  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [659.25, 880, 1046.5, 1318.5, 2637]);
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [392, 523, 659, 784]);
+  assert.equal(oscillators.at(-1).type, 'triangle');
+});
+
+test('hint and shuffle use the chosen lower soft cues', () => {
+  const hint = newOscillators(() => audio.playHintSound());
+  assert.deepEqual(hint.map((item) => item.frequency.events[0].value), [392, 523, 659]);
+  const before = AudioContextMock.latest.bufferSources.length;
+  const shuffle = newOscillators(() => audio.playShuffleSound());
+  assert.deepEqual(shuffle.map((item) => item.frequency.events[0].value), [440]);
+  assert.deepEqual(shuffle[0].frequency.events.map((event) => event.value), [440, 587]);
+  assert.equal(AudioContextMock.latest.bufferSources.length, before + 2);
 });
