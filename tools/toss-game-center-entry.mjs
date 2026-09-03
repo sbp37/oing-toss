@@ -1,4 +1,14 @@
-import { Device, Environment, Game, GoogleAdMob, Promotion, Share, getSchemeUri } from '@apps-in-toss/web-framework';
+import {
+  Device,
+  Environment,
+  Game,
+  GoogleAdMob,
+  Promotion,
+  Share,
+  getSchemeUri,
+  loadFullScreenAd,
+  showFullScreenAd,
+} from '@apps-in-toss/web-framework';
 
 // Browser bundle source for js/vendor/toss-game-center-v1.js. Rebuild with:
 // pnpm dlx esbuild@0.25.10 tools/toss-game-center-entry.mjs --bundle
@@ -138,6 +148,14 @@ export function isRewardedAdSupported() {
   }
 }
 
+export function isInterstitialAdSupported() {
+  try {
+    return loadFullScreenAd.isSupported() && showFullScreenAd.isSupported();
+  } catch {
+    return false;
+  }
+}
+
 // 광고 다리에는 반드시 시간 제한이 있어야 한다.
 //
 // 이 약속들은 이벤트가 와야만 끝난다. 그런데 토스 공식 문서에도 예외가
@@ -238,6 +256,55 @@ export function loadRewardedAd(adGroupId) {
     onEvent: (event) => { if (event.type === 'loaded') settle(true); },
     onError: () => settle(false),
   })).then((value) => value === true);
+}
+
+// 전면형도 보상형과 같은 전체화면 슬롯을 쓰지만, 보상 이벤트는 기다리지
+// 않는다. 결과 화면을 떠나는 순간에만 호출하고 dismissed/failedToShow 중
+// 하나가 오면 게임 흐름을 즉시 돌려준다.
+export function loadInterstitialAd(adGroupId) {
+  return withDeadline(LOAD_TIMEOUT_MS, (settle) => loadFullScreenAd({
+    options: { adGroupId },
+    onEvent: (event) => { if (event.type === 'loaded') settle(true); },
+    onError: () => settle(false),
+  })).then((value) => value === true);
+}
+
+export function showInterstitialAd(adGroupId) {
+  let shown = false;
+  let failed = false;
+  return withDeadline(SHOW_TIMEOUT_MS, (settle) => showFullScreenAd({
+    options: { adGroupId },
+    onEvent: (event) => {
+      if (event.type === 'show' || event.type === 'impression') shown = true;
+      else if (event.type === 'failedToShow') {
+        failed = true;
+        settle('failedToShow');
+      } else if (event.type === 'dismissed') {
+        shown = true;
+        settle('dismissed');
+      }
+    },
+    onError: () => { failed = true; settle('error'); },
+  })).then((how) => {
+    if (how === 'timeout' || how === 'threw') failed = true;
+    return { shown: shown && !failed, failed };
+  });
+}
+
+export function isPromotionRewardSupported() {
+  try { return Promotion.grantReward.isSupported(); } catch { return false; }
+}
+
+export async function grantPromotionReward(promotionCode, amount) {
+  try {
+    const result = await Promotion.grantReward({
+      promotionCode: String(promotionCode || ''),
+      amount: Math.max(0, Math.round(Number(amount) || 0)),
+    });
+    return { ok: Boolean(result?.key), key: result?.key || '' };
+  } catch (error) {
+    return { ok: false, code: String(error?.code || 'UNKNOWN_ERROR') };
+  }
 }
 
 export function isRewardedAdLoaded(adGroupId) {

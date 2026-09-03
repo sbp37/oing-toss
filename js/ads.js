@@ -98,6 +98,43 @@ export async function preloadAd(kind) {
   }
 }
 
+// 세 번째 결과 화면이 먼저 보인 직후 쓰는 전면형 광고. 보상형과 준비 상태 저장소는
+// 공유하되 SDK 함수와 이벤트 계약은 분리한다. 그룹 ID가 비어 있으면 완전히
+// 꺼져 있어서 콘솔 등록 전 빌드도 안전하다.
+export async function preloadInterstitial() {
+  const kind = 'interstitial';
+  const adGroupId = adGroupIdFor(kind);
+  if (!adGroupId || !isAppsInTossWebView()) return false;
+  if (loadedKinds.has(kind) || loadingKinds.has(kind)) return loadedKinds.has(kind);
+  if (showingKind !== null) {
+    deferredLoads.add(kind);
+    return false;
+  }
+  loadingKinds.add(kind);
+  try {
+    const module = await bridge();
+    if (!module?.isInterstitialAdSupported?.()) return false;
+    const ok = await module.loadInterstitialAd(adGroupId);
+    if (ok) {
+      loadedKinds.add(kind);
+      announceReadyChange();
+    }
+    return Boolean(ok);
+  } catch {
+    return false;
+  } finally {
+    loadingKinds.delete(kind);
+  }
+}
+
+export function interstitialReady() {
+  return adsAvailable('interstitial') && loadedKinds.has('interstitial');
+}
+
+async function preloadKind(kind) {
+  return kind === 'interstitial' ? preloadInterstitial() : preloadAd(kind);
+}
+
 // 로드까지 끝나 지금 바로 띄울 수 있는가.
 export function adReady(kind) {
   return adsAvailable(kind) && loadedKinds.has(kind);
@@ -166,8 +203,38 @@ export async function showAd(kind) {
     deferredLoads.clear();
     void (async () => {
       for (const next of pending) {
-        await preloadAd(next);
+        await preloadKind(next);
       }
+    })();
+  }
+}
+
+// 전면광고는 결과 점수를 먼저 보여준 뒤에만 부른다. 못 불러오면 결과 화면이나
+// 다음 전환을 절대 막지 않는다.
+export async function showInterstitial() {
+  const kind = 'interstitial';
+  const adGroupId = adGroupIdFor(kind);
+  if (!adGroupId || !isAppsInTossWebView() || showingKind !== null) return { shown: false };
+  try {
+    const module = await bridge();
+    if (!module?.showInterstitialAd || !module?.isInterstitialAdSupported?.()) return { shown: false };
+    if (!loadedKinds.has(kind)) {
+      const loaded = await preloadInterstitial();
+      if (!loaded) return { shown: false };
+    }
+    showingKind = kind;
+    const result = await module.showInterstitialAd(adGroupId);
+    return { shown: Boolean(result?.shown) };
+  } catch {
+    return { shown: false };
+  } finally {
+    showingKind = null;
+    loadedKinds.delete(kind);
+    announceReadyChange();
+    const pending = [...deferredLoads];
+    deferredLoads.clear();
+    void (async () => {
+      for (const next of pending) await preloadKind(next);
     })();
   }
 }
