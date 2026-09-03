@@ -6117,6 +6117,10 @@
 .screen-play.play-ui-v4.is-tall-board[data-board-rows="9"]
   .board-frame[data-cols="6"] {
   width: min(98cqw, 430px);
+  height: min(
+    calc(147cqw - 24px),
+    calc(100dvh - var(--board-chrome) - 24px)
+  );
   aspect-ratio: auto;
 }
 

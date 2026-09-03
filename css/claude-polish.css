@@ -1924,3 +1924,20 @@
 .record-tab.is-active b { background: rgba(99, 192, 171, .36); }
 
 .record-pane[hidden] { display: none; }
+
+/* Result sheet: the dialogue only needs one compact line. The 69px cat used
+   to force an 81px row and left the bubble sitting at the bottom of a large
+   empty cream band. Keep the cat size, let it rise over the summary edge,
+   and spend only 54px of sheet height on the row itself. */
+.screen-result.is-sheet .result-cat-row {
+  height: 54px;
+  min-height: 54px;
+  padding-block: 4px;
+  align-items: flex-end;
+  overflow: visible;
+}
+
+.screen-result.is-sheet .result-character-stage,
+.screen-result.is-sheet .result-message {
+  align-self: flex-end;
+}
