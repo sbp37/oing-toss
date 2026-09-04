@@ -2975,6 +2975,7 @@ class OingGame {
     const records = await rankingAdapter.open();
     this.refreshClassicRecordSurfaces();
     this.ui.renderRanking(records);
+    this.ui.setRankingBestCombo(storageAdapter.getClassicBestCombo());
     this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     // The album lives in the records sheet now: the garden it used to sit in
     // is parked, and this is the surface a player already opens to look back

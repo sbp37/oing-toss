@@ -1941,3 +1941,114 @@
 .screen-result.is-sheet .result-message {
   align-self: flex-end;
 }
+
+/* ==========================================================================
+   2026-09 기록 창(내 오잉) 다듬기
+   실기기 제보: "버튼이 너무 얇다, 버튼 같지가 않다, 깊이가 없다." 맞는
+   말이다. 탭은 테두리 하나에 배경만 있어서 종이에 그린 네모로 읽혔고,
+   닫기 X와 홈의 크림 버튼도 그림자가 흐려서 눌리는 물건으로 안 보였다.
+   이 게임의 버튼 문법은 이미 있다 - 시작하기·한 판 더 하기가 쓰는
+   "아래 두께 4px + 누르면 내려앉기". 나머지도 같은 문법으로 맞춘다.
+   ========================================================================== */
+
+/* 탭: 꺼진 쪽은 두께를 가진 채 떠 있고, 켜진 쪽은 눌려 들어가 있다.
+   "지금 어느 쪽인가"를 색이 아니라 높이로 말한다. */
+.record-tab {
+  min-height: 46px;
+  border: 2px solid rgba(214, 190, 150, .9);
+  border-radius: 15px;
+  background: linear-gradient(180deg, #fffdf8, #f7ecd6);
+  color: #8f7c62;
+  box-shadow: 0 4px 0 rgba(182, 146, 92, .34), 0 7px 12px rgba(120, 92, 48, .1), inset 0 2px 0 #fff;
+  transform: translateY(0);
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease,
+    box-shadow 120ms ease, transform 120ms ease;
+}
+.record-tab:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(182, 146, 92, .34), inset 0 2px 0 #fff; }
+.record-tab.is-active {
+  border-color: rgba(224, 168, 92, .95);
+  background: linear-gradient(180deg, #fff7e3, #ffedc9);
+  color: #5f4a30;
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(182, 146, 92, .3), inset 0 2px 3px rgba(160, 118, 60, .16);
+}
+.record-tab b { padding: 3px 10px; font-size: 14px; }
+
+/* 닫기: 크림 원판에 두께를 준다. 앱인토스 자체 X와 같은 구석에 안 두는
+   규칙(왼쪽 위)은 그대로다. */
+.ranking-panel .overlay-close {
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(214, 190, 150, .9);
+  background: linear-gradient(180deg, #fffdf8, #f5e8d0);
+  box-shadow: 0 4px 0 rgba(182, 146, 92, .32), 0 6px 10px rgba(120, 92, 48, .1), inset 0 2px 0 #fff;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.ranking-panel .overlay-close:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(182, 146, 92, .32), inset 0 2px 0 #fff; }
+.ranking-panel .overlay-close i::before,
+.ranking-panel .overlay-close i::after { left: 12px; top: 19px; width: 16px; }
+
+/* 홈·결과의 크림 버튼(내 오잉·랭킹): 시작하기와 같은 두께로. 옆에 선 분홍
+   버튼은 5px 두께인데 이 버튼만 그림자가 옅어서 종이처럼 보였다. */
+.btn-cream {
+  border-color: #dfc59a;
+  box-shadow: 0 4px 0 #d9bd8c, 0 8px 14px rgba(150, 112, 56, .14), inset 0 2px 0 #fff;
+}
+.btn-cream:active { box-shadow: 0 1px 0 #d9bd8c, 0 3px 6px rgba(150, 112, 56, .1), inset 0 2px 0 rgba(255,255,255,.7); }
+
+/* 요약 칸 넷을 2x2로. 셋이 한 줄이면 칸이 좁아 "평균 점수"가 겨우 들어갔고,
+   최고 콤보를 넣을 자리가 없었다. 콤보는 이 게임 점수의 배율이라 최고기록
+   바로 밑에서 "왜 그 점수인가"를 설명하는 숫자다. */
+.record-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+.record-stats > div {
+  min-height: 54px;
+  border-width: 1.5px;
+  border-radius: 15px;
+  box-shadow: 0 2px 0 rgba(182, 146, 92, .12), inset 0 1px 0 #fff;
+}
+.record-stats span { font-size: 11.5px; }
+.record-stats strong { font-size: 17px; }
+.record-stats > div:nth-child(3) { background: rgba(255, 244, 222, .92); }
+.record-stats > div:nth-child(3) strong { color: #d9884a; }
+.record-stats > div:nth-child(4) { background: rgba(255, 237, 243, .86); }
+
+/* 간식 줄: 칸과 그래프 사이에 글자만 떠 있어서 어디에도 속하지 않아 보였다.
+   알약 하나로 감싼다. */
+.record-cats-line {
+  width: fit-content;
+  justify-self: center;
+  margin: 9px auto 0;
+  padding: 5px 13px;
+  border: 1px solid rgba(230, 210, 171, .8);
+  border-radius: 999px;
+  background: rgba(255, 253, 244, .9);
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+/* 최근 점수 그래프: 최고 판은 번호 대신 "최고"라고 말한다. 분홍 막대만으로는
+   "왜 저것만 색이 다른지"를 처음 보는 사람이 모른다. 키 큰 화면에서는 막대를
+   조금 더 키워 창의 빈 아래쪽을 쓴다. */
+.record-history { margin-top: 10px; }
+.record-bars i.is-best::after { content: "최고"; color: #e05a7a; font-weight: 900; white-space: nowrap; }
+@media (min-height: 760px) {
+  .record-bars { height: 104px; }
+}
+
+/* 아직 못 얻은 카드의 진행 막대: 4px는 실기기에서 실금이었다. 6px로 키우고
+   채워진 쪽에 흰 윗줄을 얹어 막대로 읽히게 한다. */
+.oing-card-meter {
+  right: 9px;
+  bottom: 6px;
+  left: 9px;
+  height: 6px;
+  background: rgba(72, 84, 112, .28);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
+}
+.oing-card-meter::after { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55); }
+
+/* 한 판 더 하기와 그 위 내용 사이 숨 한 칸. */
+.ranking-play-button { margin-top: 12px !important; }

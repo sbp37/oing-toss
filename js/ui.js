@@ -173,6 +173,7 @@ export class GameUI {
       rankingLast: document.querySelector('#ranking-last-score'),
       rankingAverage: document.querySelector('#ranking-average-score'),
       rankingCount: document.querySelector('#ranking-run-count'),
+      rankingBestCombo: document.querySelector('#ranking-best-combo'),
       rankingTrend: document.querySelector('#ranking-trend'),
       rankingBars: document.querySelector('#ranking-bars'),
       rankingEmpty: document.querySelector('#ranking-empty'),
@@ -1963,6 +1964,17 @@ export class GameUI {
     entry.remove();
     this.boardFrame.classList.remove('is-round-arriving');
     this.elements.roundMini.classList.remove('is-advancing');
+  }
+
+  // 기록 창의 최고 콤보 칸. 점수 요약(renderRanking)은 최근 7판 점수만
+  // 알고, 최고 콤보는 다른 키에 따로 쌓이므로 여는 쪽(openRanking)이 읽어서
+  // 넘긴다. 콤보는 이 게임 점수의 배율이라 "왜 그 점수가 나왔는지"를 가장
+  // 짧게 설명하는 숫자인데, 여태 어디에도 안 보였다.
+  setRankingBestCombo(combo = 0) {
+    const el = this.elements.rankingBestCombo;
+    if (!el) return;
+    const value = Math.max(0, Math.round(Number(combo) || 0));
+    el.textContent = value > 0 ? `x${value}` : '-';
   }
 
   // size는 다음 판의 { rows, cols }다. 판이 커진 판갈이(boardGrew)에서만
