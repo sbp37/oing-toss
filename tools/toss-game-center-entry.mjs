@@ -6,6 +6,7 @@ import {
   Promotion,
   Share,
   getSchemeUri,
+  getUserKeyForGame,
   loadFullScreenAd,
   showFullScreenAd,
 } from '@apps-in-toss/web-framework';
@@ -30,6 +31,31 @@ export function submitLeaderboardScore(score) {
 
 export function openLeaderboard() {
   return Game.openLeaderboard();
+}
+
+// A custom OING account uses Toss' game-scoped hash as a provider identity.
+// The raw hash is sent only to our server for mTLS verification and is never
+// stored there; the server keeps an HMAC-derived identity key instead.
+export async function getTossGameIdentity() {
+  try {
+    if (typeof getUserKeyForGame !== 'function') return null;
+    const result = await getUserKeyForGame();
+    if (!result || result === 'ERROR' || result === 'INVALID_CATEGORY') return null;
+    return result.type === 'HASH' && result.hash
+      ? { provider: 'toss', credential: result.hash }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getTossGameProfile() {
+  try {
+    if (typeof Game?.getUserProfile !== 'function' || !Game.getUserProfile.isSupported()) return null;
+    return await Game.getUserProfile();
+  } catch {
+    return null;
+  }
 }
 
 // 네이티브 햅틱. 아이폰은 웹 Vibration API를 지원하지 않아 토스 밖에서는

@@ -69,7 +69,7 @@
         <p class="home-challenge" id="home-challenge" hidden aria-live="polite"><span>친구의 기록</span><strong id="home-challenge-score">0</strong><b>점</b></p>
         <button class="btn btn-primary btn-start" id="start-button" type="button"><img class="start-button-sparkle" src="assets/decor/star.webp" width="266" height="256" alt=""><span>시작하기</span><img class="start-button-sparkle" src="assets/decor/star.webp" width="266" height="256" alt=""></button>
         <button class="btn btn-cream home-leaderboard-button" id="home-leaderboard-button" type="button" hidden>
-          <img class="button-icon" src="assets/icons/navigation/ranking-trophy-v1.webp" width="320" height="320" decoding="async" alt=""><span>랭킹</span>
+          <img class="button-icon" src="assets/icons/navigation/ranking-trophy-v1.webp" width="320" height="320" decoding="async" alt=""><span>오잉 랭킹</span>
         </button>
         <button class="btn btn-cream home-ranking-button" id="home-ranking-button" type="button">
           <img class="button-icon" src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>내 오잉</span>
@@ -102,7 +102,7 @@
             <button class="asset-icon-button pause-button" id="pause-button" type="button" aria-label="일시정지">
               <img data-src="assets/ui/play-control-pause-v3.webp" width="238" height="249" decoding="async" alt="">
             </button>
-            <button class="hud-mini-button hud-leaderboard-button" id="hud-leaderboard-button" type="button" aria-label="랭킹 보기">
+            <button class="hud-mini-button hud-leaderboard-button" id="hud-leaderboard-button" type="button" aria-label="오잉 랭킹 보기">
               <img data-src="assets/icons/navigation/ranking-trophy-v1.webp" width="320" height="320" decoding="async" alt="">
             </button>
           </div>
@@ -271,7 +271,7 @@
           <img class="button-icon" data-src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>내 오잉</span>
         </button>
         <button class="btn btn-cream result-leaderboard-button" id="result-leaderboard-button" type="button">
-          <img class="button-icon" data-src="assets/icons/navigation/ranking-trophy-v1.webp" width="320" height="320" decoding="async" alt=""><span>랭킹</span>
+          <img class="button-icon" data-src="assets/icons/navigation/ranking-trophy-v1.webp" width="320" height="320" decoding="async" alt=""><span>오잉 랭킹</span>
         </button>
         <button class="result-home-button" id="home-button" type="button">
           <img data-src="assets/icons/navigation/home.webp" width="310" height="290" decoding="async" alt=""><span>홈으로</span>
@@ -419,6 +419,50 @@
         </section>
         </div>
         <button class="btn btn-primary ranking-play-button" id="ranking-play-button" type="button">한 판 더 하기</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="online-ranking-overlay" hidden>
+      <div class="mini-panel oing-online-ranking-panel" role="dialog" aria-modal="true" aria-labelledby="online-ranking-title">
+        <button class="overlay-close" id="online-ranking-close" type="button" aria-label="닫기"><i></i></button>
+        <div class="oing-online-rank-heading">
+          <img data-src="assets/icons/navigation/ranking-trophy-v1.webp" width="320" height="320" decoding="async" alt="">
+          <div><span>OING RANK</span><h2 id="online-ranking-title">오잉 랭킹</h2></div>
+        </div>
+        <div class="oing-rank-tabs" role="tablist" aria-label="랭킹 기간">
+          <button class="active" type="button" role="tab" aria-selected="true" data-oing-rank-mode="weekly">이번주</button>
+          <button type="button" role="tab" aria-selected="false" data-oing-rank-mode="all">전체</button>
+          <button type="button" role="tab" aria-selected="false" data-oing-rank-mode="friends">친구</button>
+        </div>
+        <section class="oing-rank-hero" aria-labelledby="oing-rank-period-title">
+          <img src="assets/decor/sparkle.webp" width="278" height="296" decoding="async" alt="">
+          <h3 id="oing-rank-period-title">이번 주 랭킹</h3>
+          <p id="oing-rank-period-note">매주 월요일 0시에 새로 시작한다냥!</p>
+        </section>
+        <section class="oing-my-rank-summary" id="oing-my-rank-summary" hidden aria-label="내 랭킹 요약">
+          <span class="oing-my-rank-ribbon">내 오잉</span>
+          <div class="oing-my-rank-main">
+            <img src="assets/characters/cat-idle.webp" width="431" height="481" decoding="async" alt="">
+            <div class="oing-my-rank-score">
+              <span id="oing-my-rank-place">순위 밖</span>
+              <strong id="oing-my-rank-points">0점</strong>
+              <b id="oing-my-rank-change">이번 주 첫 기록</b>
+            </div>
+            <i aria-hidden="true"></i>
+            <div class="oing-my-rank-next">
+              <span>다음 순위까지</span>
+              <strong id="oing-my-rank-gap">첫 기록을 기다려요</strong>
+            </div>
+          </div>
+          <button id="oing-my-rank-previous" type="button">지난주 기록이 아직 없다냥</button>
+        </section>
+        <button class="btn btn-cream oing-native-rank-button" id="oing-native-rank-button" type="button" hidden>
+          <img class="button-icon" data-src="assets/icons/navigation/trophy.webp" width="311" height="282" decoding="async" alt=""><span>기존 토스 랭킹 보기</span>
+        </button>
+        <div class="oing-rank-podium" id="oing-rank-podium" aria-label="상위 세 명"></div>
+        <p class="oing-friend-hint" id="oing-friend-hint">랭킹을 꾹 누르면 친구로 저장할 수 있다냥</p>
+        <p class="oing-rank-status" id="oing-rank-status">기록을 불러오는 중이다냥…</p>
+        <div class="oing-rank-list" id="oing-rank-list"></div>
       </div>
     </div>
 
