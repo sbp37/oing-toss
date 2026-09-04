@@ -286,6 +286,7 @@ export class OingLeaderboardView {
     this.mode = 'weekly';
     this.onModeChange = null;
     this.onFriendToggle = null;
+    if (this.root) this.root.dataset.mode = this.mode;
     this.root?.querySelectorAll('[data-oing-rank-mode]').forEach((button) => {
       button.addEventListener('click', () => {
         const mode = button.dataset.oingRankMode;
@@ -298,6 +299,10 @@ export class OingLeaderboardView {
   }
 
   setActiveMode() {
+    // 탭이 어느 쪽인지 CSS가 알아야 한다. 전체(all) 탭은 "지난주 대비 등락"이
+    // 없는 누적 최고점이라, 주간용 등락 칸(▲▼－)을 그대로 두면 모든 줄에
+    // '－'만 찍힌다. 그 칸을 접고 이름·점수에 자리를 준다.
+    if (this.root) this.root.dataset.mode = this.mode;
     this.root?.querySelectorAll('[data-oing-rank-mode]').forEach((button) => {
       const active = button.dataset.oingRankMode === this.mode;
       button.classList.toggle('active', active);
@@ -405,7 +410,11 @@ export class OingLeaderboardView {
       const changeData = rankChange(entry);
       const rankBadge = document.createElement('span');
       rankBadge.className = `oing-podium-rank-badge ${changeData.className}`;
-      rankBadge.textContent = `${podiumRankLabel(entry.rank)}  ${changeData.text}`;
+      // 전체 탭은 누적 최고점이라 등락이 없다. '1st －'의 '－'는 정보가 아니라
+      // 빈칸이므로 순위 글자만 남긴다.
+      rankBadge.textContent = this.mode === 'all'
+        ? podiumRankLabel(entry.rank)
+        : `${podiumRankLabel(entry.rank)}  ${changeData.text}`;
       const scoreLine = document.createElement('div');
       scoreLine.className = 'oing-podium-score-line';
       if (entry.isFriend) {

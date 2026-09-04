@@ -2052,3 +2052,112 @@
 
 /* 한 판 더 하기와 그 위 내용 사이 숨 한 칸. */
 .ranking-play-button { margin-top: 12px !important; }
+
+/* ==========================================================================
+   2026-09 오잉 랭킹(온라인) 시트 - 전체 탭 다듬기
+   전체 탭은 누적 최고점이라 지난주 대비 등락이 없다. 그런데 주간용 줄
+   구조를 그대로 써서 모든 줄과 시상대 배지에 '－'만 찍혔다. 그 칸을 접고
+   이름·점수에 자리를 준다. 나머지는 세 탭이 같은 언어를 쓰도록 공통이다:
+   순위 숫자를 먼저 읽히게, Top 배지와 점수는 같은 줄에 조금 더 크게,
+   내 기록 보기와 랭킹 줄에는 눌리는 두께를.
+   ========================================================================== */
+
+/* 순위 숫자가 줄의 첫 단어다. 옅은 갈색 14px는 이름보다 뒤로 물러나 있었다. */
+#online-ranking-overlay .oing-rank-number {
+  color: #7f6656;
+  font-size: 15px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+#online-ranking-overlay .oing-rank-row.top10 .oing-rank-number { color: #a4771d; }
+#online-ranking-overlay .oing-rank-row.top30 .oing-rank-number { color: #6e68b3; }
+#online-ranking-overlay .oing-rank-row.is-me .oing-rank-number { color: #2f9c96; }
+
+/* Top 배지와 점수는 같은 줄. 배지 7~8px는 실기기에서 안 읽혀서 한 단계 키운다. */
+#online-ranking-overlay .oing-rank-tier {
+  padding: 3px 6px;
+  font-size: 9px;
+  line-height: 1;
+  border-radius: 8px;
+}
+#online-ranking-overlay .oing-rank-tail { gap: 6px; }
+#online-ranking-overlay .oing-rank-tail > strong {
+  font-size: 14px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+#online-ranking-overlay .oing-rank-tail > strong::after { font-size: 10px; }
+
+/* 랭킹 줄은 꾹 눌러 친구를 저장하는 물건이다. 바닥에 두께 한 줄을 깔아
+   눌리는 것으로 읽히게 하고, 바탕(청록)과의 명도 차이도 같이 벌린다. */
+#online-ranking-overlay .oing-rank-list {
+  gap: 8px;
+  background:
+    radial-gradient(circle at 90% 0, rgba(255,255,255,.34), transparent 29%),
+    linear-gradient(180deg, #a2c6cd, #b6d3d8);
+}
+#online-ranking-overlay .oing-rank-row {
+  border-color: rgba(200, 168, 122, .55);
+  box-shadow: 0 3px 0 rgba(93, 66, 34, .16), 0 5px 9px rgba(54, 100, 111, .14), inset 0 1px 0 #fff;
+}
+#online-ranking-overlay .oing-rank-row.top10 {
+  box-shadow: inset 4px 0 0 #f1c45d, 0 3px 0 rgba(160, 120, 40, .18), 0 5px 9px rgba(54, 100, 111, .12);
+}
+#online-ranking-overlay .oing-rank-row.top30 {
+  box-shadow: inset 4px 0 0 #a8a9eb, 0 3px 0 rgba(100, 96, 170, .16), 0 5px 9px rgba(54, 100, 111, .12);
+}
+#online-ranking-overlay .oing-rank-row.is-me {
+  box-shadow: inset 4px 0 0 #5cc9c4, 0 3px 0 rgba(46, 140, 135, .2), 0 5px 9px rgba(54, 100, 111, .12);
+}
+#online-ranking-overlay .oing-rank-row.can-save-friend.is-pressing {
+  transform: translateY(2px) scale(.985);
+  box-shadow: 0 1px 0 rgba(93, 66, 34, .16), inset 0 1px 0 #fff;
+}
+
+/* 내 오잉 요약 카드의 마지막 줄 '내 오잉 기록 보기'는 글자만 있어서 눌리는지
+   몰랐다. 크림 알약에 두께를 준다 - 홈의 크림 버튼과 같은 문법. */
+#online-ranking-overlay .oing-my-rank-summary > button {
+  width: auto;
+  min-height: 32px;
+  margin: 10px auto 0;
+  padding: 0 14px;
+  color: #6f5a4b;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1.5px solid rgba(214, 190, 150, .95);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffdf8, #f6ebd6);
+  box-shadow: 0 3px 0 rgba(182, 146, 92, .34), inset 0 1px 0 #fff;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+#online-ranking-overlay .oing-my-rank-summary > button:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(182, 146, 92, .34), inset 0 1px 0 #fff;
+}
+
+/* 시상대 바닥과 안내 문장이 붙어 있었다. 숨 한 칸. */
+#online-ranking-overlay .oing-friend-hint { margin-top: 14px; }
+#online-ranking-overlay .oing-rank-status { margin-bottom: 9px; }
+
+/* ── 전체 탭 전용 ── */
+/* 등락 칸을 접는다. 줄 격자도 그 칸 없이 다시 짠다. */
+#online-ranking-overlay[data-mode="all"] .oing-rank-change { display: none; }
+#online-ranking-overlay[data-mode="all"] .oing-rank-row {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  column-gap: 4px;
+  padding-left: 8px;
+}
+#online-ranking-overlay[data-mode="all"] .oing-rank-name { font-size: 15px; }
+/* 시상대 배지도 '1st'만. 등락이 빠지니 배지가 좁아도 된다. */
+#online-ranking-overlay[data-mode="all"] .oing-podium-rank-badge { min-width: 40px; }
+/* 전체 탭의 내 카드: 등락 자리에 '전체 최고 기록'이 들어온다. 라벨답게 옅은
+   갈색 그대로 두되 잘리지 않게. */
+#online-ranking-overlay[data-mode="all"] .oing-my-rank-score > b { color: #9d887e; }
+
+@media (max-width: 360px), (max-height: 720px) {
+  #online-ranking-overlay .oing-rank-number { font-size: 14px; }
+  #online-ranking-overlay .oing-rank-tier { padding-inline: 5px; font-size: 8px; }
+  #online-ranking-overlay .oing-rank-tail > strong { font-size: 13px; }
+  #online-ranking-overlay[data-mode="all"] .oing-rank-row { grid-template-columns: 27px minmax(0, 1fr) auto; }
+  #online-ranking-overlay[data-mode="all"] .oing-rank-name { font-size: 14px; }
+}
