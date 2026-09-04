@@ -78,6 +78,20 @@ test('TIME UP is not stamped twice on the same run', async () => {
   assert.ok(game.split('this.adStampedTimeUp = false;').length - 1 >= 3);
 });
 
+test('ad continue clears any pending finish before the timer restarts', async () => {
+  const game = await read('js/game.js');
+  const offer = game.slice(game.indexOf('async maybeOfferAdContinue'), game.indexOf('async openContactsInviteReward'));
+  const reviveAt = offer.indexOf('this.state.timeLeft = seconds;');
+  const clearTimerAt = offer.indexOf('clearTimeout(this.finishGraceTimer);');
+  const clearPendingAt = offer.indexOf('this.finishPending = false;');
+  const beginAt = offer.indexOf('this.beginCountdown();');
+
+  assert.ok(reviveAt > 0, '이어하기 되살림 코드가 없다');
+  assert.ok(clearTimerAt > 0, '남은 종료 grace timer를 지우지 않는다');
+  assert.ok(clearPendingAt > clearTimerAt, 'finishPending을 되살림 전에 꺼야 한다');
+  assert.ok(clearPendingAt < beginAt, '타이머 재시작 전에 finishPending이 꺼져야 한다');
+});
+
 test('a rewarded ad that never appears says so instead of going quiet', async () => {
   const [ads, entry, bundle, game] = await Promise.all([
     read('js/ads.js'), read('tools/toss-game-center-entry.mjs'),

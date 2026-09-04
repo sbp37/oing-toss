@@ -2630,6 +2630,14 @@ class OingGame {
     // 되살리기: 시계만 새로 감고 점수·콤보·판은 그대로 둔다. 지급량은
     // 광고가 알려준 콘솔 등록값을 우선한다 - 콘솔에서 바꾸면 그대로 반영.
     const seconds = amount > 0 ? amount : AD_CONTINUE_SECONDS;
+    // 시간이 0이 된 순간 선택/드래그가 진행 중이면 requestFinish()가
+    // finishPending을 세워 둔다. 광고로 되살아났는데 이 깃발이 남아 있으면
+    // 다음 성공 애니메이션의 finally가 아직 시간이 남았는데도 finish()를
+    // 다시 부른다(실기기 제보: +30초 후 19초 남았는데 결과창).
+    clearTimeout(this.finishGraceTimer);
+    this.finishGraceTimer = null;
+    this.finishPending = false;
+    this.activeGesture = false;
     this.state.timeLeft = seconds;
     this.grantItems({ hint: AD_CONTINUE_HINTS }, { source: 'ad-continue' });
     this.lowTimeSpoken = false;
