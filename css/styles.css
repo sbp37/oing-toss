@@ -2875,7 +2875,7 @@ img {
   animation: tile-bomb-pop 430ms var(--blast-delay, 0ms) cubic-bezier(.18,.72,.24,1.08) both !important;
 }
 
-.board-frame.bomb-kick { animation: bomb-board-kick 360ms cubic-bezier(.2,.72,.25,1) both; }
+.board-frame.bomb-kick { animation: bomb-board-kick 440ms cubic-bezier(.2,.72,.25,1) both; }
 
 .megabomb-fx {
   position: absolute;
@@ -2975,11 +2975,18 @@ img {
   100% { opacity: 0; transform: scale(0.55); filter: brightness(1.5) blur(1px); }
 }
 
+/* 폭발의 무게는 보드가 얼마나 걷어차이는가로 읽힌다. 2px에 0.25도로는
+   폰에서 아예 안 보였다 - 코드에는 있고 눈에는 없는 연출이었다. 첫 프레임을
+   8%로 당겨 세게 치고(9px), 그 뒤로 줄어드는 흔들림을 남긴다. transform만
+   쓰므로 다시 그리는 비용은 없다. */
 @keyframes bomb-board-kick {
-  0%, 100% { transform: translate(var(--drag-pull-x), var(--drag-pull-y)); }
-  20% { transform: translate(calc(var(--drag-pull-x) - 2px), calc(var(--drag-pull-y) + 1px)) rotate(-0.25deg); }
-  42% { transform: translate(calc(var(--drag-pull-x) + 2px), calc(var(--drag-pull-y) - 1px)) rotate(0.24deg); }
-  66% { transform: translate(calc(var(--drag-pull-x) - 1px), var(--drag-pull-y)); }
+  0% { transform: translate(var(--drag-pull-x), var(--drag-pull-y)) scale(1); }
+  8% { transform: translate(calc(var(--drag-pull-x) - 9px), calc(var(--drag-pull-y) + 5px)) rotate(-1deg) scale(1.014); }
+  22% { transform: translate(calc(var(--drag-pull-x) + 7px), calc(var(--drag-pull-y) - 4px)) rotate(0.82deg) scale(1.008); }
+  38% { transform: translate(calc(var(--drag-pull-x) - 5px), calc(var(--drag-pull-y) + 2px)) rotate(-0.5deg) scale(1.003); }
+  56% { transform: translate(calc(var(--drag-pull-x) + 3px), calc(var(--drag-pull-y) - 1px)) rotate(0.26deg); }
+  76% { transform: translate(calc(var(--drag-pull-x) - 1.5px), var(--drag-pull-y)) rotate(-0.1deg); }
+  100% { transform: translate(var(--drag-pull-x), var(--drag-pull-y)) scale(1); }
 }
 
 @keyframes megabomb-ring {

@@ -1319,7 +1319,10 @@ export class GameUI {
   // 방향은 폭심 기준 좌표라 항상 바깥쪽이고, 회전은 좌우로 갈라 준다.
   setBlastVector(tile, dx, dy, index, strength = 1) {
     const distance = Math.hypot(dx, dy) || 1;
-    const push = (16 + distance * 9) * strength;
+    // 밀어내는 거리. 16 + 9는 한 칸도 못 벗어나는 값이라 칸이 제자리에서
+    // 작아지는 것처럼 보였다. 칸 하나 크기(약 48px)는 넘어가야 날아간 것으로
+    // 읽힌다.
+    const push = (26 + distance * 15) * strength;
     tile.style.setProperty('--blast-x', `${((dx / distance) * push).toFixed(1)}px`);
     tile.style.setProperty('--blast-y', `${((dy / distance) * push - 6).toFixed(1)}px`);
     tile.style.setProperty('--blast-rot', `${(index % 2 ? 1 : -1) * (10 + (index % 3) * 7)}deg`);
@@ -1365,8 +1368,11 @@ export class GameUI {
         drop.style.setProperty('--bomb-drop-index', String(index));
         effect.appendChild(drop);
       }
+      // 불빛과 고리가 실제로 지워지는 자리를 덮게 그 크기를 넘겨준다.
+      const span = Math.max(bounds.right - bounds.left, bounds.bottom - bounds.top);
+      effect.style.setProperty('--bomb-span', `${Math.round(span)}px`);
       this.boardFrame.appendChild(effect);
-      setTimeout(() => effect.remove(), 520);
+      setTimeout(() => effect.remove(), 560);
     }
     // 파편이 흩어지는 걸 끝까지 보여주되, 다음 수를 막는 시간은 줄인다.
     // 칸 멈춤 70ms만큼은 더 기다린다 - 칸이 아직 튀는 중에 다음 판정이
@@ -2427,11 +2433,8 @@ export class GameUI {
     toast.classList.add('is-visible');
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
-    this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
-    this.elements.round.textContent = String(round);
-    if (this.elements.roundLabel) this.elements.roundLabel.textContent = classicMode ? '판' : 'STAGE';
-    const scoreText = score.toLocaleString('ko-KR');
+  paintScore(value) {
+    const scoreText = Math.max(0, Math.round(value)).toLocaleString('ko-KR');
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수
     // label; a five-figure score at full size ellipsised to "21,4…" mid-game.
@@ -2440,6 +2443,57 @@ export class GameUI {
     this.elements.score.dataset.digits = scoreText.length > 9 ? 'xl'
       : scoreText.length > 6 ? 'l'
         : 'm';
+  }
+
+  // 점수가 오르는 맛. 예전에는 숫자가 새 값으로 그냥 바뀌었다 - 눈은 바뀐
+  // 것을 보지 못하고, 결과 화면에 가서야 얼마나 모았는지 안다. 이제 숫자가
+  // 굴러 올라가고, 오른 만큼 알약이 한 번 뛴다. 큰 점수일수록 오래 구른다.
+  // 값이 줄면(새 판 시작) 바로 놓는다 - 0으로 굴러 내려가는 것은 벌처럼 보인다.
+  renderScore(score) {
+    const target = Math.max(0, Math.round(Number(score) || 0));
+    const from = this.scoreShown ?? target;
+    if (target === this.scoreTarget) return;
+    this.scoreTarget = target;
+    const canAnimate = typeof requestAnimationFrame === 'function'
+      && typeof window !== 'undefined'
+      && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (target <= from || !canAnimate) {
+      if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
+      this.scoreRaf = null;
+      this.scoreShown = target;
+      this.paintScore(target);
+      return;
+    }
+    const pill = this.elements.score;
+    const gain = target - from;
+    pill.dataset.gain = gain >= 80 ? 'big' : gain >= 20 ? 'mid' : 'small';
+    pill.classList.remove('is-gaining');
+    void pill.offsetWidth;
+    pill.classList.add('is-gaining');
+    if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
+    const startAt = performance.now();
+    const duration = Math.min(560, 200 + gain * 1.4);
+    const step = (now) => {
+      const t = Math.min(1, (now - startAt) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      this.scoreShown = Math.round(from + gain * eased);
+      this.paintScore(this.scoreShown);
+      if (t < 1) {
+        this.scoreRaf = requestAnimationFrame(step);
+      } else {
+        this.scoreRaf = null;
+        this.scoreShown = target;
+        this.paintScore(target);
+      }
+    };
+    this.scoreRaf = requestAnimationFrame(step);
+  }
+
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
+    this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
+    this.elements.round.textContent = String(round);
+    if (this.elements.roundLabel) this.elements.roundLabel.textContent = classicMode ? '판' : 'STAGE';
+    this.renderScore(score);
     const time = Math.max(0, Math.ceil(timeLeft));
     this.elements.timePill.hidden = !timed;
     this.elements.playScreen.classList.toggle('is-untimed', !timed);

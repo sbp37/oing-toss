@@ -129,9 +129,10 @@ export function itemHaptic() {
 }
 
 export function bombHaptic() {
-  // 두 단계: 짧은 타격(10) - 멈춤 사이(30) - 긴 터짐(60). 화면의 불빛→칸
-  // 튀김 두 박자와 같은 리듬이다. 예전 [24, 22, 38]은 한 덩어리로 느껴졌다.
-  impact('basicMedium', [10, 30, 60]);
+  // 두 단계: 짧은 타격(12) - 멈춤 사이(28) - 긴 터짐(95). 화면의 불빛과 칸
+  // 튀김 두 박자와 같은 리듬이다. 예전 [24, 22, 38]은 한 덩어리로 느껴졌고,
+  // 그 다음 [10, 30, 60]도 뒤끝이 짧아 손에 무게가 남지 않았다.
+  impact('basicMedium', [12, 28, 95]);
 }
 
 export function megaBombHaptic() {
