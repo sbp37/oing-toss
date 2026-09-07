@@ -1869,6 +1869,16 @@ class OingGame {
       ? classicDropStage(this.classic.boardIndex)
       : this.state.round;
     const rewardStatus = itemRewardStatus(this.state.combo, this.state.maxCombo, rewardStage);
+    // 기기당 한 번, 콤보 3을 처음 넘는 순간 규칙을 말한다. 아래 분기보다
+    // 먼저 보는 이유: 초보의 첫 3콤보는 큰 네모(wow)나 고양이와 같이 오는
+    // 일이 많고, 그때 그쪽 말이 이기면 규칙은 영영 못 듣는다. 한 번 들은
+    // 뒤로는 예전처럼 조용하다.
+    if (comboMilestone >= 3 && !storageAdapter.hasSeenComboIntro()) {
+      if (!this.runtime.testMode) storageAdapter.markComboIntroSeen();
+      this.ui.setPlayCharacter('cheer', 900);
+      this.showCatMessage('comboIntro', { force: true });
+      return;
+    }
     if (catCount > 0) {
       this.ui.setPlayCharacter('success', 950);
       this.showCatMessage('catBonus');
@@ -2498,6 +2508,8 @@ class OingGame {
       idleMs: now - this.lastInteractionAt,
       boardIndex: this.classic?.boardIndex ?? -1,
       lastShownBoard: this.classicAutoHintBoard,
+      // 런의 첫 판(boardsPlayed 1)에서는 6초만 멈춰도 나선다 - js/data.js 참고.
+      firstBoardOfRun: (this.classic?.boardsPlayed ?? 0) === 1,
       // Classic keeps its own record, so the beginner test has to read it.
       bestScore: storageAdapter.getClassicBestScore(),
       currentScore: this.state.score,
@@ -3599,7 +3611,7 @@ class OingGame {
     }
     const message = pickMessage(type, this.lastCatMessage);
     this.lastCatMessage = message;
-    const duration = ['itemDrop', 'lowTime', 'freeze', 'clover'].includes(type) ? 1800 : 1500;
+    const duration = ['itemDrop', 'lowTime', 'freeze', 'clover', 'comboIntro'].includes(type) ? 1800 : 1500;
     this.ui.showMessage(message, duration, type);
   }
 

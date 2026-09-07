@@ -1327,6 +1327,11 @@ export function shouldShowBeginnerAutoHint({
 // the game: whenever they stall, the cat points at an answer.
 export const CLASSIC_AUTO_HINT_LIMIT = 2;
 export const CLASSIC_AUTO_HINT_COOLDOWN_MS = 30000;
+// 런의 첫 판에서만 더 빨리 나선다. 초보의 첫 판은 시뮬에서 약 50초이고
+// 그 안에서 콤보 3·5·8을 밟아야 "연속으로 맞히면 점수가 곱해진다"를 몸으로
+// 안다. 10초를 멍하니 보내면 그 판은 이미 절반이 갔다. 첫 판 뒤로는 원래
+// 10초 - 거기서부터는 스스로 찾는 것이 게임이다.
+export const CLASSIC_FIRST_BOARD_HINT_IDLE_MS = 6000;
 // An 11-second tail hint still interrupted players who were actively reading
 // the larger boards, so sparse help now waits for 15 seconds of real idle.
 // The paired reset in game.js starts that wait only after a move has fully
@@ -1337,7 +1342,7 @@ export function shouldShowClassicAutoHint({
   running = false, inputLocked = false, tutorialActive = false,
   shownCount = 0, sinceLastMs = Infinity, timeLeft = 0, idleMs = 0,
   bestScore = 0, currentScore = 0, completedRuns = 0,
-  boardIndex = 0, lastShownBoard = -1,
+  boardIndex = 0, lastShownBoard = -1, firstBoardOfRun = false,
 } = {}) {
   const demonstratedSkill = Math.max(
     Math.max(0, Number(bestScore) || 0),
@@ -1356,7 +1361,7 @@ export function shouldShowClassicAutoHint({
     && Math.max(0, shownCount) < CLASSIC_AUTO_HINT_LIMIT
     && sinceLastMs >= CLASSIC_AUTO_HINT_COOLDOWN_MS
     && timeLeft > 8
-    && idleMs >= BEGINNER_AUTO_HINT_IDLE_MS;
+    && idleMs >= (firstBoardOfRun ? CLASSIC_FIRST_BOARD_HINT_IDLE_MS : BEGINNER_AUTO_HINT_IDLE_MS);
 }
 
 // A nearly-cleared classic board can still contain a valid answer whose
@@ -1522,6 +1527,10 @@ export const MESSAGES = Object.freeze({
   combo3: Object.freeze(['손이 좀 빠른데?', '감 잡았냥?', '오, 연속인데?', '잘한다냥!']),
   combo5: Object.freeze(['지금 완전 감 잡았어!', '이대로 가라냥!', '멈추지 마!', '오잉, 좀 하는데?']),
   combo8: Object.freeze(['와, 터진다냥!', '오늘 감 좋은데?', '미쳤다냥!', '이 정도는 해야지냥.']),
+  // 기기당 한 번, 첫 콤보 3에서. combo3의 대사는 기분이지 규칙이 아니라서,
+  // 처음 하는 사람은 콤보가 점수를 불린다는 것을 모른 채 지나간다. 규칙은
+  // 설명보다 일어나는 순간의 한 마디로 배운다.
+  comboIntro: Object.freeze(['연속으로 맞히면 점수가 콤보만큼 불어난다냥!']),
   wow: Object.freeze(['와, 크게 지웠다!', '한 번에 쫙! 좋다냥.', '큰 10은 못 참지.']),
   fail: Object.freeze(['어라?', '10이 아닌데냥...', '다시 봐봐.', '앗.', '그건 내가 못 본 걸로 한다냥.']),
   nearMiss: Object.freeze(['아깝다냥, 거의 10!', '하나 차이다냥!', '오, 거의 맞았는데?']),

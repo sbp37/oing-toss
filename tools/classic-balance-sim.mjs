@@ -81,7 +81,10 @@ export function simulateRun(profile, opts = {}) {
     score: 0,
     combo: 0,
     maxCombo: 0,
-    boardIndex: 0,
+    // 실제 게임은 인트로 한 판(5x6) 뒤로는 모두 GRADUATED_CLASSIC_BOARD_INDEX(2,
+    // 7x6)에서 시작한다(js/game.js). 기본 0은 "첫 실행"이고, 두 번째 실행부터의
+    // 모습을 보려면 OPTS='{"startBoardIndex":2}'.
+    boardIndex: Math.max(0, Math.round(Number(opts.startBoardIndex) || 0)),
     boardsPlayed: 1,
     cats: 0,
     cells: 0,

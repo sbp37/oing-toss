@@ -394,6 +394,7 @@ test('classic beginners get repeated auto-hints when they stall', async () => {
   const {
     shouldShowClassicAutoHint, CLASSIC_AUTO_HINT_LIMIT, CLASSIC_AUTO_HINT_COOLDOWN_MS,
     BEGINNER_AUTO_HINT_IDLE_MS, BEGINNER_AUTO_HINT_SCORE_CEILING,
+    CLASSIC_FIRST_BOARD_HINT_IDLE_MS,
   } = await import('../js/data.js');
   const base = {
     running: true, inputLocked: false, tutorialActive: false,
@@ -406,6 +407,14 @@ test('classic beginners get repeated auto-hints when they stall', async () => {
   assert.equal(shouldShowClassicAutoHint({ ...base, timeLeft: 115 }), true);
   // 아직 안 멈췄으면 안 뜬다.
   assert.equal(shouldShowClassicAutoHint({ ...base, idleMs: 1000 }), false);
+  // 런의 첫 판만 더 빨리 뜬다. 첫 판이 아니면 기본 대기 시간을 지킨다.
+  assert.ok(CLASSIC_FIRST_BOARD_HINT_IDLE_MS < BEGINNER_AUTO_HINT_IDLE_MS);
+  assert.equal(shouldShowClassicAutoHint({
+    ...base, idleMs: CLASSIC_FIRST_BOARD_HINT_IDLE_MS, firstBoardOfRun: true,
+  }), true);
+  assert.equal(shouldShowClassicAutoHint({
+    ...base, idleMs: CLASSIC_FIRST_BOARD_HINT_IDLE_MS,
+  }), false);
   // 런당 횟수 제한과 쿨다운을 지킨다.
   assert.equal(shouldShowClassicAutoHint({ ...base, shownCount: CLASSIC_AUTO_HINT_LIMIT }), false);
   assert.equal(shouldShowClassicAutoHint({ ...base, sinceLastMs: CLASSIC_AUTO_HINT_COOLDOWN_MS - 1 }), false);

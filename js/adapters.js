@@ -11,6 +11,7 @@ const PENDING_SHARE_HINTS_KEY = 'oing_toss_v3_pending_share_hints';
 const CHALLENGE_KEY = 'oing_toss_v3_challenge';
 const SETTINGS_KEY = 'oing_toss_v3_settings';
 const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
+const COMBO_INTRO_KEY = 'oing_toss_v3_combo_intro_seen';
 const CLASSIC_INTRO_COMPLETE_KEY = 'oing_toss_classic_intro_complete_v1';
 const UPDATE_NOTICE_KEY = 'oing_toss_update_notice_seen';
 const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
@@ -255,6 +256,12 @@ export const storageAdapter = {
   },
   markDragTutorialSeen() {
     try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch {}
+  },
+  hasSeenComboIntro() {
+    return safeRead(COMBO_INTRO_KEY, '0') === '1';
+  },
+  markComboIntroSeen() {
+    try { localStorage.setItem(COMBO_INTRO_KEY, '1'); } catch {}
   },
   getHighestStage() {
     const value = Number(safeRead(HIGHEST_STAGE_KEY, '1'));
