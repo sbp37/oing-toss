@@ -68,12 +68,18 @@ const CHARACTER_ALT = Object.freeze({
 
 // How much mist sits over the chapter art inside cleared cells: heavy while
 // the board is still full of numbers to read, light once it is nearly empty.
-const VEIL_FULL = 0.26;
+// 2026-09 실기 제보 여러 건: "원조 오잉보다 답이 잘 안 보인다." .26이면 칸이
+// 몇 개만 비어도 그림이 74% 세기로 숫자 사이에 앉는다 - 첫 판 실측에서
+// 고양이 얼굴이 판 가운데 네 칸을 차지했다. 눈은 밝고 색이 진한 것에
+// 먼저 가므로, 남은 숫자를 훑는 속도가 그만큼 준다. 판이 가득할 때는 그림을
+// 절반 아래로 눌러 두고, 비어 갈수록 원래 세기로 돌아온다. 그림은 보상이라
+// 지우지는 않는다.
+const VEIL_FULL = 0.5;
 // The picture is atmosphere, not a second subject. At .10 a nearly-emptied
 // board handed it full contrast and saturation, and it started competing with
 // the dock's buttons for the eye - the loudest thing on screen was the
 // backdrop. Held soft to the end, it reads as depth behind the tiles instead.
-const VEIL_CLEAR = 0.10;
+const VEIL_CLEAR = 0.2;
 
 // A url() inside a custom property is resolved against the stylesheet that
 // consumes it, not the document, so a document-relative path handed to CSS

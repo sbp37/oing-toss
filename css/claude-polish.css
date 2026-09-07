@@ -50,6 +50,9 @@
    applies only while the hint or tutorial veil is up, not in normal play,
    so this is straight contrast rather than filter compensation.) */
 .play-ui-v4 .tile span {
+  /* "답이 안 보인다"는 제보를 글자 대비 문제로 읽고 검정에 가깝게 갔다가
+     "너무 어두워졌다"로 바로 돌아왔다. 제보의 뜻은 글자가 아니라 정답이
+     눈에 안 들어온다는 것이었다(빈 칸 그림 안개, 판 구성 쪽). 색은 원래대로. */
   color: #514d4e;
   -webkit-text-stroke: 0.35px currentColor;
   text-shadow:

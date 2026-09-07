@@ -35,6 +35,8 @@ import {
   classicComboGain,
   classicDropStage,
   classicRoundForBoard,
+  classicBoardShouldTurn,
+  isEasyAnswer,
   classicScoreForBlast,
   classicScoreForClear,
   classicStartBoardIndex,
@@ -1595,7 +1597,17 @@ class OingGame {
       }
       // 맞힌 직후에는 다음 답을 또 알려주지 않는다. 꼬리 도움은
       // tick의 sparse hint 한 경로로만 나가고, 실제 입력이 15초 멈춘 뒤 뜬다.
-      if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
+      // 답이 하나도 없을 때만 넘기던 것을, 두 칸 답이 다 나간 꼬리(60% 이상
+      // 지움)에서도 넘긴다. 근거는 data.js classicBoardShouldTurn 주석.
+      const shouldTurn = !remainingAnswer || classicBoardShouldTurn({
+        hasAnswer: true,
+        hasEasyAnswer: this.model.findAnswers().some(isEasyAnswer),
+        remaining,
+        initialPlayable: this.state.initialPlayableCells,
+      });
+      if (shouldTurn) {
+        await this.classicBoardChange({ emptied: remaining === 0, tail: Boolean(remainingAnswer) });
+      }
       this.state.inputLocked = false;
       this.updateHUD();
       await this.fireCaughtBoardItems(caughtItems);
@@ -1708,7 +1720,7 @@ class OingGame {
   // the board was emptied or stranded — so a fresh board slides in and the
   // cleared board pays its ladder refund. The timer never stops and the combo
   // carries straight through.
-  async classicBoardChange({ emptied = false } = {}) {
+  async classicBoardChange({ emptied = false, tail = false } = {}) {
     // The bonus is earned by the board just finished — the opening 5×6 pays its
     // own small refund, not the full board's.
     const clearedBoard = classicBoardForIndex(this.classic.boardIndex);
@@ -1766,6 +1778,14 @@ class OingGame {
       // emptying the board yourself earns one hint.
       this.ui.showMessage('싹 비웠다냥! 힌트 +1', 1800, 'classicClear');
       this.ui.setPlayCharacter('cheer', 1000);
+    } else if (!emptied) {
+      // 다 비우지 않았는데 판이 바뀌는 경우다. 남은 칸으로 10을 못 만들거나,
+      // 두 칸 답이 다 나간 꼬리(tail)면 새 판을 준다. 여태 이 설명이 "판이
+      // 커졌다" 뒤에 있었는데, 지금 사다리는 매 판 커지므로 설명이 한 번도
+      // 안 나왔다 - "답을 못 맞췄는데 넘어간다"는 제보가 그래서 나왔다.
+      // 커진 것은 가운데 크기 라벨이 이미 말하니, 말풍선은 이유를 맡는다.
+      this.ui.showMessage(tail ? '쉬운 답은 다 찾았다냥! 새 판이다냥' : '더 만들 10이 없다냥! 새 판이다냥', 1800, 'classicBoard');
+      this.ui.setPlayCharacter('wave', 900);
     } else if (enteredChapter) {
       // A new scene is the run's own milestone — it outranks the board-grew
       // line, which the player can see for themselves.
@@ -1774,13 +1794,6 @@ class OingGame {
     } else if (boardGrew) {
       this.ui.showMessage('판이 커졌다냥!', 1600, 'classicBoard');
       this.ui.setPlayCharacter('cheer', 900);
-    } else if (!emptied) {
-      // 다 비우지 않았는데 판이 바뀌는 경우다. 규칙상 남은 칸으로 더는 10을
-      // 만들 수 없으면 새 판을 준다 - 못 푸는 판을 붙들고 있게 두지 않기
-      // 위해서다. 그런데 여태 이 경우에만 아무 말이 없어서, 실기기에서
-      // "답을 못 맞췄는데 넘어간다"는 버그 제보로 돌아왔다. 이유를 말해준다.
-      this.ui.showMessage('더 만들 10이 없다냥! 새 판이다냥', 1800, 'classicBoard');
-      this.ui.setPlayCharacter('wave', 900);
     } else {
       this.ui.showMessage('판갈이다냥!', 1600, 'classicBoard');
       this.ui.setPlayCharacter('wave', 900);
@@ -2185,7 +2198,15 @@ class OingGame {
       const placed = this.placeBoardItems();
       this.renderBoard();
       if (placed.length) this.announceBoardItems(placed);
-      if (!remainingAnswer) await this.classicBoardChange({ emptied: remaining === 0 });
+      const shouldTurn = !remainingAnswer || classicBoardShouldTurn({
+        hasAnswer: true,
+        hasEasyAnswer: this.model.findAnswers().some(isEasyAnswer),
+        remaining,
+        initialPlayable: this.state.initialPlayableCells,
+      });
+      if (shouldTurn) {
+        await this.classicBoardChange({ emptied: remaining === 0, tail: Boolean(remainingAnswer) });
+      }
       this.inputGuardUntil = performance.now() + 180;
       this.state.inputLocked = false;
       this.updateHUD();

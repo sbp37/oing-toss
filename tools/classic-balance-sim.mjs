@@ -24,6 +24,8 @@ import {
   classicRefundWithFatigue,
   classicTimeAfterBoardChange,
   classicRoundForBoard,
+  classicBoardShouldTurn,
+  isEasyAnswer,
   classicComboGain,
   classicComboMultiplier,
   classicComboAfterFailure,
@@ -111,6 +113,23 @@ export function simulateRun(profile, opts = {}) {
   const cap = opts.timeCapSeconds;             // 실험용 오버라이드
   const carryCap = opts.carryCap;              // 실험용: 환급이 넘지 못하는 선
   const refundScale = opts.refundScale ?? 1;   // 실험용: 판갈이 환급 배율
+  const tailTurn = opts.tailTurn ?? true;       // 두 칸 답이 다 나간 꼬리에서 판갈이 (실제 규칙)
+  const hardThink = opts.hardThink ?? 1.6;      // 두 칸 답이 없을 때 생각 시간 배율(가정)
+  const shouldTurnNow = () => {
+    const answers = model.findAnswers();
+    if (!answers.length) return true;
+    if (!tailTurn) return false;
+    if (opts.tailProgress != null) {   // 실험용: 꼬리 판갈이 진행 문턱 오버라이드
+      if (answers.some(isEasyAnswer)) return false;
+      return (1 - model.remainingPlayableCells() / Math.max(1, S.initialPlayable)) >= Number(opts.tailProgress);
+    }
+    return classicBoardShouldTurn({
+      hasAnswer: true,
+      hasEasyAnswer: answers.some(isEasyAnswer),
+      remaining: model.remainingPlayableCells(),
+      initialPlayable: S.initialPlayable,
+    });
+  };
   const fatigueOverride = opts.fatigue;        // 실험용 {fromBoard, perBoard, floor}
   const ladderOverride = opts.ladder;          // 실험용 [{timeFloor,timeBonus}...]
 
@@ -236,7 +255,7 @@ export function simulateRun(profile, opts = {}) {
       S.cells += stats.count + catCount;
       model.remove(target.rect);
       spend(0.4);
-      if (!model.findAnswer()) boardChange();
+      if (shouldTurnNow()) boardChange();
     }
   };
 
@@ -255,7 +274,8 @@ export function simulateRun(profile, opts = {}) {
       ? pickAnswerGreedy(answers)
       : pickAnswerLikeHuman(answers);
     // 생각 시간: 답이 귀할수록 오래 걸린다 (탐색 피로)
-    const scarcity = answers.length <= 2 ? 1.35 : answers.length <= 4 ? 1.15 : 1;
+    const scarcity = (answers.length <= 2 ? 1.35 : answers.length <= 4 ? 1.15 : 1)
+      * (answers.some(isEasyAnswer) ? 1 : hardThink);
     spend(Math.max(0.35, gauss(profile.think * scarcity, profile.think * 0.28)) + overhead);
     if (S.time <= 0) break;
 
@@ -281,7 +301,7 @@ export function simulateRun(profile, opts = {}) {
       fireItem(S.pendingItems.shift());
     }
 
-    if (!model.findAnswer()) {
+    if (shouldTurnNow()) {
       if (S.time <= 0) break;
       boardChange();
     }
