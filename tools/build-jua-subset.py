@@ -23,6 +23,18 @@ def source_files():
             yield from path.rglob("*.js")
 
 
+# 주아체로 찍혀야 하는데 한글이 아닌 글자들.
+#
+# 서브셋이 한글만 담고 unicode-range도 한글만 걸어 두면, 같은 문장 안의
+# 마침표·물음표·느낌표가 다음 폰트(Pretendard)로 떨어진다. 주아는 둥글고
+# 말랑한 글씨체라 그 옆에 붙은 중성적인 문장부호가 튀어 보인다 - 실기기
+# 제보의 "주아체여야 하는데 깨지는 글자"가 이것이다.
+#
+# 숫자는 일부러 뺐다. 점수·시계·타일 숫자가 전부 이 글씨체를 타므로
+# 넣는 순간 게임 화면 전체의 숫자 인상이 바뀐다. 그건 따로 결정할 일이다.
+EXTRA_CHARACTERS = ".,!?~'\"()%+-:/"
+
+
 def is_korean(character: str) -> bool:
     code = ord(character)
     return (
@@ -39,9 +51,10 @@ def main() -> None:
         raise SystemExit(f"Missing official Jua source font: {SOURCE}")
 
     text = "".join(path.read_text(encoding="utf-8") for path in source_files())
-    characters = sorted({character for character in text if is_korean(character)})
-    if not characters:
+    korean = sorted({character for character in text if is_korean(character)})
+    if not korean:
         raise SystemExit("No Korean characters found")
+    characters = korean + sorted(set(EXTRA_CHARACTERS))
 
     options = subset.Options()
     options.flavor = "woff2"
@@ -69,7 +82,10 @@ def main() -> None:
         "}\n",
         encoding="utf-8",
     )
-    print(f"Built {OUTPUT.name}: {len(characters)} Korean glyphs, {OUTPUT.stat().st_size} bytes")
+    print(
+        f"Built {OUTPUT.name}: {len(korean)} Korean glyphs "
+        f"+ {len(set(EXTRA_CHARACTERS))} punctuation, {OUTPUT.stat().st_size} bytes"
+    )
 
 
 if __name__ == "__main__":

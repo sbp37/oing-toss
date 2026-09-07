@@ -75,13 +75,22 @@ export class BoardItemField {
     return extracted;
   }
 
-  place(grid, reservedKeys = new Set()) {
+  place(grid, reservedKeys = new Set(), { maxVisible = Infinity } = {}) {
     const placed = [];
     const occupiedKeys = new Set([...this.items.keys(), ...reservedKeys]);
     const openCells = rankBoardItemCells(grid, occupiedKeys);
-    while (this.pending.length && openCells.length) {
+    const visibleLimit = Math.max(0, Number(maxVisible) || 0);
+    while (this.pending.length && openCells.length && this.items.size < visibleLimit) {
       const item = this.pending.shift();
-      const cell = openCells.shift();
+      let cellIndex = 0;
+      if (item.type === 'bomb') {
+        const visibleBombs = [...this.items.values()].filter(({ type }) => type === 'bomb');
+        const separatedIndex = openCells.findIndex((cell) => visibleBombs.every((bomb) => (
+          Math.max(Math.abs(bomb.row - cell.row), Math.abs(bomb.col - cell.col)) > 1
+        )));
+        if (separatedIndex >= 0) cellIndex = separatedIndex;
+      }
+      const [cell] = openCells.splice(cellIndex, 1);
       const entry = {
         id: `board-item-${++this.serial}`,
         ...item,

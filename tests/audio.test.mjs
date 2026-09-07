@@ -147,6 +147,16 @@ test('go sound keeps the original rising fanfare and sparkle glide', () => {
   assert.deepEqual(oscillators.at(-1).frequency.events.map((event) => event.value), [2000, 3500]);
 });
 
+test('a growing classic board extends the normal clear chime by one step', () => {
+  const oscillators = newOscillators(() => audio.playBoardGrowSound());
+  assert.deepEqual(
+    oscillators.slice(0, 6).map((item) => item.frequency.events[0].value),
+    [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568],
+  );
+  assert.equal(oscillators.at(-1).type, 'triangle');
+  assert.deepEqual(oscillators.at(-1).frequency.events.map((event) => event.value), [1800, 3600]);
+});
+
 test('combo sound keeps two notes normally and reserves the original fanfare for multiples of seven', () => {
   const combo2 = newOscillators(() => audio.playComboSound(2));
   const combo5 = newOscillators(() => audio.playComboSound(5));
@@ -182,14 +192,19 @@ test('a new record adds a restrained four-note victory tail', () => {
   assert.deepEqual(oscillators.slice(-4).map((item) => item.frequency.events[0].value), [523.25, 659.25, 783.99, 1046.5]);
 });
 
-test('bomb sound keeps the original OING impact shards', () => {
+test('bomb sound keeps the OING pings and adds a low thump under them', () => {
+  // 2026-09-07: 실기 제보 "폭탄이 얕게 터진다." 원조의 핑 세 개(800/1200/600)는
+  // 그대로 두고, 그 아래 90Hz에서 떨어지는 "쿵"과 첫 순간의 1900Hz 타격음을
+  // 얹었다. 노이즈 버퍼는 여전히 하나다.
+  // 2차: 90Hz는 폰 스피커가 못 내서 여전히 가벼웠다. 210Hz에서 떨어지는 몸통을
+  // 한 겹 더 깔았고, 그것이 목록의 두 번째 자리다.
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playBombSound());
-  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600]);
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [90, 210, 1900, 800, 1200, 600]);
   assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
 });
 
-test('mega bomb sound keeps the original OING five-layer impact', () => {
+test('mega bomb sound keeps the previous OING impact', () => {
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playMegaBombSound());
   assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [800, 1200, 600, 400, 1600]);
@@ -214,7 +229,18 @@ test('time freeze keeps the original OING ice shards and closing bells', () => {
   }
 });
 
-test('clover sound is a bright five-note lucky flourish', () => {
+test('clover sound uses the chosen warm four-note flourish', () => {
   const oscillators = newOscillators(() => audio.playCloverSound());
-  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [659.25, 880, 1046.5, 1318.5, 2637]);
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [392, 523, 659, 784]);
+  assert.equal(oscillators.at(-1).type, 'triangle');
+});
+
+test('hint and shuffle use the chosen lower soft cues', () => {
+  const hint = newOscillators(() => audio.playHintSound());
+  assert.deepEqual(hint.map((item) => item.frequency.events[0].value), [392, 523, 659]);
+  const before = AudioContextMock.latest.bufferSources.length;
+  const shuffle = newOscillators(() => audio.playShuffleSound());
+  assert.deepEqual(shuffle.map((item) => item.frequency.events[0].value), [440]);
+  assert.deepEqual(shuffle[0].frequency.events.map((event) => event.value), [440, 587]);
+  assert.equal(AudioContextMock.latest.bufferSources.length, before + 2);
 });

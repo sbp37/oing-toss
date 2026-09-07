@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // New OING never talks to Firestore directly. Toss identity, score
+    // validation, friends, and ranking reads all pass through Cloud Functions.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

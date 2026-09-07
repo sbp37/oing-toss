@@ -2,7 +2,7 @@
 
 배포 에셋은 `oing-toss-assets-v1/` 원본을 기준으로 사용했다. 기존 캐릭터·아이콘·UI는 lossless WebP 원본을 유지하고, 배경 두 장만 실제 화면 비교 후 WebP quality 86으로 재압축했다. 신규 상·하단 크롬은 1536px 투명 PNG를 원본으로 보관하고, 모바일 첫 로딩을 위해 눈에 띄는 손실이 없는 WebP quality 92 배포본을 사용한다. 콘셉트 보드나 마스터 시트의 일부는 다시 크롭하지 않았다.
 
-플레이 보드는 모든 칸이 같은 타일 하나(`tiles-syrup-v4/tile-mint.webp`)를 쓴다. 색을 칸마다 다르게 주는 방향은 여러 번 시도했지만, 보드는 한 판에 2분을 계속 쳐다보는 화면이라 42칸에 깔린 채도가 누적된다. 눈이 편할 만큼 옅으면 흐려 보이고 의도가 읽힐 만큼 진하면 피로해서, 그 사이에 성립하는 값이 없었다.
+플레이 보드는 모든 칸이 같은 타일 하나(`tiles-syrup-v5/tile-cream.webp`)를 쓴다. 색을 칸마다 다르게 주는 방향은 여러 번 시도했지만, 보드는 한 판에 2분을 계속 쳐다보는 화면이라 42칸에 깔린 채도가 누적된다. 눈이 편할 만큼 옅으면 흐려 보이고 의도가 읽힐 만큼 진하면 피로해서, 그 사이에 성립하는 값이 없었다.
 
 이 타일은 L*90 · C*8로 색조가 거의 없지만 시럽의 무지갯빛 굴절이 안에 살아 있어(면 전체 산포 약 2.5 ΔE) 평평한 색판이 아니라 재질로 읽힌다. 매력을 색이 아니라 재질에서 얻는 방식이고, 채도가 낮으므로 42칸에 깔려도 누적되지 않는다. 화려함은 선택·힌트·성공·콤보처럼 짧고 국소적인 순간이 맡는다.
 
@@ -39,6 +39,7 @@
 | `assets/ui/play-control-pause-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 일시정지 버튼 | 44–55px, 1:1 유지 |
 | `assets/ui/play-control-sound-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 좌측 사운드 버튼 | 44–55px, 1:1 유지 |
 | `assets/ui/play-stage-badge-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 분리하고 기존 리본에 STAGE 라벨만 정리 | 플레이 중앙 독립 STAGE 배지 | 86–142px, 고유 비율 유지 |
+| `assets/ui/play-round-badge-v1.webp` | `assets/ui/play-stage-badge-v3.webp`의 형태·색·알파를 보존하고 리본의 고정 영문만 제거 | 플레이 중앙 판/STAGE 공용 배지, 라벨은 HTML | 73–88px, 623:427 비율 유지 |
 | `assets/ui/play-timer-pill-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 `design/play-layout-v1/build-assets.py`로 분리 | 플레이 우측 타이머 셸 | 98–145px, 고유 비율 유지 |
 | `assets/ui/play-status-bar-v3.webp` | 프로젝트 소유 `assets/ui/play-hud-chrome-v2.png`에서 기록 패널만 분리하고 샘플 게이지를 제거 | 점수·성공 진행·콤보 공용 상태 패널 | 화면 폭 255–412px, 고유 비율 유지 |
 | `assets/ui/play-status-bar-v4.webp` | `play-status-bar-v3.png`의 모서리를 보존한 세로 9-slice 확장 | 플레이 상태바의 라벨·수치·진행바 정렬 공간 | 화면 폭 255–412px, 1799×300 고유 비율 유지 |
@@ -59,8 +60,10 @@
 | `assets/ui/logo.webp` | `oing-toss-assets-v1/assets/ui/logo.webp` | 홈 로고 | 142–212px |
 | `assets/ui/button-settings.webp` | `oing-toss-assets-v1/assets/ui/button-settings.webp` | 홈 설정 | 39–44px |
 | `assets/ui/button-pause.webp` | `oing-toss-assets-v1/assets/ui/button-pause.webp` | 플레이 일시정지 | 43–48px |
-| `assets/ui/tiles-syrup-v4/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 보드 전 칸의 유일한 타일 (L*90 C*8, 숫자 대비 5.99:1) | 256×256 원본, 셀 약 44–59px |
-| `assets/ui/tiles-syrup-v4/tile-peach.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 보너스 고양이 칸 (L*90 C*17, 보드와 명도 동일·ΔE 14.1)·홈 화면 합10 예시 미니 타일 | 셀 약 44–59px, 홈 44px |
+| `assets/ui/tiles-syrup-v5/tile-cream.webp` | `assets/source/tiles-syrup-v5/tile-cream.png`에서 256px lossless WebP로 생성 | 플레이 보드 전 칸의 밝은 아이보리 시럽 타일 | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v5/tile-cat-pink.webp` | `assets/source/tiles-syrup-v5/tile-cat-pink.png`에서 256px lossless WebP로 생성 | 플레이 보너스 고양이 칸의 밝은 코랄핑크 시럽 타일 | 256×256 원본, 셀 약 44–59px |
+| `assets/ui/tiles-syrup-v4/tile-mint.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 홈 화면 합10 예시 미니 타일 | 홈 44px |
+| `assets/ui/tiles-syrup-v4/tile-peach.webp` | `assets/source/tile-syrup-v4-alpha.png`에서 분리 | 홈 화면 합10 예시 미니 타일 | 홈 44px |
 | `assets/icons/navigation/trophy.webp` | `oing-toss-assets-v1/assets/icons/trophy.webp` | 홈·결과 랭킹 | 27px |
 | `assets/icons/navigation/home.webp` | `oing-toss-assets-v1/assets/icons/home.webp` | 결과 홈으로 | 24px |
 | `assets/icons/hud/score.webp` | `oing-toss-assets-v1/assets/icons/coin.webp` | 점수 HUD | 22px |

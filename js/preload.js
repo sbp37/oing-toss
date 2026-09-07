@@ -1,13 +1,13 @@
 const PLAY_CRITICAL_ASSETS = Object.freeze([
-  'assets/backgrounds/play-bg-rose-morning-v2.webp',
+  'assets/backgrounds/play-bg-spring-path-v2.webp',
   'assets/ui/play-control-pause-v3.webp',
   'assets/ui/play-control-sound-v3.webp',
-  'assets/ui/play-stage-badge-v3.webp',
+  'assets/ui/play-round-badge-v1.webp',
   'assets/ui/play-timer-pill-v3.webp',
   'assets/ui/play-status-bar-v5.webp',
-  'assets/ui/play-top-controls-v4.webp',
-  'assets/ui/item-dock-v4.webp',
-  'assets/ui/speech-bubble-wide-v3.webp',
+  'assets/ui/item-well-hint-v1.webp',
+  'assets/ui/item-well-shuffle-v1.webp',
+  'assets/ui/speech-bubble-wide-v4.webp',
   'assets/characters/cat-peek.webp',
   'assets/characters/cat-wave.webp',
   'assets/characters/cat-idle.webp',
@@ -17,7 +17,8 @@ const PLAY_CRITICAL_ASSETS = Object.freeze([
   'assets/icons/items/hint.webp',
   'assets/icons/items/shuffle.webp',
   'assets/icons/items/bomb.webp',
-  'assets/ui/tiles-syrup-v4/tile-mint.webp',
+  'assets/ui/tiles-syrup-v5/tile-cream.webp',
+  'assets/ui/tiles-syrup-v5/tile-cat-pink.webp',
 ]);
 
 const PLAY_DEFERRED_ASSETS = Object.freeze([
@@ -74,10 +75,15 @@ export function schedulePlayAssetsPreload() {
   const afterFirstPaint = () => {
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        scheduleIdle(async () => {
-          await preloadImages(PLAY_CRITICAL_ASSETS);
-          scheduleIdle(() => preloadImages(PLAY_DEFERRED_ASSETS));
-        });
+        // Let the home screen finish its first decode/paint before competing
+        // for play-only art. Pointer/focus on Start still promotes this same
+        // list immediately, so an eager player does not wait for the timer.
+        window.setTimeout(() => {
+          scheduleIdle(async () => {
+            await preloadImages(PLAY_CRITICAL_ASSETS);
+            scheduleIdle(() => preloadImages(PLAY_DEFERRED_ASSETS));
+          });
+        }, 900);
       });
     });
   };

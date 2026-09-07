@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BoardItemField, rankBoardItemCells } from '../js/board-items.js';
-import { availableItemTimeBonus, boardDropInventoryGrant, boardDropReward, cappedSessionTime, chooseBoardDrop, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, completesStageChallenge, freezeTimeline, isItemUnlockedAtStage, itemRewardCountdown, itemUnlockGrantForStage, isNearMissSum, nextBoardDropPity, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, shouldOfferStruggleHint, specialTilePlanForStage, stageChallengeBonus, stageChallengeForStage, stageChallengeProgress, stageClearBonus, stageProgressGainForClear, stageShowcaseBoardDrop } from '../js/data.js';
+import { getRoundConfig, availableItemTimeBonus, boardDropInventoryGrant, boardDropPoolAfterRepeat, boardDropReward, boardDropRewardForRun, cappedSessionTime, chooseBoardDrop, classicComboGain, comboAfterFailure, comboAfterIdle, comboAfterIncorrectSelection, comboMilestoneCrossed, comboWindowMsForStage, freezeTimeline, gardenRevealPercent, isItemUnlockedAtStage, itemRewardCountdown, itemRewardStatus, itemUnlockGrantForStage, isNearMissSum, isWowClear, isNiceClear, nextBoardDropPity, nextGardenRevealBest, rebasePausedTimeline, roundTimeBonusSeconds, shouldAdvanceRound, needsRescueShuffle, stageEndDecision, NORMAL_CLEAR_MIN_PROGRESS, normalClearThresholdForStage, shouldOfferStruggleHint, specialTilePlanForStage, stageClearBonus, stageShowcaseBoardDrop, successFeedbackLevel } from '../js/data.js';
 
 test('all live board drops activate immediately instead of requiring a second inventory tap', () => {
   assert.equal(boardDropInventoryGrant('bomb'), null);
@@ -46,13 +46,17 @@ test('background pause rebases game, freeze and combo deadlines together', () =>
   });
 });
 
-test('only major board-size transitions refill time and held time stays capped', () => {
-  assert.equal(roundTimeBonusSeconds(1), 6);
-  assert.equal(roundTimeBonusSeconds(2), 10);
-  assert.equal(roundTimeBonusSeconds(3), 0);
-  assert.equal(roundTimeBonusSeconds(4), 10);
-  assert.equal(roundTimeBonusSeconds(5), 0);
-  assert.equal(roundTimeBonusSeconds(10), 0);
+test('board growth pays time bonuses scaled to the step, flat clears pay small ones', () => {
+  // The square ladder grows in nine-cell-plus jumps (16→25→36) that pay the
+  // full ten, one small 36→42 step that pays six, and holds sizes between.
+  // Baseline economy, unchanged pending the full-clear simulations.
+  assert.equal(roundTimeBonusSeconds(1), 10);
+  assert.equal(roundTimeBonusSeconds(2), 0, 'the early same-size clear predates the stage-3 flat bonus');
+  assert.equal(roundTimeBonusSeconds(3), 10);
+  assert.equal(roundTimeBonusSeconds(4), 4);
+  assert.equal(roundTimeBonusSeconds(5), 6);
+  assert.equal(roundTimeBonusSeconds(6), 4, 'same-size clears at the 6x7 cap pay a small bonus');
+  assert.equal(roundTimeBonusSeconds(10), 4);
   assert.equal(cappedSessionTime(90, 5), 95);
   assert.equal(cappedSessionTime(117, 10), 120);
   assert.equal(cappedSessionTime(120, 15), 120);
@@ -65,14 +69,18 @@ test('stage bonus and special tiles ramp in after the tutorial stages', () => {
   assert.ok(stageClearBonus(8, 30, true) > stageClearBonus(1, 0, false));
   assert.deepEqual(specialTilePlanForStage(3, () => 0), []);
   assert.deepEqual(specialTilePlanForStage(4, () => 0), ['bomb']);
-  assert.deepEqual(specialTilePlanForStage(6, () => 0), ['clock', 'bomb']);
-  assert.deepEqual(specialTilePlanForStage(7, () => 0), ['clock', 'bomb']);
   assert.deepEqual(specialTilePlanForStage(10, () => 0.9), []);
-  assert.deepEqual(
-    specialTilePlanForStage(6, () => 0, { timeBonusCapped: true }),
-    ['bomb'],
-    'time-capped runs replace the clock opportunity with the remaining valid special type',
-  );
+  // The bomb is the only special tile: the clock had three separate paths
+  // for one +5s effect and the tile was the one nobody met (0.08 sightings
+  // per run), so it is gone and the board drop plus the banked dock item
+  // remain. No stage may reintroduce it.
+  for (const stage of [1, 4, 6, 7, 10, 15]) {
+    assert.deepEqual(
+      specialTilePlanForStage(stage, () => 0).filter((type) => type !== 'bomb'),
+      [],
+      `stage ${stage} must plan bomb tiles only`,
+    );
+  }
 });
 
 test('combo grace tightens by stage and idle decay stays forgiving early', () => {
@@ -86,11 +94,27 @@ test('combo grace tightens by stage and idle decay stays forgiving early', () =>
   assert.equal(comboAfterIdle(20, 9), 17);
 });
 
-test('large five-cell answers accelerate the goal without making ordinary answers ambiguous', () => {
-  assert.equal(stageProgressGainForClear(2), 1);
-  assert.equal(stageProgressGainForClear(4), 1);
-  assert.equal(stageProgressGainForClear(5), 2);
-  assert.equal(stageProgressGainForClear(8), 2);
+test('five cells in one clear is the WOW threshold, matching the original', () => {
+  assert.equal(isWowClear(2), false);
+  assert.equal(isWowClear(4), false, 'four cells already pay a wide bonus but do not stop the screen');
+  assert.equal(isWowClear(5), true);
+  assert.equal(isWowClear(8), true);
+
+  // NICE is the step below WOW and never overlaps it: exactly four cells.
+  assert.equal(isNiceClear(2), false);
+  assert.equal(isNiceClear(3), false);
+  assert.equal(isNiceClear(4), true);
+  assert.equal(isNiceClear(5), false, 'five cells belong to WOW alone');
+  assert.equal(isNiceClear(7), false);
+  for (const cells of [2, 3, 4, 5, 6, 8]) {
+    assert.ok(!(isNiceClear(cells) && isWowClear(cells)), `${cells} cells must not fire both tiers`);
+  }
+  // The rank system is untouched by NICE: four cells on their own still rank
+  // as a plain clear (or its cat/combo rank), so nothing outranks WOW.
+  assert.equal(successFeedbackLevel({ wow: false }), 1);
+  assert.equal(successFeedbackLevel({ wow: true }), 4);
+  assert.equal(successFeedbackLevel({ emptiesBoard: true, wow: true }), 5);
+  assert.equal(successFeedbackLevel({ catCount: 1 }), 2);
 });
 
 test('bomb and clock inventory unlock only when their teaching stages begin', () => {
@@ -103,35 +127,6 @@ test('bomb and clock inventory unlock only when their teaching stages begin', ()
   assert.equal(isItemUnlockedAtStage('bomb', 3), true);
   assert.equal(isItemUnlockedAtStage('clock', 4), false);
   assert.equal(isItemUnlockedAtStage('clock', 5), true);
-});
-
-test('late stages rotate optional skill bonuses without replacing the main goal', () => {
-  assert.equal(stageChallengeForStage(5), null);
-  assert.equal(stageChallengeForStage(6).kind, 'wide');
-  assert.equal(stageChallengeForStage(7).kind, 'cat');
-  assert.equal(stageChallengeForStage(8).kind, 'chain');
-  assert.equal(stageChallengeForStage(9).kind, 'wide');
-  assert.equal(completesStageChallenge(stageChallengeForStage(6), { cellCount: 4 }), false);
-  assert.equal(completesStageChallenge(stageChallengeForStage(6), { cellCount: 5 }), true);
-  assert.equal(completesStageChallenge(stageChallengeForStage(7), { catCount: 1 }), true);
-  assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 2 }), false);
-  assert.equal(completesStageChallenge(stageChallengeForStage(8), { stageStreak: 3 }), true);
-  assert.ok(stageChallengeBonus(10) > stageChallengeBonus(6));
-});
-
-test('late-stage mission HUD exposes actionable progress and completion', () => {
-  const wide = stageChallengeForStage(6);
-  const chain = stageChallengeForStage(8);
-  assert.deepEqual(stageChallengeProgress(null), null);
-  assert.deepEqual(stageChallengeProgress(wide), {
-    kind: 'wide', label: '큰 조합', requirement: 5, progress: 0, target: 1, completed: false,
-  });
-  assert.deepEqual(stageChallengeProgress(chain, { stageStreak: 2 }), {
-    kind: 'chain', label: '연속 성공', requirement: 3, progress: 2, target: 3, completed: false,
-  });
-  assert.deepEqual(stageChallengeProgress(chain, { completed: true, stageStreak: 1 }), {
-    kind: 'chain', label: '연속 성공', requirement: 3, progress: 3, target: 3, completed: true,
-  });
 });
 
 test('a wrong rectangle trims combo by thirty percent instead of erasing it', () => {
@@ -160,13 +155,153 @@ test('two-combo WOW clears cannot skip celebration thresholds', () => {
   assert.equal(comboMilestoneCrossed(8, 10), 0);
 });
 
-test('board items appear only when a seven-combo boundary is crossed', () => {
+test('combo milestones past eight step every eight and this is the only place that decides it', () => {
+  // This is the single rule successFeedbackLevel and the combo banner both
+  // read from; ui.js no longer computes its own landing check
+  // (combo === 3 || combo === 5 || ...), which used to disagree with this
+  // crossing check whenever a wide clear stepped over a boundary instead of
+  // landing on it (15 -> 17 skips 16 by value but still crosses it).
+  assert.equal(comboMilestoneCrossed(2, 3), 3);
+  assert.equal(comboMilestoneCrossed(4, 6), 5, '5 crossed');
+  assert.equal(comboMilestoneCrossed(7, 9), 8, '8 crossed');
+  assert.equal(comboMilestoneCrossed(15, 16), 16);
+  assert.equal(comboMilestoneCrossed(15, 17), 16, 'a +2 jump that steps over 16 still crosses it');
+  assert.equal(comboMilestoneCrossed(16, 17), 0, 'no boundary lies strictly between 16 and 17');
+  assert.equal(comboMilestoneCrossed(23, 25), 24, '24 crossed');
+  assert.equal(comboMilestoneCrossed(31, 33), 32, '32 crossed');
+});
+
+test('a combo milestone always ranks at least 3, so "딱 10!" never shows alongside the banner', () => {
+  // handleSuccess only shows the "딱 10!" pop when successLevel <= 2 and
+  // only shows the combo banner when comboMilestone is truthy. If a
+  // milestone could ever produce rank <= 2 the two would render together;
+  // this is the invariant that guarantees they cannot.
+  for (const comboMilestone of [3, 5, 8, 16, 24, 32]) {
+    const level = successFeedbackLevel({ comboMilestone, catCount: 0 });
+    assert.ok(level >= 3, `milestone ${comboMilestone} produced rank ${level}, which would show 딱 10!`);
+  }
+  // The same must hold when a milestone lands alongside a cat bonus — that
+  // alone would only earn rank 2.
+  assert.equal(successFeedbackLevel({ comboMilestone: 8, catCount: 1 }), 3);
+
+  // An ordinary drop without a milestone also ranks 3, for the same reason:
+  // showComboReward's pop would otherwise share the frame with 딱 10!.
+  assert.equal(successFeedbackLevel({ earnedDrop: { id: 'bomb' }, comboMilestone: 0 }), 3);
+
+  // Full ladder, sanity-checked end to end.
+  assert.equal(successFeedbackLevel({}), 1, 'a plain clear with no other signal ranks 1');
+  assert.equal(successFeedbackLevel({ catCount: 1 }), 2, 'a cat bonus ranks 2');
+  assert.equal(successFeedbackLevel({ wow: true }), 4, 'a WOW clear owns the frame');
+  assert.equal(successFeedbackLevel({ earnedDrop: { id: 'megabomb' } }), 4, 'a rare drop outranks an ordinary one');
+  assert.equal(successFeedbackLevel({ emptiesBoard: true, wow: true, comboMilestone: 8 }), 5, 'emptying the board always wins');
+});
+
+test('the garden reveal percentage and its run-best both move only the right way', () => {
+  // Clearing more cells raises the percentage; this is what makes the
+  // ordering fix in handleSuccess (track after model.remove, not before)
+  // matter — reading it one success early always understated the reveal.
+  assert.equal(gardenRevealPercent(0, 36), 0);
+  assert.equal(gardenRevealPercent(9, 36), 25, 'a quarter of the board cleared');
+  assert.equal(gardenRevealPercent(18, 36), 50, 'reveal increases as more cells clear');
+  // A bomb blast clears extra cells beyond the matched rectangle; whatever
+  // count is passed in must be reflected, matching that the fix reads the
+  // model after both this.model.remove(rect) and this.model.removeCells
+  // (the bomb's blastCells) have already run.
+  assert.equal(gardenRevealPercent(26, 36), 72, 'the match plus a bomb blast both count');
+  // Clearing the whole board — including the clear that ends the stage —
+  // must read as a full reveal, not the stage-1-early undercount.
+  assert.equal(gardenRevealPercent(36, 36), 100, 'a fully cleared board reveals 100%');
+  assert.equal(gardenRevealPercent(40, 36), 100, 'cleared cannot exceed the board');
+  assert.equal(gardenRevealPercent(5, 0), 0, 'a board with no cells has nothing to reveal');
+
+  // The run's best never falls: a smaller reveal later in the run, or on a
+  // later stage, must not erase an earlier larger one.
+  assert.equal(nextGardenRevealBest(0, 25), 25);
+  assert.equal(nextGardenRevealBest(70, 40), 70, 'a weaker clear does not lower the run best');
+  assert.equal(nextGardenRevealBest(40, 70), 70, 'a stronger clear does raise it');
+  assert.equal(nextGardenRevealBest(100, 0), 100);
+});
+
+test('board items appear only when a nine-combo boundary is crossed', () => {
   assert.equal(boardDropReward(0, 1, 0), null);
   assert.equal(boardDropReward(1, 2, 0), null);
-  assert.equal(boardDropReward(6, 7, 1), 'milestone');
-  assert.equal(boardDropReward(6, 8, 1), 'milestone');
-  assert.equal(boardDropReward(7, 8, 2), null);
-  assert.equal(boardDropReward(13, 14, 2), 'milestone');
+  assert.equal(boardDropReward(8, 9, 1), 'milestone');
+  assert.equal(boardDropReward(8, 10, 1), 'milestone');
+  assert.equal(boardDropReward(9, 10, 2), null);
+  assert.equal(boardDropReward(17, 18, 2), 'milestone');
+});
+
+test('a classic WOW can reach the next item boundary through its three combo steps', () => {
+  const before = 6;
+  const after = before + classicComboGain(5);
+  assert.equal(after, 9);
+  assert.equal(boardDropReward(before, after), 'milestone');
+});
+
+// Drives the same bookkeeping advanceCombo() does: a success calls the rule
+// and then raises the run's high-water mark, while a failure only lowers the
+// live combo. Returns the combo value at each payout.
+function runPayouts(steps) {
+  let combo = 0;
+  let best = 0;
+  const payouts = [];
+  for (const step of steps) {
+    if (step.fail) {
+      combo = step.to;
+      continue;
+    }
+    const reward = boardDropRewardForRun({
+      previousCombo: combo,
+      nextCombo: step.to,
+      bestComboBefore: best,
+    });
+    if (reward) payouts.push(step.to);
+    combo = step.to;
+    best = Math.max(best, combo);
+  }
+  return payouts;
+}
+
+test('each nine-combo boundary pays once per run, however often it is re-crossed', () => {
+  const climb = (from, to) => Array.from({ length: to - from }, (_, i) => ({ to: from + i + 1 }));
+
+  // 9 -> 7 -> 9 must pay exactly once.
+  assert.deepEqual(
+    runPayouts([...climb(0, 9), { fail: true, to: 7 }, ...climb(7, 9)]),
+    [9],
+    'rebuilding to nine after a failure must not re-earn the drop',
+  );
+
+  // 18 -> 14 -> 18 must pay for 18 exactly once (plus the earlier 9).
+  assert.deepEqual(
+    runPayouts([...climb(0, 18), { fail: true, to: 14 }, ...climb(14, 18)]),
+    [9, 18],
+    'rebuilding to eighteen must not re-earn that boundary',
+  );
+
+  // The pathological case from the field: oscillating across a boundary.
+  const oscillation = [...climb(0, 18)];
+  for (let cycle = 0; cycle < 5; cycle += 1) {
+    oscillation.push({ fail: true, to: 13 }, ...climb(13, 18));
+  }
+  assert.deepEqual(
+    runPayouts(oscillation),
+    [9, 18],
+    'five rebuilds across the same boundary still pay only for the first crossing',
+  );
+
+  // A clean climb pays every new boundary.
+  assert.deepEqual(runPayouts(climb(0, 27)), [9, 18, 27]);
+
+  // A wide clear gains two combo and may step over a boundary; still once.
+  assert.deepEqual(
+    runPayouts([{ to: 2 }, { to: 4 }, { to: 6 }, { to: 8 }, { to: 10 }, { to: 12 }, { to: 14 }, { to: 16 }, { to: 18 }]),
+    [10, 18],
+    'jumping a boundary with a +2 gain pays exactly once for it',
+  );
+
+  // A fresh run starts from zero, so the same boundaries pay again.
+  assert.deepEqual(runPayouts(climb(0, 9)), [9], 'a new run re-arms every boundary');
 });
 
 test('stage four previews exactly one rare item without changing the recurring pool', () => {
@@ -178,35 +313,110 @@ test('stage four previews exactly one rare item without changing the recurring p
   assert.equal(stageShowcaseBoardDrop(5, () => 0), null);
 });
 
-test('the reward countdown makes the sixth combo an explicit one-more moment', () => {
+test('the reward countdown makes the eighth combo an explicit one-more moment', () => {
   assert.equal(itemRewardCountdown(6, 2), 0, 'tutorial stages do not tease locked rewards');
-  assert.equal(itemRewardCountdown(0, 3), 7);
-  assert.equal(itemRewardCountdown(1, 3), 6);
-  assert.equal(itemRewardCountdown(5, 3), 2);
-  assert.equal(itemRewardCountdown(6, 3), 1);
-  assert.equal(itemRewardCountdown(7, 3), 7);
-  assert.equal(itemRewardCountdown(13, 5), 1);
+  assert.equal(itemRewardCountdown(0, 3), 9);
+  assert.equal(itemRewardCountdown(1, 3), 8);
+  assert.equal(itemRewardCountdown(7, 3), 2);
+  assert.equal(itemRewardCountdown(8, 3), 1);
+  assert.equal(itemRewardCountdown(9, 3), 9);
+  assert.equal(itemRewardCountdown(17, 5), 1);
 });
 
-test('stage advances only when its explicit success target is reached', () => {
-  assert.equal(shouldAdvanceRound(3, 3, true), true);
-  assert.equal(shouldAdvanceRound(2, 3, false), false);
-  assert.equal(shouldAdvanceRound(3, 3, false), true);
-  assert.equal(shouldAdvanceRound(5, 3, false), true);
+test('the reward gauge follows the next unpaid high-water boundary', () => {
+  assert.deepEqual(itemRewardStatus(8, 8, 3), {
+    remaining: 1,
+    progress: 8 / 9,
+    target: 9,
+  });
+  assert.deepEqual(itemRewardStatus(9, 9, 3), {
+    remaining: 9,
+    progress: 0,
+    target: 18,
+  });
+  assert.deepEqual(itemRewardStatus(5, 10, 3), {
+    remaining: 13,
+    progress: 0,
+    target: 18,
+  });
+  assert.deepEqual(itemRewardStatus(6, 6, 2), {
+    remaining: 0,
+    progress: 0,
+    target: 0,
+  });
 });
 
-test('combo-seven rewards unlock variety gradually while board actions stay dominant', () => {
-  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0, stage: 2 }), null);
-  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'clock');
+test('repeat filtering preserves bombs but makes room for item variety', () => {
+  const bombOnly = ['bomb', 'bomb'];
+  assert.deepEqual(boardDropPoolAfterRepeat(bombOnly, 'bomb'), bombOnly);
+
+  const weighted = [...Array.from({ length: 12 }, () => 'bomb'), 'clock', 'megabomb', 'megabomb', 'freeze'];
+  const afterBomb = boardDropPoolAfterRepeat(weighted, 'bomb');
+  assert.equal(afterBomb.filter((id) => id === 'bomb').length, 6);
+  assert.deepEqual(afterBomb.filter((id) => id !== 'bomb'), ['clock', 'megabomb', 'megabomb', 'freeze']);
+  assert.ok(afterBomb.length < weighted.length);
+
+  assert.deepEqual(boardDropPoolAfterRepeat(weighted, 'megabomb'), [
+    ...Array.from({ length: 12 }, () => 'bomb'),
+    'clock',
+    'freeze',
+  ]);
+  assert.deepEqual(boardDropPoolAfterRepeat(weighted, 'clock'), [
+    ...Array.from({ length: 12 }, () => 'bomb'),
+    'megabomb',
+    'megabomb',
+  ]);
+});
+
+test('a stage ends only on an empty board; a dry board takes a rescue instead', () => {
+  // Full-clear rule: cells on the board mean the stage is still going, no
+  // matter what — running out of answers triggers the rescue shuffle, never
+  // a transition with tiles left behind.
+  assert.equal(shouldAdvanceRound({ boardEmpty: true }), true);
+  assert.equal(shouldAdvanceRound({ boardEmpty: false }), false);
+  assert.equal(shouldAdvanceRound({}), false);
+  assert.equal(needsRescueShuffle({ hasAnswer: false, boardEmpty: false }), true);
+  assert.equal(needsRescueShuffle({ hasAnswer: true, boardEmpty: false }), false);
+  assert.equal(needsRescueShuffle({ hasAnswer: false, boardEmpty: true }), false);
+
+  // Stage-end triage: an empty board advances (PERFECT when unassisted).
+  // Out of tens, the stage ends normally once enough of the board is gone
+  // — progress-based, so it means the same on a 4x4 and a 6x7 — and the
+  // rescue shuffle fires at most once per stage, only on a young board.
+  assert.equal(NORMAL_CLEAR_MIN_PROGRESS, 0.78);
+  assert.equal(stageEndDecision({ boardEmpty: true, remaining: 0, initialPlayable: 17 }), 'advance');
+  assert.equal(stageEndDecision({ hasAnswer: true, remaining: 20, initialPlayable: 38 }), 'continue');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 6, initialPlayable: 38 }), 'normal', '84% cleared ends the stage');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 1, initialPlayable: 17 }), 'normal', 'one orphan number never triggers a shuffle');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 20, initialPlayable: 38 }), 'rescue', 'a young dry board earns its one rescue');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 20, initialPlayable: 38, stageRescues: 1 }), 'normal',
+    'a second dry-out ends the stage instead of shuffling again');
+  assert.equal(stageEndDecision({ hasAnswer: false, remaining: 10, initialPlayable: 38, threshold: 0.7 }), 'normal', 'the threshold is tunable');
+  assert.equal(normalClearThresholdForStage(1), 0.6, 'learning stages end normally from 60% so beginners never meet the shuffle');
+  assert.equal(normalClearThresholdForStage(2), 0.6);
+  assert.equal(normalClearThresholdForStage(3), NORMAL_CLEAR_MIN_PROGRESS);
+
+  // No stage config carries a target any more; nothing may reintroduce one.
+  for (const stage of [1, 3, 5, 10, 16]) {
+    assert.equal(getRoundConfig(stage).target, undefined, `stage ${stage} must not define a target`);
+  }
+});
+
+test('combo rewards unlock variety gradually while board actions stay dominant', () => {
+  assert.equal(chooseBoardDrop(9, () => 0.999, { rewardIndex: 0, stage: 2 }), null);
+  assert.equal(chooseBoardDrop(9, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(9, () => 0, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(9, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 3 }).id, 'bomb');
+  // Clock is retained only for old saved data. New stage-5 drops are bombs
+  // and megabombs, so a live reward never extends the clock directly.
+  assert.equal(chooseBoardDrop(9, () => 0.999, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'megabomb');
+  assert.equal(chooseBoardDrop(9, () => 0.845, { cloverGiven: true, rewardIndex: 1, stage: 5 }).id, 'bomb');
   assert.notEqual(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 5 })?.id, 'clover');
   assert.notEqual(chooseBoardDrop(28, () => 0, {
     pity: { clover: 99 }, rewardIndex: 4, stage: 5,
   })?.id, 'clover', 'clover pity must stay locked before stage 6');
-  assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'freeze');
-  assert.equal(chooseBoardDrop(21, () => 0.999, { rewardIndex: 3, stage: 6 }).id, 'clover');
+  assert.notEqual(chooseBoardDrop(10, () => 0.999, { rewardIndex: 2, stage: 5 }).id, 'freeze');
+  assert.equal(chooseBoardDrop(14, () => 0.999, { rewardIndex: 2, stage: 6 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 4, stage: 8 }).id, 'clover');
   assert.equal(chooseBoardDrop(28, () => 0.999, { rewardIndex: 5, stage: 8, cloverGiven: true }).id, 'freeze');
 
@@ -219,13 +429,14 @@ test('combo-seven rewards unlock variety gradually while board actions stay domi
   const timeEffects = lateDrops.filter((id) => ['clock', 'freeze'].includes(id)).length;
   assert.ok(boardActions >= 145, 'late rewards must still strongly favor tactile board actions');
   assert.ok(timeEffects <= 22, 'clock and freeze rewards must not enable endless survival');
+  assert.ok(!lateDrops.includes('clock'), 'new live drops never grant a clock');
   assert.ok(lateDrops.includes('megabomb'));
   assert.ok(lateDrops.includes('clover'));
 });
 
 test('earned drops teach with a bomb without forcing a clock after it', () => {
-  assert.equal(chooseBoardDrop(7, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
-  assert.equal(chooseBoardDrop(7, () => 0, {
+  assert.equal(chooseBoardDrop(9, () => 0.999, { rewardIndex: 0, stage: 3 }).id, 'bomb');
+  assert.equal(chooseBoardDrop(9, () => 0, {
     rewardIndex: 1,
     previousType: 'bomb',
     cloverGiven: true,
@@ -253,7 +464,7 @@ test('rare drop pity guarantees variety without chaining time effects', () => {
     pity: { megabomb: 2 }, previousType: 'bomb', rewardIndex: 3, stage: 8,
   }).id, 'megabomb', 'late stages use the longer megabomb pity limit');
   assert.equal(chooseBoardDrop(28, () => 0, {
-    pity: { megabomb: 0, freeze: 3 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
+    pity: { megabomb: 0, freeze: 5 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
   }).id, 'freeze');
   assert.equal(chooseBoardDrop(28, () => 0, {
     cloverGiven: false, pity: { megabomb: 0, clover: 3, freeze: 0 }, previousType: 'bomb', rewardIndex: 5, stage: 8,
@@ -263,7 +474,7 @@ test('rare drop pity guarantees variety without chaining time effects', () => {
   }).id, 'clover');
   assert.equal(nextBoardDropPity({ clover: 2 }, 'bomb', { stage: 6, combo: 21 }).clover, 3);
   assert.notEqual(chooseBoardDrop(28, () => 0.999, {
-    pity: { megabomb: 0, freeze: 3 }, previousType: 'clock', rewardIndex: 5, stage: 8,
+    pity: { megabomb: 0, freeze: 5 }, previousType: 'clock', rewardIndex: 5, stage: 8,
   }).id, 'freeze', 'a clock must not be followed immediately by another time effect');
   assert.deepEqual(nextBoardDropPity({ megabomb: 2, freeze: 3 }, 'megabomb', { stage: 8, combo: 28 }), {
     megabomb: 0,
@@ -284,7 +495,8 @@ test('time-capped runs stop dropping clock and freeze without suppressing reward
     stage: 5,
     timeBonusCapped: true,
   });
-  assert.equal(stageFiveReplacement.id, 'bomb');
+  assert.ok(['bomb', 'megabomb'].includes(stageFiveReplacement.id),
+    'a capped run replaces time effects with board actions');
 
   const forcedFreezeReplacement = chooseBoardDrop(28, () => 0, {
     cloverGiven: true,
@@ -322,9 +534,45 @@ test('drops prefer empty cells next to playable numbers', () => {
   assert.deepEqual(ranked[0], { row: 1, col: 1 });
 });
 
+test('visible bombs avoid touching when another open cell is available', () => {
+  const field = new BoardItemField();
+  field.queue('bomb');
+  field.queue('bomb');
+  const placed = field.place([
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+  ]);
+  assert.equal(placed.length, 2);
+  assert.ok(
+    Math.max(
+      Math.abs(placed[0].row - placed[1].row),
+      Math.abs(placed[0].col - placed[1].col),
+    ) > 1,
+    'two bombs must not occupy touching cells',
+  );
+});
+
+test('classic placement keeps one visible reward while later drops wait', () => {
+  const field = new BoardItemField();
+  field.queue('bomb');
+  field.queue('megabomb');
+  const grid = [
+    [null, null, null],
+    [null, null, null],
+    [null, null, null],
+  ];
+  assert.equal(field.place(grid, new Set(), { maxVisible: 1 }).length, 1);
+  assert.equal(field.items.size, 1);
+  assert.equal(field.pending.length, 1);
+  assert.equal(field.place(grid, new Set(), { maxVisible: 1 }).length, 0);
+});
+
 test('unused visible drops carry into the next board and reappear after a clear', () => {
   const field = new BoardItemField();
-  field.queue('bomb', { earnedAtCombo: 7 });
+  field.queue('bomb', { earnedAtCombo: 9 });
   const first = field.place([
     [1, null],
     [2, 7],
@@ -358,4 +606,36 @@ test('round transition can bank basic drops while advanced drops remain queued',
   assert.deepEqual(field.extractTypes(new Set(['bomb', 'clock'])).map((item) => item.type).sort(), ['bomb', 'clock']);
   assert.deepEqual([...field.items.values()].map((item) => item.type), ['freeze']);
   assert.deepEqual(field.pending.map((item) => item.type), ['clover']);
+});
+
+test('the first freeze opens on the third board at combo 12, later ones keep the original gate', async () => {
+  const { FIRST_FREEZE_GATE } = await import('../js/data.js');
+  assert.deepEqual(FIRST_FREEZE_GATE, { stage: 5, combo: 12, pity: 3 });
+  // 낮춘 문턱: 5단계(3번째 판)·콤보 12·천장 3이면 첫 프리즈가 보장된다.
+  assert.equal(chooseBoardDrop(12, () => 0, {
+    rewardIndex: 2, stage: 5, pity: { freeze: 3 },
+  }).id, 'freeze');
+  // 같은 조건이라도 이미 한 번 받았으면 원래 문턱(6단계·콤보 14·천장 5)이다.
+  assert.notEqual(chooseBoardDrop(12, () => 0, {
+    rewardIndex: 2, stage: 5, pity: { freeze: 3 }, freezeGiven: true,
+  })?.id, 'freeze');
+  assert.notEqual(chooseBoardDrop(14, () => 0, {
+    rewardIndex: 2, stage: 6, pity: { freeze: 3 }, freezeGiven: true, cloverGiven: true,
+  })?.id, 'freeze');
+  assert.equal(chooseBoardDrop(14, () => 0, {
+    rewardIndex: 2, stage: 6, pity: { freeze: 5 }, freezeGiven: true, cloverGiven: true,
+  }).id, 'freeze');
+  // 콤보 11·4단계에서는 첫 프리즈도 아직이다 - 문턱을 낮췄지 없앤 것이 아니다.
+  assert.notEqual(chooseBoardDrop(11, () => 0.999, { rewardIndex: 2, stage: 5, pity: { freeze: 9 } })?.id, 'freeze');
+  assert.notEqual(chooseBoardDrop(12, () => 0.999, { rewardIndex: 2, stage: 4, pity: { freeze: 9 } })?.id, 'freeze');
+  // 시간 아이템 슬롯은 하나뿐이다. 첫 프리즈를 열어도 후반 뽑기의 시간 아이템
+  // 비중은 안 늘어난다(위 '생존 연장 금지' 단언과 같은 표본).
+  const lateDrops = Array.from({ length: 180 }, (_, index) => chooseBoardDrop(
+    35, () => index / 180, { cloverGiven: false, freezeGiven: false, rewardIndex: 5, stage: 9 },
+  ).id);
+  assert.ok(lateDrops.filter((id) => id === 'freeze').length <= 22);
+  // 천장은 낮춘 문턱이 열린 뒤부터 센다.
+  assert.equal(nextBoardDropPity({ freeze: 0 }, 'bomb', { stage: 5, combo: 12 }).freeze, 1);
+  assert.equal(nextBoardDropPity({ freeze: 0 }, 'bomb', { stage: 5, combo: 11 }).freeze, 0);
+  assert.equal(nextBoardDropPity({ freeze: 2 }, 'freeze', { stage: 5, combo: 12 }).freeze, 0);
 });

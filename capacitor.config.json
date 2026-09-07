@@ -1,0 +1,10 @@
+{
+  "appId": "com.oinggame.app",
+  "appName": "오잉게임",
+  "webDir": "dist/client",
+  "backgroundColor": "#8edcf1",
+  "android": {
+    "backgroundColor": "#8edcf1",
+    "allowMixedContent": false
+  }
+}

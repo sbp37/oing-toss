@@ -4,8 +4,12 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function cellFromPoint(boardEl, clientX, clientY, stickyCell = null) {
-  const rect = boardEl.getBoundingClientRect();
+// cachedRect가 오면 그것을 쓴다. 판의 위치와 크기는 한 번의 드래그 동안
+// 바뀌지 않는데, 손가락이 움직일 때마다 getBoundingClientRect를 부르면
+// 브라우저가 그 자리에서 판 전체의 배치를 다시 계산한다. 칸이 54개인 판에서는
+// 이 읽기 한 번이 한 칸 이동 비용의 대부분을 차지했다.
+export function cellFromPoint(boardEl, clientX, clientY, stickyCell = null, cachedRect = null) {
+  const rect = cachedRect || boardEl.getBoundingClientRect();
   const cols = Number(boardEl.dataset.cols || boardEl.dataset.size) || 4;
   const rows = Number(boardEl.dataset.rows || boardEl.dataset.size) || 4;
   if (!rect.width || !rect.height) return null;
@@ -47,6 +51,7 @@ export function attachStickyRectangleInput({
   onPointerStart,
 }) {
   let pointerId = null;
+  let boardRect = null;
   let startCell = null;
   let lastCell = null;
   let tapAnchor = null;
@@ -67,7 +72,7 @@ export function attachStickyRectangleInput({
   };
 
   const previewAt = (event) => {
-    const cell = cellFromPoint(boardEl, event.clientX, event.clientY, lastCell);
+    const cell = cellFromPoint(boardEl, event.clientX, event.clientY, lastCell, boardRect);
     if (!cell || !startCell) return;
     lastCell = cell;
     if (cell.r !== startCell.r || cell.c !== startCell.c) leftOrigin = true;
@@ -109,6 +114,7 @@ export function attachStickyRectangleInput({
     }
     if (previewFrame) cancelAnimationFrame(previewFrame);
     previewFrame = 0;
+    boardRect = null;
     boardEl.classList.remove('is-dragging');
     if (cancelled) onCancel?.();
     if (oldPointerId !== null && boardEl.hasPointerCapture?.(oldPointerId)) {
@@ -118,7 +124,9 @@ export function attachStickyRectangleInput({
 
   const onPointerDown = (event) => {
     if (!isEnabled() || pointerId !== null || event.isPrimary === false || event.button !== 0) return;
-    const cell = cellFromPoint(boardEl, event.clientX, event.clientY);
+    // 이 제스처가 끝날 때까지 쓸 판의 좌표. 손가락을 누른 순간 한 번만 읽는다.
+    boardRect = boardEl.getBoundingClientRect();
+    const cell = cellFromPoint(boardEl, event.clientX, event.clientY, null, boardRect);
     if (!cell) return;
     event.preventDefault();
     onPointerStart?.();
