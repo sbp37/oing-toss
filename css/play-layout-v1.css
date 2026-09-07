@@ -6072,9 +6072,11 @@
 
 @keyframes tile-blast-scatter {
   0% { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); filter: brightness(1); }
+  /* 22%: 튀기 전에 폭심 쪽으로 눌리며 옆으로 눌린다(가로 1.12, 세로 .78).
+     "손맛"은 여기서 나온다 - 균일한 축소는 무게가 없다. transform만 쓴다. */
   22% {
     opacity: 1;
-    transform: translate(calc(var(--blast-x, 0px) * -.16), calc(var(--blast-y, 0px) * -.16)) scale(.86);
+    transform: translate(calc(var(--blast-x, 0px) * -.16), calc(var(--blast-y, 0px) * -.16)) scale(1.12, .78);
     filter: brightness(1.24) saturate(1.16);
   }
   55% {

@@ -119,11 +119,14 @@ test('classic ladder grows without repeats and settles at 10x7', () => {
     CLASSIC_BOARD_LADDER.map((step) => [step.rows, step.cols]),
     [[5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [9, 7], [10, 7]],
   );
-  // 환급은 축하만 남긴다. 토스용은 2~3분 안에 끝내고, 더 하고 싶으면 이어하기
-  // 광고를 쓰는 쪽이다. 10x7 생존 구간은 자동 시간 보너스가 없다.
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [1, 1, 1, 1, 0, 0, 0]);
-  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [4, 4, 3, 2, 1, 1, 0]);
-  CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus >= step.timeFloor));
+  // 2026-09-07 환급 복원. 4/4/3/2/1/1/0으로 닫았더니 세 프로필 모두 런이 정확히
+  // 2.1분(편차 0)이 됐다 - 결말이 하나뿐인 스톱워치. 이 값이면 2.2~2.5분이고
+  // 60초 보유 상한과 6판 이후 피로가 늘어짐을 막는다 (js/data.js 주석, 시뮬 40판).
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeFloor), [3, 4, 4, 4, 4, 4, 4]);
+  assert.deepEqual(CLASSIC_BOARD_LADDER.map((step) => step.timeBonus), [8, 10, 11, 12, 12, 12, 12]);
+  CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeBonus > step.timeFloor));
+  // 어떤 판갈이도 빈손은 아니다. 아무것도 안 주는 판갈이는 사건이 아니라 벌로 읽힌다.
+  CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.timeFloor >= 2));
   // 열은 7을 넘지 않는다. 360px 폰 실측에서 8열은 칸이 38.8px로 손가락보다 작다.
   CLASSIC_BOARD_LADDER.forEach((step) => assert.ok(step.cols <= 7, `${step.rows}x${step.cols}`));
   // 첫 판은 6열이어야 board.js의 초보 답 보장(cols === 6 && rows <= 6)이 켜진다.
@@ -142,9 +145,9 @@ test('classic ladder grows without repeats and settles at 10x7', () => {
       `${index}번째 계단: 행 +${dRows}, 열 +${dCols}`,
     );
   });
-  // 판갈이 상한은 판이 클수록 같거나 작다.
+  // 판갈이 상한은 판이 클수록 같거나 크다. 큰 판을 다 비우는 일이 더 어렵다.
   CLASSIC_BOARD_LADDER.forEach((step, index) => {
-    if (index) assert.ok(step.timeBonus <= CLASSIC_BOARD_LADDER[index - 1].timeBonus);
+    if (index) assert.ok(step.timeBonus >= CLASSIC_BOARD_LADDER[index - 1].timeBonus);
   });
   assert.equal(classicBoardForIndex(0), CLASSIC_BOARD_LADDER[0]);
   assert.equal(classicBoardForIndex(6), CLASSIC_BOARD_LADDER[6]);

@@ -1332,15 +1332,24 @@ export class GameUI {
       .filter((tile) => tile && !tile.dataset.item);
     this.boardFrame.querySelector('.bomb-target-region')?.remove();
     const center = { r: (rect.r1 + rect.r2) / 2, c: (rect.c1 + rect.c2) / 2 };
+    // 실기 제보 "가볍게 터지고 숫자만 지워진다." 불빛과 칸 흩어짐이 같은
+    // 순간에 시작해서 맞은 것과 터진 것이 한 덩어리였다. 칸을 70ms 붙들어
+    // 둔다(칸 멈춤) - 불빛이 먼저 닿고, 그 다음에 칸이 튀어 나간다. 게임 한 박자가
+    // 두 박자로 읽힌다. 보드 자체도 한 번 찬다(bomb-kick, transform만 쓴다).
+    const HIT_STOP_MS = 70;
     cellsInRect(rect).forEach(({ r, c }, index) => {
       const tile = this.tileAt(r, c);
       if (!tile || tile.dataset.item) return;
       tile.classList.remove('is-bomb-target');
       tile.style.removeProperty('--bomb-preview-delay');
-      tile.style.setProperty('--blast-delay', `${Math.min(index * 22, 120)}ms`);
+      tile.style.setProperty('--blast-delay', `${HIT_STOP_MS + Math.min(index * 22, 120)}ms`);
       this.setBlastVector(tile, c - center.c, r - center.r, index);
       tile.classList.add('is-bombed');
     });
+    this.boardFrame.classList.remove('bomb-kick');
+    void this.boardFrame.offsetWidth;
+    this.boardFrame.classList.add('bomb-kick');
+    setTimeout(() => this.boardFrame.classList.remove('bomb-kick'), 400);
     if (bounds) {
       const effect = document.createElement('div');
       effect.className = 'bomb-fx';
@@ -1360,7 +1369,9 @@ export class GameUI {
       setTimeout(() => effect.remove(), 520);
     }
     // 파편이 흩어지는 걸 끝까지 보여주되, 다음 수를 막는 시간은 줄인다.
-    await delay(330);
+    // 칸 멈춤 70ms만큼은 더 기다린다 - 칸이 아직 튀는 중에 다음 판정이
+    // 들어오면 흩어지던 칸 위로 새 숫자가 얹힌다.
+    await delay(400);
   }
 
   async animateMegaBomb(cells, origin) {

@@ -386,6 +386,7 @@ class OingGame {
       boardDropPity: { megabomb: 0, clover: 0, freeze: 0 },
       lastBoardDropType: null,
       cloverDropped: false,
+      freezeDropped: false,
       stageShowcaseGiven: false,
       stageShowcaseEligible: this.runtime?.testMode || rareShowcaseCount < 3,
       stageShowcaseIndex: this.runtime?.testMode ? 0 : rareShowcaseCount,
@@ -1208,6 +1209,7 @@ class OingGame {
         : this.state.round;
       const drop = chooseBoardDrop(this.state.combo, Math.random, {
         cloverGiven: this.state.cloverDropped,
+        freezeGiven: this.state.freezeDropped,
         pity: this.state.boardDropPity,
         previousType: this.state.lastBoardDropType,
         rewardIndex: this.state.boardDropsEarned,
@@ -1227,6 +1229,7 @@ class OingGame {
           combo: this.state.combo,
         });
         if (drop.id === 'clover') this.state.cloverDropped = true;
+        if (drop.id === 'freeze') this.state.freezeDropped = true;
         this.telemetry?.itemEarned(drop.id);
       }
     }
@@ -1246,6 +1249,7 @@ class OingGame {
     if (!this.runtime.testMode) storageAdapter.markRareShowcaseSeen();
     this.state.lastBoardDropType = showcaseDrop.id;
     if (showcaseDrop.id === 'clover') this.state.cloverDropped = true;
+    if (showcaseDrop.id === 'freeze') this.state.freezeDropped = true;
     this.telemetry?.itemEarned(showcaseDrop.id);
     return showcaseDrop;
   }
@@ -2123,7 +2127,9 @@ class OingGame {
     this.state.catBonusScore += catBonusPoints;
     this.telemetry?.itemBlast({ type: 'bomb', cellCount: stats.count, catCount });
     this.updateHUD();
-    this.ui.showItemScoreBurst(points, rect, 'bomb');
+    // 점수는 터진 다음에 읽힌다. 불빛과 같은 순간에 뜨면 폭발과 숫자가 서로를
+    // 가린다 - 칸 멈춤(70ms) 뒤, 칸이 튀기 시작할 때 띄운다.
+    setTimeout(() => this.ui.showItemScoreBurst(points, rect, 'bomb'), 120);
     this.showCatMessage('bomb');
     this.ui.setPlayCharacter(this.state.combo >= 3 ? 'cheer' : 'success', 950);
     duckMusic(620, 0.44);

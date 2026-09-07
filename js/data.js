@@ -102,7 +102,19 @@ export function stageShowcaseBoardDrop(stage = 1, random = Math.random, alreadyG
   return BOARD_DROP_ITEMS[STAGE_SHOWCASE_DROP_IDS[Math.floor(roll * STAGE_SHOWCASE_DROP_IDS.length)]];
 }
 
-function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = false, lateRun = false) {
+// 첫 프리즈만 문턱을 낮춘다. 원래 문턱(6단계 = 4번째 판, 콤보 14)은 초보가 평생
+// 못 넘는다 - 시뮬에서 초보는 3.5판, 최고 콤보 17에서 끝난다. "시간이 멈추는"
+// 순간을 한 번은 보아야 프리즈가 존재하는 줄 안다. 5단계(3번째 판)·콤보 12부터
+// 한 번, 그 뒤로는 원래 문턱. 슬롯은 하나라 후반 시간 아이템 비중은 그대로다
+// (무작위로 뿌리면 이제 붙은 온라인 랭킹에서 점수가 운이 된다).
+export const FIRST_FREEZE_GATE = Object.freeze({ stage: 5, combo: 12, pity: 3 });
+
+function freezeGateOpen(level, streak, freezeGiven) {
+  if (level >= 6 && streak >= 14) return true;
+  return !freezeGiven && level >= FIRST_FREEZE_GATE.stage && streak >= FIRST_FREEZE_GATE.combo;
+}
+
+function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = false, lateRun = false, freezeGiven = false) {
   const level = Math.max(1, Math.round(Number(stage) || 1));
   const streak = Math.max(0, Math.round(Number(combo) || 0));
   // 시뮬레이션(scripts/item-drop-compare.mjs)으로 확인한 사실: 콤보는 거의
@@ -123,7 +135,7 @@ function boardDropPoolFor(stage, combo, cloverGiven = false, timeBonusCapped = f
   // clear; another instant time extension made strong runs sprawl.
   // Freeze remains the one rare time effect and opens later than clover.
   if (level >= 5 && streak >= 7) pool.push('megabomb', 'megabomb');
-  if (level >= 6 && streak >= 14 && !timeBonusCapped && !lateRun) pool.push('freeze');
+  if (freezeGateOpen(level, streak, freezeGiven) && !timeBonusCapped && !lateRun) pool.push('freeze');
   if (level >= 6 && streak >= 14 && !cloverGiven) pool.push('clover');
   return pool.filter((id) => BOARD_DROP_ITEMS[id]?.implemented);
 }
@@ -150,6 +162,7 @@ export function boardDropPoolAfterRepeat(pool = [], previousType = null) {
 
 export function chooseBoardDrop(combo, random = Math.random, {
   cloverGiven = false,
+  freezeGiven = false,
   pity = {},
   previousType = null,
   rewardIndex = 0,
@@ -168,8 +181,11 @@ export function chooseBoardDrop(combo, random = Math.random, {
     && Math.max(0, pity.clover || 0) >= BOARD_DROP_PITY_LIMITS.clover) {
     return BOARD_DROP_ITEMS.clover;
   }
-  if (!timeBonusCapped && !lateRun && !previousWasTimeItem && level >= 6 && streak >= 14
-    && Math.max(0, pity.freeze || 0) >= BOARD_DROP_PITY_LIMITS.freeze) {
+  // 첫 프리즈는 천장이 짧다(3). 낮춘 문턱을 열어 놓고도 뽑기 운으로 세 번을
+  // 놓치면 초보 런은 끝나 있다. 둘째부터는 원래 천장(5).
+  const freezePityLimit = freezeGiven ? BOARD_DROP_PITY_LIMITS.freeze : FIRST_FREEZE_GATE.pity;
+  if (!timeBonusCapped && !lateRun && !previousWasTimeItem && freezeGateOpen(level, streak, freezeGiven)
+    && Math.max(0, pity.freeze || 0) >= freezePityLimit) {
     return BOARD_DROP_ITEMS.freeze;
   }
   // STAGE 6~7은 메가폭탄을 처음 접하는 보호 구간이다. 자연 드롭 확률은
@@ -181,7 +197,7 @@ export function chooseBoardDrop(combo, random = Math.random, {
     && previousType !== 'megabomb') {
     return BOARD_DROP_ITEMS.megabomb;
   }
-  const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped, lateRun);
+  const pool = boardDropPoolFor(level, streak, cloverGiven, timeBonusCapped, lateRun, freezeGiven);
   if (!pool.length) return null;
   // Rare effects never repeat immediately. Bomb stays possible because it is
   // the core board action, but its weight drops after a bomb so the reward
@@ -201,7 +217,11 @@ export function nextBoardDropPity(pity = {}, dropType = '', { stage = 1, combo =
   return Object.freeze({
     megabomb: level >= 5 && streak >= 7 ? (type === 'megabomb' ? 0 : previousMega + 1) : previousMega,
     clover: level >= 6 && streak >= 14 ? (type === 'clover' ? 0 : previousClover + 1) : previousClover,
-    freeze: level >= 6 && streak >= 14 ? (type === 'freeze' ? 0 : previousFreeze + 1) : previousFreeze,
+    // 첫 프리즈 문턱(5단계·콤보 12)부터 센다. 문턱이 열린 뒤에만 쌓여야 천장이
+    // "뽑기를 놓친 횟수"라는 뜻을 지킨다.
+    freeze: level >= FIRST_FREEZE_GATE.stage && streak >= FIRST_FREEZE_GATE.combo
+      ? (type === 'freeze' ? 0 : previousFreeze + 1)
+      : previousFreeze,
   });
 }
 
@@ -548,18 +568,23 @@ export const CLASSIC_TIME_CARRY_CAP_SECONDS = 60;
 // 8x6은 52px, 7x7은 44.6px다 - 폰은 세로로 길다.
 // 5x6 두 번 반복을 뺀 근거: 시뮬(40판)에서 반복을 빼도 초보 점수가 안 움직였다
 // (1827 -> 1812). 보호는 "첫 판이 5x6"에서 오지 "두 번"에서 오지 않았다.
-// 2026-09 토스용 압축 패스: 3~4판부터 런이 늘어지는 실기기 피드백에 따라
-// 판갈이 환급을 "축하"만 남기는 수준으로 줄인다. 앞 두 판은 +4초로 시작을
-// 받쳐 주고, 큰 판부터는 2/1/0초까지 닫는다. 보드가 커지는 재미는 남기되
-// 시간을 자동으로 불려서 이어하기 광고의 아쉬움을 죽이지 않는다.
+// 2026-09-07 환급 복원. 그 전 "압축 패스"가 환급을 4/4/3/2/1/1/0초까지 닫았는데,
+// 시뮬(40판)에서 초보·보통·숙련 세 프로필 모두 런 길이가 정확히 2.1분(p10=p50=p90)
+// 이 됐다. 판갈이 환급 합계가 한 판에 3~4초라 잘해도 시간이 안 늘고 못해도 안
+// 줄어드는, 결말이 하나뿐인 초시계가 된 것이다. 점수도 숙련 -33%, 보통 -18%,
+// 초보 -24%. 실기 제보 "점수가 안 나온다, 생각보다 중독성이 없다"의 정체다.
+// 이 값으로 되돌리면(첫 프리즈 문턱 완화 포함) 런 2.2/2.5/2.7분(p90 2.8, 토스용
+// 3분 안 그대로), 초보 1,450·보통 5,800·숙련 15,300 - 8월 원래 값과 같은 자리다.
+// 60초 보유 상한과 6판 이후 피로가 그대로라 늘어지지는 않는다 - 옛 6.6분
+// 문제는 그 둘이 없던 시절 이야기다.
 export const CLASSIC_BOARD_LADDER = Object.freeze([
-  Object.freeze({ rows: 5, cols: 6, timeFloor: 1, timeBonus: 4 }),
-  Object.freeze({ rows: 6, cols: 6, timeFloor: 1, timeBonus: 4 }),
-  Object.freeze({ rows: 7, cols: 6, timeFloor: 1, timeBonus: 3 }),
-  Object.freeze({ rows: 8, cols: 6, timeFloor: 1, timeBonus: 2 }),
-  Object.freeze({ rows: 9, cols: 6, timeFloor: 0, timeBonus: 1 }),
-  Object.freeze({ rows: 9, cols: 7, timeFloor: 0, timeBonus: 1 }),
-  Object.freeze({ rows: 10, cols: 7, timeFloor: 0, timeBonus: 0 }),
+  Object.freeze({ rows: 5, cols: 6, timeFloor: 3, timeBonus: 8 }),
+  Object.freeze({ rows: 6, cols: 6, timeFloor: 4, timeBonus: 10 }),
+  Object.freeze({ rows: 7, cols: 6, timeFloor: 4, timeBonus: 11 }),
+  Object.freeze({ rows: 8, cols: 6, timeFloor: 4, timeBonus: 12 }),
+  Object.freeze({ rows: 9, cols: 6, timeFloor: 4, timeBonus: 12 }),
+  Object.freeze({ rows: 9, cols: 7, timeFloor: 4, timeBonus: 12 }),
+  Object.freeze({ rows: 10, cols: 7, timeFloor: 4, timeBonus: 12 }),
 ]);
 
 // Seconds the finished board pays out. The ratio is how much of it the
@@ -585,7 +610,9 @@ export const CLASSIC_BOARD_LADDER = Object.freeze([
 export const CLASSIC_REFUND_FATIGUE = Object.freeze({
   fromBoard: 6,   // boards 1..6 always pay in full
   perBoard: 1.5,  // seconds shaved per board past the line
-  floor: 0,       // 10x7 survival boards can pay nothing
+  // 2026-09-07: 0 -> 2. 아무것도 안 주는 판갈이는 사건이 아니라 벌로 읽힌다
+  // (위 주석). 2초면 시계는 못 불리고 박자만 산다.
+  floor: 2,
 });
 
 export function classicRefundWithFatigue(seconds, finishedBoardNumber = 1) {

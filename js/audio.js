@@ -378,23 +378,40 @@ export function playBombSound() {
   const now = ctx.currentTime;
   const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.3), ctx.sampleRate);
   const samples = buffer.getChannelData(0);
+  // 실기 제보 "폭탄이 가볍게 터진다." 소리 쪽 원인은 저음이 없다는 것이었다 -
+  // 노이즈가 50ms 만에 꺼지고 그 위에 높은 음 세 개뿐이라 "터짐"이 아니라 "톡"이었다.
+  // 노이즈 꼬리를 90ms로 늘리고, 그 아래 90Hz에서 38Hz로 떨어지는 사인
+  // 저음을 한 겹 깐다. 폰 스피커는 60Hz 아래를 거의 못 내지만, 떨어지는
+  // 곡선 자체가 무게로 들린다.
   for (let index = 0; index < samples.length; index += 1) {
-    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.05));
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.09));
   }
   const source = ctx.createBufferSource();
   const gain = ctx.createGain();
   const filter = ctx.createBiquadFilter();
   source.buffer = buffer;
   filter.type = 'lowpass';
-  filter.frequency.value = 400;
-  gain.gain.setValueAtTime(0.42, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+  filter.frequency.setValueAtTime(900, now);
+  filter.frequency.exponentialRampToValueAtTime(260, now + 0.22);
+  gain.gain.setValueAtTime(0.46, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
   source.connect(filter);
   filter.connect(gain);
   gain.connect(getMixBus(ctx));
   source.start(now);
+  const thump = ctx.createOscillator();
+  const thumpGain = ctx.createGain();
+  thump.type = 'sine';
+  thump.frequency.setValueAtTime(90, now);
+  thump.frequency.exponentialRampToValueAtTime(38, now + 0.14);
+  thumpGain.gain.setValueAtTime(0.5, now);
+  thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+  thump.connect(thumpGain); thumpGain.connect(getMixBus(ctx));
+  thump.start(now); thump.stop(now + 0.18);
+  // 첫 순간의 "딱" - 짧은 삼각파가 타격점을 만든다. 높은 음 세 개는 그대로.
+  scheduleTone(ctx, 1900, now, 0.03, 0.09, 'triangle', 0.002);
   [800, 1200, 600].forEach((frequency, index) => {
-    scheduleTone(ctx, frequency, now + index * 0.04, 0.12, 0.1, 'sine', 0.005);
+    scheduleTone(ctx, frequency, now + 0.02 + index * 0.04, 0.12, 0.1, 'sine', 0.005);
   });
 }
 

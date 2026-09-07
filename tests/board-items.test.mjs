@@ -607,3 +607,35 @@ test('round transition can bank basic drops while advanced drops remain queued',
   assert.deepEqual([...field.items.values()].map((item) => item.type), ['freeze']);
   assert.deepEqual(field.pending.map((item) => item.type), ['clover']);
 });
+
+test('the first freeze opens on the third board at combo 12, later ones keep the original gate', async () => {
+  const { FIRST_FREEZE_GATE } = await import('../js/data.js');
+  assert.deepEqual(FIRST_FREEZE_GATE, { stage: 5, combo: 12, pity: 3 });
+  // 낮춘 문턱: 5단계(3번째 판)·콤보 12·천장 3이면 첫 프리즈가 보장된다.
+  assert.equal(chooseBoardDrop(12, () => 0, {
+    rewardIndex: 2, stage: 5, pity: { freeze: 3 },
+  }).id, 'freeze');
+  // 같은 조건이라도 이미 한 번 받았으면 원래 문턱(6단계·콤보 14·천장 5)이다.
+  assert.notEqual(chooseBoardDrop(12, () => 0, {
+    rewardIndex: 2, stage: 5, pity: { freeze: 3 }, freezeGiven: true,
+  })?.id, 'freeze');
+  assert.notEqual(chooseBoardDrop(14, () => 0, {
+    rewardIndex: 2, stage: 6, pity: { freeze: 3 }, freezeGiven: true, cloverGiven: true,
+  })?.id, 'freeze');
+  assert.equal(chooseBoardDrop(14, () => 0, {
+    rewardIndex: 2, stage: 6, pity: { freeze: 5 }, freezeGiven: true, cloverGiven: true,
+  }).id, 'freeze');
+  // 콤보 11·4단계에서는 첫 프리즈도 아직이다 - 문턱을 낮췄지 없앤 것이 아니다.
+  assert.notEqual(chooseBoardDrop(11, () => 0.999, { rewardIndex: 2, stage: 5, pity: { freeze: 9 } })?.id, 'freeze');
+  assert.notEqual(chooseBoardDrop(12, () => 0.999, { rewardIndex: 2, stage: 4, pity: { freeze: 9 } })?.id, 'freeze');
+  // 시간 아이템 슬롯은 하나뿐이다. 첫 프리즈를 열어도 후반 뽑기의 시간 아이템
+  // 비중은 안 늘어난다(위 '생존 연장 금지' 단언과 같은 표본).
+  const lateDrops = Array.from({ length: 180 }, (_, index) => chooseBoardDrop(
+    35, () => index / 180, { cloverGiven: false, freezeGiven: false, rewardIndex: 5, stage: 9 },
+  ).id);
+  assert.ok(lateDrops.filter((id) => id === 'freeze').length <= 22);
+  // 천장은 낮춘 문턱이 열린 뒤부터 센다.
+  assert.equal(nextBoardDropPity({ freeze: 0 }, 'bomb', { stage: 5, combo: 12 }).freeze, 1);
+  assert.equal(nextBoardDropPity({ freeze: 0 }, 'bomb', { stage: 5, combo: 11 }).freeze, 0);
+  assert.equal(nextBoardDropPity({ freeze: 2 }, 'freeze', { stage: 5, combo: 12 }).freeze, 0);
+});
