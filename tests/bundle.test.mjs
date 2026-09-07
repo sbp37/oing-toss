@@ -58,3 +58,9 @@ test('.ait 빌드만 공유 그림을 걷어낸다', async () => {
   assert.equal(pkg.scripts.build, 'node hosting/build-static.mjs');
   assert.match(pkg.scripts['android:sync'], /^npm run build /);
 });
+
+test('배포 꾸러미에서 Finder 메타데이터를 걷어낸다', async () => {
+  const build = await readFile(url('hosting/build-static.mjs'), 'utf8');
+  assert.match(build, /removeBuildMetadata\(client\)/);
+  assert.match(build, /entry\.name === ['"]\.DS_Store['"]/);
+});

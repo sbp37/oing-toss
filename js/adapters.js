@@ -1,4 +1,4 @@
-import { CHALLENGE_PARAM, PUBLIC_SITE_URL, shareOgImageFor } from './data.js';
+import { CHALLENGE_PARAM, PUBLIC_SITE_URL, shareOgImageFor, CLASSIC_SCORE_RULES_VERSION } from './data.js';
 import { isAppsInTossWebView } from './leaderboard.js';
 
 const BEST_SCORE_KEY = 'oing_toss_v3_best_score';
@@ -11,6 +11,8 @@ const PENDING_SHARE_HINTS_KEY = 'oing_toss_v3_pending_share_hints';
 const CHALLENGE_KEY = 'oing_toss_v3_challenge';
 const SETTINGS_KEY = 'oing_toss_v3_settings';
 const TUTORIAL_KEY = 'oing_toss_v3_drag_tutorial_done';
+const CLASSIC_INTRO_COMPLETE_KEY = 'oing_toss_classic_intro_complete_v1';
+const UPDATE_NOTICE_KEY = 'oing_toss_update_notice_seen';
 const HIGHEST_STAGE_KEY = 'oing_toss_v3_highest_stage';
 const BEST_COMBO_KEY = 'oing_toss_v3_best_combo';
 const RECENT_RESULT_MESSAGES_KEY = 'oing_toss_v3_recent_result_messages';
@@ -19,8 +21,9 @@ const CATS_RESCUED_KEY = 'oing_toss_v3_cats_rescued';
 const CLEAN_CLEARS_KEY = 'oing_toss_v3_clean_clears';
 // Classic mode scores live on the original's scale (cells × combo), an
 // order of magnitude below the stage mode's — they keep their own record.
-const CLASSIC_BEST_SCORE_KEY = 'oing_toss_v3_classic_best_score';
-const CLASSIC_RECENT_SCORES_KEY = 'oing_toss_v3_classic_recent_scores';
+const LEGACY_CLASSIC_BEST_SCORE_KEY = 'oing_toss_v3_classic_best_score';
+const CLASSIC_BEST_SCORE_KEY = `oing_toss_classic_rules_${CLASSIC_SCORE_RULES_VERSION}_best`;
+const CLASSIC_RECENT_SCORES_KEY = `oing_toss_classic_rules_${CLASSIC_SCORE_RULES_VERSION}_recent`;
 const CLASSIC_CHAPTERS_SEEN_KEY = 'oing_toss_v3_classic_chapters_seen';
 // 도감 카드가 보는 평생 누적값들. 점수는 실력 천장이라 캐주얼한 사람은 영영
 // 못 넘을 수 있지만, 이 값들은 느려도 반드시 쌓인다 - 카드 아홉 장 중 일곱
@@ -29,7 +32,7 @@ const RUNS_PLAYED_KEY = 'oing_toss_v3_runs_played';
 const BIG_CLEARS_KEY = 'oing_toss_v3_big_clears';
 const CELLS_CLEARED_KEY = 'oing_toss_v3_cells_cleared';
 const PLAY_DAYS_KEY = 'oing_toss_v3_play_days';
-const CLASSIC_BEST_COMBO_KEY = 'oing_toss_v3_classic_best_combo';
+const CLASSIC_BEST_COMBO_KEY = `oing_toss_classic_rules_${CLASSIC_SCORE_RULES_VERSION}_combo`;
 // 희귀 보드 아이템을 처음 본 적이 있는지. 카드처럼 누적값에서 되짚을 수 있는
 // 값이 아니라 - "봤다"는 사실 자체가 기록이라 - 키 하나에 종류 목록으로 담는다.
 // 종류마다 키를 만들면 아이템이 늘 때마다 키가 늘어난다.
@@ -152,6 +155,29 @@ export const storageAdapter = {
   getClassicBestScore() {
     const value = Number(safeRead(CLASSIC_BEST_SCORE_KEY, '0'));
     return Number.isFinite(value) ? value : 0;
+  },
+  hasCompletedClassicIntro() {
+    // Existing players graduate automatically. Only a genuinely fresh player
+    // should receive the small-board teaching run.
+    return safeRead(CLASSIC_INTRO_COMPLETE_KEY, '0') === '1'
+      || this.getClassicRecentScores().length > 0
+      || this.getLegacyClassicBestScore() > 0;
+  },
+  markClassicIntroCompleted() {
+    try { localStorage.setItem(CLASSIC_INTRO_COMPLETE_KEY, '1'); } catch {}
+  },
+  hasSeenUpdateNotice(version) {
+    return safeRead(UPDATE_NOTICE_KEY, '') === String(version || '');
+  },
+  markUpdateNoticeSeen(version) {
+    try { localStorage.setItem(UPDATE_NOTICE_KEY, String(version || '')); } catch {}
+  },
+  getLegacyClassicBestScore() {
+    const value = Number(safeRead(LEGACY_CLASSIC_BEST_SCORE_KEY, '0'));
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
+  },
+  getCollectionBestScore() {
+    return Math.max(this.getClassicBestScore(), this.getLegacyClassicBestScore());
   },
   saveClassicBestScore(score) {
     try { localStorage.setItem(CLASSIC_BEST_SCORE_KEY, String(Math.max(0, Math.round(score)))); } catch {}

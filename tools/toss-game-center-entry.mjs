@@ -6,6 +6,7 @@ import {
   Promotion,
   Share,
   getSchemeUri,
+  getOperationalEnvironment,
   getUserKeyForGame,
   loadFullScreenAd,
   showFullScreenAd,
@@ -42,7 +43,11 @@ export async function getTossGameIdentity() {
     const result = await getUserKeyForGame();
     if (!result || result === 'ERROR' || result === 'INVALID_CATEGORY') return null;
     return result.type === 'HASH' && result.hash
-      ? { provider: 'toss', credential: result.hash }
+      ? {
+          provider: 'toss',
+          credential: result.hash,
+          environment: getOperationalEnvironment?.() === 'sandbox' ? 'sandbox' : 'toss',
+        }
       : null;
   } catch {
     return null;

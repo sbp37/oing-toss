@@ -285,6 +285,7 @@ export function comboAfterIdle(combo, stage = 1) {
 // the stage ladder without touching the ladder's tuning.
 export const CLASSIC_COMBO_CAP = 25;
 export const CLASSIC_COMBO_SOFT_RATE = 0.25;
+export const CLASSIC_SCORE_RULES_VERSION = 2;
 export const CLASSIC_WOW_BONUS_MULTIPLIER_CAP = 4;
 export const CLASSIC_TIME_CAP_SECONDS = 300;
 // 2026-08 쫄깃함 패스: 판갈이 환급은 시계를 이 선 위로 올리지 못한다.
@@ -601,6 +602,16 @@ export function classicBoardChangeSeconds(board, clearedRatio = 0) {
   return Math.round(floor + (ceiling - floor) * ratio);
 }
 
+// A dry board still advances, so score rewards follow the amount actually
+// cleared. Squaring the ratio makes leaving most of the board behind pay
+// little. The perfect reward is folded into the same visible total.
+export function classicBoardClearBonus(finishedBoardNumber = 1, clearedRatio = 0, emptied = false) {
+  const board = Math.max(1, Math.floor(Number(finishedBoardNumber) || 1));
+  const ratio = Math.min(1, Math.max(0, Number(clearedRatio) || 0));
+  const base = Math.min(340, 100 + (board - 1) * 40);
+  return Math.round(base * ratio * ratio / 10) * 10 + (emptied && ratio === 1 ? 60 : 0);
+}
+
 export function classicBoardForIndex(boardIndex = 0) {
   const index = Math.max(0, Math.round(Number(boardIndex) || 0));
   return CLASSIC_BOARD_LADDER[Math.min(index, CLASSIC_BOARD_LADDER.length - 1)];
@@ -635,13 +646,12 @@ export function classicComboMultiplier(combo) {
     + Math.max(0, value - CLASSIC_COMBO_CAP) * CLASSIC_COMBO_SOFT_RATE;
 }
 
-// Above the cap a 30% cut was free — 36×0.7 still lands on 25.2, so a
-// mistake cost a strong player literally nothing. It halves up there
-// instead. Below the cap the original's 30% stands, because that is where
-// a learner lives and where the penalty already stings.
+// Apply the stronger cut only to the part above 25. Crossing 25 must never
+// make the same mistake leave a player with fewer combos than before.
 export function classicComboAfterFailure(combo) {
   const value = Math.max(0, Math.round(Number(combo) || 0));
-  return Math.floor(value * (value > CLASSIC_COMBO_CAP ? 0.5 : 0.7));
+  return Math.floor(Math.min(value, CLASSIC_COMBO_CAP) * 0.7
+    + Math.max(0, value - CLASSIC_COMBO_CAP) * 0.5);
 }
 
 // The original core stays intact: (cells + cats×5) × combo. A five-cell-plus

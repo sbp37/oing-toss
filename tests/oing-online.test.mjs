@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -127,12 +127,30 @@ test('Vercel branch previews show labeled sample ranks when the backend is unava
   });
   const weekly = await adapter.leaderboard('weekly');
   assert.equal(weekly.preview, true);
-  assert.equal(weekly.rows.length, 30);
-  assert.equal(weekly.me.rank, 22);
+  assert.equal(weekly.rows.length, 11);
+  assert.equal(weekly.me.rank, 11);
   const friends = await adapter.leaderboard('friends');
   assert.ok(friends.rows.length >= 4);
   assert.equal((await adapter.setFriend(weekly.rows[5].playerId, true)).ok, true);
   assert.equal((await adapter.leaderboard('friends')).rows.some((row) => row.playerId === weekly.rows[5].playerId), true);
+});
+
+test('opening the raw local file shows ten sample ranks instead of an empty server error', async () => {
+  const adapter = createOingOnlineAdapter({
+    scope: {
+      location: {
+        protocol: 'file:',
+        hostname: '',
+        origin: 'null',
+      },
+    },
+    storage: memoryStorage(),
+    fetchImpl: async () => ({ ok: true, json: async () => ({ ok: true, rows: [] }) }),
+  });
+  const result = await adapter.leaderboard('weekly');
+  assert.equal(result.preview, true);
+  assert.equal(result.rows.filter((row) => !row.isMe).length, 10);
+  assert.equal(result.rows.some((row) => row.rank === 10), true);
 });
 
 test('the production Vercel host never substitutes sample rankings', async () => {
@@ -154,6 +172,137 @@ test('the production Vercel host never substitutes sample rankings', async () =>
   assert.equal(result.ok, false);
   assert.equal(result.preview, undefined);
   assert.deepEqual(result.rows, []);
+});
+
+test('the expiring Firebase review channel can exercise first nickname setup without Toss', async () => {
+  const adapter = createOingOnlineAdapter({
+    scope: {
+      location: {
+        hostname: 'new-oing-toss--ranking-mobile-example.web.app',
+        origin: 'https://new-oing-toss--ranking-mobile-example.web.app',
+        search: '?rankingDemo=1',
+      },
+    },
+    storage: memoryStorage(),
+    fetchImpl: async () => ({ ok: true, json: async () => ({ ok: true, rows: [] }) }),
+  });
+  assert.equal((await adapter.bootstrap()).player.nicknameCustomized, false);
+  assert.equal((await adapter.leaderboard('weekly')).preview, true);
+  assert.equal((await adapter.setNickname('블루냥7')).player.nickname, '블루냥7');
+});
+
+test('the mobile review channel records the played score and reports its rank jump', async () => {
+  const adapter = createOingOnlineAdapter({
+    scope: {
+      location: {
+        hostname: 'new-oing-toss--ranking-mobile-example.web.app',
+        origin: 'https://new-oing-toss--ranking-mobile-example.web.app',
+        search: '?rankingDemo=1',
+      },
+    },
+    storage: memoryStorage(),
+    fetchImpl: async () => ({ ok: false, json: async () => ({ ok: false }) }),
+  });
+  assert.equal((await adapter.startRun('preview-run')).ok, true);
+  adapter.recordSuccess();
+  const finish = await adapter.finishRun({
+    clientRunId: 'preview-run', score: 5000, successCount: 1, boards: 4, maxCombo: 9,
+  });
+  assert.equal(finish.ok, true);
+  assert.equal(finish.ranking.weekly.rankBefore, 11);
+  assert.equal(finish.ranking.weekly.rankAfter, 6);
+  assert.equal(finish.ranking.weekly.rankDelta, 5);
+  assert.equal(finish.ranking.weekly.beatenNickname, '오잉냥06');
+  const weekly = await adapter.leaderboard('weekly');
+  assert.equal(weekly.me.score, 5000);
+  assert.equal(weekly.me.rank, 6);
+});
+
+test('the permanent Firebase host never enables demo identities from a query string', async () => {
+  const adapter = createOingOnlineAdapter({
+    scope: {
+      location: {
+        hostname: 'new-oing-toss.web.app',
+        origin: 'https://new-oing-toss.web.app',
+        search: '?rankingDemo=1',
+      },
+    },
+    storage: null,
+    fetchImpl: async () => ({ ok: false, json: async () => ({ ok: false, reason: 'offline' }) }),
+  });
+  assert.equal((await adapter.bootstrap()).ok, false);
+  assert.equal((await adapter.leaderboard('weekly')).preview, undefined);
+});
+
+test('the podium uses a distinct face asset for every medal', async () => {
+  const source = await readFile(new URL('../js/oing-online.js', import.meta.url), 'utf8');
+  for (const relative of [
+    'assets/ui/ranking/podium-cat-gold-v2.webp',
+    'assets/ui/ranking/podium-cat-silver-v1.webp',
+    'assets/ui/ranking/podium-cat-bronze-v1.webp',
+  ]) {
+    assert.match(source, new RegExp(relative.replaceAll('/', '\\/')));
+    await access(new URL(`../${relative}`, import.meta.url));
+  }
+});
+
+test('the mobile ranking keeps the approved cat, medal rings, and Top30 treatment', async () => {
+  const [markup, styles, polish] = await Promise.all([
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../css/styles.css', import.meta.url), 'utf8'),
+    readFile(new URL('../css/claude-polish.css', import.meta.url), 'utf8'),
+  ]);
+  assert.match(markup, /id="online-ranking-title">오잉 랭킹<\/h2>/);
+  assert.match(markup, /assets\/characters\/cat-peek\.webp/);
+  assert.match(styles, /\.oing-podium-card\.rank-1 \.oing-podium-avatar-frame[\s\S]*?--podium-ring: #efbd43/);
+  assert.match(styles, /\.oing-podium-card\.rank-2 \.oing-podium-avatar-frame[\s\S]*?--podium-ring: #a8bdcb/);
+  assert.match(styles, /\.oing-podium-card\.rank-3 \.oing-podium-avatar-frame[\s\S]*?--podium-ring: #cf8c62/);
+  assert.match(styles, /ranking-temple-frame-v1\.webp/);
+  assert.match(styles, /\.oing-online-ranking-panel::before[\s\S]*?opacity: \.273/);
+  assert.match(styles, /\.oing-podium-card\.rank-1::before,[\s\S]*?\.oing-podium-card\.rank-1::after/);
+  assert.match(polish, /\.oing-rank-row\.top30\.is-me[\s\S]*?background: linear-gradient\(90deg, #e6e3ff/);
+});
+
+test('an empty weekly board keeps all three podium places visible', async () => {
+  const [source, markup, styles] = await Promise.all([
+    readFile(new URL('../js/oing-online.js', import.meta.url), 'utf8'),
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../css/styles.css', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source, /지금이 1등할 기회! 도전해보라냥~/);
+  assert.match(source, /\[1, 2, 3\]\.map/);
+  assert.match(source, /is-placeholder/);
+  assert.match(markup, /길게 누르면 친구 등록 · 다시 길게 누르면 해제/);
+  assert.match(styles, /not\(\[data-mode="friends"\]\) \.oing-friend-hint \{ display: none; \}/);
+  assert.match(styles, /\.oing-rank-status:empty \{ display: none; \}/);
+});
+
+test('a completed online run confirms automatic ranking registration by nickname', async () => {
+  const [source, markup] = await Promise.all([
+    readFile(new URL('../js/game.js', import.meta.url), 'utf8'),
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source, /님 랭킹 자동 등록 완료!/);
+  assert.match(source, /별명 등록하고 랭킹 보기/);
+  assert.match(source, /openOingLeaderboard\(\{ promptNickname: true \}\)/);
+  assert.match(source, /promptNickname && identity\.ok/);
+  assert.match(source, /openOingLeaderboard\(\{ promptNickname = true \} = \{\}\)/);
+  assert.match(source, /친구로 등록됐어요/);
+  assert.match(source, /친구 등록이 해제됐어요/);
+  assert.match(source, /length > 6/);
+  assert.match(markup, /maxlength="6"/);
+});
+
+test('the early live ranking exposes only all-time and friends while weekly data stays restorable', async () => {
+  const [source, markup, styles] = await Promise.all([
+    readFile(new URL('../js/oing-online.js', import.meta.url), 'utf8'),
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../css/styles.css', import.meta.url), 'utf8'),
+  ]);
+  assert.match(source, /this\.mode = 'all'/);
+  assert.match(markup, /data-oing-rank-mode="weekly" hidden/);
+  assert.match(markup, /class="active"[^>]+data-oing-rank-mode="all"/);
+  assert.match(styles, /grid-template-columns: repeat\(2, 1fr\)/);
 });
 
 test('friend ranking and long-press save use the authenticated OING API', async () => {
@@ -187,6 +336,34 @@ test('friend ranking and long-press save use the authenticated OING API', async 
     playerId: '11111111-1111-4111-8111-111111111111',
     saved: true,
   });
+});
+
+test('a nickname is set once through the authenticated API and refreshes the local player', async () => {
+  const calls = [];
+  const adapter = createOingOnlineAdapter({
+    scope: { window: { ReactNativeWebView: {}, __appsInTossConstants: {} } },
+    storage: memoryStorage(),
+    loadTossProvider: async () => ({
+      getTossGameIdentity: async () => ({ provider: 'toss', credential: 'raw-hash' }),
+    }),
+    fetchImpl: async (_url, options) => {
+      const body = JSON.parse(options.body);
+      calls.push(body);
+      if (body.action === 'bootstrap') return {
+        ok: true,
+        json: async () => ({ ok: true, token: 'player-token', player: { nickname: 'OINGTEMP', nicknameCustomized: false } }),
+      };
+      return {
+        ok: true,
+        json: async () => ({ ok: true, player: { nickname: body.nickname, nicknameCustomized: true } }),
+      };
+    },
+  });
+  const result = await adapter.setNickname('블루냥7');
+  assert.equal(result.ok, true);
+  assert.equal(adapter.getPlayer().nickname, '블루냥7');
+  assert.equal(adapter.getPlayer().nicknameCustomized, true);
+  assert.deepEqual(calls.at(-1), { action: 'nickname', nickname: '블루냥7' });
 });
 
 test('opening moves are retained while the mobile identity and run ticket are loading', async () => {

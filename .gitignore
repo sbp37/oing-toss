@@ -4,6 +4,7 @@ node_modules/
 __pycache__/
 *.pyc
 .claude/settings.local.json
+.firebase-cli-config/
 
 # Android 서명 정보 - 절대 커밋 금지
 *.jks

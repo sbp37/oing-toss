@@ -216,6 +216,7 @@ export class GameUI {
       resultMessage: document.querySelector('#result-message'),
       resultKicker: document.querySelector('#result-kicker'),
       resultStageProgress: document.querySelector('#result-stage-progress'),
+      resultTutorialComplete: document.querySelector('#result-tutorial-complete'),
       retryButton: document.querySelector('#retry-button'),
       cardAward: document.querySelector('#result-card-award'),
       cardAwardFace: document.querySelector('#result-card-award-face'),
@@ -241,6 +242,7 @@ export class GameUI {
   }
 
   showScreen(name, { behind = null } = {}) {
+    this.setAnswerReview(false);
     this.clearFeedbackQueue();
     this.screens.forEach((screen) => {
       const active = screen.dataset.screen === name;
@@ -484,6 +486,7 @@ export class GameUI {
     const speech = play?.querySelector('.cat-speech');
     if (!play || !frame || !footer || !play.classList.contains('is-active')) return;
     frame.style.width = '';
+    frame.style.height = '';
     const clearance = 6;
     // 1fr/2fr 스페이서가 줄어든 높이를 다시 나눠 갖므로, 보드를 h만큼
     // 줄여도 바닥은 h의 2/3만 올라온다. 여유 배율로 두세 번 안에 수렴.
@@ -497,7 +500,15 @@ export class GameUI {
       if (nextHeight < 120) break;
       const cols = Number(frame.dataset.cols) || 6;
       const rows = Number(frame.dataset.rows) || 6;
-      frame.style.width = `${Math.floor((nextHeight * cols) / rows)}px`;
+      // The late classic boards intentionally use flatter cells so a 9/10-row
+      // board stays broad on a phone. Shrinking their width here restored the
+      // native square aspect while CSS kept the old height, producing a thin,
+      // extra-tall board on wide Galaxy screens. Preserve the chosen width and
+      // take any overlap correction from height instead. Earlier boards still
+      // keep square cells and therefore continue to resize through width.
+      const hasCompressedRows = play.classList.contains('is-classic-mode') && rows >= 9;
+      if (hasCompressedRows) frame.style.height = `${Math.floor(nextHeight)}px`;
+      else frame.style.width = `${Math.floor((nextHeight * cols) / rows)}px`;
     }
     let collapsed = false;
     if (speech) {
@@ -1989,8 +2000,17 @@ export class GameUI {
     const board = Math.max(1, Math.round(Number(boardNumber) || 1));
     const bonus = Math.max(0, Math.round(Number(timeBonus) || 0));
     const title = document.createElement('strong');
-    title.textContent = `${board}판`;
+    const finished = Math.max(0, Number(size?.finishedBoard) || 0);
+    const score = Math.max(0, Number(size?.scoreBonus) || 0);
+    const milestone = [3, 5, 7].includes(finished);
+    title.textContent = finished ? `${finished}판 ${size?.perfect ? '싹 비웠다냥!' : '돌파!'}` : `${board}판`;
     entry.appendChild(title);
+    if (score > 0) {
+      const points = document.createElement('b');
+      points.className = 'board-entry-points';
+      points.textContent = `+${score.toLocaleString('ko-KR')}점`;
+      entry.appendChild(points);
+    }
     if (bonus > 0) {
       const reward = document.createElement('small');
       reward.textContent = `+${bonus}초`;
@@ -1998,7 +2018,7 @@ export class GameUI {
     }
     const rows = Math.round(Number(size?.rows) || 0);
     const cols = Math.round(Number(size?.cols) || 0);
-    if (boardGrew && rows > 0 && cols > 0) {
+    if (!finished && boardGrew && rows > 0 && cols > 0) {
       const grown = document.createElement('small');
       grown.className = 'board-entry-size';
       grown.textContent = `${rows}×${cols}`;
@@ -2006,8 +2026,44 @@ export class GameUI {
     }
     entry.classList.toggle('is-reward', bonus > 0);
     entry.classList.toggle('is-growth', Boolean(boardGrew));
+    entry.classList.toggle('is-breakthrough', finished > 0);
+    entry.classList.toggle('is-milestone', milestone);
     this.boardFrame.appendChild(entry);
-    window.setTimeout(() => entry.remove(), 760);
+    if (milestone) this.spawnStageGrowthConfetti();
+    if (score > 0) {
+      const play = this.elements.playScreen;
+      window.setTimeout(() => {
+        if (!entry.isConnected || !play.classList.contains('is-active')) return;
+        const row = Math.max(0, Math.floor(rows / 2));
+        const col = Math.max(0, Math.floor(cols / 2));
+        this.showScoreFlight({ r1: row, c1: col, r2: row, c2: col }, milestone ? 8 : 3);
+      }, 620);
+    }
+    window.setTimeout(() => entry.remove(), finished ? 1250 : 760);
+  }
+
+  setAnswerReview(open) {
+    const result = document.querySelector('#result-screen');
+    const controls = document.querySelector('#answer-review-controls');
+    const play = this.elements.playScreen;
+    if (!result || !controls || !play) return;
+    const wasOpen = !controls.hidden;
+    const active = Boolean(open && result.classList.contains('is-active'));
+    result.classList.toggle('is-reviewing-answers', active);
+    result.inert = active;
+    result.setAttribute('aria-hidden', String(active || !result.classList.contains('is-active')));
+    play.classList.toggle('is-manual-recap', active);
+    controls.hidden = !active;
+    if (active) {
+      // Keep the result and all scores intact; no game or timer is resumed.
+      play.setAttribute('aria-hidden', 'false');
+      this.clearEndAnswers();
+      this.showEndAnswers(this.endAnswers || []);
+      document.querySelector('#answer-review-close')?.focus({ preventScroll: true });
+    } else if (wasOpen) {
+      play.setAttribute('aria-hidden', 'true');
+      document.querySelector('#result-answers-button')?.focus({ preventScroll: true });
+    }
   }
 
   showRoundReady(duration = 420) {
@@ -2035,16 +2091,58 @@ export class GameUI {
 
   showEndAnswers(answers = []) {
     this.clearEndAnswers();
-    // One readable answer is more useful than several overlapping rectangles.
-    // Highlight only the live tiles that form the first answer; empty cells
-    // remain transparent and no connected area overlay is drawn.
-    answers.slice(0, 1).forEach((answer, group) => {
+    // Showing every overlapping rectangle turns most of a large board green.
+    // Prefer adjacent pairs and compact groups, skip overlaps, and cap the recap
+    // at four clear examples. If none are compact, keep the smallest one.
+    const ranked = answers.slice().sort((a, b) => {
+      const areaA = (a.r2 - a.r1 + 1) * (a.c2 - a.c1 + 1);
+      const areaB = (b.r2 - b.r1 + 1) * (b.c2 - b.c1 + 1);
+      const adjacentA = a.count === 2 && areaA === 2 ? 0 : 1;
+      const adjacentB = b.count === 2 && areaB === 2 ? 0 : 1;
+      const compactA = areaA === a.count && areaA <= 4 ? 0 : 1;
+      const compactB = areaB === b.count && areaB <= 4 ? 0 : 1;
+      return adjacentA - adjacentB || compactA - compactB || areaA - areaB || a.count - b.count;
+    });
+    const obvious = ranked.filter((answer) => {
+      const area = (answer.r2 - answer.r1 + 1) * (answer.c2 - answer.c1 + 1);
+      return (answer.count === 2 && area === 2) || (area === answer.count && area <= 4);
+    });
+    const used = new Set();
+    const selected = [];
+    for (const answer of (obvious.length ? obvious : ranked.slice(0, 1))) {
+      const keys = cellsInRect(answer)
+        .filter(({ r, c }) => {
+          const tile = this.tileAt(r, c);
+          return tile && !tile.classList.contains('is-empty');
+        })
+        .map(({ r, c }) => `${r}:${c}`);
+      if (!keys.length || keys.some((key) => used.has(key))) continue;
+      selected.push(answer);
+      keys.forEach((key) => used.add(key));
+      if (selected.length >= 4) break;
+    }
+    selected.forEach((answer, group) => {
       cellsInRect(answer).forEach(({ r, c }) => {
         const tile = this.tileAt(r, c);
         if (!tile || tile.classList.contains('is-empty')) return;
         tile.classList.add('is-end-answer');
         tile.style.setProperty('--answer-group', String(group));
       });
+      const first = this.tileAt(answer.r1, answer.c1);
+      const last = this.tileAt(answer.r2, answer.c2);
+      if (!first || !last) return;
+      const firstRect = first.getBoundingClientRect();
+      const lastRect = last.getBoundingClientRect();
+      const frameRect = this.boardFrame.getBoundingClientRect();
+      const region = document.createElement('div');
+      region.className = 'end-answer-region';
+      region.setAttribute('aria-hidden', 'true');
+      region.dataset.answerGroup = String(group);
+      region.style.left = `${firstRect.left - frameRect.left - 2}px`;
+      region.style.top = `${firstRect.top - frameRect.top - 2}px`;
+      region.style.width = `${lastRect.right - firstRect.left + 4}px`;
+      region.style.height = `${lastRect.bottom - firstRect.top + 4}px`;
+      this.boardFrame.appendChild(region);
     });
   }
 
@@ -2098,6 +2196,7 @@ export class GameUI {
   }
 
   async animateGameEnd({ answers = [], stamped = false } = {}) {
+    this.endAnswers = answers;
     this.clearSelection();
     clearTimeout(this.scoreBurstTimer);
     this.scoreBurstTimer = null;
@@ -2108,25 +2207,36 @@ export class GameUI {
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('is-game-ending');
     this.showEndAnswers(answers);
+    // 결과 시트가 올라오기 전에 보드를 한 번 작게 물려서 가장 깊은 10행도
+    // 통째로 눈에 들어오게 한다. 종료 답을 시트 뒤에만 남겨 두면 아래쪽
+    // 정답은 존재해도 볼 수 없었다.
+    this.elements.playScreen.classList.remove('is-answer-recap');
+    void this.elements.playScreen.offsetWidth;
+    this.elements.playScreen.classList.add('is-answer-recap');
     // 이어하기 제안 전에 이미 끝을 보여줬다면 여기서는 아무것도 다시 하지
-    // 않는다. '결과 보기'를 누른 사람은 이미 결정을 내린 것이고, 거기서
-    // TIME UP과 쓸어내는 연출을 한 번 더 보면 끝이 두 번 나는 것처럼
-    // 어색하다는 제보를 받았다. 곧바로 결과 시트를 올린다.
+    // 않는다. 대신 놓친 답 복기는 처음이므로 잠깐 보여 준다. TIME UP과
+    // 쓸어내기만 반복하지 않아 끝이 두 번 나는 느낌은 만들지 않는다.
     if (stamped) {
+      await delay(1800);
+      this.elements.playScreen.classList.remove('is-answer-recap');
       this.boardFrame.classList.remove('is-game-ending');
       return;
     }
-    // Show the stop cue almost immediately. A half-second frozen board before
-    // TIME UP read as a dropped frame even though the end sequence was live.
-    await delay(180);
+    // 답을 먼저 읽은 다음 종료 도장을 찍는다. 도장이 답 위를 가리는 동안과
+    // 사라진 뒤에도 짧게 여백을 둬, 축소가 단순 전환 프레임으로 지나가지
+    // 않게 한다.
+    await delay(600);
     const sweep = document.createElement('div');
     sweep.className = 'game-end-sweep';
     sweep.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
     this.boardFrame.appendChild(sweep);
     timeUp.classList.add('is-visible');
-    await delay(900);
+    await delay(800);
     timeUp.classList.remove('is-visible');
     sweep.remove();
+    await delay(600);
+    this.elements.playScreen.classList.remove('is-answer-recap');
+    this.boardFrame.classList.remove('is-game-ending');
     // The score is about to be the sheet's headline, so it is not announced
     // twice; the missed answers stay lit underneath it.
     this.boardFrame.classList.remove('is-game-ending');
@@ -2424,11 +2534,11 @@ export class GameUI {
     // the slot flips into a live "you are ahead" readout.
     const best = Math.max(0, Math.round(Number(bestScore) || 0));
     // 기록이 없을 때의 '최고 -'는 아무 행동도 만들지 않는 칸이었다(검수 4곳
-    // 공통 지적). 클래식의 첫 기록 전에는 결과 등급의 첫 눈금을 목표로 걸어,
+    // 공통 지적). 클래식의 첫 기록 전에는 메인과 같은 1,000점을 목표로 걸어,
     // 신규 유저에게도 이 칸이 쫓을 숫자가 되게 한다. 기록이 생기면 원래대로.
     // 눈금이 클래식 점수 규모라, 스테이지 모드는 기존 '-' 표기를 지킨다.
-    const chase = best > 0 ? best : classicMode ? RESULT_SCORE_THRESHOLDS.normal : 0;
-    const ahead = chase > 0 && score > chase;
+    const chase = best > 0 ? best : classicMode ? 1000 : 0;
+    const ahead = chase > 0 && (best > 0 ? score > chase : score >= chase);
     const goalText = chase > 0 ? (ahead ? score : chase).toLocaleString('ko-KR') : '-';
     this.elements.goal.textContent = goalText;
     if (this.elements.goalLabel) {
@@ -2502,10 +2612,18 @@ export class GameUI {
     });
   }
 
-  updateBestScore(score) {
+  updateBestScore(score, { firstPlay = false, legacyBest = 0 } = {}) {
     const text = score.toLocaleString('ko-KR');
-    this.elements.homeBest.textContent = text;
+    this.elements.homeBest.textContent = firstPlay ? '1,000' : text;
     this.elements.rankingBest.textContent = text;
+    const homeCard = this.elements.homeBest.closest('.best-record-card');
+    const label = homeCard?.querySelector('em');
+    if (label) label.textContent = firstPlay ? '첫 목표' : '이번 버전 최고';
+    homeCard?.setAttribute('aria-label', firstPlay ? '첫 목표 1,000점' : `이번 버전 최고기록 ${text}점`);
+    const legacy = document.querySelector('#legacy-record');
+    if (legacy) legacy.hidden = !(legacyBest > 0);
+    const legacyScore = document.querySelector('#legacy-best-score');
+    if (legacyScore) legacyScore.textContent = legacyBest.toLocaleString('ko-KR');
   }
 
   // 홈의 도전장 띠. 친구가 보낸 링크로 들어왔을 때만 뜬다. 넘을 점수가
@@ -2914,8 +3032,18 @@ export class GameUI {
     // than only inside the records sheet.
     const collected = classic?.collectedLabels || [];
     this.elements.resultStageProgress.textContent = classic
-      ? `${classic.boards}판 진행 · 성공 ${successCount}회`
+      ? classic.clearBonusScore > 0
+        ? `${classic.boardsCleared}판 돌파 · 보너스 +${classic.clearBonusScore.toLocaleString('ko-KR')}점`
+        : `${classic.boards}판 진행 · 성공 ${successCount}회`
       : `STAGE ${round} 도달 · 성공 ${successCount}회`;
+    if (this.elements.resultTutorialComplete) {
+      this.elements.resultTutorialComplete.hidden = !classic?.introCompleted;
+      this.elements.resultTutorialComplete.textContent = classic?.introCompleted
+        ? '튜토리얼 완료! 기기 기록 저장 완료 · 다음 게임부터 큰 판으로 시작한다냥!'
+        : '';
+    }
+    const answerButton = document.querySelector('#result-answers-button');
+    if (answerButton) answerButton.hidden = !this.endAnswers?.length;
     if (this.elements.resultChapterEarned) {
       const collectionCount = Math.min(
         Math.max(0, Number(classic?.collectionCount) || 0),

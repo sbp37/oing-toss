@@ -20,6 +20,7 @@ import {
   classicBoardForIndex,
   classicBoardRuleForIndex,
   classicBoardChangeSeconds,
+  classicBoardClearBonus,
   classicRefundWithFatigue,
   classicTimeAfterBoardChange,
   classicRoundForBoard,
@@ -94,6 +95,7 @@ export function simulateRun(profile, opts = {}) {
     wowCount: 0,
     boardLog: [],       // 판별 {board, score, seconds, refund}
     scoreFromBlast: 0,
+    scoreFromBoardBonus: 0,
     scoreBaseCells: 0,  // (cells+cats*5) 부분 x1 배율로 쳤을 때 — 콤보 기여 분해용
     totalRefund: 0,
     peakTime: GAME_DURATION_SECONDS,
@@ -142,6 +144,10 @@ export function simulateRun(profile, opts = {}) {
   const boardChange = () => {
     const clearedBoard = ladderSpec(S.boardIndex);
     const clearedRatio = Math.min(1, Math.max(0, 1 - model.remainingPlayableCells() / Math.max(1, S.initialPlayable)));
+    const scoreBonus = opts.boardBonus === false ? 0
+      : classicBoardClearBonus(S.boardsPlayed, clearedRatio, model.remainingPlayableCells() === 0);
+    S.score += scoreBonus;
+    S.scoreFromBoardBonus += scoreBonus;
     const refund = refundWithFatigue(
       classicBoardChangeSeconds(clearedBoard, clearedRatio),
       S.boardsPlayed,
@@ -208,7 +214,9 @@ export function simulateRun(profile, opts = {}) {
     }
     if (type === 'freeze') {
       // 10초 동결 = 실질 +10초 (동결 중 플레이 지속)
-      S.time = Math.min(S.time + TIME_FREEZE_SECONDS, cap ?? 300);
+      const gain = availableItemTimeBonus(S.itemTimeUsed, TIME_FREEZE_SECONDS);
+      S.itemTimeUsed += gain;
+      S.time = Math.min(S.time + gain, cap ?? 300);
       return;
     }
     if (type === 'clover') { S.cloverPending = true; return; }
@@ -297,6 +305,7 @@ export function simulateRun(profile, opts = {}) {
     drops: S.dropsEarned,
     itemTime: S.itemTimeUsed,
     blastShare: S.score ? +(S.scoreFromBlast / S.score).toFixed(3) : 0,
+    boardBonusShare: S.score ? +(S.scoreFromBoardBonus / S.score).toFixed(3) : 0,
     totalRefund: +S.totalRefund.toFixed(0),
     peakTime: +S.peakTime.toFixed(0),
     tenseShare: +(S.tenseSeconds / Math.max(1, S.elapsed)).toFixed(2),
@@ -340,6 +349,7 @@ export function summarize(results) {
     comboLeverage: stat('comboLeverage'),
     wow: stat('wow'),
     blastShare: stat('blastShare'),
+    boardBonusShare: stat('boardBonusShare'),
     totalRefund: stat('totalRefund'),
     peakTime: stat('peakTime'),
     tenseShare: stat('tenseShare'),
@@ -361,6 +371,7 @@ if (process.argv[1] && process.argv[1].endsWith('classic-balance-sim.mjs')) {
     console.log(`도달 판 mean ${s.boards.mean}  p90 ${s.boards.p90}`);
     console.log(`최고콤보 mean ${s.maxCombo.mean}  콤보 레버리지(점수/기본점수) mean ${s.comboLeverage.mean}`);
     console.log(`WOW mean ${s.wow.mean}  블라스트 점수비중 mean ${s.blastShare.mean}`);
+    console.log(`판 돌파 보너스 비중 mean ${s.boardBonusShare.mean}`);
     console.log(`판갈이 환급합 mean ${s.totalRefund.mean}s  시계 최고치 mean ${s.peakTime.mean}s  첫2분 점수비중 mean ${s.first2MinShare.mean}`);
     console.log(`긴장 비중(20초 미만) mean ${s.tenseShare.mean}  클러치(10초 미만) mean ${s.clutchShare.mean}`);
     // 판별 점수/시간 곡선 (중앙값 근처 런 하나)

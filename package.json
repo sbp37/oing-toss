@@ -16,7 +16,8 @@
   },
   "devDependencies": {
     "@apps-in-toss/web-framework": "^3.1.1",
-    "@capacitor/cli": "^8.5.0"
+    "@capacitor/cli": "^8.5.0",
+    "firebase-tools": "^15.29.0"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

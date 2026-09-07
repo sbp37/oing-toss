@@ -87,13 +87,28 @@ test('the final hint frame is a thin mint guide', async () => {
   assert.match(finalHintRules, /\.hint-region\s*\{[\s\S]*?border-width:\s*1\.75px;/);
 });
 
-test('time-up shows one answer with green tiles and no connected area overlay', async () => {
+test('deep classic boards stay wide and compress vertically away from the item dock', async () => {
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/play-layout-v1.css', import.meta.url), 'utf8');
+  const fit = source.slice(source.indexOf('fitPlayLayout() {'), source.indexOf('\n  // Cleared cells', source.indexOf('fitPlayLayout() {')));
+  const ladder = css.slice(css.lastIndexOf('Classic ladder width lock'));
+
+  assert.match(fit, /hasCompressedRows[\s\S]*?frame\.style\.height/);
+  assert.doesNotMatch(fit, /hasCompressedRows\)[^\n]*frame\.style\.width/);
+  assert.match(ladder, /data-board-rows="9"[\s\S]*?data-cols="6"[\s\S]*?124cqw/);
+  assert.match(ladder, /data-board-rows="9"[\s\S]*?data-cols="7"[\s\S]*?112cqw/);
+  assert.match(ladder, /data-board-rows="10"[\s\S]*?data-cols="7"[\s\S]*?124cqw/);
+});
+
+test('time-up shows a few obvious non-overlapping answers as green areas', async () => {
   const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
   const start = source.indexOf('showEndAnswers(');
   const reveal = source.slice(start, source.indexOf('\n  clearEndAnswers() {', start));
-  assert.match(reveal, /answers\.slice\(0, 1\)/);
+  assert.match(reveal, /selected\.forEach/);
+  assert.match(reveal, /selected\.length >= 4/);
+  assert.match(reveal, /answer\.count === 2 && area === 2/);
   assert.match(reveal, /tile\.classList\.add\('is-end-answer'\)/);
-  assert.doesNotMatch(reveal, /region\.className = 'end-answer-region'/);
+  assert.match(reveal, /region\.className = 'end-answer-region'/);
 });
 
 test('rendering a retry board clears old time-up answer markers first', async () => {

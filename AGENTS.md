@@ -6,7 +6,6 @@
 - Never crop the concept board into production assets.
 - Render scores, time, combo, goals, numbers, and button labels as HTML text.
 - Test 360×780, 390×844, and 430×932 before handoff.
-- Do not deploy, publish, merge, or connect Firebase / Apps in Toss SDK.
 
 
 ## 에이전트 협업 규칙 (Claude Code ↔ Codex)

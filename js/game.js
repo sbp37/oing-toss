@@ -14,6 +14,8 @@ import {
   cappedSessionTime,
   chooseBoardDrop,
   classicBoardChangeSeconds,
+  classicBoardClearBonus,
+  CLASSIC_SCORE_RULES_VERSION,
   classicBoardForIndex,
   classicBoardRuleForIndex,
   classicRefundWithFatigue,
@@ -104,7 +106,7 @@ import { attachStickyRectangleInput } from './input.js';
 import { GameUI } from './ui.js';
 import { storageAdapter, rankingAdapter, shareAdapter, runtimeConfig, useFutureItem } from './adapters.js';
 import { gameLeaderboardAdapter } from './leaderboard.js';
-import { OingLeaderboardView, oingOnlineAdapter } from './oing-online.js';
+import { OingLeaderboardView, oingOnlineAdapter, nicknameRegistrationCopy } from './oing-online.js';
 import { RunTelemetry, clearTelemetryRuns, getLocalTelemetrySummary, readTelemetryRuns } from './telemetry.js';
 import { preloadPlayAssets, preloadResultAssets, schedulePlayAssetsPreload } from './preload.js';
 import { installBackNavigation, pauseFamilyOpen } from './navigation.js';
@@ -183,6 +185,8 @@ const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 // The garden only shows through from STAGE 3, so earlier boards cannot
 // uncover any of it and must not count toward the reveal record.
 const GARDEN_REVEAL_FIRST_STAGE = 3;
+const UPDATE_NOTICE_VERSION = '2026.09.07';
+const GRADUATED_CLASSIC_BOARD_INDEX = 2;
 
 // A thumb rolls while it presses; anything under this is still a tap.
 const ITEM_TAP_SLOP = 18;
@@ -232,6 +236,9 @@ class OingGame {
     this.activeRunId = 0;
     this.activeOnlineRunId = '';
     this.oingOnline = oingOnlineAdapter;
+    this.oingRunStartPromise = Promise.resolve({ ok: false, reason: 'not-started' });
+    this.oingFinishPromise = null;
+    this.pendingRankCelebration = null;
     this.oingLeaderboardView = new OingLeaderboardView(document.querySelector('#online-ranking-overlay'));
     this.oingLeaderboardView.onModeChange = () => this.refreshOingLeaderboard();
     this.oingLeaderboardView.onFriendToggle = (entry) => this.toggleOingFriend(entry);
@@ -329,6 +336,7 @@ class OingGame {
     this.applySettings();
     this.renderBoard();
     this.refreshClassicRecordSurfaces();
+    this.refreshUpdateNotice();
     this.ui.updateCatsRescued(storageAdapter.getCatsRescued());
     this.ui.showScreen('home');
     schedulePlayAssetsPreload();
@@ -423,14 +431,31 @@ class OingGame {
     this.ui.board.addEventListener('keydown', (event) => this.handleBoardItemKey(event), { capture: true });
     document.querySelector('#home-settings-button').addEventListener('click', () => this.ui.setOverlay('settings-overlay', true));
     document.querySelector('#settings-close').addEventListener('click', () => this.ui.setOverlay('settings-overlay', false));
+    document.querySelector('#home-update-button')?.addEventListener('click', () => this.openUpdateNotice());
+    document.querySelector('#update-close')?.addEventListener('click', () => this.closeUpdateNotice());
+    document.querySelector('#update-confirm')?.addEventListener('click', () => this.closeUpdateNotice());
     document.querySelector('#record-tab-stats')?.addEventListener('click', () => this.ui.setRecordTab('stats'));
     document.querySelector('#record-tab-cards')?.addEventListener('click', () => this.ui.setRecordTab('cards'));
     document.querySelector('#home-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#home-leaderboard-button').addEventListener('click', () => this.openOingLeaderboard());
-    document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openOingLeaderboard());
+    document.querySelector('#result-leaderboard-button')?.addEventListener('click', () => this.openOingLeaderboard({ promptNickname: true }));
     document.querySelector('#result-invite-button')?.addEventListener('click', () => this.openContactsInviteReward());
     document.querySelector('#result-ranking-button').addEventListener('click', () => this.openRanking());
     document.querySelector('#share-button').addEventListener('click', () => this.shareResult());
+    document.querySelector('#result-answers-button')?.addEventListener('click', () => this.ui.setAnswerReview(true));
+    document.querySelector('#answer-review-close')?.addEventListener('click', () => this.ui.setAnswerReview(false));
+    document.querySelector('#answer-review-controls')?.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') this.ui.setAnswerReview(false);
+      if (event.key === 'Tab') event.preventDefault();
+    });
+    document.querySelector('#result-rank-retry')?.addEventListener('click', async () => {
+      const button = document.querySelector('#result-rank-retry');
+      button.disabled = true;
+      const runId = this.activeOnlineRunId;
+      const result = await this.oingOnline.retryPendingFinish();
+      this.applyOingRankingOutcome(result || { ok: false, reason: 'run-not-started' }, runId);
+      button.disabled = false;
+    });
     document.querySelector('#ranking-close').addEventListener('click', () => {
       this.ui.setOverlay('ranking-overlay', false);
       this.setResultTucked(false);
@@ -441,10 +466,17 @@ class OingGame {
       this.startClassicFromEntry();
     });
     document.querySelector('#online-ranking-close')?.addEventListener('click', () => {
+      this.closeNicknameEditor();
       this.ui.setOverlay('online-ranking-overlay', false);
       this.setResultTucked(false);
     });
     document.querySelector('#oing-native-rank-button')?.addEventListener('click', () => this.openGameLeaderboard());
+    document.querySelector('#oing-nickname-edit')?.addEventListener('click', () => this.openNicknameEditor());
+    document.querySelector('#oing-nickname-cancel')?.addEventListener('click', () => this.closeNicknameEditor());
+    document.querySelector('#oing-nickname-form')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void this.saveNickname();
+    });
     document.querySelector('#oing-my-rank-previous')?.addEventListener('click', () => {
       this.ui.setOverlay('online-ranking-overlay', false);
       this.openRanking();
@@ -543,15 +575,14 @@ class OingGame {
       : false;
     const nativeButton = document.querySelector('#oing-native-rank-button');
     if (nativeButton) {
-      nativeButton.hidden = !this.leaderboardAvailable;
+      nativeButton.hidden = false;
+      nativeButton.dataset.available = String(this.leaderboardAvailable);
       const label = nativeButton.querySelector('span');
-      if (label) label.textContent = gameLeaderboardAdapter.isTossEnvironment()
-        ? '기존 토스 랭킹 보기'
-        : 'Google Play 랭킹 보기';
+      if (label) label.textContent = '기존 랭킹';
     }
     // 젤리는 꾸미기 상점이 준비될 때까지 서버에서만 적립한다. 별사탕과
     // 역할이 다른 재화를 숫자만 먼저 노출하면 신규 이용자가 헷갈린다.
-    void this.oingOnline.bootstrap();
+    void this.oingOnline.bootstrap().then(() => this.refreshNicknameControls());
   }
 
   // 플레이 상단의 랭킹: 시계부터 멈춘다. 일시정지 오버레이가 함께 열리므로
@@ -601,6 +632,21 @@ class OingGame {
     return this.runInterstitialTransition(
       () => this.start(1, { ...options, classic: true }),
     );
+  }
+
+  refreshUpdateNotice() {
+    const badge = document.querySelector('#home-update-new');
+    if (badge) badge.hidden = storageAdapter.hasSeenUpdateNotice(UPDATE_NOTICE_VERSION);
+  }
+
+  openUpdateNotice() {
+    storageAdapter.markUpdateNoticeSeen(UPDATE_NOTICE_VERSION);
+    this.refreshUpdateNotice();
+    this.ui.setOverlay('update-overlay', true);
+  }
+
+  closeUpdateNotice() {
+    this.ui.setOverlay('update-overlay', false);
   }
 
   leaveResultForHome() {
@@ -746,18 +792,37 @@ class OingGame {
     // progress in the game that outlives a run. boardsPlayed is tracked
     // separately from boardIndex so an unlocked start does not inflate the
     // result sheet's 판갈이 count.
+    const introRun = Boolean(options.classic) && !storageAdapter.hasCompletedClassicIntro();
+    const classicStartIndex = introRun ? 0 : GRADUATED_CLASSIC_BOARD_INDEX;
     this.classic = options.classic
       ? {
-        /* TODO: to bring back score-gated start boards, restore
-           classicStartBoardIndex(storageAdapter.getClassicBestScore()) here. */
-        boardIndex: 0,
-        startBoardIndex: 0,
+        // The small board is a one-run tutorial. After that every player uses
+        // the same larger starting board, keeping ranked rules identical.
+        boardIndex: classicStartIndex,
+        startBoardIndex: classicStartIndex,
+        introRun,
         boardsPlayed: 1,
+        clearBonusScore: 0,
+        boardsCleared: 0,
         chapterKey: null,
         chapterLabel: '',
-      }
+    }
       : null;
-    if (this.classic && !this.runtime.testMode) void this.oingOnline.startRun(this.activeOnlineRunId);
+    const previousOnlineFinish = this.oingFinishPromise;
+    this.pendingRankCelebration = null;
+    this.oingRegistration = null;
+    this.ui.setAnswerReview(false);
+    const retryRegistration = document.querySelector('#result-rank-retry');
+    if (retryRegistration) retryRegistration.hidden = true;
+    const rankAchievement = document.querySelector('#result-ranking-achievement');
+    if (rankAchievement) rankAchievement.hidden = true;
+    if (this.classic && !this.runtime.testMode) {
+      const onlineRunId = this.activeOnlineRunId;
+      this.oingRunStartPromise = (async () => {
+        if (previousOnlineFinish) await previousOnlineFinish;
+        return this.oingOnline.startRun(onlineRunId);
+      })();
+    }
     if (!this.classic) this.ui.setChapter(null);
     this.state = this.freshState(
       this.classic ? classicRoundForBoard(this.classic.boardIndex) : startStage,
@@ -794,7 +859,8 @@ class OingGame {
     this.finishPending = false;
     this.finishing = false;
     this.lastCountdownSecond = null;
-    this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial || !storageAdapter.hasSeenDragTutorial());
+    this.waitingForFirstDrag = Boolean(this.runtime.forceTutorial
+      || ((this.classic ? this.classic.introRun : true) && !storageAdapter.hasSeenDragTutorial()));
     this.ui.setOverlay('pause-overlay', false);
     this.ui.setOverlay('help-overlay', false);
     this.activePauseOverlay = 'pause-overlay';
@@ -836,7 +902,9 @@ class OingGame {
     // 말투만 다르다 - 여기서는 남은 몫이 아니라 넘어야 할 수를 말한다.
     // 아직 0점이라 이번 판 점수로는 아무것도 못 재므로, 그 사람이 이미 낼 수
     // 있는 점수(최고기록)에서 잰다.
-    this.ui.setStartCountdownGoal(nextGoalLine({
+    this.ui.setStartCountdownGoal(storageAdapter.getClassicRecentScores().length === 0 && !challengeScore() ? {
+      kind: 'first', target: 1000, startText: '첫 목표 1,000점에 도전해보라냥!',
+    } : nextGoalLine({
       totals: this.currentCardTotals(),
       previousBest: storageAdapter.getClassicBestScore(),
       challengeTarget: challengeScore(),
@@ -1300,7 +1368,7 @@ class OingGame {
       bigClears: storageAdapter.getBigClears(),
       cellsCleared: storageAdapter.getCellsCleared(),
       playDays: storageAdapter.getPlayDays().length,
-      bestScore: storageAdapter.getClassicBestScore(),
+      bestScore: storageAdapter.getCollectionBestScore(),
     };
   }
 
@@ -1649,6 +1717,10 @@ class OingGame {
     // The board just finished is #boardsPlayed (it starts at 1); read it
     // before the counters advance, since fatigue is charged on it.
     const finishedBoardNumber = this.classic.boardsPlayed;
+    const scoreBonus = classicBoardClearBonus(finishedBoardNumber, clearedRatio, emptied);
+    this.state.score += scoreBonus;
+    this.classic.clearBonusScore += scoreBonus;
+    this.classic.boardsCleared += 1;
     this.classic.boardIndex += 1;
     this.classic.boardsPlayed += 1;
     const nextBoard = classicBoardForIndex(this.classic.boardIndex);
@@ -1723,6 +1795,9 @@ class OingGame {
     this.ui.showClassicBoardEntry(this.classic.boardsPlayed, gainedTime, boardGrew, {
       rows: nextBoard.rows,
       cols: nextBoard.cols,
+      finishedBoard: finishedBoardNumber,
+      scoreBonus,
+      perfect: emptied,
     });
     await this.ui.animateShuffleIn();
     if (placedItems.length) this.announceBoardItems(placedItems);
@@ -3004,7 +3079,7 @@ class OingGame {
     // at a run.
     this.ui.renderChapterGallery(classicChapterGallery({
       seenKeys: storageAdapter.getSeenChapters(),
-      bestScore: storageAdapter.getClassicBestScore(),
+      bestScore: storageAdapter.getCollectionBestScore(),
     }));
     // 카드는 판이 아니라 플레이한 행동으로 열린다. 기록 창을 열 때마다
     // 지금 누적값으로 다시 판정한다 - 어딘가에 "열림"을 따로 저장해두면
@@ -3013,20 +3088,156 @@ class OingGame {
     this.ui.setOverlay('ranking-overlay', true);
   }
 
-  async openOingLeaderboard() {
+  async openOingLeaderboard({ promptNickname = true } = {}) {
     if (document.querySelector('#result-screen')?.classList.contains('is-active')) {
       this.setResultTucked(true);
     }
     this.oingLeaderboardView.setLoading();
-    const nativeButton = document.querySelector('#oing-native-rank-button');
-    if (nativeButton) nativeButton.hidden = !this.leaderboardAvailable;
+    const rankPanel = document.querySelector('.oing-online-ranking-panel');
+    if (rankPanel) rankPanel.scrollTop = 0;
+    // Show the ranking surface before waiting for identity or a just-finished
+    // score. Otherwise the result sheet can rise over an apparently blank
+    // ranking while the network request is still in flight.
     this.ui.setOverlay('online-ranking-overlay', true);
+    if (this.oingFinishPromise) await this.oingFinishPromise;
+    const identity = await this.oingOnline.bootstrap();
+    if (identity.recoveredFinish) {
+      this.applyOingRankingOutcome(identity.recoveredFinish, this.activeOnlineRunId);
+    }
+    if (this.oingOnline.hasPendingFinish()) {
+      const retried = await this.oingOnline.retryPendingFinish();
+      if (retried) this.applyOingRankingOutcome(retried, this.activeOnlineRunId);
+    }
+    this.refreshNicknameControls();
+    const nativeButton = document.querySelector('#oing-native-rank-button');
+    if (nativeButton) nativeButton.hidden = false;
     await this.refreshOingLeaderboard();
+    // The generated name keeps every score safe, but every ranking entrance
+    // gives an untouched account one clear chance to choose its own name.
+    if (promptNickname && identity.ok && !this.oingOnline.getPlayer()?.nicknameCustomized) {
+      this.openNicknameEditor({ first: true });
+    }
+  }
+
+  refreshNicknameControls() {
+    const player = this.oingOnline.getPlayer();
+    const edit = document.querySelector('#oing-nickname-edit');
+    const resultLabel = document.querySelector('#result-leaderboard-button span');
+    if (edit) {
+      edit.hidden = !player;
+      edit.textContent = player?.nicknameCustomized ? '별명 수정' : '별명 등록하기';
+    }
+    if (resultLabel) {
+      const needsNickname = Boolean(player && !player.nicknameCustomized);
+      resultLabel.textContent = needsNickname ? '별명 등록하고 랭킹 보기' : '랭킹';
+      resultLabel.closest('button')?.classList.toggle('needs-nickname', needsNickname);
+    }
+  }
+
+  openNicknameEditor({ first = false } = {}) {
+    const player = this.oingOnline.getPlayer();
+    if (!player) return;
+    const availableAt = new Date(player.nicknameChangeAvailableAt || 0).getTime();
+    const backdrop = document.querySelector('#oing-nickname-backdrop');
+    const title = document.querySelector('#oing-nickname-title');
+    const copy = document.querySelector('#oing-nickname-copy');
+    const input = document.querySelector('#oing-nickname-input');
+    const error = document.querySelector('#oing-nickname-error');
+    if (!backdrop || !input) return;
+    if (title) title.textContent = player.nicknameCustomized ? '랭킹 별명 바꾸기' : '랭킹 별명 만들기';
+    if (copy) copy.textContent = nicknameRegistrationCopy({
+      customized: player.nicknameCustomized,
+      status: this.oingRegistration?.status,
+      bestScore: player.bestScore,
+    });
+    if (error) error.textContent = !first && player.nicknameCustomized
+      && Number.isFinite(availableAt) && availableAt > Date.now()
+      ? `별명은 저장 후 7일 뒤에 바꿀 수 있어요 · ${new Date(availableAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}부터 가능`
+      : '';
+    input.value = player.nicknameCustomized ? player.nickname : '';
+    backdrop.hidden = false;
+    setTimeout(() => input.focus(), 0);
+  }
+
+  closeNicknameEditor() {
+    const backdrop = document.querySelector('#oing-nickname-backdrop');
+    if (backdrop) backdrop.hidden = true;
+  }
+
+  async saveNickname() {
+    const input = document.querySelector('#oing-nickname-input');
+    const error = document.querySelector('#oing-nickname-error');
+    const save = document.querySelector('#oing-nickname-save');
+    const nickname = String(input?.value || '').trim();
+    const length = Array.from(nickname).length;
+    if (length < 2 || length > 6 || !/^[\p{Script=Hangul}A-Za-z0-9]+$/u.test(nickname)) {
+      if (error) error.textContent = '2~6자 한글·영문·숫자로 적어줘';
+      return;
+    }
+    if (save) save.disabled = true;
+    const result = await this.oingOnline.setNickname(nickname);
+    if (save) save.disabled = false;
+    if (!result.ok) {
+      if (error) error.textContent = result.reason === 'nickname-cooldown'
+        ? '별명은 저장 후 7일 뒤에 바꿀 수 있어요'
+        : result.reason === 'nickname-taken'
+          ? '이미 사용 중인 별명이야. 다른 이름을 적어줘'
+        : result.reason?.startsWith('nickname-')
+          ? '사용할 수 없는 별명이야'
+          : '저장하지 못했어. 잠시 뒤 다시 해줘';
+      return;
+    }
+    this.closeNicknameEditor();
+    this.refreshNicknameControls();
+    await this.refreshOingLeaderboard();
+    this.ui.toast('랭킹 별명을 저장했다냥!');
   }
 
   async refreshOingLeaderboard() {
     const result = await this.oingOnline.leaderboard(this.oingLeaderboardView.mode);
     this.oingLeaderboardView.render(result);
+    const celebration = this.pendingRankCelebration;
+    const mode = this.oingLeaderboardView.mode;
+    if (celebration?.ranking?.[mode] && !celebration.shown.has(mode)) {
+      this.oingLeaderboardView.celebrateRankUp(celebration.ranking[mode]);
+      celebration.shown.add(mode);
+    }
+  }
+
+  applyOingRankingOutcome(result, runId = '') {
+    if (runId && runId !== this.activeOnlineRunId) return;
+    this.oingRegistration = result?.ok ? result : { status: 'failed', reason: result?.reason };
+    const message = document.querySelector('#result-ranking-achievement');
+    const retry = document.querySelector('#result-rank-retry');
+    if (retry) retry.hidden = !this.oingOnline.hasPendingFinish();
+    if (!message) return;
+    if (!result?.ok) {
+      message.hidden = false;
+      message.textContent = this.oingOnline.hasPendingFinish()
+        ? '기기 기록은 저장됐어요. 랭킹 등록을 다시 시도해 주세요.'
+        : '기기 기록은 저장됐어요. 이번 랭킹 등록은 완료하지 못했어요.';
+      return;
+    }
+    if (result.status !== 'accepted') {
+      message.hidden = false;
+      message.textContent = '기록을 확인 중이에요. 확인 후 랭킹에 반영돼요.';
+      return;
+    }
+    if (!result.ranking) {
+      message.hidden = false;
+      const nickname = result.nickname || this.oingOnline.getPlayer()?.nickname;
+      message.textContent = nickname ? `${nickname}님 랭킹 자동 등록 완료!` : '랭킹 자동 등록 완료!';
+      return;
+    }
+    this.pendingRankCelebration = { ranking: result.ranking, shown: new Set() };
+    const all = result.ranking.all || {};
+    let praise = '';
+    if (all.beatenNickname) praise = ` 전체 ${all.beatenNickname}님을 이겼다냥!`;
+    else if (all.rankDelta > 0) praise = ` 전체 ${all.rankDelta}등 올랐다냥!`;
+    else if (all.isNew && all.rankAfter) praise = ` 전체 ${all.rankAfter}위다냥!`;
+    const nickname = result.nickname || this.oingOnline.getPlayer()?.nickname || '오잉냥';
+    message.hidden = false;
+    message.textContent = `${nickname}님 랭킹 자동 등록 완료!${praise}`;
   }
 
   async toggleOingFriend(entry) {
@@ -3037,13 +3248,13 @@ class OingGame {
       this.ui.toast('친구 저장은 토스 앱에서 로그인하면 쓸 수 있다냥!');
       return;
     }
-    this.ui.toast(saved ? '친구로 저장했다냥! ♡' : '친구 목록에서 뺐다냥');
+    this.ui.toast(saved ? '친구로 등록됐어요' : '친구 등록이 해제됐어요');
     await this.refreshOingLeaderboard();
   }
 
   async openGameLeaderboard() {
     if (!this.leaderboardAvailable) {
-      this.ui.toast('랭킹은 토스나 Google Play 앱에서 열린다냥!');
+      this.ui.toast('기존 토스 랭킹은 토스 앱 안에서 볼 수 있다냥!');
       return;
     }
     // 자체 오잉 랭킹 안의 보조 버튼만 네이티브 랭킹을 연다. 홈·결과·HUD의
@@ -3198,13 +3409,22 @@ class OingGame {
       }),
       classic: {
         boards: this.classic.boardsPlayed,
+        boardsCleared: this.classic.boardsCleared,
+        clearBonusScore: this.classic.clearBonusScore,
+        introCompleted: this.classic.introRun,
         collectedLabels: this.classic.collectedLabels || [],
         collectionCount: CLASSIC_CHAPTERS.filter((chapter) => seenChapterKeys.includes(chapter.key)).length,
         collectionTotal: CLASSIC_CHAPTERS.length,
       },
     };
     this.retryStage = 1;
-    if (!this.runtime.testMode) storageAdapter.saveClassicRunScore(this.state.score);
+    if (!this.runtime.testMode) {
+      if (this.classic.introRun) {
+        storageAdapter.markClassicIntroCompleted();
+        storageAdapter.markDragTutorialSeen();
+      }
+      storageAdapter.saveClassicRunScore(this.state.score);
+    }
     // 별사탕 적립. 못한 판도 최소치는 받는다 - 2분을 쓰고 아무것도 못 받는
     // 판이 초보를 제일 빨리 지치게 한다.
     //
@@ -3231,13 +3451,30 @@ class OingGame {
       });
       // Keep the native board intact while the shared OING board records the
       // same completed run. Neither network path may block the result sheet.
-      void this.oingOnline.finishRun({
-        clientRunId: this.activeOnlineRunId,
+      const onlineRunId = this.activeOnlineRunId;
+      const onlineStart = this.oingRunStartPromise;
+      const onlineResult = {
         score: this.state.score,
         successCount: this.state.successCount,
         boards: this.classic.boardsPlayed,
         maxCombo: this.state.maxCombo,
-      });
+        scoreRulesVersion: CLASSIC_SCORE_RULES_VERSION,
+      };
+      this.oingRegistration = { status: 'saving' };
+      const registration = document.querySelector('#result-ranking-achievement');
+      if (registration) {
+        registration.hidden = false;
+        registration.textContent = '기기 기록 저장 완료 · 랭킹에 등록 중이에요…';
+      }
+      this.oingFinishPromise = (async () => {
+        await onlineStart;
+        const result = await this.oingOnline.finishRun({
+          clientRunId: onlineRunId,
+          ...onlineResult,
+        });
+        this.applyOingRankingOutcome(result, onlineRunId);
+        return result;
+      })();
     }
     this.refreshClassicRecordSurfaces();
     // 카드 개봉이 결과 시트보다 먼저다. 시트가 이미 떠 있는 채로 카드가
@@ -3270,7 +3507,10 @@ class OingGame {
   // the classic best. How far the cat has travelled is the chapter gallery's
   // job, so the card no longer carries a second line for it.
   refreshClassicRecordSurfaces() {
-    this.ui.updateBestScore(storageAdapter.getClassicBestScore());
+    this.ui.updateBestScore(storageAdapter.getClassicBestScore(), {
+      firstPlay: storageAdapter.getClassicRecentScores().length === 0,
+      legacyBest: storageAdapter.getLegacyClassicBestScore(),
+    });
     this.ui.updateCandyFed(storageAdapter.getFedCount());
   }
 
@@ -3389,6 +3629,7 @@ if (game.runtime.testMode) {
     startImmediate: async (stage = 1) => {
       const countdown = game.ui.animateStartCountdown;
       game.ui.animateStartCountdown = async (_steps, onStep = () => {}) => {
+        game.ui.cancelStartCountdown();
         onStep('GO!');
         return true;
       };
@@ -3402,6 +3643,7 @@ if (game.runtime.testMode) {
     startClassic: async () => {
       const countdown = game.ui.animateStartCountdown;
       game.ui.animateStartCountdown = async (_steps, onStep = () => {}) => {
+        game.ui.cancelStartCountdown();
         onStep('GO!');
         return true;
       };

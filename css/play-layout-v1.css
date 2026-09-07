@@ -6118,14 +6118,17 @@
    cells may become slightly rectangular when the viewport is short. */
 .screen-play.play-ui-v4.is-classic-mode .board-frame,
 .screen-play.play-ui-v4.is-classic-mode .board-frame[data-round] {
-  width: min(98cqw, 430px);
+  /* Keep the ladder almost full-width on large Galaxy/Fold viewports too.
+     Regular iPhones remain container-bound, while the wider cap prevents the
+     9-row board from becoming a narrow column in the middle of the screen. */
+  width: min(98cqw, 520px);
   max-width: calc(100% - 12px);
 }
 
 .screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="9"]
   .board-frame[data-cols="6"] {
   height: min(
-    calc(147cqw - 24px),
+    124cqw,
     calc(100dvh - var(--board-chrome) - 24px)
   );
   aspect-ratio: auto;
@@ -6139,7 +6142,7 @@
 .screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="9"]
   .board-frame[data-cols="7"] {
   height: min(
-    126cqw,
+    112cqw,
     calc(100dvh - var(--board-chrome) - 24px)
   );
   aspect-ratio: auto;
@@ -6148,7 +6151,7 @@
 .screen-play.play-ui-v4.is-classic-mode.is-tall-board[data-board-rows="10"]
   .board-frame[data-cols="7"] {
   height: min(
-    140cqw,
+    124cqw,
     calc(100dvh - var(--board-chrome) - 24px)
   );
   aspect-ratio: auto;

@@ -9,6 +9,9 @@ const dist = resolve(root, "dist");
 const client = resolve(dist, "client");
 const server = resolve(dist, "server");
 const BUILD_TOKEN = "__OING_BUILD_ID__";
+const API_URL_TOKEN = "__OING_ONLINE_API_URL__";
+const DEFAULT_ONLINE_API_URL = 'https://asia-northeast3-new-oing-toss.cloudfunctions.net/oingApi';
+const onlineApiUrl = String(process.env.OING_ONLINE_API_URL || DEFAULT_ONLINE_API_URL).trim();
 
 // 앱인토스 꾸러미(.ait)용 빌드인가. `--ait`를 붙이면 켜진다.
 //
@@ -48,6 +51,18 @@ async function stampJavaScriptImports(directory, buildId) {
   }
 }
 
+// Finder metadata is harmless in the repository but must never become part of
+// the downloadable app bundle. Remove it only from the generated tree so the
+// source workspace and the user's files are left untouched.
+async function removeBuildMetadata(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) await removeBuildMetadata(path);
+    else if (entry.name === '.DS_Store') await rm(path, { force: true });
+  }
+}
+
 const buildHash = createHash("sha256");
 for (const file of ["index.html", "sw.js", "hosting/build-static.mjs"]) {
   buildHash.update(file);
@@ -65,10 +80,14 @@ for (const entry of ["index.html", "privacy.html", "css", "js", "assets", "manif
   await cp(resolve(root, entry), resolve(client, entry), { recursive: true });
 }
 
+await removeBuildMetadata(client);
+
 for (const file of ["index.html", "sw.js"]) {
   const path = resolve(client, file);
   const source = await readFile(path, "utf8");
-  await writeFile(path, source.replaceAll(BUILD_TOKEN, buildId));
+  await writeFile(path, source
+    .replaceAll(BUILD_TOKEN, buildId)
+    .replaceAll(API_URL_TOKEN, onlineApiUrl));
 }
 await stampJavaScriptImports(resolve(client, "js"), buildId);
 

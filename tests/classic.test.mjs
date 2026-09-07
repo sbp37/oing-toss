@@ -9,6 +9,7 @@ import {
   CLASSIC_START_UNLOCKS,
   CLASSIC_TIME_CAP_SECONDS,
   classicBoardChangeSeconds,
+  classicBoardClearBonus,
   classicBoardForIndex,
   classicBoardRuleForIndex,
   classicComboAfterFailure,
@@ -79,14 +80,34 @@ test('a wrong answer always costs multiplier, above the cap as well as below', (
   assert.equal(classicComboAfterFailure(10), 7);
   assert.equal(classicComboAfterFailure(1), 0);
   assert.equal(classicComboAfterFailure(0), 0);
-  // 캡 위는 절반. 하드캡 시절 콤보 36 이상에서 오답이 완전 무료였던 구간을
-  // 없애는 것이 이 규칙의 목적이므로, 그 성질을 직접 검증한다.
-  assert.equal(classicComboAfterFailure(40), 20);
-  assert.equal(classicComboAfterFailure(74), 37);
+  assert.equal(classicComboAfterFailure(25), 17);
+  assert.equal(classicComboAfterFailure(26), 18);
+  assert.equal(classicComboAfterFailure(40), 25);
+  assert.equal(classicComboAfterFailure(74), 42);
+  for (let combo = 1; combo < 150; combo += 1) {
+    assert.ok(classicComboAfterFailure(combo + 1) >= classicComboAfterFailure(combo));
+  }
   for (const combo of [26, 30, 36, 40, 60, 74, 100]) {
     const before = classicComboMultiplier(combo);
     const after = classicComboMultiplier(classicComboAfterFailure(combo));
     assert.ok(after < before, `combo ${combo}: ${after} should be below ${before}`);
+  }
+});
+
+test('board rewards pay for cleared area, stay bounded, and separate perfect clears', () => {
+  assert.equal(classicBoardClearBonus(3, 1, true), 240);
+  assert.equal(classicBoardClearBonus(3, 1, false), 180);
+  assert.equal(classicBoardClearBonus(3, 0, false), 0);
+  assert.ok(classicBoardClearBonus(3, 0.25) < classicBoardClearBonus(3, 0.75));
+  assert.equal(classicBoardClearBonus(100, 1, true), 400);
+  assert.equal(classicBoardClearBonus(3, 0.5, true), classicBoardClearBonus(3, 0.5, false));
+  for (let board = 1; board < 12; board += 1) {
+    let last = 0;
+    for (let ratio = 0; ratio <= 100; ratio += 1) {
+      const bonus = classicBoardClearBonus(board, ratio / 100);
+      assert.ok(bonus >= last && bonus <= 340);
+      last = bonus;
+    }
   }
 });
 

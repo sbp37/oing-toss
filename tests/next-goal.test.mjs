@@ -186,7 +186,8 @@ test('두 자리가 같은 목표를 서로 다른 말로 가리킨다', async (
   const ui = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
   assert.match(ui, /setStartCountdownGoal/);
   const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
-  assert.match(game, /setStartCountdownGoal\(nextGoalLine\(/, '시작 카운트다운이 목표를 안 받는다');
+  assert.match(game, /setStartCountdownGoal\([\s\S]*?: nextGoalLine\(/, '첫 목표 이후 시작 카운트다운이 목표를 안 받는다');
+  assert.match(game, /getClassicRecentScores\(\)\.length === 0 && !challengeScore\(\)/);
   assert.match(game, /phase: 'start'/);
 });
 

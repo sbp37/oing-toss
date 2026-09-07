@@ -70,9 +70,9 @@ test('TIME UP is not stamped twice on the same run', async () => {
   // 제안 전에 찍었으면 결과로 넘어갈 때는 건너뛴다. 같은 TIME UP을 두 번
   // 보면 끝이 두 번 나는 것처럼 어색하다.
   assert.match(ui, /async animateGameEnd\(\{ answers = \[\], stamped = false \} = \{\}\)/);
-  // 이미 찍었으면 쓸어내는 연출까지 통째로 건너뛰고 결과로 간다 - 그
-  // 연출이 남아 있으면 '결과 보기'를 눌러도 끝이 한 번 더 나는 느낌이다.
-  assert.match(ui, /if \(stamped\) \{[\s\S]{0,200}?return;/);
+  // 이미 찍었으면 TIME UP과 쓸어내기는 되풀이하지 않되, 광고 제안 때문에
+  // 아직 못 본 남은 답 복기는 한 번 보여 준다.
+  assert.match(ui, /if \(stamped\) \{[\s\S]{0,180}?await delay\(1800\);[\s\S]{0,180}?return;/);
   assert.match(game, /animateGameEnd\(\{ answers: endAnswers, stamped \}\)/);
   // 되살아나면 기억을 지운다 - 다음 종료는 처음부터 다시 보여줘야 한다.
   assert.ok(game.split('this.adStampedTimeUp = false;').length - 1 >= 3);
