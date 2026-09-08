@@ -711,6 +711,36 @@ export function classicScoreForBlast(cellCount, catCount, combo) {
   return Math.round((cells + cats * 5) * classicComboMultiplier(combo));
 }
 
+// 판갈이 시점. 원조 오잉은 판이 커서(100칸 이상) 2분 안에 바닥이 안 난다 -
+// 눈에 들어오는 두 칸짜리 답이 늘 여러 개다. 우리 판은 30~70칸이고 답이 하나도
+// 없을 때까지 붙들었더니, 측정에서 한 판의 수 중 22~32%가 "두 칸 답은 다
+// 나가고 세 칸 이상 합만 남은" 구간에서 나왔다. 실기 제보 "원조보다 답이
+// 눈에 안 들어온다"의 원인 후보 중 하나다. 판의 60%를 지웠고 쉬운 답이 더
+// 없으면 새 판을 준다. 60% 전에는 남은 답으로 이어간다.
+// 문턱 비교(40런 시뮬, 세 칸 이상 합만 남은 수의 비율 / 점수):
+//   없음 22~32% / 0.7 19~24% / 0.6 12~19% / 0.5 8~12%(판 절반을 버림, 숙련 -4%)
+//   작은 표본의 결과이며 실제 플레이의 점수 보존을 보장하지 않는다.
+export const CLASSIC_TAIL_TURN_PROGRESS = 0.6;
+
+export function classicBoardShouldTurn({
+  hasAnswer = false, hasEasyAnswer = false, remaining = 0, initialPlayable = 0,
+} = {}) {
+  if (!hasAnswer) return true;
+  if (hasEasyAnswer) return false;
+  const cleared = initialPlayable > 0 ? 1 - remaining / initialPlayable : 1;
+  return cleared >= CLASSIC_TAIL_TURN_PROGRESS;
+}
+
+// 두 칸 답과 나란히 붙은 세 칸 답은 남겨 둔다. 마지막 답을 빼앗지 않는다.
+export function isEasyAnswer(answer) {
+  const count = Math.round(Number(answer?.count) || 0);
+  if (count < 2) return false;
+  if (count === 2) return true;
+  const rows = answer.r2 - answer.r1 + 1;
+  const cols = answer.c2 - answer.c1 + 1;
+  return count === 3 && rows * cols === 3 && (rows === 1 || cols === 1);
+}
+
 // Each 판갈이 deepens the number mix one step: the first board draws the
 // mid-run bag (round 5), then +1 per board up to the deepest (round 10).
 export function classicRoundForBoard(boardIndex = 0) {

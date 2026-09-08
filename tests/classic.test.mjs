@@ -643,3 +643,18 @@ test('꼬리 구제는 두 칸짜리 답을 먼저 고른다', () => {
   assert.equal(pickCoachAnswer([four]), four, '두 칸이 없는데 아무것도 안 골랐다');
 });
 */
+
+test('classic turns the board when only three-plus-cell answers remain on a mostly cleared board', async () => {
+  const { classicBoardShouldTurn, isEasyAnswer, CLASSIC_TAIL_TURN_PROGRESS } = await import('../js/data.js');
+  // 두 칸 답(빈 칸을 건너는 것 포함)은 쉬운 답이다.
+  assert.equal(isEasyAnswer({ count: 2, r1: 0, c1: 0, r2: 0, c2: 3 }), true);
+  assert.equal(isEasyAnswer({ count: 3 }), false);
+  // 답이 없으면 언제나 넘긴다.
+  assert.equal(classicBoardShouldTurn({ hasAnswer: false, remaining: 20, initialPlayable: 30 }), true);
+  // 쉬운 답이 남아 있으면 넘기지 않는다.
+  assert.equal(classicBoardShouldTurn({ hasAnswer: true, hasEasyAnswer: true, remaining: 3, initialPlayable: 30 }), false);
+  // 쉬운 답은 없고 판이 충분히 비었으면 넘긴다. 아직 어린 판이면 이어간다.
+  const cleared = Math.ceil(30 * CLASSIC_TAIL_TURN_PROGRESS);
+  assert.equal(classicBoardShouldTurn({ hasAnswer: true, hasEasyAnswer: false, remaining: 30 - cleared, initialPlayable: 30 }), true);
+  assert.equal(classicBoardShouldTurn({ hasAnswer: true, hasEasyAnswer: false, remaining: 30 - cleared + 2, initialPlayable: 30 }), false);
+});

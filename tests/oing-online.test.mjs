@@ -283,7 +283,7 @@ test('a completed online run confirms automatic ranking registration by nickname
     readFile(new URL('../index.html', import.meta.url), 'utf8'),
   ]);
   assert.match(source, /님 랭킹 자동 등록 완료!/);
-  assert.match(source, /별명 등록하고 랭킹 보기/);
+  assert.match(source, /별명 정하고 랭킹 보기/);
   assert.match(source, /openOingLeaderboard\(\{ promptNickname: true \}\)/);
   assert.match(source, /promptNickname && identity\.ok/);
   assert.match(source, /openOingLeaderboard\(\{ promptNickname = true \} = \{\}\)/);

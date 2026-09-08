@@ -240,6 +240,7 @@
         <p class="result-stage-progress" id="result-stage-progress">STAGE 1 도달 · 성공 0회</p>
         <p class="result-tutorial-complete" id="result-tutorial-complete" hidden aria-live="polite"></p>
         <p class="result-chapter-earned" id="result-chapter-earned" hidden></p>
+        <button class="text-button" id="result-chapter-view" type="button" hidden>새 그림 보기</button>
         <p class="result-candy-earned" id="result-candy-earned" hidden aria-live="polite"></p>
         <p class="score-compare-secondary" id="result-previous-compare" hidden></p>
         <p class="result-challenge" id="result-challenge" hidden aria-live="polite"></p>
@@ -482,7 +483,7 @@
         <p class="oing-rank-status" id="oing-rank-status">기록을 불러오는 중이다냥…</p>
         <div class="oing-rank-list" id="oing-rank-list"></div>
         <div class="oing-nickname-backdrop" id="oing-nickname-backdrop" hidden>
-          <form class="oing-nickname-dialog" id="oing-nickname-form">
+          <form class="oing-nickname-dialog" id="oing-nickname-form" role="dialog" aria-modal="true" aria-labelledby="oing-nickname-title">
             <span>OING NAME</span>
             <h3 id="oing-nickname-title">랭킹 별명 만들기</h3>
             <p id="oing-nickname-copy">나만의 별명을 정해보라냥! 게임을 마치면 이 이름으로 랭킹에 등록돼요.</p>

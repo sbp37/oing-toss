@@ -196,9 +196,11 @@ test('bomb sound keeps the OING pings and adds a low thump under them', () => {
   // 2026-09-07: 실기 제보 "폭탄이 얕게 터진다." 원조의 핑 세 개(800/1200/600)는
   // 그대로 두고, 그 아래 90Hz에서 떨어지는 "쿵"과 첫 순간의 1900Hz 타격음을
   // 얹었다. 노이즈 버퍼는 여전히 하나다.
+  // 2차: 90Hz는 폰 스피커가 못 내서 여전히 가벼웠다. 210Hz에서 떨어지는 몸통을
+  // 한 겹 더 깔았고, 그것이 목록의 두 번째 자리다.
   const before = AudioContextMock.latest.bufferSources.length;
   const oscillators = newOscillators(() => audio.playBombSound());
-  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [90, 1900, 800, 1200, 600]);
+  assert.deepEqual(oscillators.map((item) => item.frequency.events[0].value), [90, 210, 1900, 800, 1200, 600]);
   assert.equal(AudioContextMock.latest.bufferSources.length, before + 1);
 });
 
