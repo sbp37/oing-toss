@@ -189,7 +189,7 @@ const RETRY_COUNTDOWN_STEPS = Object.freeze(['READY', 'GO!']);
 // The garden only shows through from STAGE 3, so earlier boards cannot
 // uncover any of it and must not count toward the reveal record.
 const GARDEN_REVEAL_FIRST_STAGE = 3;
-const UPDATE_NOTICE_VERSION = '2026.09.07';
+const UPDATE_NOTICE_VERSION = '2026.09.08';
 const GRADUATED_CLASSIC_BOARD_INDEX = 2;
 
 // A thumb rolls while it presses; anything under this is still a tap.

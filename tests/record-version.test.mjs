@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { storageAdapter } from '../js/adapters.js';
 import { nicknameRegistrationCopy } from '../js/oing-online.js';
 
@@ -85,4 +86,17 @@ test('the update NEW badge is remembered per release version', () => {
     if (original) Object.defineProperty(globalThis, 'localStorage', original);
     else delete globalThis.localStorage;
   }
+});
+
+test('the current update notice and ranking victory copy ship in the game', async () => {
+  const [index, game] = await Promise.all([
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../js/game.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(index, /폭탄 효과/);
+  assert.match(index, /쉬운 답을 모두 찾으면/);
+  assert.match(index, /내 기록과 가까운 목표/);
+  assert.match(index, /나만의 랭킹 별명/);
+  assert.match(game, /UPDATE_NOTICE_VERSION = '2026\.09\.08'/);
+  assert.match(game, /\$\{all\.beatenNickname\}님을 이겼다냥!/);
 });
