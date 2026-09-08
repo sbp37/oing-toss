@@ -146,6 +146,8 @@ test('ranking nicknames allow friendly names but reject contact details and impe
   assert.equal(nicknameReason('블루 냥'), 'nickname-characters');
   assert.equal(nicknameReason('www123'), 'nickname-contact');
   assert.equal(nicknameReason('오잉운영자'), 'nickname-blocked');
+  assert.equal(nicknameReason('오잉팀'), 'nickname-blocked');
+  assert.equal(nicknameReason('admin'), 'nickname-blocked');
   assert.equal(NICKNAME_CHANGE_MS, 7 * 24 * 60 * 60 * 1000);
   assert.equal(nicknameClaimKey(' BlueCat '), 'bluecat');
   assert.equal(nicknameClaimKey('푸른냥'), '푸른냥');
@@ -154,6 +156,18 @@ test('ranking nicknames allow friendly names but reject contact details and impe
     nicknameChangedAt: new Date(changedAt),
     nicknameChangeAvailableAt: new Date(changedAt + 30 * 24 * 60 * 60 * 1000),
   }), changedAt + NICKNAME_CHANGE_MS);
+});
+
+test('ranking nickname moderation rejects common profanity and simple evasions on the server', () => {
+  for (const nickname of [
+    '시발냥', '씨1발', '시이발', '개새끼', '병신', '존나', '지랄냥',
+    'ㅅㅂ냥', 'ㅂㅅ', 'ᄉᄇ냥', 'fuck', 'sh1t', 'b1tch', 'sex냥',
+  ]) {
+    assert.equal(nicknameReason(nickname), 'nickname-blocked', `${nickname} should be blocked`);
+  }
+  for (const nickname of ['시바견', '햇살젤리', '자두냥', '병아리', '관리냥', '영자냥']) {
+    assert.equal(nicknameReason(nickname), '', `${nickname} should stay available`);
+  }
 });
 
 test('custom ranking nicknames are atomically unique and report a useful conflict', async () => {

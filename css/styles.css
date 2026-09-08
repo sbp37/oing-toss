@@ -2978,7 +2978,7 @@ img {
 /* 폭발의 무게는 보드가 얼마나 걷어차이는가로 읽힌다. 2px에 0.25도로는
    폰에서 아예 안 보였다 - 코드에는 있고 눈에는 없는 연출이었다. 첫 프레임을
    8%로 당겨 세게 치고(9px), 그 뒤로 줄어드는 흔들림을 남긴다. transform만
-   쓰므로 다시 그리는 비용은 없다. */
+   쓴다. 실제 비용은 폰에서 확인한다. */
 @keyframes bomb-board-kick {
   0% { transform: translate(var(--drag-pull-x), var(--drag-pull-y)) scale(1); }
   8% { transform: translate(calc(var(--drag-pull-x) - 9px), calc(var(--drag-pull-y) + 5px)) rotate(-1deg) scale(1.014); }

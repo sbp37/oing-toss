@@ -40,12 +40,47 @@ export function isLegacyAutomaticNickname(value) {
   return /^(?:오잉냥\d{1,4}|새싹냥\d{1,4}|OINGTEMP)$/i.test(String(value || '').trim());
 }
 
+const BLOCKED_NICKNAME_PATTERNS = Object.freeze([
+  /시이*발|씨이*발|씨빨|씹|좆|존나|조까/,
+  /개새|개세|새끼|병신|지랄|꺼져|닥쳐|엿먹/,
+  /애미|느금마|창녀|한남|한녀|맘충|일베/,
+  /보지|자지|섹스/,
+  /fuck|shit|bitch|cunt|dick|pussy|sex/i,
+  /ㅅㅂ|ㅆㅂ|ㅂㅅ|ㅈㄹ|ㅈㄴ|ㄱㅅㄲ|ㅅㄲ/,
+  /운영자|운영진|관리자|오잉팀|토스팀|admin|staff/i,
+]);
+
+function nicknameModerationForms(value) {
+  const normalized = String(value || '').trim().normalize('NFKC').toLowerCase();
+  // 닉네임에는 구분 기호를 허용하지 않지만 숫자는 허용한다. 숫자를 글자
+  // 사이에 넣는 우회와 sh1t 같은 영문 치환을 따로 검사한다.
+  const withoutDigits = normalized.replace(/[0-9]/g, '');
+  const latinLeet = normalized
+    .replace(/0/g, 'o')
+    .replace(/1/g, 'i')
+    .replace(/3/g, 'e')
+    .replace(/4/g, 'a')
+    .replace(/5/g, 's')
+    .replace(/7/g, 't');
+  const collapse = (text) => text.replace(/(.)\1+/gu, '$1');
+  const foldJamo = (text) => text.replace(/[ᄀᄁᄂᄇᄉᄊᄌᄅ]/g, (jamo) => ({
+    ᄀ: 'ㄱ', ᄁ: 'ㄲ', ᄂ: 'ㄴ', ᄇ: 'ㅂ', ᄉ: 'ㅅ', ᄊ: 'ㅆ', ᄌ: 'ㅈ', ᄅ: 'ㄹ',
+  })[jamo]);
+  return [...new Set([
+    normalized, withoutDigits, latinLeet,
+    foldJamo(normalized), foldJamo(withoutDigits),
+    collapse(foldJamo(withoutDigits)), collapse(latinLeet),
+  ])];
+}
+
 export function nicknameReason(value) {
-  const nickname = String(value || '').trim();
+  const nickname = String(value || '').trim().normalize('NFKC');
   const length = Array.from(nickname).length;
   if (length < 2 || length > 6) return 'nickname-length';
   if (!/^[\p{Script=Hangul}A-Za-z0-9]+$/u.test(nickname)) return 'nickname-characters';
   if (/(https?|www|\.com|\.kr|\d{8,})/i.test(nickname)) return 'nickname-contact';
-  if (/(시발|씨발|개새|병신|fuck|sex|운영자|관리자)/i.test(nickname)) return 'nickname-blocked';
+  if (nicknameModerationForms(nickname).some((form) => BLOCKED_NICKNAME_PATTERNS.some((pattern) => pattern.test(form)))) {
+    return 'nickname-blocked';
+  }
   return '';
 }

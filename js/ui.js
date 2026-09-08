@@ -1,6 +1,7 @@
 import { cellsInRect } from './board.js';
 import {
   BOARD_DROP_ITEMS,
+  CLASSIC_CHAPTERS,
   GARDEN_MILESTONES,
   buildScoreComparisons,
   classicChapterArtUrl,
@@ -248,6 +249,7 @@ export class GameUI {
   }
 
   showScreen(name, { behind = null } = {}) {
+    this.settleScore();
     this.setAnswerReview(false);
     this.clearFeedbackQueue();
     this.screens.forEach((screen) => {
@@ -1358,7 +1360,7 @@ export class GameUI {
     this.boardFrame.classList.remove('bomb-kick');
     void this.boardFrame.offsetWidth;
     this.boardFrame.classList.add('bomb-kick');
-    setTimeout(() => this.boardFrame.classList.remove('bomb-kick'), 400);
+    setTimeout(() => this.boardFrame.classList.remove('bomb-kick'), 440);
     if (bounds) {
       const effect = document.createElement('div');
       effect.className = 'bomb-fx';
@@ -1383,7 +1385,7 @@ export class GameUI {
     // 파편이 흩어지는 걸 끝까지 보여주되, 다음 수를 막는 시간은 줄인다.
     // 칸 멈춤 70ms만큼은 더 기다린다 - 칸이 아직 튀는 중에 다음 판정이
     // 들어오면 흩어지던 칸 위로 새 숫자가 얹힌다.
-    await delay(400);
+    await delay(440);
   }
 
   async animateMegaBomb(cells, origin) {
@@ -2219,6 +2221,7 @@ export class GameUI {
   }
 
   async animateGameEnd({ answers = [], stamped = false } = {}) {
+    this.settleScore();
     this.endAnswers = answers;
     this.clearSelection();
     clearTimeout(this.scoreBurstTimer);
@@ -2441,6 +2444,7 @@ export class GameUI {
 
   paintScore(value) {
     const scoreText = Math.max(0, Math.round(value)).toLocaleString('ko-KR');
+    if (this.elements.score.textContent === scoreText) return;
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수
     // label; a five-figure score at full size ellipsised to "21,4…" mid-game.
@@ -2455,18 +2459,31 @@ export class GameUI {
   // 것을 보지 못하고, 결과 화면에 가서야 얼마나 모았는지 안다. 이제 숫자가
   // 굴러 올라가고, 오른 만큼 알약이 한 번 뛴다. 큰 점수일수록 오래 구른다.
   // 값이 줄면(새 판 시작) 바로 놓는다 - 0으로 굴러 내려가는 것은 벌처럼 보인다.
+  settleScore() {
+    if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
+    this.scoreRaf = null;
+    if (Number.isFinite(this.scoreTarget)) {
+      this.scoreShown = this.scoreTarget;
+      this.paintScore(this.scoreTarget);
+    }
+    this.elements.score.classList.remove('is-gaining');
+    this.elements.score.onanimationend = null;
+  }
+
   renderScore(score) {
     const target = Math.max(0, Math.round(Number(score) || 0));
     const from = this.scoreShown ?? target;
     if (target === this.scoreTarget) return;
+    const decreased = target < this.scoreTarget;
     this.scoreTarget = target;
     const canAnimate = typeof requestAnimationFrame === 'function'
       && typeof window !== 'undefined'
       && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (target <= from || !canAnimate) {
+    if (decreased || target - from < 10 || !canAnimate) {
       if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
       this.scoreRaf = null;
       this.scoreShown = target;
+      this.elements.score.classList.remove('is-gaining');
       this.paintScore(target);
       return;
     }
@@ -2476,6 +2493,10 @@ export class GameUI {
     pill.classList.remove('is-gaining');
     void pill.offsetWidth;
     pill.classList.add('is-gaining');
+    pill.onanimationend = () => {
+      pill.classList.remove('is-gaining');
+      pill.onanimationend = null;
+    };
     if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
     const startAt = performance.now();
     const duration = Math.min(560, 200 + gain * 1.4);
@@ -2495,7 +2516,7 @@ export class GameUI {
     this.scoreRaf = requestAnimationFrame(step);
   }
 
-  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0 }) {
+  updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0, runGoal = null }) {
     this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
     this.elements.round.textContent = String(round);
     if (this.elements.roundLabel) this.elements.roundLabel.textContent = classicMode ? '판' : 'STAGE';
@@ -2608,13 +2629,15 @@ export class GameUI {
     // 공통 지적). 클래식의 첫 기록 전에는 메인과 같은 1,000점을 목표로 걸어,
     // 신규 유저에게도 이 칸이 쫓을 숫자가 되게 한다. 기록이 생기면 원래대로.
     // 눈금이 클래식 점수 규모라, 스테이지 모드는 기존 '-' 표기를 지킨다.
-    const chase = best > 0 ? best : classicMode ? 1000 : 0;
-    const ahead = chase > 0 && (best > 0 ? score > chase : score >= chase);
+    const chase = runGoal?.target || (best > 0 ? best : classicMode ? 1000 : 0);
+    const ahead = chase > 0 && (runGoal ? score >= chase : best > 0 ? score > chase : score >= chase);
     const goalText = chase > 0 ? (ahead ? score : chase).toLocaleString('ko-KR') : '-';
     this.elements.goal.textContent = goalText;
     if (this.elements.goalLabel) {
       this.elements.goalLabel.textContent = best > 0 ? (ahead ? '신기록' : '최고') : (ahead ? '달성!' : '목표');
+      if (runGoal) this.elements.goalLabel.textContent = ahead ? '달성!' : runGoal.label;
     }
+    this.elements.goal.closest('.goal-status')?.setAttribute('aria-label', runGoal ? `${runGoal.name} ${chase.toLocaleString('ko-KR')}점 목표` : '최고기록');
     this.elements.goal.closest('.goal-status')?.classList.toggle('is-ahead', ahead);
     // Same length-band pattern as the score figure: the counter box is narrow
     // and the text is nowrap-centred, so long values shrink one step.
@@ -3102,6 +3125,12 @@ export class GameUI {
     // A scene earned this run is the retry hook, so it reads here rather
     // than only inside the records sheet.
     const collected = classic?.collectedLabels || [];
+    const chapterView = document.querySelector('#result-chapter-view');
+    const earnedChapter = CLASSIC_CHAPTERS.find((chapter) => chapter.label === collected.at(-1));
+    if (chapterView) {
+      chapterView.hidden = !earnedChapter;
+      chapterView.onclick = earnedChapter ? () => this.openChapterViewer(earnedChapter) : null;
+    }
     this.elements.resultStageProgress.textContent = classic
       ? classic.clearBonusScore > 0
         ? `${classic.boardsCleared}판 돌파 · 보너스 +${classic.clearBonusScore.toLocaleString('ko-KR')}점`

@@ -392,7 +392,7 @@
 .play-ui-v4 .board[data-cols="4"] .tile span { font-size: clamp(37px, 10.8vw, 43px); }
 /* 2026-09 실기 제보 여러 건 "원조 오잉보다 답이 잘 안 보인다": 숫자가 칸
    높이의 52%였다. 8% 올려 56%로 - 원조의 크기에 가깝다. 칸 크기는 그대로다.
-   (색과 획은 claude-polish.css의 .tile span에서 올렸다.) */
+   글자색은 그대로 두고 크기만 올린다. */
 .play-ui-v4 .board[data-cols="5"] .tile span { font-size: clamp(33px, 9.8vw, 40px); }
 .play-ui-v4 .board[data-cols="6"] .tile span { font-size: clamp(28px, 8.1vw, 33px); }
 .play-ui-v4 .board[data-cols="7"] .tile span { font-size: clamp(24px, 6.7vw, 28px); }

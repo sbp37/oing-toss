@@ -296,15 +296,16 @@ export function simulateRun(profile, opts = {}) {
     model.remove(pick);
     maybeDrop(prevCombo, prevMax);
 
-    // 떨어진 아이템 잡기 (프로필별 확률)
-    while (S.pendingItems.length && Math.random() < profile.catchRate) {
-      fireItem(S.pendingItems.shift());
-    }
-
     if (shouldTurnNow()) {
       if (S.time <= 0) break;
       boardChange();
     }
+
+    // 실제 게임과 같이 판갈이 뒤에 잡은 아이템을 처리한다.
+    while (S.pendingItems.length && Math.random() < profile.catchRate) {
+      fireItem(S.pendingItems.shift());
+    }
+
   }
 
   // 마지막 미완 판 로그

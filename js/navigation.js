@@ -48,6 +48,7 @@ const PAUSE_FAMILY = ['#pause-overlay', '#help-overlay'];
 //
 // 순서는 위에 덮인 것부터다.
 const DISMISSIBLE = [
+  { overlay: '#oing-nickname-backdrop', button: '#oing-nickname-cancel' },
   { overlay: '#answer-review-controls', button: '#answer-review-close' },
   { overlay: '#update-overlay', button: '#update-close' },
   { overlay: '#help-pack-overlay', button: '#help-pack-decline-button' },
