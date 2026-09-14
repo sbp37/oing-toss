@@ -10778,6 +10778,8 @@ img {
 
 .oing-rank-row {
   display: grid;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
   grid-template-columns: 26px 25px minmax(0, 1fr) auto;
   align-items: center;
   min-height: 52px;

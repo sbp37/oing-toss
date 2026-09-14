@@ -6,7 +6,7 @@ import {
   INTERSTITIAL_RUN_INTERVAL,
   interstitialDecision,
 } from '../js/ad-pacing.js';
-import { AD_CONTINUE_HINTS } from '../js/data.js';
+import { AD_CONTINUE_HINTS, PROMOTION_RUN_REWARDS } from '../js/data.js';
 
 function fakeTossScope() {
   const scope = globalThis;
@@ -98,6 +98,31 @@ test('promotion grants are attempted only once even when the response fails', as
   } finally {
     restoreStorage();
     restoreToss();
+  }
+});
+
+test('the return promotion waits for a second distinct play day and uses the console test code', async () => {
+  const restoreStorage = fakeStorage();
+  try {
+    const module = await import(`../js/promotions.js?return=${Math.random()}`);
+    const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
+    const reward = PROMOTION_RUN_REWARDS.find((entry) => entry.key === 'returnDay2Test202609');
+    assert.deepEqual(reward, {
+      key: 'returnDay2Test202609',
+      runs: 1,
+      playDays: 2,
+      amount: 3,
+      promotionCode: 'TEST_01M2FJXKHV4Y79X79DCVDZ0SYG',
+    });
+    assert.deepEqual(module.dueRunPromotions(4, [reward], {}, { playDays: 1 }), []);
+    assert.deepEqual(module.dueRunPromotions(4, [reward], {}, { playDays: 2 }), [reward]);
+    assert.equal(
+      (game.match(/recordPromotionRunAndGrant\(\{\s*playDays: storageAdapter\.getPlayDays\(\)\.length/g) || []).length,
+      2,
+      'both game modes must pass the recorded distinct-day count after a completed run',
+    );
+  } finally {
+    restoreStorage();
   }
 });
 

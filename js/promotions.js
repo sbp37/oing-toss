@@ -25,11 +25,15 @@ export function incrementPromotionRuns() {
   return next;
 }
 
-export function dueRunPromotions(runs, rewards = PROMOTION_RUN_REWARDS, claims = readClaims()) {
+export function dueRunPromotions(runs, rewards = PROMOTION_RUN_REWARDS, claims = readClaims(), {
+  playDays = 0,
+} = {}) {
   const count = Math.max(0, Math.floor(Number(runs) || 0));
+  const days = Math.max(0, Math.floor(Number(playDays) || 0));
   return rewards.filter((reward) => (
     reward?.promotionCode
       && count >= reward.runs
+      && days >= Math.max(0, Math.floor(Number(reward.playDays) || 0))
       && !claims[reward.key]
   ));
 }
@@ -42,9 +46,10 @@ export async function grantRunPromotions(runs, {
   onGranted,
   loadBridge = () => import('./vendor/toss-game-center-v1.js'),
   rewards = PROMOTION_RUN_REWARDS,
+  playDays = 0,
 } = {}) {
   if (!isAppsInTossWebView()) return [];
-  const due = dueRunPromotions(runs, rewards);
+  const due = dueRunPromotions(runs, rewards, readClaims(), { playDays });
   if (!due.length) return [];
 
   let bridge;

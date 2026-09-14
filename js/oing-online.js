@@ -578,6 +578,7 @@ export class OingLeaderboardView {
     const podiumEntries = emptyPodium
       ? [1, 2, 3].map((rank) => ({ rank, nickname: '첫 주인공을 기다려요', score: null, placeholder: true }))
       : top;
+    const podiumFragment = document.createDocumentFragment();
     [podiumEntries[1], podiumEntries[0], podiumEntries[2]].filter(Boolean).forEach((entry) => {
       const card = document.createElement('article');
       card.className = `oing-podium-card rank-${entry.rank}${entry.isMe ? ' is-me' : ''}${entry.placeholder ? ' is-placeholder' : ''}`;
@@ -633,8 +634,10 @@ export class OingLeaderboardView {
       base.textContent = rankMedal(entry.rank);
       card.append(crown, avatarFrame, rankLine, identity, scoreLine, base);
       this.bindFriendPress(card, entry);
-      podium.append(card);
+      podiumFragment.append(card);
     });
+    podium.append(podiumFragment);
+    const listFragment = document.createDocumentFragment();
     rows.slice(3).forEach((entry) => {
       const row = document.createElement('div');
       const tier = Number(entry.rank) <= 10 ? ' top10' : Number(entry.rank) <= 30 ? ' top30' : '';
@@ -679,8 +682,9 @@ export class OingLeaderboardView {
       tail.append(score);
       row.append(rank, change, identity, tail);
       this.bindFriendPress(row, entry);
-      list.append(row);
+      listFragment.append(row);
     });
+    list.append(listFragment);
     if (result.me) {
       myRank.hidden = false;
       previous.hidden = false;

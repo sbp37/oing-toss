@@ -23,6 +23,48 @@ import {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const SCORE_NUMBER_FORMATTER = new Intl.NumberFormat('ko-KR');
+const HUD_PROGRESS_STEPS = 300;
+
+function setTextIfChanged(element, value) {
+  if (!element) return;
+  const text = String(value);
+  if (element.textContent !== text) element.textContent = text;
+}
+
+function setHiddenIfChanged(element, hidden) {
+  if (!element) return;
+  const next = Boolean(hidden);
+  if (element.hidden !== next) element.hidden = next;
+}
+
+function setDatasetIfChanged(element, key, value) {
+  if (!element) return;
+  const text = String(value);
+  if (element.dataset[key] !== text) element.dataset[key] = text;
+}
+
+function setStyleIfChanged(element, property, value) {
+  if (!element) return;
+  const text = String(value);
+  if (element.style.getPropertyValue(property) !== text) element.style.setProperty(property, text);
+}
+
+function setAttributeIfChanged(element, name, value) {
+  if (!element) return;
+  const text = String(value);
+  if (element.getAttribute(name) !== text) element.setAttribute(name, text);
+}
+
+function toggleClassIfChanged(element, name, active) {
+  if (!element) return;
+  const next = Boolean(active);
+  if (element.classList.contains(name) !== next) element.classList.toggle(name, next);
+}
+
+function quantizeProgress(value, steps = HUD_PROGRESS_STEPS) {
+  return Math.round(clamp(Number(value) || 0, 0, 1) * steps) / steps;
+}
 
 // 칭찬 잡담(priority 1) 사이의 최소 간격. 빠른 연속 성공에서 말풍선이 쉬지
 // 않고 바뀌던 것이 "정신없다"의 정체였다. 규칙·판갈이·아이템 안내는 우선순위가
@@ -141,6 +183,7 @@ export class GameUI {
       boardTimeFill: document.querySelector('#board-time-fill'),
       goal: document.querySelector('#goal-value'),
       goalLabel: document.querySelector('#goal-label'),
+      goalStatus: document.querySelector('.goal-status'),
       roundMini: document.querySelector('.round-mini'),
       sumBubble: document.querySelector('#sum-bubble'),
       sum: document.querySelector('#sum-value'),
@@ -783,6 +826,12 @@ export class GameUI {
     if (!bounds) return;
     const centerX = (bounds.left + bounds.right) / 2;
     const centerY = (bounds.top + bounds.bottom) / 2;
+    const fragment = document.createDocumentFragment();
+    const particles = [];
+    const queueParticle = (particle) => {
+      particles.push(particle);
+      fragment.appendChild(particle);
+    };
     const sources = ['assets/decor/sparkle.webp', 'assets/decor/star.webp', 'assets/decor/heart.webp'];
     const imageCount = combo >= 8 ? 3 : combo >= 5 ? 2 : 1;
     sources.slice(0, imageCount).forEach((source, index) => {
@@ -792,8 +841,7 @@ export class GameUI {
       particle.alt = '';
       particle.style.left = `${centerX}px`;
       particle.style.top = `${centerY}px`;
-      this.boardFrame.appendChild(particle);
-      setTimeout(() => particle.remove(), 520);
+      queueParticle(particle);
     });
 
     const glintCount = combo >= 8 ? 9 : combo >= 5 ? 7 : combo >= 3 ? 6 : 5;
@@ -813,8 +861,7 @@ export class GameUI {
       glint.style.setProperty('--glint-mid-y', `${glintY * 0.76}px`);
       glint.style.setProperty('--glint-delay', `${(index % 4) * 13}ms`);
       glint.style.setProperty('--glint-color', glintColors[index % glintColors.length]);
-      this.boardFrame.appendChild(glint);
-      setTimeout(() => glint.remove(), 500);
+      queueParticle(glint);
     }
 
     const dropVectors = [[-28, -18], [27, -16], [-20, 24], [23, 22]];
@@ -826,9 +873,12 @@ export class GameUI {
       drop.style.setProperty('--drop-x', `${x}px`);
       drop.style.setProperty('--drop-y', `${y}px`);
       drop.style.setProperty('--drop-delay', `${index * 16}ms`);
-      this.boardFrame.appendChild(drop);
-      setTimeout(() => drop.remove(), 460);
+      queueParticle(drop);
     });
+    // One DOM insertion and one cleanup timer replace as many as sixteen of
+    // each on a high combo. The same particles and timings remain visible.
+    this.boardFrame.appendChild(fragment);
+    setTimeout(() => particles.forEach((particle) => particle.remove()), 540);
   }
 
   showScoreFlight(rect, combo = 1) {
@@ -1947,7 +1997,8 @@ export class GameUI {
     const vectors = [
       [-34, -28], [34, -25], [-42, 7], [43, 10], [-28, 34], [31, 36],
     ];
-    vectors.forEach(([x, y], index) => {
+    const fragment = document.createDocumentFragment();
+    const particles = vectors.map(([x, y], index) => {
       const particle = document.createElement('img');
       particle.className = 'stage-growth-confetti';
       particle.src = sources[index % sources.length];
@@ -1955,9 +2006,11 @@ export class GameUI {
       particle.style.setProperty('--growth-x', `${x}px`);
       particle.style.setProperty('--growth-y', `${y}px`);
       particle.style.setProperty('--growth-delay', `${index * 34}ms`);
-      this.boardFrame.appendChild(particle);
-      window.setTimeout(() => particle.remove(), 920);
+      fragment.appendChild(particle);
+      return particle;
     });
+    this.boardFrame.appendChild(fragment);
+    window.setTimeout(() => particles.forEach((particle) => particle.remove()), 920);
   }
 
   async animateRoundTransition(nextRound, swapBoard, intro = {}) {
@@ -2443,7 +2496,7 @@ export class GameUI {
   }
 
   paintScore(value) {
-    const scoreText = Math.max(0, Math.round(value)).toLocaleString('ko-KR');
+    const scoreText = SCORE_NUMBER_FORMATTER.format(Math.max(0, Math.round(value)));
     if (this.elements.score.textContent === scoreText) return;
     this.elements.score.textContent = scoreText;
     // The painted score pill has ~50px of room after the coin and the 점수
@@ -2462,6 +2515,7 @@ export class GameUI {
   settleScore() {
     if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
     this.scoreRaf = null;
+    this.scoreLastPaintAt = 0;
     if (Number.isFinite(this.scoreTarget)) {
       this.scoreShown = this.scoreTarget;
       this.paintScore(this.scoreTarget);
@@ -2482,6 +2536,7 @@ export class GameUI {
     if (decreased || target - from < 10 || !canAnimate) {
       if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
       this.scoreRaf = null;
+      this.scoreLastPaintAt = 0;
       this.scoreShown = target;
       this.elements.score.classList.remove('is-gaining');
       this.paintScore(target);
@@ -2500,11 +2555,18 @@ export class GameUI {
     if (this.scoreRaf) cancelAnimationFrame(this.scoreRaf);
     const startAt = performance.now();
     const duration = Math.min(560, 200 + gain * 1.4);
+    this.scoreLastPaintAt = -Infinity;
     const step = (now) => {
       const t = Math.min(1, (now - startAt) / duration);
       const eased = 1 - (1 - t) ** 3;
       this.scoreShown = Math.round(from + gain * eased);
-      this.paintScore(this.scoreShown);
+      // Text replacement invalidates layout and glyph rasterization. Keeping
+      // the short count-up at 30fps looks equally fluid on a phone while
+      // halving those main-thread writes on 60/120Hz WebViews.
+      if (t >= 1 || now - this.scoreLastPaintAt >= 32) {
+        this.scoreLastPaintAt = now;
+        this.paintScore(this.scoreShown);
+      }
       if (t < 1) {
         this.scoreRaf = requestAnimationFrame(step);
       } else {
@@ -2517,17 +2579,18 @@ export class GameUI {
   }
 
   updateHUD({ round, score, timeLeft, duration = 0, timed = duration > 0, freezeRemaining = 0, combo, comboRemainingMs = 0, comboWindowMs = 1, rewardRemaining = 7, rewardProgress = null, successCount = 0, gardenFromStart = false, classicMode = false, bestScore = 0, runGoal = null }) {
-    this.elements.playScreen.classList.toggle('is-classic-mode', classicMode);
-    this.elements.round.textContent = String(round);
-    if (this.elements.roundLabel) this.elements.roundLabel.textContent = classicMode ? '판' : 'STAGE';
+    toggleClassIfChanged(this.elements.playScreen, 'is-classic-mode', classicMode);
+    setTextIfChanged(this.elements.round, round);
+    setTextIfChanged(this.elements.roundLabel, classicMode ? '판' : 'STAGE');
     this.renderScore(score);
     const time = Math.max(0, Math.ceil(timeLeft));
-    this.elements.timePill.hidden = !timed;
-    this.elements.playScreen.classList.toggle('is-untimed', !timed);
-    this.elements.time.textContent = timed
+    setHiddenIfChanged(this.elements.timePill, !timed);
+    toggleClassIfChanged(this.elements.playScreen, 'is-untimed', !timed);
+    setTextIfChanged(this.elements.time, timed
       ? `${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}`
-      : '';
-    this.elements.timePill.style.setProperty('--time-progress', String(timed ? clamp(timeLeft / Math.max(1, duration), 0, 1) : 1));
+      : '');
+    const timeProgress = timed ? quantizeProgress(timeLeft / Math.max(1, duration)) : 1;
+    setStyleIfChanged(this.elements.timePill, '--time-progress', timeProgress);
     const isFrozen = freezeRemaining > 0;
     // The gauge above the numbers: remaining time as a shrinking bar in the
     // original's green-to-lemon-to-orange language, readable in peripheral
@@ -2535,30 +2598,30 @@ export class GameUI {
     // remaining *percentage* (40% and 15%), not absolute seconds, so a time
     // bonus widens the green stretch instead of skipping past a band.
     if (this.elements.boardTimeGauge) {
-      this.elements.boardTimeGauge.hidden = !timed;
+      setHiddenIfChanged(this.elements.boardTimeGauge, !timed);
       if (timed) {
         const remaining = clamp(timeLeft / Math.max(1, duration), 0, 1);
-        this.elements.boardTimeFill.style.transform = `scaleX(${remaining})`;
-        this.elements.boardTimeGauge.dataset.band = isFrozen ? 'frozen'
+        setStyleIfChanged(this.elements.boardTimeFill, 'transform', `scaleX(${quantizeProgress(remaining)})`);
+        setDatasetIfChanged(this.elements.boardTimeGauge, 'band', isFrozen ? 'frozen'
           : remaining <= 0.15 ? 'low'
             : remaining <= 0.4 ? 'mid'
-              : 'high';
+              : 'high');
       }
     }
-    this.elements.timePill.classList.toggle('is-low-time', timed && !isFrozen && time > 10 && time <= 30);
-    this.elements.timePill.classList.toggle('is-warning', timed && !isFrozen && time <= 10);
-    this.elements.timePill.dataset.freezeRemaining = String(Math.ceil(freezeRemaining));
+    toggleClassIfChanged(this.elements.timePill, 'is-low-time', timed && !isFrozen && time > 10 && time <= 30);
+    toggleClassIfChanged(this.elements.timePill, 'is-warning', timed && !isFrozen && time <= 10);
+    setDatasetIfChanged(this.elements.timePill, 'freezeRemaining', Math.ceil(freezeRemaining));
     const isFinalCountdown = timed && !isFrozen && time > 0 && time <= 10;
-    this.elements.playScreen.classList.toggle('is-final-countdown', isFinalCountdown);
-    this.elements.playScreen.dataset.round = String(round);
+    toggleClassIfChanged(this.elements.playScreen, 'is-final-countdown', isFinalCountdown);
+    setDatasetIfChanged(this.elements.playScreen, 'round', round);
     // The warmup band hides the hidden-garden art; classic runs skip it so
     // the picture peeks through from the very first cleared cell.
-    this.elements.playScreen.dataset.stageBand = round >= 8 ? 'fever'
+    setDatasetIfChanged(this.elements.playScreen, 'stageBand', round >= 8 ? 'fever'
       : round >= 5 ? 'wide'
         : round >= 3 || gardenFromStart ? 'rising'
-          : 'warmup';
-    this.boardFrame.dataset.round = String(round);
-    this.elements.timePill.dataset.urgency = time <= 3 ? 'high' : time <= 5 ? 'medium' : 'low';
+          : 'warmup');
+    setDatasetIfChanged(this.boardFrame, 'round', round);
+    setDatasetIfChanged(this.elements.timePill, 'urgency', time <= 3 ? 'high' : time <= 5 ? 'medium' : 'low');
     if (isFinalCountdown && time !== this.lastCountdownSecond) {
       this.lastCountdownSecond = time;
       clearTimeout(this.countdownPulseTimer);
@@ -2573,53 +2636,53 @@ export class GameUI {
       }, time <= 3 ? 360 : 250);
     } else if (!isFinalCountdown) {
       this.lastCountdownSecond = null;
-      this.elements.timePill.classList.remove('is-counting');
-      this.boardFrame.classList.remove('is-counting');
+      toggleClassIfChanged(this.elements.timePill, 'is-counting', false);
+      toggleClassIfChanged(this.boardFrame, 'is-counting', false);
     }
-    this.elements.combo.textContent = String(combo);
+    setTextIfChanged(this.elements.combo, combo);
     const comboStep = combo % 7;
     const rewardUnlocked = rewardRemaining > 0;
     const normalizedRewardProgress = Number.isFinite(rewardProgress)
       ? clamp(rewardProgress, 0, 1)
       : !rewardUnlocked || combo === 0 ? 0 : comboStep === 0 ? 1 : comboStep / 7;
-    this.elements.comboTimerFill.style.transform = `scaleX(${normalizedRewardProgress})`;
+    setStyleIfChanged(this.elements.comboTimerFill, 'transform', `scaleX(${quantizeProgress(normalizedRewardProgress, 100)})`);
     // The centre compartment's gauge. The track is always on screen — it is
     // half of what makes the compartment look furnished, and hiding it for
     // the first two stages left an empty box exactly where new players
     // look first. Only the "아이템까지 N" caption waits for stage 3, when
     // item drops actually unlock and the number means something.
     if (this.elements.comboItemTrack) {
-      this.elements.comboItemFill.style.width = `${Math.round(normalizedRewardProgress * 100)}%`;
+      setStyleIfChanged(this.elements.comboItemFill, 'width', `${Math.round(normalizedRewardProgress * 100)}%`);
       // 보상 경계는 콤보 최고점 기준이라, 콤보가 크게 깨진 직후에는 남은
       // 수가 7을 훌쩍 넘는다(실기기에서 '아이템까지 31'까지 관찰). 그 큰
       // 숫자는 정보가 아니라 절망이므로, 한 게이지 안(7 이하)으로 돌아온
       // 뒤에만 숫자를 붙이고 그 전에는 게이지만 조용히 다시 차오르게 둔다.
       const rewardVisible = rewardUnlocked && combo > 0 && rewardRemaining <= ITEM_REWARD_INTERVAL;
-      this.elements.comboItemTrack.hidden = false;
-      this.elements.comboItemLabel.hidden = !rewardVisible;
+      setHiddenIfChanged(this.elements.comboItemTrack, false);
+      setHiddenIfChanged(this.elements.comboItemLabel, !rewardVisible);
       if (rewardVisible) {
-        this.elements.comboItemLabel.textContent = `아이템까지 ${rewardRemaining}`;
+        setTextIfChanged(this.elements.comboItemLabel, `아이템까지 ${rewardRemaining}`);
       }
     }
-    this.elements.comboChip.classList.toggle('is-active', combo > 0);
+    toggleClassIfChanged(this.elements.comboChip, 'is-active', combo > 0);
     const comboUrgency = combo > 0 ? clamp(comboRemainingMs / Math.max(1, comboWindowMs), 0, 1) : 1;
     const comboExpiring = combo >= 3 && comboUrgency > 0 && comboUrgency <= 0.24;
-    this.elements.comboChip.classList.toggle('is-expiring', comboExpiring);
-    this.boardFrame.classList.toggle('is-fever-expiring', combo >= 8 && comboExpiring);
-    this.elements.comboChip.style.setProperty('--combo-urgency', String(comboUrgency));
-    this.elements.comboChip.classList.toggle('is-reward-close', rewardUnlocked && combo > 0 && rewardRemaining <= 2);
-    this.elements.comboChip.dataset.rewardRemaining = String(rewardRemaining);
-    this.elements.comboChip.setAttribute('aria-label', rewardUnlocked && combo > 0 && rewardRemaining <= 2
+    toggleClassIfChanged(this.elements.comboChip, 'is-expiring', comboExpiring);
+    toggleClassIfChanged(this.boardFrame, 'is-fever-expiring', combo >= 8 && comboExpiring);
+    setStyleIfChanged(this.elements.comboChip, '--combo-urgency', quantizeProgress(comboUrgency, 40));
+    toggleClassIfChanged(this.elements.comboChip, 'is-reward-close', rewardUnlocked && combo > 0 && rewardRemaining <= 2);
+    setDatasetIfChanged(this.elements.comboChip, 'rewardRemaining', rewardRemaining);
+    setAttributeIfChanged(this.elements.comboChip, 'aria-label', rewardUnlocked && combo > 0 && rewardRemaining <= 2
       ? `콤보 ${combo}, 아이템까지 ${rewardRemaining}번`
       : `콤보 ${combo}`);
     const comboLevel = combo >= 8 ? '8' : combo >= 5 ? '5' : combo >= 3 ? '3' : '';
-    this.elements.comboChip.dataset.level = comboLevel;
-    this.elements.playScreen.dataset.comboBand = combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm';
+    setDatasetIfChanged(this.elements.comboChip, 'level', comboLevel);
+    setDatasetIfChanged(this.elements.playScreen, 'comboBand', combo >= 8 ? 'fever' : combo >= 5 ? 'hot' : combo >= 3 ? 'warm' : 'calm');
     // Classic multipliers keep climbing long after the fever band tops out,
     // so the board carries a second, coarser tier keyed to the figures that
     // actually matter there: the score cap and the two steps past it.
-    this.boardFrame.dataset.comboTier = combo >= 60 ? '60' : combo >= 40 ? '40' : combo >= 25 ? '25' : '';
-    this.boardFrame.classList.toggle('is-fever', combo >= 8);
+    setDatasetIfChanged(this.boardFrame, 'comboTier', combo >= 60 ? '60' : combo >= 40 ? '40' : combo >= 25 ? '25' : '');
+    toggleClassIfChanged(this.boardFrame, 'is-fever', combo >= 8);
     // The third compartment used to count answers found, which never changed
     // a decision — it only ever went up. In a score attack the figure worth
     // carrying there is the record being chased, and once the run passes it
@@ -2631,17 +2694,18 @@ export class GameUI {
     // 눈금이 클래식 점수 규모라, 스테이지 모드는 기존 '-' 표기를 지킨다.
     const chase = runGoal?.target || (best > 0 ? best : classicMode ? 1000 : 0);
     const ahead = chase > 0 && (runGoal ? score >= chase : best > 0 ? score > chase : score >= chase);
-    const goalText = chase > 0 ? (ahead ? score : chase).toLocaleString('ko-KR') : '-';
-    this.elements.goal.textContent = goalText;
+    const goalText = chase > 0 ? SCORE_NUMBER_FORMATTER.format(ahead ? score : chase) : '-';
+    setTextIfChanged(this.elements.goal, goalText);
     if (this.elements.goalLabel) {
-      this.elements.goalLabel.textContent = best > 0 ? (ahead ? '신기록' : '최고') : (ahead ? '달성!' : '목표');
-      if (runGoal) this.elements.goalLabel.textContent = ahead ? '달성!' : runGoal.label;
+      setTextIfChanged(this.elements.goalLabel, runGoal
+        ? (ahead ? '달성!' : runGoal.label)
+        : best > 0 ? (ahead ? '신기록' : '최고') : (ahead ? '달성!' : '목표'));
     }
-    this.elements.goal.closest('.goal-status')?.setAttribute('aria-label', runGoal ? `${runGoal.name} ${chase.toLocaleString('ko-KR')}점 목표` : '최고기록');
-    this.elements.goal.closest('.goal-status')?.classList.toggle('is-ahead', ahead);
+    setAttributeIfChanged(this.elements.goalStatus, 'aria-label', runGoal ? `${runGoal.name} ${SCORE_NUMBER_FORMATTER.format(chase)}점 목표` : '최고기록');
+    toggleClassIfChanged(this.elements.goalStatus, 'is-ahead', ahead);
     // Same length-band pattern as the score figure: the counter box is narrow
     // and the text is nowrap-centred, so long values shrink one step.
-    this.elements.goal.dataset.digits = goalText.length > 3 ? 'l' : 'm';
+    setDatasetIfChanged(this.elements.goal, 'digits', goalText.length > 3 ? 'l' : 'm');
   }
 
   updateItems({ hint, shuffle, bomb, clock, stage = 1, clockAvailable = true, adRefill = {} }) {
@@ -3080,14 +3144,18 @@ export class GameUI {
     output.classList.add('is-counting');
     const startedAt = performance.now();
     const duration = 950;
+    let lastPaintAt = -Infinity;
     const step = (now) => {
       const progress = clamp((now - startedAt) / duration, 0, 1);
       const eased = 1 - ((1 - progress) ** 4);
-      output.textContent = Math.round(target * eased).toLocaleString('ko-KR');
+      if (progress >= 1 || now - lastPaintAt >= 32) {
+        lastPaintAt = now;
+        setTextIfChanged(output, SCORE_NUMBER_FORMATTER.format(Math.round(target * eased)));
+      }
       if (progress < 1) {
         this.finalScoreAnimationFrame = requestAnimationFrame(step);
       } else {
-        output.textContent = target.toLocaleString('ko-KR');
+        setTextIfChanged(output, SCORE_NUMBER_FORMATTER.format(target));
         output.classList.remove('is-counting');
         output.classList.remove('is-settled');
         void output.offsetWidth;

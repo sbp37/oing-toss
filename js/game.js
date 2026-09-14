@@ -242,6 +242,7 @@ class OingGame {
     this.oingOnline = oingOnlineAdapter;
     this.oingRunStartPromise = Promise.resolve({ ok: false, reason: 'not-started' });
     this.oingFinishPromise = null;
+    this.runRivalsRequest = null;
     this.pendingRankCelebration = null;
     this.oingLeaderboardView = new OingLeaderboardView(document.querySelector('#online-ranking-overlay'));
     this.oingLeaderboardView.onModeChange = () => this.refreshOingLeaderboard();
@@ -287,6 +288,7 @@ class OingGame {
     this.classic = null;
     this.retryStage = 1;
     this.runPreviousHighestStage = storageAdapter.getHighestStage();
+    this.hudBestScore = null;
     this.state = this.freshState();
     this.input = attachStickyRectangleInput({
       boardEl: this.ui.board,
@@ -604,8 +606,21 @@ class OingGame {
     // 역할이 다른 재화를 숫자만 먼저 노출하면 신규 이용자가 헷갈린다.
     void this.oingOnline.bootstrap().then(() => {
       this.refreshNicknameControls();
-      return this.refreshRunRivals();
+      this.deferRunRivalsRefresh();
     }).catch(() => {});
+  }
+
+  deferRunRivalsRefresh() {
+    const refresh = () => {
+      // Parsing and caching one hundred ranks is useful on the home screen,
+      // but it must not land in the middle of a live drag or countdown.
+      if (!this.state.running) void this.refreshRunRivals();
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(refresh, { timeout: 1800 });
+    } else {
+      window.setTimeout(refresh, 900);
+    }
   }
 
   // 플레이 상단의 랭킹: 시계부터 멈춘다. 일시정지 오버레이가 함께 열리므로
@@ -833,10 +848,14 @@ class OingGame {
     }
       : null;
     const previousOnlineFinish = this.oingFinishPromise;
+    const classicBestScore = this.classic ? storageAdapter.getClassicBestScore() : 0;
     this.runGoal = this.classic ? chooseRunGoal({
-      best: storageAdapter.getClassicBestScore(), challenge: challengeScore(),
+      best: classicBestScore, challenge: challengeScore(),
       rows: this.runRivals?.rows, fetchedAt: this.runRivals?.at,
     }) : null;
+    // localStorage reads are synchronous in WebView. The record cannot change
+    // during a run, so read it once instead of ten times per second in tick().
+    this.hudBestScore = this.classic ? classicBestScore : storageAdapter.getBestScore();
     this.runGoalCelebrated = false;
     this.runPreviousCombo = storageAdapter.getClassicBestCombo();
     this.pendingRankCelebration = null;
@@ -3013,6 +3032,7 @@ class OingGame {
     if (!this.runtime.testMode) {
       this.markCompletedRunForInterstitial();
       void recordPromotionRunAndGrant({
+        playDays: storageAdapter.getPlayDays().length,
         onGranted: (reward) => this.ui.toast(`토스포인트 ${reward.amount}원 받았다냥!`),
       });
     }
@@ -3463,6 +3483,7 @@ class OingGame {
     if (!this.runtime.testMode) {
       this.markCompletedRunForInterstitial();
       void recordPromotionRunAndGrant({
+        playDays: storageAdapter.getPlayDays().length,
         onGranted: (reward) => this.ui.toast(`토스포인트 ${reward.amount}원 받았다냥!`),
       });
     }
@@ -3648,16 +3669,25 @@ class OingGame {
       freezeRemaining: Math.max(0, (this.freezeEndsAt - performance.now()) / 1000),
       gardenFromStart: Boolean(this.classic),
       classicMode: Boolean(this.classic),
-      bestScore: this.classic ? storageAdapter.getClassicBestScore() : storageAdapter.getBestScore(),
+      bestScore: this.hudBestScore ?? (this.classic ? storageAdapter.getClassicBestScore() : storageAdapter.getBestScore()),
       runGoal: this.classic ? this.runGoal : null,
     });
   }
 
   async refreshRunRivals() {
-    try {
-      const result = await this.oingOnline.leaderboard('all');
-      if (result?.ok) this.runRivals = { rows: result.rows, at: Date.now() };
-    } catch { /* 오프라인에서는 내 기록을 목표로 쓴다. */ }
+    if (this.runRivalsRequest) return this.runRivalsRequest;
+    this.runRivalsRequest = (async () => {
+      try {
+        const result = await this.oingOnline.leaderboard('all');
+        if (result?.ok) this.runRivals = { rows: result.rows, at: Date.now() };
+        return result;
+      } catch {
+        return null; // 오프라인에서는 내 기록을 목표로 쓴다.
+      } finally {
+        this.runRivalsRequest = null;
+      }
+    })();
+    return this.runRivalsRequest;
   }
 
   // The chatty categories get a cooldown. A near-expert QA run logged 187
