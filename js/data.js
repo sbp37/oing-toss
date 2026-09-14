@@ -390,15 +390,15 @@ export const AD_GROUP_IDS = Object.freeze({
 export const PROMOTION_RUN_REWARDS = Object.freeze([
   Object.freeze({ key: 'firstRun', runs: 1, amount: 1, promotionCode: '01M1HB4TQNX01M5KD2M2682WDJ' }),
   Object.freeze({ key: 'threeRuns', runs: 3, amount: 3, promotionCode: '01M1HBBTSRE3MBWNDXVXNWCZQT' }),
-  // Temporary TEST_ campaign for the required console validation. After the
-  // console reports a successful grant, replace both this key and code with
-  // the live pair so a test claim cannot suppress the real return reward.
+  // The live claim key intentionally differs from the TEST_ campaign key.
+  // A developer who completed console validation must still be eligible for
+  // the real reward when returning on a second distinct play day.
   Object.freeze({
-    key: 'returnDay2Test202609',
+    key: 'returnDay2Live202609',
     runs: 1,
     playDays: 2,
     amount: 3,
-    promotionCode: 'TEST_01M2FJXKHV4Y79X79DCVDZ0SYG',
+    promotionCode: '01M2FJXKHV4Y79X79DCVDZ0SYG',
   }),
 ]);
 

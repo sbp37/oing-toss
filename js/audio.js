@@ -384,7 +384,7 @@ export function playBombSound() {
   // 저음을 한 겹 깐다. 폰 스피커는 60Hz 아래를 거의 못 내지만, 떨어지는
   // 곡선 자체가 무게로 들린다.
   for (let index = 0; index < samples.length; index += 1) {
-    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.115));
+    samples[index] = (Math.random() * 2 - 1) * Math.exp(-index / (ctx.sampleRate * 0.09));
   }
   const source = ctx.createBufferSource();
   const gain = ctx.createGain();
@@ -393,8 +393,8 @@ export function playBombSound() {
   filter.type = 'lowpass';
   filter.frequency.setValueAtTime(900, now);
   filter.frequency.exponentialRampToValueAtTime(260, now + 0.22);
-  gain.gain.setValueAtTime(0.52, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+  gain.gain.setValueAtTime(0.46, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
   source.connect(filter);
   filter.connect(gain);
   gain.connect(getMixBus(ctx));
@@ -408,19 +408,6 @@ export function playBombSound() {
   thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
   thump.connect(thumpGain); thumpGain.connect(getMixBus(ctx));
   thump.start(now); thump.stop(now + 0.18);
-  // 위의 90 - 38Hz는 폰 스피커가 거의 못 낸다. 곡선은 맞지만 귀에 닿는 것이
-  // 없어서 "무게를 넣었는데도 가볍다"는 말이 나온 것이다. 폰이 실제로 소리를
-  // 내는 구간은 150Hz 위쪽이라, 210에서 78Hz로 떨어지는 몸통을 한 겹 더
-  // 깐다. 이 층이 실기에서 들리는 저음의 대부분을 만든다.
-  const body = ctx.createOscillator();
-  const bodyGain = ctx.createGain();
-  body.type = 'triangle';
-  body.frequency.setValueAtTime(210, now);
-  body.frequency.exponentialRampToValueAtTime(78, now + 0.2);
-  bodyGain.gain.setValueAtTime(0.36, now);
-  bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-  body.connect(bodyGain); bodyGain.connect(getMixBus(ctx));
-  body.start(now); body.stop(now + 0.29);
   // 첫 순간의 "딱" - 짧은 삼각파가 타격점을 만든다. 높은 음 세 개는 그대로.
   scheduleTone(ctx, 1900, now, 0.03, 0.09, 'triangle', 0.002);
   [800, 1200, 600].forEach((frequency, index) => {

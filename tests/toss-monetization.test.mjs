@@ -101,18 +101,18 @@ test('promotion grants are attempted only once even when the response fails', as
   }
 });
 
-test('the return promotion waits for a second distinct play day and uses the console test code', async () => {
+test('the return promotion waits for a second distinct play day and uses the live code', async () => {
   const restoreStorage = fakeStorage();
   try {
     const module = await import(`../js/promotions.js?return=${Math.random()}`);
     const game = await readFile(new URL('../js/game.js', import.meta.url), 'utf8');
-    const reward = PROMOTION_RUN_REWARDS.find((entry) => entry.key === 'returnDay2Test202609');
+    const reward = PROMOTION_RUN_REWARDS.find((entry) => entry.key === 'returnDay2Live202609');
     assert.deepEqual(reward, {
-      key: 'returnDay2Test202609',
+      key: 'returnDay2Live202609',
       runs: 1,
       playDays: 2,
       amount: 3,
-      promotionCode: 'TEST_01M2FJXKHV4Y79X79DCVDZ0SYG',
+      promotionCode: '01M2FJXKHV4Y79X79DCVDZ0SYG',
     });
     assert.deepEqual(module.dueRunPromotions(4, [reward], {}, { playDays: 1 }), []);
     assert.deepEqual(module.dueRunPromotions(4, [reward], {}, { playDays: 2 }), [reward]);
