@@ -39,12 +39,13 @@
     footer { margin-top: 40px; color: #6b788c; font-size: 14px; }
     a { color: #2f6f9e; }
     a:hover { color: #21506f; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-<main>
+<main id="policy-ko" lang="ko">
   <h1>개인정보 처리방침</h1>
-  <p class="updated">서비스명: 오잉 (OING) · 최종 수정일: 2026-09-04</p>
+  <p class="updated">서비스명: 오잉 (OING) · 최종 수정일: 2026-09-16</p>
 
   <p class="lead">이 게임은 이름·전화번호·이메일을 받는 회원가입이 없습니다. 오잉 랭킹과 젤리 기능을 제공하기 위해 토스가 발급한 게임 전용 익명 키를 확인하고, 이를 다시 일방향 변환한 내부 식별자와 게임 기록을 보관합니다. 저장 항목과 사용 목적은 아래에 적었습니다.</p>
 
@@ -177,7 +178,6 @@
         </tbody>
       </table>
       <p>
-        토스 랭킹, 광고, 포인트 프로모션, 친구 초대 리워드는 토스 앱 안에서 실행할 때만 나타납니다. Google Play 게임 랭킹은 Google Play 앱에서만 동작합니다. 일반 웹 브라우저에서는 플랫폼 랭킹과 토스 전용 기능을 호출하지 않습니다. <strong>공유하기는 예외입니다</strong> - 웹에서도 버튼이 보이며, 브라우저의 공유 기능이나 클립보드 복사로 동작합니다. 어느 환경에서든 이용자가 직접 공유 버튼을 눌렀을 때만 실행됩니다.</p>
 
       <h2>6. 그 밖의 네트워크 통신</h2>
       <p>
@@ -217,5 +217,64 @@
     <p><a href="./">게임으로 돌아가기</a></p>
   </footer>
 </main>
+<main id="policy-en" lang="en" hidden>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Service: OING · Last updated: September 16, 2026</p>
+
+  <p class="lead">OING does not require an account with your name, phone number, or email address. To provide OING rankings and Jelly features, we verify an app-specific anonymous key issued by Toss, transform it one-way into an internal identifier, and store the game records described below.</p>
+
+  <h2>1. Information we do not collect</h2>
+  <p>We do not directly request or store your name, email address, phone number, advertising ID, location, contacts, photos, files, raw Toss or Google account details, or payment information. We do not use a separate analytics SDK or social login.</p>
+
+  <h2>2. Information stored only on your device</h2>
+  <p>A copy of your settings and game progress is stored in your browser's <code>localStorage</code>. This includes best and recent scores, combos, reached stages, collected cats and scenes, sound settings, tutorial state, promotion progress, and anonymous gameplay statistics from up to the latest 50 runs. These local records are not sent to the developer's server as a whole. Ranking participants may send the limited data described in section 3.</p>
+
+  <h2>3. Information stored on the OING ranking server</h2>
+  <p>For Toss users who use OING Ranking or Jelly, we may store:</p>
+  <ul>
+    <li><strong>Internal anonymous account ID:</strong> a one-way transformation of the app-specific anonymous key verified by Toss. We do not store the original Toss key.</li>
+    <li><strong>Public ranking record:</strong> an automatically generated or user-selected nickname, best score, achieved time, and rank.</li>
+    <li><strong>Saved friends:</strong> links between anonymous internal accounts selected by the user. We do not receive contacts, real names, or phone numbers.</li>
+    <li><strong>Play validation data:</strong> score, run duration, successful clears and timestamps, reached round, and best combo, used to detect abnormal records.</li>
+    <li><strong>Jelly and customization data:</strong> balance, transaction history, purchased items, and equipped items.</li>
+  </ul>
+  <p>We retain this information while the service is provided or until a deletion request is completed, unless a longer period is required for fraud investigation or by law.</p>
+
+  <h2>4. Deleting stored information</h2>
+  <p>You can remove on-device information by clearing this site's browser data, uninstalling the app, or clearing the app's storage. To delete OING server ranking, Jelly, and customization data, email the address in section 9. Deleted ranking and purchase state cannot be restored.</p>
+
+  <h2>5. Platform features and third parties</h2>
+  <ul>
+    <li><strong>Toss and Google Play rankings:</strong> after a run, only the score is submitted once to the relevant platform leaderboard. Google Play Games may use your Play Games profile to show its leaderboard; OING does not store that profile information on its server.</li>
+    <li><strong>Ads:</strong> rewarded ads run only after you choose an ad-based reward. Interstitial ads may appear at a natural transition after three completed runs, never during active play. Toss, Google AdMob, or their partners may process an advertising identifier; OING receives only the completion signal needed to grant a reward.</li>
+    <li><strong>Toss Points promotions:</strong> when an active promotion requirement is met, OING sends the promotion code and reward amount to Toss. Only duplicate-request state is retained on the device.</li>
+    <li><strong>Sharing and invitations:</strong> these features open the platform or browser share interface only after you choose them. OING does not receive the recipient's information or contact list.</li>
+  </ul>
+  <p>These platform services are also governed by the privacy policies of Toss, Google, and the applicable advertising providers.</p>
+
+  <h2>6. Other network communication</h2>
+  <p>The app downloads its HTML, images, fonts, and audio and communicates for the services described above. If the OING ranking server is unavailable, gameplay and results continue, while score and Jelly synchronization may be delayed. Online rankings, ads, and sharing require a network connection.</p>
+
+  <h2>7. Children's privacy</h2>
+  <p>OING does not ask for a real name, phone number, or email address. Ranking nicknames must not contain real contact details. Platform ranking, advertising, promotions, sharing, and invitations are handled by Toss, Google, or their providers under their own policies.</p>
+
+  <h2>8. Changes to this policy</h2>
+  <p>Changes will be posted on this page, with the updated date shown above.</p>
+
+  <h2>9. Contact and deletion requests</h2>
+  <p>For privacy questions or deletion requests, contact <a href="mailto:takea@naver.com">takea@naver.com</a>.</p>
+
+  <footer><p><a href="./">Return to the game</a></p></footer>
+</main>
+<script>
+  (() => {
+    const requested = new URLSearchParams(location.search).get('lang');
+    const useEnglish = requested === 'en' || (requested !== 'ko' && !navigator.language.toLowerCase().startsWith('ko'));
+    document.documentElement.lang = useEnglish ? 'en' : 'ko';
+    document.title = useEnglish ? 'Privacy Policy — OING' : '개인정보 처리방침 — 오잉';
+    document.querySelector('#policy-ko').hidden = useEnglish;
+    document.querySelector('#policy-en').hidden = !useEnglish;
+  })();
+</script>
 </body>
 </html>

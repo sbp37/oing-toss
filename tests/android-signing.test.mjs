@@ -46,7 +46,9 @@ test('패키지 식별자와 앱 이름이 스토어 등록값과 일치한다',
   assert.match(gradle, /namespace = "com\.oinggame\.app"/);
 
   const strings = read('android/app/src/main/res/values/strings.xml');
-  assert.match(strings, /<string name="app_name">오잉게임<\/string>/);
+  const koreanStrings = read('android/app/src/main/res/values-ko/strings.xml');
+  assert.match(strings, /<string name="app_name">OING Game<\/string>/);
+  assert.match(koreanStrings, /<string name="app_name">오잉게임<\/string>/);
   assert.match(strings, /<string name="package_name">com\.oinggame\.app<\/string>/);
 });
 
