@@ -170,6 +170,9 @@ import {
   setHapticEnabled,
   successHaptic,
 } from './haptic.js';
+import { installLocalization } from './i18n.js';
+
+installLocalization();
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

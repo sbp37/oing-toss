@@ -2541,3 +2541,33 @@
 .oing-nickname-dialog h3 { text-wrap: balance; }
 .oing-nickname-dialog h3:focus { outline: none; }
 .oing-nickname-dialog #oing-nickname-cancel { box-shadow: none; background: transparent; border-color: transparent; }
+html.lang-en .btn,
+html.lang-en button,
+html.lang-en .cat-message,
+html.lang-en .oing-rank-panel,
+html.lang-en .mini-panel {
+  letter-spacing: -0.01em;
+}
+
+html.lang-en .home-instruction,
+html.lang-en .continue-copy,
+html.lang-en .help-steps span,
+html.lang-en .oing-friend-hint {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+html.lang-en .oing-nickname-dialog h3,
+html.lang-en .update-panel h2 {
+  font-size: clamp(25px, 7vw, 31px);
+}
+
+html.lang-en .best-record-card strong::after,
+html.lang-en .oing-rank-tail > strong::after {
+  content: 'PTS';
+}
+
+html.lang-en .item-button.is-depleted::after,
+html.lang-en .item-button[data-state="depleted"]::after {
+  content: 'EMPTY';
+}
