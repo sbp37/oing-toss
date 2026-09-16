@@ -14,6 +14,7 @@ test('dynamic score and ranking copy keeps its values', () => {
   assert.equal(translateEnglishText('4,580점'), '4,580 pts');
   assert.equal(translateEnglishText('3위'), 'Rank 3');
   assert.equal(translateEnglishText('960점 남았다냥!'), '960 pts to go!');
+  assert.equal(translateEnglishText('첫 목표 1,000점'), 'First goal: 1,000 pts');
   assert.equal(translateEnglishText('시간 10초 멈춤!'), 'TIME FROZEN FOR 10 SEC!');
   assert.equal(translateEnglishText('여름구슬 · 195점 도전!'), '여름구슬 · BEAT 195 PTS!');
   assert.equal(translateEnglishText('한 판 4,000점 (0/4,000)'), 'Score 4,000 in one run (0/4,000)');

@@ -233,6 +233,7 @@ const RULES = [
   [/^(.+), 길게 눌러 친구 해제$/, '$1, press and hold to remove friend'],
   [/^(힌트|섞기|폭탄|시계), (\d+)회 남음$/, (_, item, count) => `${translateEnglishText(item)}, ${count} left`],
   [/^첫 목표 ([\d,]+)점 목표$/, 'First goal: $1 pts'],
+  [/^첫 목표 ([\d,]+)점$/, 'First goal: $1 pts'],
   [/^첫 목표 · ([\d,]+)점 도전!$/, 'FIRST GOAL · REACH $1 PTS!'],
   [/^(.+) · ([\d,]+)점 도전!$/, '$1 · BEAT $2 PTS!'],
   [/^(.+) ([\d,]+)점 목표$/, '$1 target: $2 pts'],
